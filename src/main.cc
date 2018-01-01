@@ -6,6 +6,8 @@
 #include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
 
+#include <systemd/sd-journal.h>
+
 #include <thread>
 #include <iostream>
 
@@ -35,6 +37,8 @@ int main(int argc, char* argv[])
 		std::cout << desc << "\n";
 		return 1;
 	}
+
+	sd_journal_print(LOG_NOTICE, "hearty_rabbit starting");
 
     auto const threads = std::max<int>(1, config["threads"].as<int>());
 

@@ -3,18 +3,23 @@ project(hearty_rabbit)
 
 set(Boost_USE_STATIC_LIBS  ON)
 find_package(Boost COMPONENTS system filesystem program_options REQUIRED)
-find_package(Threads)
+find_package(Threads REQUIRED)
+find_package(PkgConfig REQUIRED)
+
+pkg_check_modules(SYSTEMD libsystemd)
 
 set(CMAKE_CXX_STANDARD 17)
 set(VERSION "0.1")
 
-include_directories(${Boost_INCLUDE_DIR})
+include_directories(${Boost_INCLUDE_DIR} ${SYSTEMD_INCLUDE_DIRS})
 add_definitions(-DINSTALL_PREFIX="${CMAKE_INSTALL_PREFIX}")
+
+message(STATUS "found systemd = ${SYSTEMD_LIBRARIES}")
 
 file(GLOB MAIN_SRC src/*.cc src/*.hh)
 
 add_executable(hearty_rabbit ${MAIN_SRC})
-target_link_libraries(hearty_rabbit ${Boost_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT})
+target_link_libraries(hearty_rabbit ${Boost_LIBRARIES} ${SYSTEMD_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT})
 
 # Post-processing
 configure_file(systemd/hearty_rabbit.service.in hearty_rabbit.service)
