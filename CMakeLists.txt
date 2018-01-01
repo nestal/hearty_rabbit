@@ -9,6 +9,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(VERSION "0.1")
 
 include_directories(${Boost_INCLUDE_DIR})
+add_definitions(-DINSTALL_PREFIX="${CMAKE_INSTALL_PREFIX}")
 
 file(GLOB MAIN_SRC src/*.cc src/*.hh)
 
@@ -21,6 +22,7 @@ configure_file(systemd/hearty_rabbit.service.in hearty_rabbit.service)
 # Installation
 install(TARGETS hearty_rabbit DESTINATION bin)
 install(FILES ${CMAKE_BINARY_DIR}/hearty_rabbit.service DESTINATION etc/systemd/system)
+install(FILES etc/hearty_rabbit.conf DESTINATION etc)
 install(DIRECTORY lib DESTINATION lib/hearty_rabbit)
 
 set(CPACK_PACKAGE_VERSION ${VERSION})

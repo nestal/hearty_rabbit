@@ -18,14 +18,17 @@ int main(int argc, char* argv[])
 	po::options_description desc("Allowed options");
 	desc.add_options()
 		("help", "produce help message")
-		("address,a", po::value<std::string>()->default_value("0.0.0.0"),    "IP address of the network interface to listener to")
-		("port,p",    po::value<unsigned short>()->default_value(80),        "Port number to listener to")
-		("root,r",    po::value<std::string>()->default_value("."),          "Album directory")
-		("threads",   po::value<int>()->default_value(1),                    "Number of threads")
+		("address,a", po::value<std::string>()->default_value("0.0.0.0"),               "IP address of the network interface to listener to")
+		("port,p",    po::value<unsigned short>()->default_value(80),                   "Port number to listener to")
+		("root,r",    po::value<std::string>()->default_value(INSTALL_PREFIX "/lib"),   "Album directory")
+		("threads",   po::value<int>()->default_value(1),                               "Number of threads")
 	;
 
+	std::ifstream config_file{INSTALL_PREFIX "/etc/hearty_rabbit.conf"};
+
     po::variables_map config;
-	po::store(po::parse_command_line(argc, argv, desc), config);
+	store(po::parse_command_line(argc, argv, desc), config);
+	store(po::parse_config_file(config_file, desc), config);
 	po::notify(config);
 
 	if (config.count("help"))
@@ -34,12 +37,7 @@ int main(int argc, char* argv[])
 		return 1;
 	}
 
-	auto const address = boost::asio::ip::make_address(config["address"].as<std::string>());
-    auto const port = config["port"].as<unsigned short>();
-    std::string const doc_root = config["root"].as<std::string>();
     auto const threads = std::max<int>(1, config["threads"].as<int>());
-
-    std::cout << address << " " << port << std::endl;
 
     // The io_context is required for all I/O
     boost::asio::io_context ioc{threads};
@@ -47,8 +45,12 @@ int main(int argc, char* argv[])
     // Create and launch a listening port
     std::make_shared<hrb::Listener>(
 	    ioc,
-        boost::asio::ip::tcp::endpoint{address, port},
-        doc_root)->run();
+        boost::asio::ip::tcp::endpoint{
+	        boost::asio::ip::make_address(config["address"].as<std::string>()),
+	        config["port"].as<unsigned short>()
+        },
+        config["root"].as<std::string>()
+    )->run();
 
     // Run the I/O service on the requested number of threads
     std::vector<std::thread> v;
