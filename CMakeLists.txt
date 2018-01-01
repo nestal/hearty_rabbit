@@ -1,10 +1,13 @@
 cmake_minimum_required(VERSION 2.8)
 project(hearty_rabbit)
 
+find_package(Boost COMPONENTS system filesystem REQUIRED)
+
 set(CMAKE_CXX_STANDARD 17)
 set(VERSION "0.1")
 
 add_executable(hearty_rabbit main.cpp)
+target_link_libraries(hearty_rabbit ${Boost_LIBRARIES})
 install(TARGETS hearty_rabbit DESTINATION bin)
 
 set(CPACK_PACKAGE_VERSION ${VERSION})
