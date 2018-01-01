@@ -52,8 +52,10 @@ void Listener::do_accept()
 {
 	m_acceptor.async_accept(
 		m_socket,
-		[self = shared_from_this()](boost::system::error_code ec)
-		{ self->on_accept(ec); }
+		[self = shared_from_this()](auto ec)
+		{
+			self->on_accept(ec);
+		}
 	);
 }
 

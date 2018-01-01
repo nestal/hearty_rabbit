@@ -14,6 +14,7 @@
 #include <boost/beast/version.hpp>
 #include <boost/beast/core.hpp>
 #include <boost/beast/http.hpp>
+#include <iostream>
 
 namespace hrb {
 
@@ -23,7 +24,7 @@ namespace http = boost::beast::http;    // from <boost/beast/http.hpp>
 Session::Session(
 	boost::asio::ip::tcp::socket socket,
 	std::string const &doc_root)
-	: socket_(std::move(socket)), strand_(socket_.get_executor()), doc_root_(doc_root), lambda_(*this)
+	: m_socket(std::move(socket)), m_strand(m_socket.get_executor()), m_doc_root(doc_root)
 {
 }
 
@@ -36,9 +37,9 @@ void Session::run()
 void Session::do_read()
 {
 	// Read a request
-	boost::beast::http::async_read(socket_, buffer_, req_,
+	boost::beast::http::async_read(m_socket, m_buffer, m_req,
 		boost::asio::bind_executor(
-			strand_,
+			m_strand,
 			std::bind(
 				&Session::on_read,
 				shared_from_this(),
@@ -59,7 +60,7 @@ template<
 void
 handle_request(
 	boost::beast::string_view doc_root,
-	http::request<Body, http::basic_fields<Allocator>> &&req,
+	http::request<Body, http::basic_fields<Allocator>>&& req,
 	Send &&send)
 {
 	// Returns a bad request response
@@ -126,6 +127,39 @@ handle_request(
 		return send(std::move(res));
 	}
 
+	if (req.target() == "/index.html")
+	{
+		auto path = doc_root.to_string() + req.target().to_string();
+std::cout << "getting " << path << std::endl;
+
+	    // Attempt to open the file
+	    boost::beast::error_code ec;
+	    http::file_body::value_type file;
+	    file.open(path.c_str(), boost::beast::file_mode::scan, ec);
+
+		// Handle the case where the file doesn't exist
+		if(ec == boost::system::errc::no_such_file_or_directory)
+			return send(not_found(req.target()));
+
+		// Handle an unknown error
+		if(ec)
+			return send(server_error(ec.message()));
+		    // Respond to GET request
+
+		auto file_size = file.size();
+
+		http::response<http::file_body> res{
+		    std::piecewise_construct,
+		    std::make_tuple(std::move(file)),
+		    std::make_tuple(http::status::ok, req.version())
+		};
+		res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
+		res.set(http::field::content_type, mime);
+		res.content_length(file_size);
+		res.keep_alive(req.keep_alive());
+		return send(std::move(res));
+	}
+
 	// Respond to GET request
 	http::response<http::string_body> res{http::status::ok, req.version()};
 	res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
@@ -136,12 +170,8 @@ handle_request(
 	return send(std::move(res));
 }
 
-void Session::on_read(
-	boost::system::error_code ec,
-	std::size_t bytes_transferred)
+void Session::on_read(boost::system::error_code ec, std::size_t)
 {
-	boost::ignore_unused(bytes_transferred);
-
 	// This means they closed the connection
 	if (ec == boost::beast::http::error::end_of_stream)
 		return do_close();
@@ -150,18 +180,35 @@ void Session::on_read(
 		throw std::system_error(ec);
 
 	// Send the response
-	handle_request(doc_root_, std::move(req_), lambda_);
+	handle_request(m_doc_root, std::move(m_req), [this](auto&& msg)
+	{
+		// The lifetime of the message has to extend
+		// for the duration of the async operation so
+		// we use a shared_ptr to manage it.
+		auto sp = std::make_shared<std::remove_reference_t<decltype(msg)>>(std::move(msg));
+
+		// Write the response
+		boost::beast::http::async_write(
+			m_socket,
+			*sp,
+			boost::asio::bind_executor(
+				m_strand,
+				[self=this->shared_from_this(), sp](auto error_code, auto bytes_transferred)
+				{
+					self->on_write(error_code, bytes_transferred, sp->need_eof());
+				}
+			)
+		);
+	});
 }
 
 void Session::on_write(
-	boost::system::error_code ec,
-	std::size_t bytes_transferred,
+	[[maybe_unused]] boost::system::error_code ec,
+	std::size_t,
 	bool close)
 {
-	boost::ignore_unused(bytes_transferred);
-
-	if (ec)
-		throw std::system_error(ec);
+//	if (ec)
+//		throw std::system_error(ec);
 
 	if (close)
 	{
@@ -169,9 +216,6 @@ void Session::on_write(
 		// the response indicated the "Connection: close" semantic.
 		return do_close();
 	}
-
-	// We're done with the response so delete it
-	res_ = nullptr;
 
 	// Read another request
 	do_read();
@@ -181,7 +225,7 @@ void Session::do_close()
 {
 	// Send a TCP shutdown
 	boost::system::error_code ec;
-	socket_.shutdown(boost::asio::ip::tcp::socket::shutdown_send, ec);
+	m_socket.shutdown(boost::asio::ip::tcp::socket::shutdown_send, ec);
 
 	// At this point the connection is closed gracefully
 }

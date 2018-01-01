@@ -2,7 +2,6 @@
 
 #include <boost/asio/bind_executor.hpp>
 #include <boost/asio/ip/tcp.hpp>
-#include <boost/asio/strand.hpp>
 
 #include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
