@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 2.8)
 project(hearty_rabbit)
 
+set(Boost_USE_STATIC_LIBS  ON)
 find_package(Boost COMPONENTS system filesystem REQUIRED)
 
 set(CMAKE_CXX_STANDARD 17)
