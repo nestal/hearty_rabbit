@@ -22,16 +22,6 @@
 
 namespace hrb {
 
-template<
-    class Body, class Allocator,
-    class Send>
-void
-handle_request(
-    boost::beast::string_view doc_root,
-    boost::beast::http::request<Body, boost::beast::http::basic_fields<Allocator>>&& req,
-    Send&& send
-);
-
 // Handles an HTTP server connection
 class Session : public std::enable_shared_from_this<Session>
 {
@@ -90,87 +80,14 @@ public:
 	explicit
 	Session(
 		boost::asio::ip::tcp::socket socket,
-		std::string const &doc_root)
-		: socket_(std::move(socket)), strand_(socket_.get_executor()), doc_root_(doc_root), lambda_(*this)
-	{
-	}
+		std::string const &doc_root);
 
 	// Start the asynchronous operation
-	void
-	run()
-	{
-		do_read();
-	}
-
-	void
-	do_read()
-	{
-		// Read a request
-		boost::beast::http::async_read(socket_, buffer_, req_,
-			boost::asio::bind_executor(
-				strand_,
-				std::bind(
-					&Session::on_read,
-					shared_from_this(),
-					std::placeholders::_1,
-					std::placeholders::_2
-				)
-			)
-		);
-	}
-
-	void
-	on_read(
-		boost::system::error_code ec,
-		std::size_t bytes_transferred)
-	{
-		boost::ignore_unused(bytes_transferred);
-
-		// This means they closed the connection
-		if (ec == boost::beast::http::error::end_of_stream)
-			return do_close();
-
-		if (ec)
-			return /*fail(ec, "read")*/;
-
-		// Send the response
-		handle_request(doc_root_, std::move(req_), lambda_);
-	}
-
-	void
-	on_write(
-		boost::system::error_code ec,
-		std::size_t bytes_transferred,
-		bool close)
-	{
-		boost::ignore_unused(bytes_transferred);
-
-		if (ec)
-			return /*fail(ec, "write")*/;
-
-		if (close)
-		{
-			// This means we should close the connection, usually because
-			// the response indicated the "Connection: close" semantic.
-			return do_close();
-		}
-
-		// We're done with the response so delete it
-		res_ = nullptr;
-
-		// Read another request
-		do_read();
-	}
-
-	void
-	do_close()
-	{
-		// Send a TCP shutdown
-		boost::system::error_code ec;
-		socket_.shutdown(boost::asio::ip::tcp::socket::shutdown_send, ec);
-
-		// At this point the connection is closed gracefully
-	}
+	void run();
+	void do_read();
+	void on_read(boost::system::error_code ec, std::size_t bytes_transferred);
+	void on_write(boost::system::error_code ec, std::size_t bytes_transferred, bool close);
+	void do_close();
 };
 
 } // end of namespace
