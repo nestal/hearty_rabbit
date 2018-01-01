@@ -78,18 +78,7 @@ handle_request(
         return send(bad_request("Illegal request-target"));
 
 	std::string mime = "text/html";
-
-    boost::beast::error_code ec;
-    http::string_body::value_type body = "hello world!";
-//    body.open(path.c_str(), boost::beast::file_mode::scan, ec);
-
-    // Handle the case where the file doesn't exist
-    if(ec == boost::system::errc::no_such_file_or_directory)
-        return send(not_found(req.target()));
-
-    // Handle an unknown error
-    if(ec)
-        return send(server_error(ec.message()));
+    std::string body = "Hello world!";
 
     // Respond to HEAD request
     if(req.method() == http::verb::head)
@@ -102,17 +91,12 @@ handle_request(
         return send(std::move(res));
     }
 
-    auto body_size = body.size();
-	std::cout << "body size = " << body.size() << std::endl;
-
     // Respond to GET request
-    http::response<http::string_body> res{
-        std::piecewise_construct,
-        std::make_tuple(std::move(body)),
-        std::make_tuple(http::status::ok, req.version())};
+    http::response<http::string_body> res{http::status::ok, req.version()};
     res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
     res.set(http::field::content_type, mime);
-    res.content_length(body_size);
+    res.content_length(body.size());
+    res.body() = std::move(body);
     res.keep_alive(req.keep_alive());
     return send(std::move(res));
 }
