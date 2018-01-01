@@ -12,7 +12,14 @@ include_directories(${Boost_INCLUDE_DIR})
 
 add_executable(hearty_rabbit main.cpp)
 target_link_libraries(hearty_rabbit ${Boost_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT})
+
+# Post-processing
+configure_file(systemd/hearty_rabbit.service.in hearty_rabbit.service)
+
+# Installation
 install(TARGETS hearty_rabbit DESTINATION bin)
+install(FILES ${CMAKE_BINARY_DIR}/hearty_rabbit.service DESTINATION etc/systemd/system)
+install(DIRECTORY lib DESTINATION lib/hearty_rabbit)
 
 set(CPACK_PACKAGE_VERSION ${VERSION})
 set(CPACK_GENERATOR "RPM")
