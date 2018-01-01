@@ -3,12 +3,15 @@ project(hearty_rabbit)
 
 set(Boost_USE_STATIC_LIBS  ON)
 find_package(Boost COMPONENTS system filesystem REQUIRED)
+find_package(Threads)
 
 set(CMAKE_CXX_STANDARD 17)
 set(VERSION "0.1")
 
+include_directories(${Boost_INCLUDE_DIR})
+
 add_executable(hearty_rabbit main.cpp)
-target_link_libraries(hearty_rabbit ${Boost_LIBRARIES})
+target_link_libraries(hearty_rabbit ${Boost_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT})
 install(TARGETS hearty_rabbit DESTINATION bin)
 
 set(CPACK_PACKAGE_VERSION ${VERSION})
