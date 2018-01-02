@@ -14,7 +14,8 @@
 #include <boost/beast/version.hpp>
 #include <boost/beast/core.hpp>
 #include <boost/beast/http.hpp>
-#include <iostream>
+
+#include <systemd/sd-journal.h>
 
 namespace hrb {
 
@@ -130,7 +131,7 @@ handle_request(
 	if (req.target() == "/index.html")
 	{
 		auto path = doc_root.to_string() + req.target().to_string();
-std::cout << "getting " << path << std::endl;
+		sd_journal_print(LOG_NOTICE, "requesting path %s", path.c_str());
 
 	    // Attempt to open the file
 	    boost::beast::error_code ec;
@@ -177,7 +178,7 @@ void Session::on_read(boost::system::error_code ec, std::size_t)
 		return do_close();
 
 	if (ec)
-		throw std::system_error(ec);
+		sd_journal_print(LOG_WARNING, "read error: %d (%s)", ec.value(), ec.message());
 
 	// Send the response
 	handle_request(m_doc_root, std::move(m_req), [this](auto&& msg)
@@ -203,12 +204,12 @@ void Session::on_read(boost::system::error_code ec, std::size_t)
 }
 
 void Session::on_write(
-	[[maybe_unused]] boost::system::error_code ec,
+	boost::system::error_code ec,
 	std::size_t,
 	bool close)
 {
-//	if (ec)
-//		throw std::system_error(ec);
+	if (ec)
+		sd_journal_print(LOG_WARNING, "write error: %d (%s)", ec.value(), ec.message());
 
 	if (close)
 	{

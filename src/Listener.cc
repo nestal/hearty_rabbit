@@ -13,6 +13,8 @@
 #include "Listener.hh"
 #include "Session.hh"
 
+#include <systemd/sd-journal.h>
+
 namespace hrb {
 
 Listener::Listener(
@@ -63,7 +65,7 @@ void Listener::on_accept(boost::system::error_code ec)
 {
 	if (ec)
 	{
-		throw std::system_error(ec);
+		sd_journal_print(LOG_WARNING, "accept error: %d (%s)", ec.value(), ec.message());
 	}
 	else
 	{
