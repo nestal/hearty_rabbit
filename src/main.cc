@@ -24,6 +24,7 @@ int main(int argc, char* argv[])
 		("port,p",    po::value<unsigned short>()->default_value(80),                   "Port number to listener to")
 		("root,r",    po::value<std::string>()->default_value(INSTALL_PREFIX "/lib"),   "Album directory")
 		("threads",   po::value<int>()->default_value(1),                               "Number of threads")
+		("cert-path", po::value<std::string>(),                                         "Path to certs")
 	;
 
 	std::ifstream config_file{INSTALL_PREFIX "/etc/hearty_rabbit.conf"};
@@ -43,13 +44,15 @@ int main(int argc, char* argv[])
 
     auto const threads = std::max<int>(1, config["threads"].as<int>());
 
+	boost::filesystem::path cert_path{config["cert-path"].as<std::string>()};
+
 	boost::asio::ssl::context ctx{boost::asio::ssl::context::sslv23};
 	ctx.set_options(
         boost::asio::ssl::context::default_workarounds |
 	    boost::asio::ssl::context::no_sslv2
 	);
-	ctx.use_certificate_chain_file("fullchain.pem");
-	ctx.use_private_key_file("privkey.pem", boost::asio::ssl::context::pem);
+	ctx.use_certificate_chain_file((cert_path/"fullchain.pem").string());
+	ctx.use_private_key_file((cert_path/"privkey.pem").string(), boost::asio::ssl::context::pem);
 
     // The io_context is required for all I/O
     boost::asio::io_context ioc{threads};
