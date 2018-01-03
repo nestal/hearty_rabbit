@@ -5,6 +5,7 @@ set(Boost_USE_STATIC_LIBS  ON)
 find_package(Boost COMPONENTS system filesystem program_options REQUIRED)
 find_package(Threads REQUIRED)
 find_package(PkgConfig REQUIRED)
+find_package(OpenSSL REQUIRED)
 
 pkg_check_modules(SYSTEMD libsystemd)
 
@@ -19,7 +20,14 @@ message(STATUS "found systemd = ${SYSTEMD_LIBRARIES}")
 file(GLOB MAIN_SRC src/*.cc src/*.hh)
 
 add_executable(hearty_rabbit ${MAIN_SRC})
-target_link_libraries(hearty_rabbit ${Boost_LIBRARIES} ${SYSTEMD_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT})
+target_link_libraries(
+	hearty_rabbit
+	${Boost_LIBRARIES}
+	OpenSSL::SSL
+	OpenSSL::Crypto
+	${SYSTEMD_LIBRARIES}
+	${CMAKE_THREAD_LIBS_INIT}
+)
 
 # Post-processing
 configure_file(systemd/hearty_rabbit.service.in hearty_rabbit.service)

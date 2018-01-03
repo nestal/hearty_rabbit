@@ -14,13 +14,12 @@
 
 #include <boost/beast/core.hpp>
 #include <boost/beast/http.hpp>
-#include <boost/beast/http/message.hpp>
 
 #include <boost/asio/ip/tcp.hpp>
-#include <boost/asio/bind_executor.hpp>
-#include <boost/asio/strand.hpp>
 
 #include <boost/asio/strand.hpp>
+#include <boost/asio/ssl/context.hpp>
+#include <boost/asio/ssl/stream.hpp>
 
 namespace hrb {
 
@@ -32,17 +31,22 @@ public:
 	explicit
 	Session(
 		boost::asio::ip::tcp::socket socket,
-		std::string const &doc_root);
+		std::string const &doc_root,
+		boost::asio::ssl::context& ssl_ctx
+	);
 
 	// Start the asynchronous operation
 	void run();
+	void on_handshake(boost::system::error_code ec);
 	void do_read();
 	void on_read(boost::system::error_code ec, std::size_t bytes_transferred);
 	void on_write(boost::system::error_code ec, std::size_t bytes_transferred, bool close);
 	void do_close();
+	void on_shutdown(boost::system::error_code ec);
 
 private:
 	boost::asio::ip::tcp::socket m_socket;
+	boost::asio::ssl::stream<boost::asio::ip::tcp::socket&> m_stream;
 	boost::asio::strand<boost::asio::io_context::executor_type> m_strand;
 	boost::beast::flat_buffer m_buffer;
 	std::string m_doc_root;

@@ -2,6 +2,7 @@
 
 #include <boost/asio/bind_executor.hpp>
 #include <boost/asio/ip/tcp.hpp>
+#include <boost/asio/ssl.hpp>
 
 #include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
@@ -42,6 +43,14 @@ int main(int argc, char* argv[])
 
     auto const threads = std::max<int>(1, config["threads"].as<int>());
 
+	boost::asio::ssl::context ctx{boost::asio::ssl::context::sslv23};
+	ctx.set_options(
+        boost::asio::ssl::context::default_workarounds |
+	    boost::asio::ssl::context::no_sslv2
+	);
+	ctx.use_certificate_chain_file("fullchain.pem");
+	ctx.use_private_key_file("privkey.pem", boost::asio::ssl::context::pem);
+
     // The io_context is required for all I/O
     boost::asio::io_context ioc{threads};
 
@@ -52,7 +61,8 @@ int main(int argc, char* argv[])
 	        boost::asio::ip::make_address(config["address"].as<std::string>()),
 	        config["port"].as<unsigned short>()
         },
-        config["root"].as<std::string>()
+        config["root"].as<std::string>(),
+	    ctx
     )->run();
 
     // Run the I/O service on the requested number of threads
