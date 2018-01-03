@@ -41,8 +41,6 @@ Session::Session(
 // Start the asynchronous operation
 void Session::run()
 {
-	std::cout << "async handshake()" << std::endl;
-
 	// Perform the SSL handshake
 	m_stream.async_handshake(
 	    boost::asio::ssl::stream_base::server,
@@ -55,8 +53,6 @@ void Session::run()
 
 void Session::on_handshake(boost::system::error_code ec)
 {
-	std::cout << "on_handshake(" << ec << ")" << std::endl;
-
 	if (ec)
 		sd_journal_print(LOG_WARNING, "handshake error: %d (%s)", ec.value(), ec.message());
 
@@ -87,6 +83,9 @@ handle_request(
 	http::request<Body, http::basic_fields<Allocator>>&& req,
 	Send &&send)
 {
+	sd_journal_print(LOG_INFO, "request received %s", req.target().to_string().c_str());
+	std::cout << "request " << req.target() << std::endl;
+
 	// Returns a bad request response
 	auto const bad_request =
 		[&req](boost::beast::string_view why)
