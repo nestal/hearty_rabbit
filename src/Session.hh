@@ -20,6 +20,7 @@
 #include <boost/asio/strand.hpp>
 #include <boost/asio/ssl/context.hpp>
 #include <boost/asio/ssl/stream.hpp>
+#include <boost/filesystem/path.hpp>
 
 namespace hrb {
 
@@ -28,10 +29,9 @@ class Session : public std::enable_shared_from_this<Session>
 {
 public:
 	// Take ownership of the socket
-	explicit
-	Session(
+	explicit Session(
 		boost::asio::ip::tcp::socket socket,
-		std::string const &doc_root,
+		const boost::filesystem::path& doc_root,
 		boost::asio::ssl::context& ssl_ctx
 	);
 
@@ -49,7 +49,7 @@ private:
 	boost::asio::ssl::stream<boost::asio::ip::tcp::socket&> m_stream;
 	boost::asio::strand<boost::asio::io_context::executor_type> m_strand;
 	boost::beast::flat_buffer m_buffer;
-	std::string m_doc_root;
+	boost::filesystem::path m_doc_root;
 	boost::beast::http::request <boost::beast::http::string_body> m_req;
 };
 

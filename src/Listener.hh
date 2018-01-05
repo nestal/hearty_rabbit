@@ -14,6 +14,7 @@
 
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/ssl/context.hpp>
+#include <boost/filesystem/path.hpp>
 
 namespace hrb {
 
@@ -24,7 +25,7 @@ public:
 	Listener(
 		boost::asio::io_context &ioc,
 		boost::asio::ip::tcp::endpoint endpoint,
-		const std::string &doc_root,
+		const boost::filesystem::path& doc_root,
 		boost::asio::ssl::context& ssl_ctx
 	);
 
@@ -35,7 +36,7 @@ public:
 private:
 	boost::asio::ip::tcp::acceptor m_acceptor;
 	boost::asio::ip::tcp::socket m_socket;
-	std::string m_doc_root;
+	boost::filesystem::path m_doc_root;
 	boost::asio::ssl::context& m_ssl_ctx;
 };
 

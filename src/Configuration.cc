@@ -41,6 +41,13 @@ Configuration::Configuration(int argc, char **argv, const char *env)
 	store(po::parse_command_line(argc, argv, desc), config);
 	store(po::parse_config_file(config_file, desc), config);
 	po::notify(config);
+
+	m_help = config.count("help") > 0;
+
+	m_cert_path = config["cert-path"].as<std::string>();
+	m_root      = config["root"].as<std::string>();
+	m_listen.address(boost::asio::ip::make_address(config["address"].as<std::string>()));
+	m_listen.port(config["port"].as<unsigned short>());
 }
 
 boost::filesystem::path Configuration::choose_config_file()
@@ -48,4 +55,4 @@ boost::filesystem::path Configuration::choose_config_file()
 	return boost::filesystem::path{std::string{constants::install_prefix}} / std::string{constants::config_filename};
 }
 
-}
+} // end of namespace

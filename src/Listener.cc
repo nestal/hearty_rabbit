@@ -20,7 +20,7 @@ namespace hrb {
 Listener::Listener(
 	boost::asio::io_context &ioc,
 	boost::asio::ip::tcp::endpoint endpoint,
-	const std::string &doc_root,
+	const boost::filesystem::path& doc_root,
 	boost::asio::ssl::context& ssl_ctx
 ) :
 	m_acceptor{ioc},
