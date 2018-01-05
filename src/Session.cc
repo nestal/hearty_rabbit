@@ -11,9 +11,14 @@
 //
 
 #include "Session.hh"
+
 #include <boost/beast/version.hpp>
-#include <boost/beast/core.hpp>
-#include <boost/beast/http.hpp>
+#include <boost/beast/http/message.hpp>
+
+#include <boost/asio/bind_executor.hpp>
+#include <boost/asio/strand.hpp>
+
+#include <systemd/sd-journal.h>
 #include <iostream>
 
 namespace hrb {
@@ -23,29 +28,44 @@ namespace http = boost::beast::http;    // from <boost/beast/http.hpp>
 
 Session::Session(
 	boost::asio::ip::tcp::socket socket,
-	std::string const &doc_root)
-	: m_socket(std::move(socket)), m_strand(m_socket.get_executor()), m_doc_root(doc_root)
+	std::string const &doc_root,
+	boost::asio::ssl::context& ssl_ctx
+) :
+	m_socket{std::move(socket)},
+	m_stream{m_socket, ssl_ctx},
+	m_strand{m_socket.get_executor()},
+	m_doc_root{doc_root}
 {
 }
 
 // Start the asynchronous operation
 void Session::run()
 {
+	// Perform the SSL handshake
+	m_stream.async_handshake(
+	    boost::asio::ssl::stream_base::server,
+	    boost::asio::bind_executor(
+		    m_strand,
+		    [self=shared_from_this()](auto ec){self->on_handshake(ec);}
+	    )
+	);
+}
+
+void Session::on_handshake(boost::system::error_code ec)
+{
+	if (ec)
+		sd_journal_print(LOG_WARNING, "handshake error: %d (%s)", ec.value(), ec.message());
+
 	do_read();
 }
 
 void Session::do_read()
 {
 	// Read a request
-	boost::beast::http::async_read(m_socket, m_buffer, m_req,
+	boost::beast::http::async_read(m_stream, m_buffer, m_req,
 		boost::asio::bind_executor(
 			m_strand,
-			std::bind(
-				&Session::on_read,
-				shared_from_this(),
-				std::placeholders::_1,
-				std::placeholders::_2
-			)
+			[self=shared_from_this()](auto ec, auto bytes){self->on_read(ec, bytes);}
 		)
 	);
 }
@@ -63,6 +83,9 @@ handle_request(
 	http::request<Body, http::basic_fields<Allocator>>&& req,
 	Send &&send)
 {
+	sd_journal_print(LOG_INFO, "request received %s", req.target().to_string().c_str());
+	std::cout << "request " << req.target() << std::endl;
+
 	// Returns a bad request response
 	auto const bad_request =
 		[&req](boost::beast::string_view why)
@@ -130,7 +153,7 @@ handle_request(
 	if (req.target() == "/index.html")
 	{
 		auto path = doc_root.to_string() + req.target().to_string();
-std::cout << "getting " << path << std::endl;
+		sd_journal_print(LOG_NOTICE, "requesting path %s", path.c_str());
 
 	    // Attempt to open the file
 	    boost::beast::error_code ec;
@@ -177,7 +200,7 @@ void Session::on_read(boost::system::error_code ec, std::size_t)
 		return do_close();
 
 	if (ec)
-		throw std::system_error(ec);
+		sd_journal_print(LOG_WARNING, "read error: %d (%s)", ec.value(), ec.message());
 
 	// Send the response
 	handle_request(m_doc_root, std::move(m_req), [this](auto&& msg)
@@ -189,7 +212,7 @@ void Session::on_read(boost::system::error_code ec, std::size_t)
 
 		// Write the response
 		boost::beast::http::async_write(
-			m_socket,
+			m_stream,
 			*sp,
 			boost::asio::bind_executor(
 				m_strand,
@@ -203,12 +226,12 @@ void Session::on_read(boost::system::error_code ec, std::size_t)
 }
 
 void Session::on_write(
-	[[maybe_unused]] boost::system::error_code ec,
+	boost::system::error_code ec,
 	std::size_t,
 	bool close)
 {
-//	if (ec)
-//		throw std::system_error(ec);
+	if (ec)
+		sd_journal_print(LOG_WARNING, "write error: %d (%s)", ec.value(), ec.message());
 
 	if (close)
 	{
@@ -225,7 +248,18 @@ void Session::do_close()
 {
 	// Send a TCP shutdown
 	boost::system::error_code ec;
-	m_socket.shutdown(boost::asio::ip::tcp::socket::shutdown_send, ec);
+	m_stream.async_shutdown(
+		boost::asio::bind_executor(
+			m_strand,
+			[self=shared_from_this()](auto ec){self->on_shutdown(ec);}
+		)
+	);
+}
+
+void Session::on_shutdown(boost::system::error_code ec)
+{
+	if (!ec)
+		sd_journal_print(LOG_WARNING, "shutdown error: %d (%s)", ec.value(), ec.message());
 
 	// At this point the connection is closed gracefully
 }
