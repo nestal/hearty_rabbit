@@ -11,11 +11,9 @@ pkg_check_modules(SYSTEMD libsystemd)
 
 set(CMAKE_CXX_STANDARD 17)
 set(VERSION "0.1")
+set(CONFIG_FILENAME "hearty_rabbit.conf")
 
-include_directories(${Boost_INCLUDE_DIR} ${SYSTEMD_INCLUDE_DIRS})
-add_definitions(-DINSTALL_PREFIX="${CMAKE_INSTALL_PREFIX}")
-
-message(STATUS "found systemd = ${SYSTEMD_LIBRARIES}")
+include_directories(${Boost_INCLUDE_DIR} ${SYSTEMD_INCLUDE_DIRS} ${CMAKE_BINARY_DIR})
 
 file(GLOB MAIN_SRC src/*.cc src/*.hh)
 
@@ -29,10 +27,9 @@ target_link_libraries(
 	${CMAKE_THREAD_LIBS_INIT}
 )
 
-SET(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -flto -fuse-linker-plugin" )
-
 # Post-processing
 configure_file(systemd/hearty_rabbit.service.in hearty_rabbit.service)
+configure_file(config.hh.in config.hh)
 
 # Installation
 install(TARGETS hearty_rabbit DESTINATION bin)

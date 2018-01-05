@@ -1,4 +1,13 @@
+/*
+	Copyright © 2018 Wan Wai Ho <me@nestal.net>
+
+    This file is subject to the terms and conditions of the GNU General Public
+    License.  See the file COPYING in the main directory of the hearty_rabbit
+    distribution for more details.
+*/
+
 #include "Listener.hh"
+#include "config.hh"
 
 #include <boost/asio/bind_executor.hpp>
 #include <boost/asio/ip/tcp.hpp>
@@ -11,23 +20,36 @@
 
 #include <thread>
 #include <iostream>
+#include <cstdlib>
 
 namespace po = boost::program_options;
 
+namespace hrb {
+
+boost::filesystem::path choose_config_file()
+{
+	return boost::filesystem::path{std::string{constants::install_prefix}} / std::string{constants::config_filename};
+}
+
+} // end of namespace
+
 int main(int argc, char* argv[])
 {
+	using namespace std::literals;
+	using namespace hrb;
+
 	// Declare the supported options.
 	po::options_description desc("Allowed options");
 	desc.add_options()
 		("help", "produce help message")
 		("address,a", po::value<std::string>()->default_value("0.0.0.0"),               "IP address of the network interface to listener to")
 		("port,p",    po::value<unsigned short>()->default_value(80),                   "Port number to listener to")
-		("root,r",    po::value<std::string>()->default_value(INSTALL_PREFIX "/lib"),   "Album directory")
+		("root,r",    po::value<std::string>()->default_value(std::string{hrb::constants::install_prefix} + "/lib"s),   "Album directory")
 		("threads",   po::value<int>()->default_value(1),                               "Number of threads")
 		("cert-path", po::value<std::string>(),                                         "Path to certs")
 	;
 
-	std::ifstream config_file{INSTALL_PREFIX "/etc/hearty_rabbit.conf"};
+	std::ifstream config_file{choose_config_file().string()};
 
     po::variables_map config;
 	store(po::parse_command_line(argc, argv, desc), config);
@@ -58,7 +80,7 @@ int main(int argc, char* argv[])
     boost::asio::io_context ioc{threads};
 
     // Create and launch a listening port
-    std::make_shared<hrb::Listener>(
+    std::make_shared<Listener>(
 	    ioc,
         boost::asio::ip::tcp::endpoint{
 	        boost::asio::ip::make_address(config["address"].as<std::string>()),
