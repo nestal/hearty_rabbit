@@ -1,0 +1,24 @@
+/*
+	Copyright © 2018 Wan Wai Ho <me@nestal.net>
+    
+    This file is subject to the terms and conditions of the GNU General Public
+    License.  See the file COPYING in the main directory of the hearty_rabbit
+    distribution for more details.
+*/
+
+//
+// Created by nestal on 1/5/18.
+//
+
+#pragma once
+
+#include <string_view>
+
+namespace hrb {
+namespace constants {
+
+static const std:: string_view config_filename = "@CONFIG_FILENAME@";
+static const std:: string_view version         = "@VERSION@";
+static const std:: string_view install_prefix  = "@CMAKE_INSTALL_PREFIX@";
+
+}} // end of namespace
