@@ -28,7 +28,7 @@ namespace http = boost::beast::http;    // from <boost/beast/http.hpp>
 
 Session::Session(
 	boost::asio::ip::tcp::socket socket,
-	std::string const &doc_root,
+	const boost::filesystem::path& doc_root,
 	boost::asio::ssl::context& ssl_ctx
 ) :
 	m_socket{std::move(socket)},
@@ -79,7 +79,7 @@ template<
 	class Send>
 void
 handle_request(
-	boost::beast::string_view doc_root,
+	const boost::filesystem::path& doc_root,
 	http::request<Body, http::basic_fields<Allocator>>&& req,
 	Send &&send)
 {
@@ -152,7 +152,7 @@ handle_request(
 
 	if (req.target() == "/index.html")
 	{
-		auto path = doc_root.to_string() + req.target().to_string();
+		auto path = (doc_root / req.target().to_string()).string();
 		sd_journal_print(LOG_NOTICE, "requesting path %s", path.c_str());
 
 	    // Attempt to open the file

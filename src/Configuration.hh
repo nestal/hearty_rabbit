@@ -22,18 +22,24 @@ class Configuration
 public:
 	Configuration(int argc, char **argv, const char *env);
 
-	boost::asio::ip::tcp::endpoint address() const { return m_address;}
-	std::uint16_t port() const {return m_port;}
+	boost::asio::ip::tcp::endpoint listen() const { return m_listen;}
 	boost::filesystem::path cert_path() const {return m_cert_path;}
+	boost::filesystem::path web_root() const {return m_root;}
 	std::size_t thread_count() const {return m_thread_count;}
+
+	bool help() const {return m_help;}
+
+
 
 private:
 	static boost::filesystem::path choose_config_file();
 
 private:
-	boost::asio::ip::tcp::endpoint m_address;
-	std::uint16_t m_port{0};
+	bool m_help{false};
+
+	boost::asio::ip::tcp::endpoint m_listen;
 	boost::filesystem::path m_cert_path;
+	boost::filesystem::path m_root;
 	std::size_t m_thread_count{0};
 };
 
