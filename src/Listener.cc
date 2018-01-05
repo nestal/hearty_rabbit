@@ -44,6 +44,16 @@ Listener::Listener(
 	m_acceptor.listen(boost::asio::socket_base::max_listen_connections, ec);
 	if (ec)
 		throw std::system_error(ec);
+
+	// drop privileges if run as root
+	if (::getuid() == 0)
+	{
+		if (setuid(65535) != 0)
+			throw std::system_error(errno, std::system_category());
+	}
+
+	if (::getuid() == 0)
+		throw std::runtime_error("cannot run as root");
 }
 
 void Listener::run()
