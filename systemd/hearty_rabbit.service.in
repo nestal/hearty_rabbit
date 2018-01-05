@@ -3,4 +3,4 @@ Description=HeartyRabbit photo album
 After=network.target remote-fs.target nss-lookup.target
 
 [Service]
-ExecStart=/opt/hearty_rabbit/bin/hearty_rabbit 0.0.0.0 80 @CMAKE_INSTALL_PREFIX@/lib 1
+ExecStart=/opt/hearty_rabbit/bin/hearty_rabbit
