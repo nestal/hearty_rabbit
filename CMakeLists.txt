@@ -21,6 +21,8 @@ file(GLOB MAIN_SRC src/*.cc src/*.hh)
 add_executable(hearty_rabbit ${MAIN_SRC})
 target_link_libraries(hearty_rabbit ${Boost_LIBRARIES} ${SYSTEMD_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT})
 
+SET(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -flto -fuse-linker-plugin" )
+
 # Post-processing
 configure_file(systemd/hearty_rabbit.service.in hearty_rabbit.service)
 
