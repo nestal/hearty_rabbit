@@ -29,6 +29,8 @@ target_link_libraries(
 	${CMAKE_THREAD_LIBS_INIT}
 )
 
+SET(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -flto -fuse-linker-plugin" )
+
 # Post-processing
 configure_file(systemd/hearty_rabbit.service.in hearty_rabbit.service)
 
