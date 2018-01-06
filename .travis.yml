@@ -1,11 +1,11 @@
-language: cpp
 sudo: required
-compiler: gcc
-addons:
-  apt:
-    packages:
-      - gcc-7.2.1
-      - g++-7.2.1
-      - systemd-journal
-script:
-  mkdir build && cd build && cmake -DCMAKE_BUILD_TYPE=Debug .. && cmake --build .
+
+language: c++
+
+services:
+  - docker
+
+before_install:
+  - docker pull nestal/hearty_rabbit_dev
+  - docker run nestal/hearty_rabbit_dev
+  - docker ps -a
