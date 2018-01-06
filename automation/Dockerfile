@@ -30,6 +30,6 @@ RUN wget https://dl.bintray.com/boostorg/release/1.66.0/source/boost_1_66_0.tar.
 
 RUN cd boost_1_66_0; ./b2; exit 0
 
-# get hearty_rabbit source code
+# build script as entrypoint
 COPY build.sh /build
-
+ENTRYPOINT /build/build.sh

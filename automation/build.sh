@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 
-# assume source code is in /build/hearty_rabbit
-cd /build
+git clone https://github.com/nestal/hearty_rabbit.git
 mkdir build
 cd build
 cmake -DBOOST_ROOT=/build/boost_1_66_0 -DCMAKE_BUILD_TYPE=Release ../hearty_rabbit
-make package
+make -j4 package
