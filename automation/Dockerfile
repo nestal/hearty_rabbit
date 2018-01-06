@@ -8,7 +8,6 @@ RUN yum install -y centos-release-scl \
 	&& yum install -y wget devtoolset-7 systemd-devel git openssl-devel rpm-build \
 	&& scl enable devtoolset-7 bash
 
-#ENV PATH $PATH:/opt/rh/devtoolset-7/root/usr/bin
 ENV PATH $PATH:/opt/rh/devtoolset-7/root/usr/bin:/opt/cmake-3.10.1/bin
 
 RUN mkdir build
@@ -32,4 +31,4 @@ RUN cd boost_1_66_0; ./b2; exit 0
 
 # build script as entrypoint
 COPY build.sh /build
-ENTRYPOINT /build/build.sh
+#ENTRYPOINT /build/build.sh
