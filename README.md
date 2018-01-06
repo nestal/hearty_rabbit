@@ -1,4 +1,4 @@
-# hearty_rabbit
+# HeartyRabbit ![status](https://travis-ci.org/nestal/hearty_rabbit.svg?branch=master)
 Not sure yet
 
 # Prepare Build Environment using Docker
