@@ -8,6 +8,7 @@ find_package(PkgConfig REQUIRED)
 find_package(OpenSSL REQUIRED)
 
 pkg_check_modules(SYSTEMD libsystemd)
+pkg_check_modules(RapidJSON RapidJSON)
 
 set(CMAKE_CXX_STANDARD 17)
 set(VERSION "0.1")
@@ -45,6 +46,7 @@ set(CPACK_PACKAGE_VENDOR "nestal.net")
 set(CPACK_PACKAGING_INSTALL_PREFIX ${CMAKE_INSTALL_PREFIX})
 set(CPACK_RPM_FILE_NAME RPM-DEFAULT)
 
+# Get build number from environment variable. It should be set by travis.
 if (DEFINED ENV{BUILD_NUMBER})
 	set(CPACK_RPM_PACKAGE_RELEASE $ENV{BUILD_NUMBER})
 else()

@@ -15,8 +15,11 @@
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/filesystem/path.hpp>
 
+#include <iosfwd>
+
 namespace hrb {
 
+/// \brief  Parsing command line options and configuration file
 class Configuration
 {
 public:
@@ -28,8 +31,7 @@ public:
 	std::size_t thread_count() const {return m_thread_count;}
 
 	bool help() const {return m_help;}
-
-
+	static void usage(std::ostream& out);
 
 private:
 	static boost::filesystem::path choose_config_file();
