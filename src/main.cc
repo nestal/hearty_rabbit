@@ -48,6 +48,7 @@ int main(int argc, char *argv[])
 		std::make_shared<Listener>(
 			ioc,
 			cfg.listen(),
+			cfg.listen(),
 			cfg.web_root(),
 			ctx
 		)->run();
@@ -63,3 +64,4 @@ int main(int argc, char *argv[])
 	}
 	return EXIT_SUCCESS;
 }
+
