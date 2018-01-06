@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.8)
+cmake_minimum_required(VERSION 3.6)
 project(hearty_rabbit)
 
 set(Boost_USE_STATIC_LIBS  ON)

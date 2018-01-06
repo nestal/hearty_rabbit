@@ -17,13 +17,14 @@ RUN mkdir build \
 	&& wget https://dl.bintray.com/boostorg/release/1.66.0/source/boost_1_66_0.tar.gz \
 	&& tar zxvf boost_1_66_0.tar.gz \
 	&& cd boost_1_66_0 \
-	&& ./bootstrap.sh \
-	&& ./b2 \
-	&& cd ..
-	
+	&& ./bootstrap.sh
+
+WORKDIR /build
+RUN cd boost_1_66_0; ./b2; exit 0
+
 RUN git clone https://github.com/nestal/hearty_rabbit \
 	&& cd hearty_rabbit \
 	&& mkdir build \
-	&& cmake -DBOOST_ROOT=/build/boost_1_66_0 -DCMAKE_BUILD_TYPE=Release .. \
+	&& cmake3 -DBOOST_ROOT=/build/boost_1_66_0 -DCMAKE_BUILD_TYPE=Release .. \
 	&& make package
 	
