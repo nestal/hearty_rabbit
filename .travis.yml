@@ -7,4 +7,5 @@ before_install:
   - docker pull nestal/hearty_rabbit_dev
 
 script:
-  - docker run -it --entrypoint /build/build.sh nestal/hearty_rabbit_dev
+  - docker run -it --entrypoint /build/build.sh --name build_hearty_rabbit -e "BUILD_NUMBER=$TRAVIS_BUILD_NUMBER" nestal/hearty_rabbit_dev
+  - docker cp build_hearty_rabbit:/build/build/hearty-rabbit
