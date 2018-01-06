@@ -48,8 +48,8 @@ int main(int argc, char *argv[])
 		// Create and launch a listening port
 		std::make_shared<Listener>(
 			ioc,
-			cfg.listen(),
-			cfg.listen(),
+			cfg.listen_http(),
+			cfg.listen_https(),
 			cfg.web_root(),
 			ctx
 		)->run();
