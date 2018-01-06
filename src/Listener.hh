@@ -25,19 +25,23 @@ public:
 	Listener(
 		boost::asio::io_context &ioc,
 		boost::asio::ip::tcp::endpoint endpoint,
+		boost::asio::ip::tcp::endpoint endpoint_tls,
 		const boost::filesystem::path& doc_root,
 		boost::asio::ssl::context& ssl_ctx
 	);
 
 	void run();
+
 	void do_accept();
 	void on_accept(boost::system::error_code ec);
+	void do_accept_tls();
+	void on_accept_tls(boost::system::error_code ec);
 
 private:
-	boost::asio::ip::tcp::acceptor m_acceptor;
-	boost::asio::ip::tcp::socket m_socket;
-	boost::filesystem::path m_doc_root;
-	boost::asio::ssl::context& m_ssl_ctx;
+	boost::asio::ip::tcp::acceptor m_acceptor, m_acceptor_tls;
+	boost::asio::ip::tcp::socket   m_socket, m_socket_tls;
+	boost::filesystem::path        m_doc_root;
+	boost::asio::ssl::context&     m_ssl_ctx;
 };
 
 } // end of hrb namespace
