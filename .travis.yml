@@ -8,4 +8,12 @@ before_install:
 
 script:
   - docker run -it --entrypoint /build/build.sh --name build_hearty_rabbit -e "BUILD_NUMBER=$TRAVIS_BUILD_NUMBER" nestal/hearty_rabbit_dev
-  - docker cp build_hearty_rabbit:/build/build/hearty-rabbit
+  - docker cp build_hearty_rabbit:/build/build/hearty-rabbit-0.1-$TRAVIS_BUILD_NUMBER.el7.centos.x86_64.rpm .
+
+deploy:
+  provider: packagecloud
+  repository: hearty_rabbit
+  username: nestal
+  token: 56e901d6049d595d68503e24a03eb6f05593f420186fb6eb
+  dist: 'centos/7'
+  package_glob: *.rpm
