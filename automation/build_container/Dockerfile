@@ -31,6 +31,5 @@ RUN wget https://dl.bintray.com/boostorg/release/1.66.0/source/boost_1_66_0.tar.
 RUN cd boost_1_66_0; ./b2; exit 0
 
 # get hearty_rabbit source code
-RUN git clone https://github.com/nestal/hearty_rabbit
+COPY build.sh /build
 
-ENTRYPOINT /build/hearty_rabbit/automation/build.sh
