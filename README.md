@@ -1,5 +1,5 @@
 # HeartyRabbit ![status](https://travis-ci.org/nestal/hearty_rabbit.svg?branch=master)
-Not sure yet
+It's not doing anything useful yet.
 
 # Prepare Build Environment using Docker
 The dockerfile that prepares the build environment is in `automation/Dockerfile`.
