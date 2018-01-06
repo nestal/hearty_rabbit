@@ -5,7 +5,7 @@ ENV container docker
 # install development tools
 RUN yum install -y centos-release-scl \
 	&& rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-SIG-SCLo \
-	&& yum install -y wget devtoolset-7 systemd-devel git openssl-devel rpm-build \
+	&& yum install -y wget devtoolset-7 systemd-devel git openssl-devel rpm-build rapidjson-devel \
 	&& scl enable devtoolset-7 bash
 
 ENV PATH $PATH:/opt/rh/devtoolset-7/root/usr/bin:/opt/cmake-3.10.1/bin

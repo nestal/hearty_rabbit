@@ -25,7 +25,8 @@ int main(int argc, char *argv[])
 
 	if (cfg.help())
 	{
-//		std::cout << cfg << "\n";
+		cfg.usage(std::cout);
+		std::cout << "\n";
 	}
 	else
 	{
