@@ -1,5 +1,5 @@
 sudo: required
-
+language: c++
 services:
   - docker
 
@@ -15,5 +15,5 @@ deploy:
   repository: hearty_rabbit
   username: nestal
   token: 56e901d6049d595d68503e24a03eb6f05593f420186fb6eb
-  dist: centos/7
-  package_glob: *.rpm
+  dist: "centos/7"
+  package_glob: "*.rpm"
