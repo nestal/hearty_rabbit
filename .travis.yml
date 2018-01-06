@@ -1,11 +1,10 @@
 sudo: required
 
-language: c++
-
 services:
   - docker
 
 before_install:
   - docker pull nestal/hearty_rabbit_dev
+
+script:
   - docker run -it --entrypoint /build/build.sh nestal/hearty_rabbit_dev
-  - docker ps -a
