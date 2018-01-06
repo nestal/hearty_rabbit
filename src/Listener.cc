@@ -14,6 +14,7 @@
 #include "Session.hh"
 
 #include <systemd/sd-journal.h>
+#include <iostream>
 
 namespace hrb {
 
@@ -45,17 +46,17 @@ Listener::Listener(
 	m_acceptor.bind(endpoint, ec);
 	if (ec)
 		throw std::system_error(ec);
-//	m_acceptor_tls.bind(endpoint_tls, ec);
-//	if (ec)
-//		throw std::system_error(ec);
+	m_acceptor_tls.bind(endpoint_tls, ec);
+	if (ec)
+		throw std::system_error(ec);
 
 	// Start listening for connections
 	m_acceptor.listen(boost::asio::socket_base::max_listen_connections, ec);
 	if (ec)
 		throw std::system_error(ec);
-//	m_acceptor_tls.listen(boost::asio::socket_base::max_listen_connections, ec);
-//	if (ec)
-//		throw std::system_error(ec);
+	m_acceptor_tls.listen(boost::asio::socket_base::max_listen_connections, ec);
+	if (ec)
+		throw std::system_error(ec);
 
 	// drop privileges if run as root
 	if (::getuid() == 0)
