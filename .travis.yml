@@ -5,6 +5,7 @@ services:
 
 before_install:
   - docker pull nestal/hearty_rabbit_dev
+  - git submodule update --init --recursive
 
 script:
   - make -f automation/Makefile
