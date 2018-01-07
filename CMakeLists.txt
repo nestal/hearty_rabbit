@@ -8,7 +8,7 @@ find_package(PkgConfig REQUIRED)
 find_package(OpenSSL REQUIRED)
 
 pkg_check_modules(SYSTEMD libsystemd)
-pkg_check_modules(RapidJSON RapidJSON)
+pkg_check_modules(RapidJSON REQUIRED RapidJSON)
 
 set(CMAKE_CXX_STANDARD 17)
 set(VERSION "0.1")
