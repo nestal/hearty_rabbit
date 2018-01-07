@@ -16,11 +16,13 @@ set(CONFIG_FILENAME "hearty_rabbit.conf")
 
 include_directories(${Boost_INCLUDE_DIR} ${SYSTEMD_INCLUDE_DIRS} ${CMAKE_BINARY_DIR})
 
-file(GLOB MAIN_SRC src/*.cc src/*.hh)
+file(GLOB LIB_SRC src/*/*.cc src/*/*.hh)
+add_library(hrblib ${LIB_SRC})
 
-add_executable(hearty_rabbit ${MAIN_SRC})
+add_executable(hearty_rabbit src/main.cc)
 target_link_libraries(
 	hearty_rabbit
+	hrblib
 	${Boost_LIBRARIES}
 	OpenSSL::SSL
 	OpenSSL::Crypto
