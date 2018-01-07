@@ -6,8 +6,8 @@
     distribution for more details.
 */
 
-#include "util/Listener.hh"
-#include "net/Configuration.hh"
+#include "net/Listener.hh"
+#include "util/Configuration.hh"
 
 #include <boost/asio/ssl.hpp>
 #include <boost/asio/bind_executor.hpp>
