@@ -39,11 +39,11 @@ public:
 	template<
 		class Body, class Allocator,
 		class Send>
-	void
-	handle_request(
+	void handle_request(
 		const boost::asio::ip::tcp::endpoint& peer,
 		http::request<Body, http::basic_fields<Allocator>>&& req,
-		Send &&send)
+		Send &&send
+	)
 	{
 		std::ostringstream ss;
 		ss << peer;
@@ -117,10 +117,12 @@ public:
 		return send(std::move(res));
 	}
 
+	static http::response<http::empty_body> redirect(boost::beast::string_view where, unsigned version);
+
 private:
 	// Returns a bad request response
 	template<class Body, class Allocator>
-	http::response<http::string_body> bad_request(
+	static http::response<http::string_body> bad_request(
 		const http::request<Body, http::basic_fields<Allocator>>& req,
 		boost::beast::string_view why
 	)
@@ -136,7 +138,7 @@ private:
 
 	// Returns a not found response
 	template<class Body, class Allocator>
-	http::response<http::string_body> not_found(
+	static http::response<http::string_body> not_found(
 		const http::request<Body, http::basic_fields<Allocator>>& req,
 		boost::beast::string_view target
 	)
@@ -151,7 +153,7 @@ private:
 	}
 
 	template<class Body, class Allocator>
-	http::response<http::string_body> server_error(
+	static http::response<http::string_body> server_error(
 		const http::request<Body, http::basic_fields<Allocator>>& req,
 		boost::beast::string_view what
 	)

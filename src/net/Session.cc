@@ -89,7 +89,7 @@ void Session::on_read(boost::system::error_code ec, std::size_t)
 		LOG(LOG_WARNING, "read error: %d (%s)", ec.value(), ec.message());
 
 	// Send the response
-	m_server.handle_request(m_socket.remote_endpoint(), std::move(m_req), [this](auto&& msg)
+	auto sender = [this](auto&& msg)
 	{
 		// The lifetime of the message has to extend
 		// for the duration of the async operation so
@@ -109,7 +109,12 @@ void Session::on_read(boost::system::error_code ec, std::size_t)
 			boost::beast::http::async_write(*m_stream, *sp, std::move(executor));
 		else
 			boost::beast::http::async_write(m_socket, *sp, std::move(executor));
-	});
+	};
+
+	if (m_stream)
+		m_server.handle_request(m_socket.remote_endpoint(), std::move(m_req), std::move(sender));
+	else
+		sender(Server::redirect("https://www.nestal.net" + m_req.target().to_string(), m_req.version()));
 }
 
 void Session::on_write(
