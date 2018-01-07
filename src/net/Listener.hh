@@ -14,11 +14,12 @@
 
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/ssl/context.hpp>
-#include <boost/filesystem/path.hpp>
 
 #include <optional>
 
 namespace hrb {
+
+class Server;
 
 // Accepts incoming connections and launches the sessions
 class Listener : public std::enable_shared_from_this<Listener>
@@ -27,7 +28,7 @@ public:
 	Listener(
 		boost::asio::io_context &ioc,
 		boost::asio::ip::tcp::endpoint endpoint,
-		const boost::filesystem::path& doc_root,
+		Server& server,
 		boost::asio::ssl::context *ssl_ctx
 	);
 
@@ -40,7 +41,7 @@ private:
 private:
 	boost::asio::ip::tcp::acceptor  m_acceptor;
 	boost::asio::ip::tcp::socket    m_socket;
-	boost::filesystem::path         m_doc_root;
+	Server&                         m_server;
 	boost::asio::ssl::context       *m_ssl_ctx{};
 };
 
