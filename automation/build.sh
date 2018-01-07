@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+echo Building hearty_rabbit $BUILD_NUMBER
+
 git clone https://github.com/nestal/hearty_rabbit.git
 mkdir build
 cd build
