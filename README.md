@@ -13,3 +13,8 @@ In the `automation` directory to build the docker image. Then run the image
 	
 To launch a build. The output RPM will be put in `/build/build/hearty-rabbit-0.1-9.el7.centos.x64_64.rpm`
 You can use `docker cp` to copy the RPM to target box.
+
+# Travis Automation
+
+The `.travis.yaml` script basically calls `make -f automation/Makefile` so the
+travis build is basically the same as local builds.

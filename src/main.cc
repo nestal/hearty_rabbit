@@ -18,6 +18,19 @@
 #include <iostream>
 #include <cstdlib>
 
+void drop_privileges()
+{
+	// drop privileges if run as root
+	if (::getuid() == 0)
+	{
+		if (setuid(65535) != 0)
+			throw std::system_error(errno, std::system_category());
+	}
+
+	if (::getuid() == 0)
+		throw std::runtime_error("cannot run as root");
+}
+
 int main(int argc, char *argv[])
 {
 	using namespace hrb;
@@ -27,47 +40,48 @@ int main(int argc, char *argv[])
 	{
 		cfg.usage(std::cout);
 		std::cout << "\n";
+		return EXIT_SUCCESS;
 	}
-	else
-	{
-		sd_journal_print(LOG_NOTICE, "hearty_rabbit starting");
 
-		auto const threads = std::max(1UL, cfg.thread_count());
+	sd_journal_print(LOG_NOTICE, "hearty_rabbit starting");
+	auto const threads = std::max(1UL, cfg.thread_count());
 
-		boost::asio::ssl::context ctx{boost::asio::ssl::context::sslv23};
-		ctx.set_options(
-			boost::asio::ssl::context::default_workarounds |
-			boost::asio::ssl::context::no_sslv2
+	boost::asio::ssl::context ctx{boost::asio::ssl::context::sslv23};
+	ctx.set_options(
+		boost::asio::ssl::context::default_workarounds |
+		boost::asio::ssl::context::no_sslv2
+	);
+	ctx.use_certificate_chain_file((cfg.cert_path() / "fullchain.pem").string());
+	ctx.use_private_key_file((cfg.cert_path() / "privkey.pem").string(), boost::asio::ssl::context::pem);
+
+	// The io_context is required for all I/O
+	boost::asio::io_context ioc{static_cast<int>(threads)};
+
+	// Create and launch a listening port for HTTP and HTTPS
+	std::make_shared<Listener>(
+		ioc,
+		cfg.listen_http(),
+		cfg.web_root(),
+		nullptr
+	)->run();
+	std::make_shared<Listener>(
+		ioc,
+		cfg.listen_https(),
+		cfg.web_root(),
+		&ctx
+	)->run();
+
+	// make sure we load the certificates and listen before dropping root privileges
+	drop_privileges();
+
+	// Run the I/O service on the requested number of threads
+	std::vector<std::thread> v;
+	v.reserve(threads - 1);
+	for (auto i = threads - 1; i > 0; --i)
+		v.emplace_back(
+			[&ioc]{ ioc.run(); }
 		);
-		ctx.use_certificate_chain_file((cfg.cert_path() / "fullchain.pem").string());
-		ctx.use_private_key_file((cfg.cert_path() / "privkey.pem").string(), boost::asio::ssl::context::pem);
-
-		// The io_context is required for all I/O
-		boost::asio::io_context ioc{static_cast<int>(threads)};
-
-		// Create and launch a listening port for HTTP and HTTPS
-		std::make_shared<Listener>(
-			ioc,
-			cfg.listen_http(),
-			cfg.web_root(),
-			nullptr
-		)->run();
-		std::make_shared<Listener>(
-			ioc,
-			cfg.listen_https(),
-			cfg.web_root(),
-			&ctx
-		)->run();
-
-		// Run the I/O service on the requested number of threads
-		std::vector<std::thread> v;
-		v.reserve(threads - 1);
-		for (auto i = threads - 1; i > 0; --i)
-			v.emplace_back(
-				[&ioc]{ ioc.run(); }
-			);
-		ioc.run();
-	}
+	ioc.run();
 	return EXIT_SUCCESS;
 }
 
