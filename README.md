@@ -1,4 +1,4 @@
-# HeartyRabbit ![status](https://travis-ci.org/nestal/hearty_rabbit.svg?branch=master)
+# HeartyRabbit ![status](https://travis-ci.org/nestal/hearty_rabbit.svg?branch=develop)
 It's not doing anything useful yet.
 
 # Build Environment

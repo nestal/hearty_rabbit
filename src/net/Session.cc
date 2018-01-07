@@ -60,7 +60,7 @@ void Session::run()
 void Session::on_handshake(boost::system::error_code ec)
 {
 	if (ec)
-		LOG(LOG_WARNING, "handshake error: %d (%s)", ec.value(), ec.message());
+		Log(LOG_WARNING, "handshake error: %1% (%2%)", ec.value(), ec.message());
 
 	do_read();
 }
@@ -86,7 +86,7 @@ void Session::on_read(boost::system::error_code ec, std::size_t)
 		return do_close();
 
 	if (ec)
-		LOG(LOG_WARNING, "read error: %d (%s)", ec.value(), ec.message());
+		Log(LOG_WARNING, "read error: %1%", ec);
 
 	// Send the response
 	auto sender = [this](auto&& msg)
@@ -117,7 +117,7 @@ void Session::on_read(boost::system::error_code ec, std::size_t)
 		m_server.handle_http(m_socket.remote_endpoint(ec), std::move(m_req), std::move(sender));
 
 	if (ec)
-		LOG(LOG_WARNING, "remote_endpoint(): %d (%s)", ec.value(), ec.message());
+		Log(LOG_WARNING, "remote_endpoint() error: %1%", ec);
 }
 
 void Session::on_write(
@@ -126,7 +126,7 @@ void Session::on_write(
 	bool close)
 {
 	if (ec)
-		LOG(LOG_WARNING, "write error: %d (%s)", ec.value(), ec.message());
+		Log(LOG_WARNING, "write error: %1%", ec);
 
 	if (close)
 	{
@@ -162,7 +162,7 @@ void Session::do_close()
 void Session::on_shutdown(boost::system::error_code ec)
 {
 	if (ec)
-		LOG(LOG_WARNING, "shutdown error: %d (%s)", ec.value(), ec.message());
+		Log(LOG_WARNING, "shutdown error: %1%", ec);
 
 	// At this point the connection is closed gracefully
 }

@@ -12,6 +12,8 @@
 
 #pragma once
 
+#include <boost/format.hpp>
+
 #include "config.hh"
 #include <syslog.h>
 
@@ -21,3 +23,16 @@
 #else
 #define LOG syslog
 #endif
+
+namespace hrb {
+
+template <typename... Args>
+int Log(int priority, const std::string& fmt, Args... args)
+{
+	// I love C++17
+	auto&& line = (boost::format{fmt} % ... % std::forward<Args>(args)).str();
+	return LOG(priority, line.c_str());
+}
+
+} // end of namespace
+

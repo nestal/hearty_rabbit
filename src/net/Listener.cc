@@ -67,7 +67,7 @@ void Listener::on_accept(boost::system::error_code ec)
 {
 	if (ec)
 	{
-		LOG(LOG_WARNING, "accept error: %d (%s)", ec.value(), ec.message());
+		Log(LOG_WARNING, "accept error: %1%", ec);
 	}
 	else
 	{
