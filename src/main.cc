@@ -9,14 +9,13 @@
 #include "net/Listener.hh"
 #include "util/Configuration.hh"
 #include "util/Exception.hh"
+#include "util/Log.hh"
 
 #include <boost/asio/ssl.hpp>
 #include <boost/asio/bind_executor.hpp>
 #include <boost/exception/errinfo_api_function.hpp>
 #include <boost/exception/info.hpp>
 #include <boost/exception/diagnostic_information.hpp>
-
-#include <systemd/sd-journal.h>
 
 #include <thread>
 #include <iostream>
@@ -49,7 +48,7 @@ int Main(int argc, char *argv[])
 		return EXIT_SUCCESS;
 	}
 
-	sd_journal_print(LOG_NOTICE, "hearty_rabbit starting");
+	LOG(LOG_NOTICE, "hearty_rabbit starting");
 	auto const threads = std::max(1UL, cfg.thread_count());
 
 	boost::asio::ssl::context ctx{boost::asio::ssl::context::sslv23};
@@ -103,17 +102,17 @@ int main(int argc, char *argv[])
 	}
 	catch (Exception& e)
 	{
-		sd_journal_print(LOG_CRIT, "Uncaught boost::exception: %s", boost::diagnostic_information(e).c_str());
+		LOG(LOG_CRIT, "Uncaught boost::exception: %s", boost::diagnostic_information(e).c_str());
 		return EXIT_FAILURE;
 	}
 	catch (std::exception& e)
 	{
-		sd_journal_print(LOG_CRIT, "Uncaught std::exception: %s", e.what());
+		LOG(LOG_CRIT, "Uncaught std::exception: %s", e.what());
 		return EXIT_FAILURE;
 	}
 	catch (...)
 	{
-		sd_journal_print(LOG_CRIT, "Uncaught unknown exception");
+		LOG(LOG_CRIT, "Uncaught unknown exception");
 		return EXIT_FAILURE;
 	}
 }
