@@ -21,7 +21,6 @@ namespace hrb {
 Listener::Listener(
 	boost::asio::io_context &ioc,
 	boost::asio::ip::tcp::endpoint endpoint,
-	boost::asio::ip::tcp::endpoint /*endpoint_tls*/,
 	const boost::filesystem::path& doc_root,
 	boost::asio::ssl::context *ssl_ctx
 ) :
