@@ -91,10 +91,13 @@ template<
 void
 handle_request(
 	const boost::filesystem::path& doc_root,
+	const boost::asio::ip::tcp::endpoint& peer,
 	http::request<Body, http::basic_fields<Allocator>>&& req,
 	Send &&send)
 {
-	LOG(LOG_INFO, "request received %s", req.target().to_string().c_str());
+	std::ostringstream ss;
+	ss << peer;
+	LOG(LOG_INFO, "request %s from %s", req.target().to_string().c_str(), ss.str().c_str());
 
 	// Returns a bad request response
 	auto const bad_request =
@@ -213,7 +216,7 @@ void Session::on_read(boost::system::error_code ec, std::size_t)
 		LOG(LOG_WARNING, "read error: %d (%s)", ec.value(), ec.message());
 
 	// Send the response
-	handle_request(m_doc_root, std::move(m_req), [this](auto&& msg)
+	handle_request(m_doc_root, m_socket.remote_endpoint(), std::move(m_req), [this](auto&& msg)
 	{
 		// The lifetime of the message has to extend
 		// for the duration of the async operation so
@@ -277,7 +280,7 @@ void Session::do_close()
 
 void Session::on_shutdown(boost::system::error_code ec)
 {
-	if (!ec)
+	if (ec)
 		LOG(LOG_WARNING, "shutdown error: %d (%s)", ec.value(), ec.message());
 
 	// At this point the connection is closed gracefully
