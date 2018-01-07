@@ -20,12 +20,12 @@ namespace hrb {
 Listener::Listener(
 	boost::asio::io_context &ioc,
 	boost::asio::ip::tcp::endpoint endpoint,
-	const boost::filesystem::path& doc_root,
+	Server& server,
 	boost::asio::ssl::context *ssl_ctx
 ) :
 	m_acceptor{ioc},
 	m_socket{ioc},
-	m_doc_root{doc_root},
+	m_server{server},
 	m_ssl_ctx{ssl_ctx}
 {
 	boost::system::error_code ec;
@@ -72,7 +72,7 @@ void Listener::on_accept(boost::system::error_code ec)
 	else
 	{
 		// Create the session and run it
-		std::make_shared<Session>(std::move(m_socket), m_doc_root, m_ssl_ctx)->run();
+		std::make_shared<Session>(std::move(m_socket), m_server, m_ssl_ctx)->run();
 	}
 
 	// Accept another connection

@@ -26,6 +26,8 @@
 
 namespace hrb {
 
+class Server;
+
 // Handles an HTTP server connection
 class Session : public std::enable_shared_from_this<Session>
 {
@@ -33,7 +35,7 @@ public:
 	// Take ownership of the socket
 	explicit Session(
 		boost::asio::ip::tcp::socket socket,
-		const boost::filesystem::path& doc_root,
+		Server& server,
 		boost::asio::ssl::context *ssl_ctx
 	);
 
@@ -51,7 +53,7 @@ private:
 	std::optional<boost::asio::ssl::stream<boost::asio::ip::tcp::socket&>> m_stream;
 	boost::asio::strand<boost::asio::io_context::executor_type> m_strand;
 	boost::beast::flat_buffer m_buffer;
-	boost::filesystem::path m_doc_root;
+	Server& m_server;
 	boost::beast::http::request <boost::beast::http::string_body> m_req;
 };
 
