@@ -17,25 +17,21 @@
 #include "config.hh"
 #include <syslog.h>
 
-#ifdef SYSTEMD_FOUND
-#include <systemd/sd-journal.h>
-#endif
 
 namespace hrb {
+
+namespace detail {
+int DetailLog(int priority, std::string&& line);
+}
 
 template <typename... Args>
 int Log(int priority, const std::string& fmt, Args... args)
 {
-	// I love C++17
-	auto&& line = (boost::format{fmt} % ... % std::forward<Args>(args)).str();
+	boost::format bfmt{fmt};
+	bfmt.exceptions(boost::io::no_error_bits);
 
-	return
-#ifdef SYSTEMD_FOUND
-		::sd_journal_print
-#else
-		::syslog
-#endif
-	(priority, line.c_str());
+	// I love C++17
+	return detail::DetailLog(priority, (bfmt % ... % std::forward<Args>(args)).str());
 }
 
 } // end of namespace
