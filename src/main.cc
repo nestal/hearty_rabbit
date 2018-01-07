@@ -60,7 +60,7 @@ int Main(int argc, char *argv[])
 	ctx.use_certificate_chain_file((cfg.cert_path() / "fullchain.pem").string());
 	ctx.use_private_key_file((cfg.cert_path() / "privkey.pem").string(), boost::asio::ssl::context::pem);
 
-	Server server{cfg.web_root()};
+	Server server{cfg};
 
 	// The io_context is required for all I/O
 	boost::asio::io_context ioc{static_cast<int>(threads)};

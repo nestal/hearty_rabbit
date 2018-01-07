@@ -78,6 +78,7 @@ Configuration::Configuration(int argc, char **argv, const char *env)
 	{
 		m_cert_path = json["cert_path"].GetString();
 		m_root      = json["web_root"].GetString();
+		m_server_name = json["server_name"].GetString();
 
 		m_listen_http.address(boost::asio::ip::make_address(json["http"]["address"].GetString()));
 		m_listen_http.port(static_cast<unsigned short>(json["http"]["port"].GetUint()));
