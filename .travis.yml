@@ -8,4 +8,4 @@ before_install:
   - git submodule update --init --recursive
 
 script:
-  - make -f automation/Makefile
+  - make -f automation/Makefile BUILD_NUMBER=$TRAVIS_BUILD_NUMBER
