@@ -31,6 +31,7 @@ class Server
 public:
 	Server(const boost::filesystem::path& doc_root);
 
+
 	// This function produces an HTTP response for the given
 	// request. The type of the response object depends on the
 	// contents of the request, so the interface requires the
@@ -48,55 +49,16 @@ public:
 		ss << peer;
 		LOG(LOG_INFO, "request %s from %s", req.target().to_string().c_str(), ss.str().c_str());
 
-		// Returns a bad request response
-		auto const bad_request =
-			[&req](boost::beast::string_view why)
-			{
-				http::response<http::string_body> res{http::status::bad_request, req.version()};
-				res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
-				res.set(http::field::content_type, "text/html");
-				res.keep_alive(req.keep_alive());
-				res.body() = why.to_string();
-				res.prepare_payload();
-				return res;
-			};
-
-		// Returns a not found response
-		auto const not_found =
-			[&req](boost::beast::string_view target)
-			{
-				http::response<http::string_body> res{http::status::not_found, req.version()};
-				res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
-				res.set(http::field::content_type, "text/html");
-				res.keep_alive(req.keep_alive());
-				res.body() = "The resource '" + target.to_string() + "' was not found.";
-				res.prepare_payload();
-				return res;
-			};
-
-		// Returns a server error response
-		auto const server_error =
-			[&req](boost::beast::string_view what)
-			{
-				http::response<http::string_body> res{http::status::internal_server_error, req.version()};
-				res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
-				res.set(http::field::content_type, "text/html");
-				res.keep_alive(req.keep_alive());
-				res.body() = "An error occurred: '" + what.to_string() + "'";
-				res.prepare_payload();
-				return res;
-			};
-
 		// Make sure we can handle the method
 		if (req.method() != http::verb::get &&
 		    req.method() != http::verb::head)
-			return send(bad_request("Unknown HTTP-method"));
+			return send(bad_request(req, "Unknown HTTP-method"));
 
 		// Request path must be absolute and not contain "..".
 		if (req.target().empty() ||
 		    req.target()[0] != '/' ||
 		    req.target().find("..") != boost::beast::string_view::npos)
-			return send(bad_request("Illegal request-target"));
+			return send(bad_request(req, "Illegal request-target"));
 
 		std::string mime = "text/html";
 		std::string body = "Hello world!";
@@ -124,11 +86,11 @@ public:
 
 			// Handle the case where the file doesn't exist
 			if(ec == boost::system::errc::no_such_file_or_directory)
-				return send(not_found(req.target()));
+				return send(not_found(req, req.target()));
 
 			// Handle an unknown error
 			if(ec)
-				return send(server_error(ec.message()));
+				return send(server_error(req, ec.message()));
 			    // Respond to GET request
 
 			auto file_size = file.size();
@@ -153,6 +115,54 @@ public:
 		res.body() = std::move(body);
 		res.keep_alive(req.keep_alive());
 		return send(std::move(res));
+	}
+
+private:
+	// Returns a bad request response
+	template<class Body, class Allocator>
+	http::response<http::string_body> bad_request(
+		const http::request<Body, http::basic_fields<Allocator>>& req,
+		boost::beast::string_view why
+	)
+	{
+		http::response<http::string_body> res{http::status::bad_request, req.version()};
+		res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
+		res.set(http::field::content_type, "text/html");
+		res.keep_alive(req.keep_alive());
+		res.body() = why.to_string();
+		res.prepare_payload();
+		return res;
+	}
+
+	// Returns a not found response
+	template<class Body, class Allocator>
+	http::response<http::string_body> not_found(
+		const http::request<Body, http::basic_fields<Allocator>>& req,
+		boost::beast::string_view target
+	)
+	{
+		http::response<http::string_body> res{http::status::not_found, req.version()};
+		res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
+		res.set(http::field::content_type, "text/html");
+		res.keep_alive(req.keep_alive());
+		res.body() = "The resource '" + target.to_string() + "' was not found.";
+		res.prepare_payload();
+		return res;
+	}
+
+	template<class Body, class Allocator>
+	http::response<http::string_body> server_error(
+		const http::request<Body, http::basic_fields<Allocator>>& req,
+		boost::beast::string_view what
+	)
+	{
+		http::response<http::string_body> res{http::status::internal_server_error, req.version()};
+		res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
+		res.set(http::field::content_type, "text/html");
+		res.keep_alive(req.keep_alive());
+		res.body() = "An error occurred: '" + what.to_string() + "'";
+		res.prepare_payload();
+		return res;
 	}
 
 private:
