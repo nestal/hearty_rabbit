@@ -45,15 +45,14 @@ public:
 		Send&& send
 	)
 	{
-		auto&& target = req.target().to_string();
-
 		using namespace std::literals;
 		static const auto https_host = "https://" + m_cfg.server_name()
 			+ (m_cfg.listen_https().port() == 443 ? ""s : (":"s + std::to_string(m_cfg.listen_https().port())));
 
-		Log(LOG_INFO, "redirecting HTTP request %1% to host %1%", target, https_host);
+		auto&& dest = https_host + req.target().to_string();
+		Log(LOG_INFO, "redirecting HTTP request %1% to host %2%", req.target(), dest);
 
-		send(Server::redirect(https_host + target, req.version()));
+		send(Server::redirect(dest, req.version()));
 	}
 
 	// This function produces an HTTP response for the given
@@ -122,25 +121,35 @@ public:
 			    std::make_tuple(std::move(file)),
 			    std::make_tuple(http::status::ok, req.version())
 			};
-			res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
+//			res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
 			res.set(http::field::content_type, mime);
 			res.content_length(file_size);
-			res.keep_alive(req.keep_alive());
-			return send(std::move(res));
+//			res.keep_alive(req.keep_alive());
+			return send(set_common_fields(req, res));
 		}
 
 		// Respond to GET request
 		http::response<http::string_body> res{http::status::ok, req.version()};
-		res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
+//		res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
 		res.set(http::field::content_type, mime);
 		res.content_length(body.size());
 		res.body() = std::move(body);
-		res.keep_alive(req.keep_alive());
-		return send(std::move(res));
+		return send(set_common_fields(req, res));
 	}
 
 private:
 	static http::response<http::empty_body> redirect(boost::beast::string_view where, unsigned version);
+
+	template<class ReqBody, class ReqAllocator, class ResBody, class ResAllocator>
+	static auto&& set_common_fields(
+		const http::request<ReqBody, http::basic_fields<ReqAllocator>>& req,
+		http::response<ResBody, http::basic_fields<ResAllocator>>& res
+	)
+	{
+		res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
+		res.keep_alive(req.keep_alive());
+		return std::move(res);
+	}
 
 	// Returns a bad request response
 	template<class Body, class Allocator>
@@ -150,12 +159,12 @@ private:
 	)
 	{
 		http::response<http::string_body> res{http::status::bad_request, req.version()};
-		res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
+//		res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
 		res.set(http::field::content_type, "text/html");
-		res.keep_alive(req.keep_alive());
+//		res.keep_alive(req.keep_alive());
 		res.body() = why.to_string();
 		res.prepare_payload();
-		return res;
+		return set_common_fields(req, res);
 	}
 
 	// Returns a not found response
@@ -166,12 +175,12 @@ private:
 	)
 	{
 		http::response<http::string_body> res{http::status::not_found, req.version()};
-		res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
+//		res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
 		res.set(http::field::content_type, "text/html");
-		res.keep_alive(req.keep_alive());
+//		res.keep_alive(req.keep_alive());
 		res.body() = "The resource '" + target.to_string() + "' was not found.";
 		res.prepare_payload();
-		return res;
+		return set_common_fields(req, res);
 	}
 
 	template<class Body, class Allocator>
@@ -181,12 +190,12 @@ private:
 	)
 	{
 		http::response<http::string_body> res{http::status::internal_server_error, req.version()};
-		res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
+//		res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
 		res.set(http::field::content_type, "text/html");
-		res.keep_alive(req.keep_alive());
+//		res.keep_alive(req.keep_alive());
 		res.body() = "An error occurred: '" + what.to_string() + "'";
 		res.prepare_payload();
-		return res;
+		return set_common_fields(req, res);
 	}
 
 private:

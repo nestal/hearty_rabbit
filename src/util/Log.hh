@@ -19,9 +19,6 @@
 
 #ifdef SYSTEMD_FOUND
 #include <systemd/sd-journal.h>
-#define LOG sd_journal_print
-#else
-#define LOG syslog
 #endif
 
 namespace hrb {
@@ -31,7 +28,14 @@ int Log(int priority, const std::string& fmt, Args... args)
 {
 	// I love C++17
 	auto&& line = (boost::format{fmt} % ... % std::forward<Args>(args)).str();
-	return LOG(priority, line.c_str());
+
+	return
+#ifdef SYSTEMD_FOUND
+		::sd_journal_print
+#else
+		::syslog
+#endif
+	(priority, line.c_str());
 }
 
 } // end of namespace
