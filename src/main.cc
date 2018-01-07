@@ -49,7 +49,7 @@ int Main(int argc, char *argv[])
 		return EXIT_SUCCESS;
 	}
 
-	LOG(LOG_NOTICE, "hearty_rabbit starting");
+	Log(LOG_NOTICE, "hearty_rabbit starting");
 	auto const threads = std::max(1UL, cfg.thread_count());
 
 	boost::asio::ssl::context ctx{boost::asio::ssl::context::sslv23};
@@ -57,10 +57,10 @@ int Main(int argc, char *argv[])
 		boost::asio::ssl::context::default_workarounds |
 		boost::asio::ssl::context::no_sslv2
 	);
-	ctx.use_certificate_chain_file((cfg.cert_path() / "fullchain.pem").string());
-	ctx.use_private_key_file((cfg.cert_path() / "privkey.pem").string(), boost::asio::ssl::context::pem);
+	ctx.use_certificate_chain_file(cfg.cert_chain().string());
+	ctx.use_private_key_file(cfg.private_key().string(), boost::asio::ssl::context::pem);
 
-	Server server{cfg.web_root()};
+	Server server{cfg};
 
 	// The io_context is required for all I/O
 	boost::asio::io_context ioc{static_cast<int>(threads)};
@@ -105,17 +105,17 @@ int main(int argc, char *argv[])
 	}
 	catch (Exception& e)
 	{
-		LOG(LOG_CRIT, "Uncaught boost::exception: %s", boost::diagnostic_information(e).c_str());
+		Log(LOG_CRIT, "Uncaught boost::exception: %1%", boost::diagnostic_information(e));
 		return EXIT_FAILURE;
 	}
 	catch (std::exception& e)
 	{
-		LOG(LOG_CRIT, "Uncaught std::exception: %s", e.what());
+		Log(LOG_CRIT, "Uncaught std::exception: %1%", e.what());
 		return EXIT_FAILURE;
 	}
 	catch (...)
 	{
-		LOG(LOG_CRIT, "Uncaught unknown exception");
+		Log(LOG_CRIT, "Uncaught unknown exception");
 		return EXIT_FAILURE;
 	}
 }

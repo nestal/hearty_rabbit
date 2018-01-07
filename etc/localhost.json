@@ -1,11 +1,11 @@
 {
-  "cert_chain": "fullchain.pem",
-  "private_key": "privkey.pem",
+  "cert_chain": "certificate.pem",
+  "private_key": "key.pem",
   "web_root": ".",
-  "server_name" : "example.com",
+  "server_name" : "localhost",
   "http": {
     "address": "0.0.0.0",
-    "port": 8080
+    "port": 8081
   },
   "https": {
     "address": "0.0.0.0",
