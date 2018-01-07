@@ -54,7 +54,7 @@ int Main(int argc, char *argv[])
 	boost::asio::ssl::context ctx{boost::asio::ssl::context::sslv23};
 	ctx.set_options(
 		boost::asio::ssl::context::default_workarounds |
-			boost::asio::ssl::context::no_sslv2
+		boost::asio::ssl::context::no_sslv2
 	);
 	ctx.use_certificate_chain_file((cfg.cert_path() / "fullchain.pem").string());
 	ctx.use_private_key_file((cfg.cert_path() / "privkey.pem").string(), boost::asio::ssl::context::pem);
