@@ -51,7 +51,7 @@ int main(int argc, char *argv[])
 			cfg.listen_http(),
 			cfg.listen_https(),
 			cfg.web_root(),
-			ctx
+			&ctx
 		)->run();
 
 		// Run the I/O service on the requested number of threads

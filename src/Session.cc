@@ -29,26 +29,35 @@ namespace http = boost::beast::http;    // from <boost/beast/http.hpp>
 Session::Session(
 	boost::asio::ip::tcp::socket socket,
 	const boost::filesystem::path& doc_root,
-	boost::asio::ssl::context& ssl_ctx
+	boost::asio::ssl::context *ssl_ctx
 ) :
 	m_socket{std::move(socket)},
-	m_stream{m_socket, ssl_ctx},
 	m_strand{m_socket.get_executor()},
 	m_doc_root{doc_root}
 {
+	if (ssl_ctx)
+		m_stream.emplace(m_socket, *ssl_ctx);
 }
 
 // Start the asynchronous operation
 void Session::run()
 {
-	// Perform the SSL handshake
-	m_stream.async_handshake(
-	    boost::asio::ssl::stream_base::server,
-	    boost::asio::bind_executor(
-		    m_strand,
-		    [self=shared_from_this()](auto ec){self->on_handshake(ec);}
-	    )
-	);
+	if (m_stream)
+	{
+		// Perform the SSL handshake
+		m_stream->async_handshake(
+			boost::asio::ssl::stream_base::server,
+			boost::asio::bind_executor(
+				m_strand,
+				[self = shared_from_this()](auto ec)
+				{ self->on_handshake(ec); }
+			)
+		);
+	}
+	else
+	{
+		do_read();
+	}
 }
 
 void Session::on_handshake(boost::system::error_code ec)
@@ -61,13 +70,16 @@ void Session::on_handshake(boost::system::error_code ec)
 
 void Session::do_read()
 {
-	// Read a request
-	boost::beast::http::async_read(m_stream, m_buffer, m_req,
-		boost::asio::bind_executor(
-			m_strand,
-			[self=shared_from_this()](auto ec, auto bytes){self->on_read(ec, bytes);}
-		)
+	auto&& executor = boost::asio::bind_executor(
+		m_strand,
+		[self=shared_from_this()](auto ec, auto bytes){self->on_read(ec, bytes);}
 	);
+
+	// Read a request
+	if (m_stream)
+		boost::beast::http::async_read(*m_stream, m_buffer, m_req, std::move(executor));
+	else
+		boost::beast::http::async_read(m_socket, m_buffer, m_req, std::move(executor));
 }
 
 // This function produces an HTTP response for the given
@@ -210,18 +222,19 @@ void Session::on_read(boost::system::error_code ec, std::size_t)
 		// we use a shared_ptr to manage it.
 		auto sp = std::make_shared<std::remove_reference_t<decltype(msg)>>(std::move(msg));
 
-		// Write the response
-		boost::beast::http::async_write(
-			m_stream,
-			*sp,
-			boost::asio::bind_executor(
-				m_strand,
-				[self=this->shared_from_this(), sp](auto error_code, auto bytes_transferred)
-				{
-					self->on_write(error_code, bytes_transferred, sp->need_eof());
-				}
-			)
+		auto&& executor = boost::asio::bind_executor(
+			m_strand,
+			[self=this->shared_from_this(), sp](auto error_code, auto bytes_transferred)
+			{
+				self->on_write(error_code, bytes_transferred, sp->need_eof());
+			}
 		);
+
+		// Write the response
+		if (m_stream)
+			boost::beast::http::async_write(*m_stream, *sp, std::move(executor));
+		else
+			boost::beast::http::async_write(m_socket, *sp, std::move(executor));
 	});
 }
 
@@ -248,12 +261,20 @@ void Session::do_close()
 {
 	// Send a TCP shutdown
 	boost::system::error_code ec;
-	m_stream.async_shutdown(
-		boost::asio::bind_executor(
-			m_strand,
-			[self=shared_from_this()](auto ec){self->on_shutdown(ec);}
-		)
-	);
+	if (m_stream)
+	{
+		m_stream->async_shutdown(
+			boost::asio::bind_executor(
+				m_strand,
+				[self=shared_from_this()](auto ec){self->on_shutdown(ec);}
+			)
+		);
+	}
+	else
+	{
+		m_socket.shutdown(tcp::socket::shutdown_send, ec);
+		on_shutdown(ec);
+	}
 }
 
 void Session::on_shutdown(boost::system::error_code ec)
