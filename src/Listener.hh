@@ -18,6 +18,8 @@
 
 namespace hrb {
 
+enum EnableTLS {use_tls = true, no_tls = false};
+
 // Accepts incoming connections and launches the sessions
 class Listener : public std::enable_shared_from_this<Listener>
 {
@@ -32,10 +34,8 @@ public:
 
 	void run();
 
-	void do_accept();
-	void on_accept(boost::system::error_code ec);
-	void do_accept_tls();
-	void on_accept_tls(boost::system::error_code ec);
+	void do_accept(EnableTLS tls);
+	void on_accept(boost::system::error_code ec, EnableTLS tls);
 
 private:
 	boost::asio::ip::tcp::acceptor m_acceptor, m_acceptor_tls;

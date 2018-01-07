@@ -14,6 +14,7 @@
 #include "Session.hh"
 
 #include <systemd/sd-journal.h>
+#include <iostream>
 
 namespace hrb {
 
@@ -71,34 +72,24 @@ Listener::Listener(
 void Listener::run()
 {
 	if (m_acceptor.is_open())
-		do_accept();
+		do_accept(EnableTLS::no_tls);
 	if (m_acceptor_tls.is_open())
-		do_accept_tls();
+		do_accept(EnableTLS::use_tls);
 }
 
-void Listener::do_accept()
+void Listener::do_accept(EnableTLS tls)
 {
-	m_acceptor.async_accept(
-		m_socket,
-		[self = shared_from_this()](auto ec)
+	auto&& acceptor = (tls ? m_acceptor_tls : m_acceptor);
+	acceptor.async_accept(
+		(tls ? m_socket_tls : m_socket),
+		[self = shared_from_this(), tls](auto ec)
 		{
-			self->on_accept(ec);
+			self->on_accept(ec, tls);
 		}
 	);
 }
 
-void Listener::do_accept_tls()
-{
-	m_acceptor_tls.async_accept(
-		m_socket_tls,
-		[self = shared_from_this()](auto ec)
-		{
-			self->on_accept_tls(ec);
-		}
-	);
-}
-
-void Listener::on_accept(boost::system::error_code ec)
+void Listener::on_accept(boost::system::error_code ec, EnableTLS tls)
 {
 	if (ec)
 	{
@@ -107,27 +98,11 @@ void Listener::on_accept(boost::system::error_code ec)
 	else
 	{
 		// Create the session and run it
-		std::make_shared<Session>(std::move(m_socket), m_doc_root, m_ssl_ctx)->run();
+		std::make_shared<Session>(std::move(tls ? m_socket_tls : m_socket), m_doc_root, m_ssl_ctx)->run();
 	}
 
 	// Accept another connection
-	do_accept();
-}
-
-void Listener::on_accept_tls(boost::system::error_code ec)
-{
-	if (ec)
-	{
-		sd_journal_print(LOG_WARNING, "accept error: %d (%s)", ec.value(), ec.message());
-	}
-	else
-	{
-		// Create the session and run it
-		std::make_shared<Session>(std::move(m_socket_tls), m_doc_root, m_ssl_ctx)->run();
-	}
-
-	// Accept another connection
-	do_accept_tls();
+	do_accept(tls);
 }
 
 } // end of namespace
