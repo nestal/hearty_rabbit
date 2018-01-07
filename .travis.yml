@@ -9,3 +9,12 @@ before_install:
 
 script:
   - make -f automation/Makefile BUILD_NUMBER=$TRAVIS_BUILD_NUMBER
+
+deploy:
+  provider: packagecloud
+  username: me@nestal.net
+  repository: hearty_rabbit
+  token: "${PACKAGECLOUD_TOKEN}"
+  dist: "centos/7"
+  package_glob: "*.rpm"
+  skip_cleanup: true
