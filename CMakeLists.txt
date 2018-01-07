@@ -14,7 +14,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(VERSION "0.1")
 set(CONFIG_FILENAME "hearty_rabbit.json")
 
-include_directories(${Boost_INCLUDE_DIR} ${SYSTEMD_INCLUDE_DIRS} ${CMAKE_BINARY_DIR})
+include_directories(${Boost_INCLUDE_DIR} ${SYSTEMD_INCLUDE_DIRS} ${CMAKE_BINARY_DIR} ${PROJECT_SOURCE_DIR}/src)
 
 file(GLOB LIB_SRC src/*/*.cc src/*/*.hh)
 add_library(hrblib ${LIB_SRC})

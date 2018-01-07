@@ -11,6 +11,7 @@
 //
 
 #include "Session.hh"
+#include "util/Log.hh"
 
 #include <boost/beast/version.hpp>
 #include <boost/beast/http/message.hpp>
@@ -18,7 +19,6 @@
 #include <boost/asio/bind_executor.hpp>
 #include <boost/asio/strand.hpp>
 
-#include <systemd/sd-journal.h>
 #include <iostream>
 
 namespace hrb {
@@ -63,7 +63,7 @@ void Session::run()
 void Session::on_handshake(boost::system::error_code ec)
 {
 	if (ec)
-		sd_journal_print(LOG_WARNING, "handshake error: %d (%s)", ec.value(), ec.message());
+		LOG(LOG_WARNING, "handshake error: %d (%s)", ec.value(), ec.message());
 
 	do_read();
 }
@@ -95,7 +95,7 @@ handle_request(
 	http::request<Body, http::basic_fields<Allocator>>&& req,
 	Send &&send)
 {
-	sd_journal_print(LOG_INFO, "request received %s", req.target().to_string().c_str());
+	LOG(LOG_INFO, "request received %s", req.target().to_string().c_str());
 	std::cout << "request " << req.target() << std::endl;
 
 	// Returns a bad request response
@@ -165,7 +165,7 @@ handle_request(
 	if (req.target() == "/index.html")
 	{
 		auto path = (doc_root / req.target().to_string()).string();
-		sd_journal_print(LOG_NOTICE, "requesting path %s", path.c_str());
+		LOG(LOG_NOTICE, "requesting path %s", path.c_str());
 
 	    // Attempt to open the file
 	    boost::beast::error_code ec;
@@ -212,7 +212,7 @@ void Session::on_read(boost::system::error_code ec, std::size_t)
 		return do_close();
 
 	if (ec)
-		sd_journal_print(LOG_WARNING, "read error: %d (%s)", ec.value(), ec.message());
+		LOG(LOG_WARNING, "read error: %d (%s)", ec.value(), ec.message());
 
 	// Send the response
 	handle_request(m_doc_root, std::move(m_req), [this](auto&& msg)
@@ -244,7 +244,7 @@ void Session::on_write(
 	bool close)
 {
 	if (ec)
-		sd_journal_print(LOG_WARNING, "write error: %d (%s)", ec.value(), ec.message());
+		LOG(LOG_WARNING, "write error: %d (%s)", ec.value(), ec.message());
 
 	if (close)
 	{
@@ -280,7 +280,7 @@ void Session::do_close()
 void Session::on_shutdown(boost::system::error_code ec)
 {
 	if (!ec)
-		sd_journal_print(LOG_WARNING, "shutdown error: %d (%s)", ec.value(), ec.message());
+		LOG(LOG_WARNING, "shutdown error: %d (%s)", ec.value(), ec.message());
 
 	// At this point the connection is closed gracefully
 }
