@@ -9,7 +9,7 @@ RUN yum install -y centos-release-scl epel-release \
 	&& yum install -y wget devtoolset-7 systemd-devel openssl-devel \
 		rpm-build rapidjson-devel postgresql-libs \
 	&& scl enable devtoolset-7 bash \
-	&& mkdir build
+	&& mkdir /build
 
 ENV PATH $PATH:/opt/rh/devtoolset-7/root/usr/bin:/opt/cmake-3.10.1/bin
 
