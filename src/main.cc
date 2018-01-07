@@ -8,9 +8,13 @@
 
 #include "net/Listener.hh"
 #include "util/Configuration.hh"
+#include "util/Exception.hh"
 
 #include <boost/asio/ssl.hpp>
 #include <boost/asio/bind_executor.hpp>
+#include <boost/exception/errinfo_api_function.hpp>
+#include <boost/exception/info.hpp>
+#include <boost/exception/diagnostic_information.hpp>
 
 #include <systemd/sd-journal.h>
 
@@ -18,22 +22,24 @@
 #include <iostream>
 #include <cstdlib>
 
+namespace hrb {
 void drop_privileges()
 {
 	// drop privileges if run as root
 	if (::getuid() == 0)
 	{
 		if (setuid(65535) != 0)
-			throw std::system_error(errno, std::system_category());
+			BOOST_THROW_EXCEPTION(hrb::SystemError(errno, std::system_category())
+				<< boost::errinfo_api_function("setuid")
+			);
 	}
 
 	if (::getuid() == 0)
 		throw std::runtime_error("cannot run as root");
 }
 
-int main(int argc, char *argv[])
+int Main(int argc, char *argv[])
 {
-	using namespace hrb;
 	Configuration cfg{argc, argv, ::getenv("HEART_RABBIT_CONFIG")};
 
 	if (cfg.help())
@@ -49,7 +55,7 @@ int main(int argc, char *argv[])
 	boost::asio::ssl::context ctx{boost::asio::ssl::context::sslv23};
 	ctx.set_options(
 		boost::asio::ssl::context::default_workarounds |
-		boost::asio::ssl::context::no_sslv2
+			boost::asio::ssl::context::no_sslv2
 	);
 	ctx.use_certificate_chain_file((cfg.cert_path() / "fullchain.pem").string());
 	ctx.use_private_key_file((cfg.cert_path() / "privkey.pem").string(), boost::asio::ssl::context::pem);
@@ -79,9 +85,35 @@ int main(int argc, char *argv[])
 	v.reserve(threads - 1);
 	for (auto i = threads - 1; i > 0; --i)
 		v.emplace_back(
-			[&ioc]{ ioc.run(); }
+			[&ioc]
+			{ ioc.run(); }
 		);
 	ioc.run();
 	return EXIT_SUCCESS;
 }
 
+} // end of namespace
+
+int main(int argc, char *argv[])
+{
+	using namespace hrb;
+	try
+	{
+		return Main(argc, argv);
+	}
+	catch (Exception& e)
+	{
+		sd_journal_print(LOG_CRIT, "Uncaught boost::exception: %s", boost::diagnostic_information(e).c_str());
+		return EXIT_FAILURE;
+	}
+	catch (std::exception& e)
+	{
+		sd_journal_print(LOG_CRIT, "Uncaught std::exception: %s", e.what());
+		return EXIT_FAILURE;
+	}
+	catch (...)
+	{
+		sd_journal_print(LOG_CRIT, "Uncaught unknown exception");
+		return EXIT_FAILURE;
+	}
+}

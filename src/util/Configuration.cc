@@ -64,10 +64,6 @@ Configuration::Configuration(int argc, char **argv, const char *env)
 	Document json;
 	if (json.ParseStream(wrapper).HasParseError())
 	{
-	    std::cerr
-		    << "Error(offset " << json.GetErrorOffset() << ") "
-		    << GetParseError_En(json.GetParseError()) << std::endl;
-
 		BOOST_THROW_EXCEPTION(Error()
 			<< Path{config_path}
 			<< Offset{json.GetErrorOffset()}

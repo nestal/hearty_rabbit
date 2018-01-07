@@ -13,13 +13,14 @@
 #pragma once
 
 #include <boost/exception/exception.hpp>
-#include <exception>
+#include <system_error>
 
 namespace hrb {
 
-struct Exception : virtual boost::exception, virtual std::exception
+struct Exception : virtual boost::exception, virtual std::exception {};
+struct SystemError : virtual boost::exception, virtual std::system_error
 {
-
+	using system_error::system_error;
 };
 
 } // end of namespace
