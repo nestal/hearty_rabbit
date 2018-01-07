@@ -112,9 +112,9 @@ void Session::on_read(boost::system::error_code ec, std::size_t)
 	};
 
 	if (m_stream)
-		m_server.handle_request(m_socket.remote_endpoint(), std::move(m_req), std::move(sender));
+		m_server.handle_https(m_socket.remote_endpoint(), std::move(m_req), std::move(sender));
 	else
-		sender(Server::redirect("https://www.nestal.net" + m_req.target().to_string(), m_req.version()));
+		m_server.handle_http(m_socket.remote_endpoint(), std::move(m_req), std::move(sender));
 }
 
 void Session::on_write(

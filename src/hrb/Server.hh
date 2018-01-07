@@ -14,6 +14,7 @@
 
 #include "util/Log.hh"
 #include "util/Exception.hh"
+#include "util/Configuration.hh"
 
 #include <boost/beast.hpp>
 #include <boost/filesystem/path.hpp>
@@ -29,8 +30,7 @@ namespace http = boost::beast::http;    // from <boost/beast/http.hpp>
 class Server
 {
 public:
-	Server(const boost::filesystem::path& doc_root);
-
+	explicit Server(const Configuration& cfg);
 
 	// This function produces an HTTP response for the given
 	// request. The type of the response object depends on the
@@ -39,7 +39,27 @@ public:
 	template<
 		class Body, class Allocator,
 		class Send>
-	void handle_request(
+	void handle_http(
+		const boost::asio::ip::tcp::endpoint& peer,
+		http::request<Body, http::basic_fields<Allocator>>&& req,
+		Send &&send
+	)
+	{
+		using namespace std::literals;
+		static const auto https_host = m_cfg.server_name()
+			+ (m_cfg.listen_https().port() == 443 ? ""s : (":"s + std::to_string(m_cfg.listen_https().port())));
+
+		send(Server::redirect("https://" + https_host + req.target().to_string(), req.version()));
+	}
+
+	// This function produces an HTTP response for the given
+	// request. The type of the response object depends on the
+	// contents of the request, so the interface requires the
+	// caller to pass a generic lambda for receiving the response.
+	template<
+		class Body, class Allocator,
+		class Send>
+	void handle_https(
 		const boost::asio::ip::tcp::endpoint& peer,
 		http::request<Body, http::basic_fields<Allocator>>&& req,
 		Send &&send
@@ -76,7 +96,7 @@ public:
 
 		if (req.target() == "/index.html")
 		{
-			auto path = (m_doc_root / req.target().to_string()).string();
+			auto path = (m_cfg.web_root() / req.target().to_string()).string();
 			LOG(LOG_NOTICE, "requesting path %s", path.c_str());
 
 		    // Attempt to open the file
@@ -117,9 +137,9 @@ public:
 		return send(std::move(res));
 	}
 
+private:
 	static http::response<http::empty_body> redirect(boost::beast::string_view where, unsigned version);
 
-private:
 	// Returns a bad request response
 	template<class Body, class Allocator>
 	static http::response<http::string_body> bad_request(
@@ -168,7 +188,7 @@ private:
 	}
 
 private:
-	boost::filesystem::path m_doc_root;
+	const Configuration& m_cfg;
 };
 
 } // end of namespace
