@@ -26,6 +26,3 @@ RUN wget --quiet https://dl.bintray.com/boostorg/release/1.66.0/source/boost_1_6
 	&& cd boost_1_66_0 \
 	&& ./bootstrap.sh \
 	&& (./b2 -j8; exit 0)
-
-# build script as entrypoint
-COPY build.sh /build

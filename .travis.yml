@@ -7,5 +7,5 @@ before_install:
   - docker pull nestal/hearty_rabbit_dev
 
 script:
-  - docker run -it --entrypoint /build/build.sh --name build_hearty_rabbit -e "BUILD_NUMBER=$TRAVIS_BUILD_NUMBER" nestal/hearty_rabbit_dev
+  - docker run -it --entrypoint /build/hearty_rabbit/automation/build.sh --name build_hearty_rabbit -e "BUILD_NUMBER=$TRAVIS_BUILD_NUMBER" --mount type=bind,source=$(pwd),target=/build/hearty_rabbit nestal/hearty_rabbit_dev
   - docker cp build_hearty_rabbit:/build/build/hearty-rabbit-0.1-$TRAVIS_BUILD_NUMBER.el7.centos.x86_64.rpm .
