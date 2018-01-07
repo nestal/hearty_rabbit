@@ -112,9 +112,12 @@ void Session::on_read(boost::system::error_code ec, std::size_t)
 	};
 
 	if (m_stream)
-		m_server.handle_https(m_socket.remote_endpoint(), std::move(m_req), std::move(sender));
+		m_server.handle_https(m_socket.remote_endpoint(ec), std::move(m_req), std::move(sender));
 	else
-		m_server.handle_http(m_socket.remote_endpoint(), std::move(m_req), std::move(sender));
+		m_server.handle_http(m_socket.remote_endpoint(ec), std::move(m_req), std::move(sender));
+
+	if (ec)
+		LOG(LOG_WARNING, "remote_endpoint(): %d (%s)", ec.value(), ec.message());
 }
 
 void Session::on_write(

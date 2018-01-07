@@ -57,8 +57,8 @@ int Main(int argc, char *argv[])
 		boost::asio::ssl::context::default_workarounds |
 		boost::asio::ssl::context::no_sslv2
 	);
-	ctx.use_certificate_chain_file((cfg.cert_path() / "fullchain.pem").string());
-	ctx.use_private_key_file((cfg.cert_path() / "privkey.pem").string(), boost::asio::ssl::context::pem);
+	ctx.use_certificate_chain_file(cfg.cert_chain().string());
+	ctx.use_private_key_file(cfg.private_key().string(), boost::asio::ssl::context::pem);
 
 	Server server{cfg};
 
