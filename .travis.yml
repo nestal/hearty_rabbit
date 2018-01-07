@@ -15,6 +15,6 @@ deploy:
   username: $PACKAGECLOUD_USERNAME
   repository: hearty_rabbit
   token: $PACKAGECLOUD_TOKEN
-  dist: "centos/7"
+  dist: "el/7"
   package_glob: "*.rpm"
   skip_cleanup: true
