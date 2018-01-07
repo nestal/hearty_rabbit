@@ -19,8 +19,6 @@
 #include <boost/asio/bind_executor.hpp>
 #include <boost/asio/strand.hpp>
 
-#include <iostream>
-
 namespace hrb {
 
 using tcp = boost::asio::ip::tcp;       // from <boost/asio/ip/tcp.hpp>
@@ -35,6 +33,7 @@ Session::Session(
 	m_strand{m_socket.get_executor()},
 	m_doc_root{doc_root}
 {
+	// TLS is optional for this class
 	if (ssl_ctx)
 		m_stream.emplace(m_socket, *ssl_ctx);
 }
@@ -96,7 +95,6 @@ handle_request(
 	Send &&send)
 {
 	LOG(LOG_INFO, "request received %s", req.target().to_string().c_str());
-	std::cout << "request " << req.target() << std::endl;
 
 	// Returns a bad request response
 	auto const bad_request =
