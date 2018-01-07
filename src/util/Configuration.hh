@@ -46,7 +46,7 @@ public:
 	static void usage(std::ostream& out);
 
 private:
-	static boost::filesystem::path choose_config_file();
+	void load_config(const std::string& path);
 
 private:
 	bool m_help{false};
