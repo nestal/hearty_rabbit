@@ -55,7 +55,21 @@ Configuration::Configuration(int argc, char **argv, const char *env)
 	store(po::parse_command_line(argc, argv, the_desc()), config);
 	po::notify(config);
 
-	auto config_path = boost::filesystem::path{config["cfg"].as<std::string>()};
+	m_help = config.count("help") > 0;
+
+	// no need for other options when --help is specified
+	if (!m_help)
+		load_config(config["cfg"].as<std::string>());
+}
+
+void Configuration::usage(std::ostream &out)
+{
+	out << the_desc();
+}
+
+void Configuration::load_config(const std::string& path)
+{
+	auto config_path = boost::filesystem::path{path};
 
 	using namespace rapidjson;
 	std::ifstream config_file{config_path.string()};
@@ -71,27 +85,16 @@ Configuration::Configuration(int argc, char **argv, const char *env)
 		);
 	}
 
-	m_help = config.count("help") > 0;
+	m_cert_chain    = json["cert_chain"].GetString();
+	m_private_key   = json["private_key"].GetString();
+	m_root          = json["web_root"].GetString();
+	m_server_name   = json["server_name"].GetString();
 
-	// no need for other options when --help is specified
-	if (!m_help)
-	{
-		m_cert_chain    = json["cert_chain"].GetString();
-		m_private_key   = json["private_key"].GetString();
-		m_root          = json["web_root"].GetString();
-		m_server_name   = json["server_name"].GetString();
+	m_listen_http.address(boost::asio::ip::make_address(json["http"]["address"].GetString()));
+	m_listen_http.port(static_cast<unsigned short>(json["http"]["port"].GetUint()));
 
-		m_listen_http.address(boost::asio::ip::make_address(json["http"]["address"].GetString()));
-		m_listen_http.port(static_cast<unsigned short>(json["http"]["port"].GetUint()));
-
-		m_listen_https.address(boost::asio::ip::make_address(json["https"]["address"].GetString()));
-		m_listen_https.port(static_cast<unsigned short>(json["https"]["port"].GetUint()));
-	}
-}
-
-void Configuration::usage(std::ostream &out)
-{
-	out << the_desc();
+	m_listen_https.address(boost::asio::ip::make_address(json["https"]["address"].GetString()));
+	m_listen_https.port(static_cast<unsigned short>(json["https"]["port"].GetUint()));
 }
 
 } // end of namespace
