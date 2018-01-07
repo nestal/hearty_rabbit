@@ -42,14 +42,18 @@ public:
 	void handle_http(
 		const boost::asio::ip::tcp::endpoint& peer,
 		http::request<Body, http::basic_fields<Allocator>>&& req,
-		Send &&send
+		Send&& send
 	)
 	{
+		auto&& target = req.target().to_string();
+
 		using namespace std::literals;
-		static const auto https_host = m_cfg.server_name()
+		static const auto https_host = "https://" + m_cfg.server_name()
 			+ (m_cfg.listen_https().port() == 443 ? ""s : (":"s + std::to_string(m_cfg.listen_https().port())));
 
-		send(Server::redirect("https://" + https_host + req.target().to_string(), req.version()));
+		Log(LOG_INFO, "redirecting HTTP request %1% to host %1%", target, https_host);
+
+		send(Server::redirect(https_host + target, req.version()));
 	}
 
 	// This function produces an HTTP response for the given
@@ -62,12 +66,10 @@ public:
 	void handle_https(
 		const boost::asio::ip::tcp::endpoint& peer,
 		http::request<Body, http::basic_fields<Allocator>>&& req,
-		Send &&send
+		Send&& send
 	)
 	{
-		std::ostringstream ss;
-		ss << peer;
-		LOG(LOG_INFO, "request %s from %s", req.target().to_string().c_str(), ss.str().c_str());
+		Log(LOG_INFO, "request %1% from %2%", req.target(), peer);
 
 		// Make sure we can handle the method
 		if (req.method() != http::verb::get &&
@@ -97,7 +99,7 @@ public:
 		if (req.target() == "/index.html")
 		{
 			auto path = (m_cfg.web_root() / req.target().to_string()).string();
-			LOG(LOG_NOTICE, "requesting path %s", path.c_str());
+			Log(LOG_NOTICE, "requesting path %1%", path);
 
 		    // Attempt to open the file
 		    boost::beast::error_code ec;
