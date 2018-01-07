@@ -10,6 +10,7 @@
 #include "util/Configuration.hh"
 #include "util/Exception.hh"
 #include "util/Log.hh"
+#include "hrb/Server.hh"
 
 #include <boost/asio/ssl.hpp>
 #include <boost/asio/bind_executor.hpp>
@@ -59,6 +60,8 @@ int Main(int argc, char *argv[])
 	ctx.use_certificate_chain_file((cfg.cert_path() / "fullchain.pem").string());
 	ctx.use_private_key_file((cfg.cert_path() / "privkey.pem").string(), boost::asio::ssl::context::pem);
 
+	Server server{cfg.web_root()};
+
 	// The io_context is required for all I/O
 	boost::asio::io_context ioc{static_cast<int>(threads)};
 
@@ -66,13 +69,13 @@ int Main(int argc, char *argv[])
 	std::make_shared<Listener>(
 		ioc,
 		cfg.listen_http(),
-		cfg.web_root(),
+		server,
 		nullptr
 	)->run();
 	std::make_shared<Listener>(
 		ioc,
 		cfg.listen_https(),
-		cfg.web_root(),
+		server,
 		&ctx
 	)->run();
 

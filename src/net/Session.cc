@@ -12,9 +12,7 @@
 
 #include "Session.hh"
 #include "util/Log.hh"
-
-#include <boost/beast/version.hpp>
-#include <boost/beast/http/message.hpp>
+#include "hrb/Server.hh"
 
 #include <boost/asio/bind_executor.hpp>
 #include <boost/asio/strand.hpp>
@@ -26,12 +24,12 @@ namespace http = boost::beast::http;    // from <boost/beast/http.hpp>
 
 Session::Session(
 	boost::asio::ip::tcp::socket socket,
-	const boost::filesystem::path& doc_root,
+	Server& server,
 	boost::asio::ssl::context *ssl_ctx
 ) :
 	m_socket{std::move(socket)},
 	m_strand{m_socket.get_executor()},
-	m_doc_root{doc_root}
+	m_server{server}
 {
 	// TLS is optional for this class
 	if (ssl_ctx)
@@ -81,131 +79,6 @@ void Session::do_read()
 		boost::beast::http::async_read(m_socket, m_buffer, m_req, std::move(executor));
 }
 
-// This function produces an HTTP response for the given
-// request. The type of the response object depends on the
-// contents of the request, so the interface requires the
-// caller to pass a generic lambda for receiving the response.
-template<
-	class Body, class Allocator,
-	class Send>
-void
-handle_request(
-	const boost::filesystem::path& doc_root,
-	const boost::asio::ip::tcp::endpoint& peer,
-	http::request<Body, http::basic_fields<Allocator>>&& req,
-	Send &&send)
-{
-	std::ostringstream ss;
-	ss << peer;
-	LOG(LOG_INFO, "request %s from %s", req.target().to_string().c_str(), ss.str().c_str());
-
-	// Returns a bad request response
-	auto const bad_request =
-		[&req](boost::beast::string_view why)
-		{
-			http::response<http::string_body> res{http::status::bad_request, req.version()};
-			res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
-			res.set(http::field::content_type, "text/html");
-			res.keep_alive(req.keep_alive());
-			res.body() = why.to_string();
-			res.prepare_payload();
-			return res;
-		};
-
-	// Returns a not found response
-	auto const not_found =
-		[&req](boost::beast::string_view target)
-		{
-			http::response<http::string_body> res{http::status::not_found, req.version()};
-			res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
-			res.set(http::field::content_type, "text/html");
-			res.keep_alive(req.keep_alive());
-			res.body() = "The resource '" + target.to_string() + "' was not found.";
-			res.prepare_payload();
-			return res;
-		};
-
-	// Returns a server error response
-	auto const server_error =
-		[&req](boost::beast::string_view what)
-		{
-			http::response<http::string_body> res{http::status::internal_server_error, req.version()};
-			res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
-			res.set(http::field::content_type, "text/html");
-			res.keep_alive(req.keep_alive());
-			res.body() = "An error occurred: '" + what.to_string() + "'";
-			res.prepare_payload();
-			return res;
-		};
-
-	// Make sure we can handle the method
-	if (req.method() != http::verb::get &&
-	    req.method() != http::verb::head)
-		return send(bad_request("Unknown HTTP-method"));
-
-	// Request path must be absolute and not contain "..".
-	if (req.target().empty() ||
-	    req.target()[0] != '/' ||
-	    req.target().find("..") != boost::beast::string_view::npos)
-		return send(bad_request("Illegal request-target"));
-
-	std::string mime = "text/html";
-	std::string body = "Hello world!";
-
-	// Respond to HEAD request
-	if (req.method() == http::verb::head)
-	{
-		http::response<http::empty_body> res{http::status::ok, req.version()};
-		res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
-		res.set(http::field::content_type, mime);
-		res.content_length(body.size());
-		res.keep_alive(req.keep_alive());
-		return send(std::move(res));
-	}
-
-	if (req.target() == "/index.html")
-	{
-		auto path = (doc_root / req.target().to_string()).string();
-		LOG(LOG_NOTICE, "requesting path %s", path.c_str());
-
-	    // Attempt to open the file
-	    boost::beast::error_code ec;
-	    http::file_body::value_type file;
-	    file.open(path.c_str(), boost::beast::file_mode::scan, ec);
-
-		// Handle the case where the file doesn't exist
-		if(ec == boost::system::errc::no_such_file_or_directory)
-			return send(not_found(req.target()));
-
-		// Handle an unknown error
-		if(ec)
-			return send(server_error(ec.message()));
-		    // Respond to GET request
-
-		auto file_size = file.size();
-
-		http::response<http::file_body> res{
-		    std::piecewise_construct,
-		    std::make_tuple(std::move(file)),
-		    std::make_tuple(http::status::ok, req.version())
-		};
-		res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
-		res.set(http::field::content_type, mime);
-		res.content_length(file_size);
-		res.keep_alive(req.keep_alive());
-		return send(std::move(res));
-	}
-
-	// Respond to GET request
-	http::response<http::string_body> res{http::status::ok, req.version()};
-	res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
-	res.set(http::field::content_type, mime);
-	res.content_length(body.size());
-	res.body() = std::move(body);
-	res.keep_alive(req.keep_alive());
-	return send(std::move(res));
-}
-
 void Session::on_read(boost::system::error_code ec, std::size_t)
 {
 	// This means they closed the connection
@@ -216,7 +89,7 @@ void Session::on_read(boost::system::error_code ec, std::size_t)
 		LOG(LOG_WARNING, "read error: %d (%s)", ec.value(), ec.message());
 
 	// Send the response
-	handle_request(m_doc_root, m_socket.remote_endpoint(), std::move(m_req), [this](auto&& msg)
+	m_server.handle_request(m_socket.remote_endpoint(), std::move(m_req), [this](auto&& msg)
 	{
 		// The lifetime of the message has to extend
 		// for the duration of the async operation so
