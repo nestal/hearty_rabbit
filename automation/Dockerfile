@@ -3,11 +3,13 @@ MAINTAINER [Nestal Wan <me@nestal.net>]
 ENV container docker
 
 # install development tools
-RUN yum install -y centos-release-scl \
+RUN yum install -y centos-release-scl epel-release \
 	&& rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-SIG-SCLo \
-	&& yum install -y wget devtoolset-7 systemd-devel git openssl-devel rpm-build rapidjson-devel \
+	&& rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-EPEL-7 \
+	&& yum install -y wget devtoolset-7 systemd-devel openssl-devel \
+		rpm-build rapidjson-devel postgresql-libs \
 	&& scl enable devtoolset-7 bash \
-	&& mkdir build
+	&& mkdir /build
 
 ENV PATH $PATH:/opt/rh/devtoolset-7/root/usr/bin:/opt/cmake-3.10.1/bin
 
@@ -26,6 +28,3 @@ RUN wget --quiet https://dl.bintray.com/boostorg/release/1.66.0/source/boost_1_6
 	&& cd boost_1_66_0 \
 	&& ./bootstrap.sh \
 	&& (./b2 -j8; exit 0)
-
-# build script as entrypoint
-COPY build.sh /build

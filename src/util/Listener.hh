@@ -16,9 +16,9 @@
 #include <boost/asio/ssl/context.hpp>
 #include <boost/filesystem/path.hpp>
 
-namespace hrb {
+#include <optional>
 
-enum EnableTLS {use_tls = true, no_tls = false};
+namespace hrb {
 
 // Accepts incoming connections and launches the sessions
 class Listener : public std::enable_shared_from_this<Listener>
@@ -27,21 +27,21 @@ public:
 	Listener(
 		boost::asio::io_context &ioc,
 		boost::asio::ip::tcp::endpoint endpoint,
-		boost::asio::ip::tcp::endpoint endpoint_tls,
 		const boost::filesystem::path& doc_root,
-		boost::asio::ssl::context& ssl_ctx
+		boost::asio::ssl::context *ssl_ctx
 	);
 
 	void run();
 
-	void do_accept(EnableTLS tls);
-	void on_accept(boost::system::error_code ec, EnableTLS tls);
+private:
+	void do_accept();
+	void on_accept(boost::system::error_code ec);
 
 private:
-	boost::asio::ip::tcp::acceptor m_acceptor, m_acceptor_tls;
-	boost::asio::ip::tcp::socket   m_socket, m_socket_tls;
-	boost::filesystem::path        m_doc_root;
-	boost::asio::ssl::context&     m_ssl_ctx;
+	boost::asio::ip::tcp::acceptor  m_acceptor;
+	boost::asio::ip::tcp::socket    m_socket;
+	boost::filesystem::path         m_doc_root;
+	boost::asio::ssl::context       *m_ssl_ctx{};
 };
 
 } // end of hrb namespace

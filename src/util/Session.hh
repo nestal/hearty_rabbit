@@ -22,6 +22,8 @@
 #include <boost/asio/ssl/stream.hpp>
 #include <boost/filesystem/path.hpp>
 
+#include <optional>
+
 namespace hrb {
 
 // Handles an HTTP server connection
@@ -32,7 +34,7 @@ public:
 	explicit Session(
 		boost::asio::ip::tcp::socket socket,
 		const boost::filesystem::path& doc_root,
-		boost::asio::ssl::context& ssl_ctx
+		boost::asio::ssl::context *ssl_ctx
 	);
 
 	// Start the asynchronous operation
@@ -46,7 +48,7 @@ public:
 
 private:
 	boost::asio::ip::tcp::socket m_socket;
-	boost::asio::ssl::stream<boost::asio::ip::tcp::socket&> m_stream;
+	std::optional<boost::asio::ssl::stream<boost::asio::ip::tcp::socket&>> m_stream;
 	boost::asio::strand<boost::asio::io_context::executor_type> m_strand;
 	boost::beast::flat_buffer m_buffer;
 	boost::filesystem::path m_doc_root;

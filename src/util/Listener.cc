@@ -21,14 +21,11 @@ namespace hrb {
 Listener::Listener(
 	boost::asio::io_context &ioc,
 	boost::asio::ip::tcp::endpoint endpoint,
-	boost::asio::ip::tcp::endpoint endpoint_tls,
 	const boost::filesystem::path& doc_root,
-	boost::asio::ssl::context& ssl_ctx
+	boost::asio::ssl::context *ssl_ctx
 ) :
 	m_acceptor{ioc},
-	m_acceptor_tls{ioc},
 	m_socket{ioc},
-	m_socket_tls{ioc},
 	m_doc_root{doc_root},
 	m_ssl_ctx{ssl_ctx}
 {
@@ -38,23 +35,14 @@ Listener::Listener(
 	m_acceptor.open(endpoint.protocol(), ec);
 	if (ec)
 		throw std::system_error(ec);
-	m_acceptor_tls.open(endpoint_tls.protocol(), ec);
-	if (ec)
-		throw std::system_error(ec);
 
 	// Bind to the server address
 	m_acceptor.bind(endpoint, ec);
 	if (ec)
 		throw std::system_error(ec);
-	m_acceptor_tls.bind(endpoint_tls, ec);
-	if (ec)
-		throw std::system_error(ec);
 
 	// Start listening for connections
 	m_acceptor.listen(boost::asio::socket_base::max_listen_connections, ec);
-	if (ec)
-		throw std::system_error(ec);
-	m_acceptor_tls.listen(boost::asio::socket_base::max_listen_connections, ec);
 	if (ec)
 		throw std::system_error(ec);
 
@@ -72,24 +60,21 @@ Listener::Listener(
 void Listener::run()
 {
 	if (m_acceptor.is_open())
-		do_accept(EnableTLS::no_tls);
-	if (m_acceptor_tls.is_open())
-		do_accept(EnableTLS::use_tls);
+		do_accept();
 }
 
-void Listener::do_accept(EnableTLS tls)
+void Listener::do_accept()
 {
-	auto&& acceptor = (tls ? m_acceptor_tls : m_acceptor);
-	acceptor.async_accept(
-		(tls ? m_socket_tls : m_socket),
-		[self = shared_from_this(), tls](auto ec)
+	m_acceptor.async_accept(
+		m_socket,
+		[self = shared_from_this()](auto ec)
 		{
-			self->on_accept(ec, tls);
+			self->on_accept(ec);
 		}
 	);
 }
 
-void Listener::on_accept(boost::system::error_code ec, EnableTLS tls)
+void Listener::on_accept(boost::system::error_code ec)
 {
 	if (ec)
 	{
@@ -98,11 +83,11 @@ void Listener::on_accept(boost::system::error_code ec, EnableTLS tls)
 	else
 	{
 		// Create the session and run it
-		std::make_shared<Session>(std::move(tls ? m_socket_tls : m_socket), m_doc_root, m_ssl_ctx)->run();
+		std::make_shared<Session>(std::move(m_socket), m_doc_root, m_ssl_ctx)->run();
 	}
 
 	// Accept another connection
-	do_accept(tls);
+	do_accept();
 }
 
 } // end of namespace
