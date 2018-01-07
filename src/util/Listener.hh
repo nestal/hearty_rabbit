@@ -33,6 +33,7 @@ public:
 
 	void run();
 
+private:
 	void do_accept();
 	void on_accept(boost::system::error_code ec);
 
