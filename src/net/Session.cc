@@ -60,7 +60,7 @@ void Session::run()
 void Session::on_handshake(boost::system::error_code ec)
 {
 	if (ec)
-		Log(LOG_WARNING, "handshake error: %1% (%2%)", ec.value(), ec.message());
+		Log(LOG_WARNING, "handshake error: %1%", ec);
 
 	do_read();
 }
