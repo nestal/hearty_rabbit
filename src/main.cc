@@ -6,8 +6,8 @@
     distribution for more details.
 */
 
-#include "Listener.hh"
-#include "Configuration.hh"
+#include "util/Listener.hh"
+#include "net/Configuration.hh"
 
 #include <boost/asio/ssl.hpp>
 #include <boost/asio/bind_executor.hpp>
@@ -45,13 +45,18 @@ int main(int argc, char *argv[])
 		// The io_context is required for all I/O
 		boost::asio::io_context ioc{static_cast<int>(threads)};
 
-		// Create and launch a listening port
+		// Create and launch a listening port for HTTP and HTTPS
 		std::make_shared<Listener>(
 			ioc,
 			cfg.listen_http(),
+			cfg.web_root(),
+			nullptr
+		)->run();
+		std::make_shared<Listener>(
+			ioc,
 			cfg.listen_https(),
 			cfg.web_root(),
-			ctx
+			&ctx
 		)->run();
 
 		// Run the I/O service on the requested number of threads

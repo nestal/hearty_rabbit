@@ -8,19 +8,21 @@ find_package(PkgConfig REQUIRED)
 find_package(OpenSSL REQUIRED)
 
 pkg_check_modules(SYSTEMD libsystemd)
-pkg_check_modules(RapidJSON RapidJSON)
+pkg_check_modules(RapidJSON REQUIRED RapidJSON)
 
 set(CMAKE_CXX_STANDARD 17)
 set(VERSION "0.1")
-set(CONFIG_FILENAME "hearty_rabbit.conf")
+set(CONFIG_FILENAME "hearty_rabbit.json")
 
 include_directories(${Boost_INCLUDE_DIR} ${SYSTEMD_INCLUDE_DIRS} ${CMAKE_BINARY_DIR})
 
-file(GLOB MAIN_SRC src/*.cc src/*.hh)
+file(GLOB LIB_SRC src/*/*.cc src/*/*.hh)
+add_library(hrblib ${LIB_SRC})
 
-add_executable(hearty_rabbit ${MAIN_SRC})
+add_executable(hearty_rabbit src/main.cc)
 target_link_libraries(
 	hearty_rabbit
+	hrblib
 	${Boost_LIBRARIES}
 	OpenSSL::SSL
 	OpenSSL::Crypto
@@ -35,7 +37,7 @@ configure_file(config.hh.in config.hh)
 # Installation
 install(TARGETS hearty_rabbit DESTINATION bin)
 install(FILES ${CMAKE_BINARY_DIR}/hearty_rabbit.service DESTINATION etc/systemd/system)
-install(FILES etc/hearty_rabbit.conf DESTINATION etc)
+install(FILES etc/${CONFIG_FILENAME} DESTINATION etc)
 install(DIRECTORY lib DESTINATION lib/hearty_rabbit)
 
 set(CPACK_PACKAGE_VERSION ${VERSION})

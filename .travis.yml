@@ -5,7 +5,7 @@ services:
 
 before_install:
   - docker pull nestal/hearty_rabbit_dev
+  - git submodule update --init --recursive
 
 script:
-  - docker run -it --entrypoint /build/build.sh --name build_hearty_rabbit -e "BUILD_NUMBER=$TRAVIS_BUILD_NUMBER" nestal/hearty_rabbit_dev
-  - docker cp build_hearty_rabbit:/build/build/hearty-rabbit-0.1-$TRAVIS_BUILD_NUMBER.el7.centos.x86_64.rpm .
+  - make -f automation/Makefile BUILD_NUMBER=$TRAVIS_BUILD_NUMBER
