@@ -14,8 +14,8 @@
 
 namespace hrb {
 
-Server::Server(const boost::filesystem::path &doc_root) :
-	m_doc_root{doc_root}
+Server::Server(const Configuration& cfg) :
+	m_cfg{cfg}
 {
 }
 

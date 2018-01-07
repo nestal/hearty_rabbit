@@ -14,6 +14,7 @@
 
 #include "util/Log.hh"
 #include "util/Exception.hh"
+#include "util/Configuration.hh"
 
 #include <boost/beast.hpp>
 #include <boost/filesystem/path.hpp>
@@ -29,8 +30,7 @@ namespace http = boost::beast::http;    // from <boost/beast/http.hpp>
 class Server
 {
 public:
-	Server(const boost::filesystem::path& doc_root);
-
+	explicit Server(const Configuration& cfg);
 
 	// This function produces an HTTP response for the given
 	// request. The type of the response object depends on the
@@ -39,15 +39,36 @@ public:
 	template<
 		class Body, class Allocator,
 		class Send>
-	void handle_request(
+	void handle_http(
 		const boost::asio::ip::tcp::endpoint& peer,
 		http::request<Body, http::basic_fields<Allocator>>&& req,
-		Send &&send
+		Send&& send
 	)
 	{
-		std::ostringstream ss;
-		ss << peer;
-		LOG(LOG_INFO, "request %s from %s", req.target().to_string().c_str(), ss.str().c_str());
+		using namespace std::literals;
+		static const auto https_host = "https://" + m_cfg.server_name()
+			+ (m_cfg.listen_https().port() == 443 ? ""s : (":"s + std::to_string(m_cfg.listen_https().port())));
+
+		auto&& dest = https_host + req.target().to_string();
+		Log(LOG_INFO, "redirecting HTTP request %1% to host %2%", req.target(), dest);
+
+		send(Server::redirect(dest, req.version()));
+	}
+
+	// This function produces an HTTP response for the given
+	// request. The type of the response object depends on the
+	// contents of the request, so the interface requires the
+	// caller to pass a generic lambda for receiving the response.
+	template<
+		class Body, class Allocator,
+		class Send>
+	void handle_https(
+		const boost::asio::ip::tcp::endpoint& peer,
+		http::request<Body, http::basic_fields<Allocator>>&& req,
+		Send&& send
+	)
+	{
+		Log(LOG_INFO, "request %1% from %2%", req.target(), peer);
 
 		// Make sure we can handle the method
 		if (req.method() != http::verb::get &&
@@ -76,8 +97,8 @@ public:
 
 		if (req.target() == "/index.html")
 		{
-			auto path = (m_doc_root / req.target().to_string()).string();
-			LOG(LOG_NOTICE, "requesting path %s", path.c_str());
+			auto path = (m_cfg.web_root() / req.target().to_string()).string();
+			Log(LOG_NOTICE, "requesting path %1%", path);
 
 		    // Attempt to open the file
 		    boost::beast::error_code ec;
@@ -100,26 +121,36 @@ public:
 			    std::make_tuple(std::move(file)),
 			    std::make_tuple(http::status::ok, req.version())
 			};
-			res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
+//			res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
 			res.set(http::field::content_type, mime);
 			res.content_length(file_size);
-			res.keep_alive(req.keep_alive());
-			return send(std::move(res));
+//			res.keep_alive(req.keep_alive());
+			return send(set_common_fields(req, res));
 		}
 
 		// Respond to GET request
 		http::response<http::string_body> res{http::status::ok, req.version()};
-		res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
+//		res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
 		res.set(http::field::content_type, mime);
 		res.content_length(body.size());
 		res.body() = std::move(body);
-		res.keep_alive(req.keep_alive());
-		return send(std::move(res));
+		return send(set_common_fields(req, res));
 	}
 
+private:
 	static http::response<http::empty_body> redirect(boost::beast::string_view where, unsigned version);
 
-private:
+	template<class ReqBody, class ReqAllocator, class ResBody, class ResAllocator>
+	static auto&& set_common_fields(
+		const http::request<ReqBody, http::basic_fields<ReqAllocator>>& req,
+		http::response<ResBody, http::basic_fields<ResAllocator>>& res
+	)
+	{
+		res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
+		res.keep_alive(req.keep_alive());
+		return std::move(res);
+	}
+
 	// Returns a bad request response
 	template<class Body, class Allocator>
 	static http::response<http::string_body> bad_request(
@@ -128,12 +159,12 @@ private:
 	)
 	{
 		http::response<http::string_body> res{http::status::bad_request, req.version()};
-		res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
+//		res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
 		res.set(http::field::content_type, "text/html");
-		res.keep_alive(req.keep_alive());
+//		res.keep_alive(req.keep_alive());
 		res.body() = why.to_string();
 		res.prepare_payload();
-		return res;
+		return set_common_fields(req, res);
 	}
 
 	// Returns a not found response
@@ -144,12 +175,12 @@ private:
 	)
 	{
 		http::response<http::string_body> res{http::status::not_found, req.version()};
-		res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
+//		res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
 		res.set(http::field::content_type, "text/html");
-		res.keep_alive(req.keep_alive());
+//		res.keep_alive(req.keep_alive());
 		res.body() = "The resource '" + target.to_string() + "' was not found.";
 		res.prepare_payload();
-		return res;
+		return set_common_fields(req, res);
 	}
 
 	template<class Body, class Allocator>
@@ -159,16 +190,16 @@ private:
 	)
 	{
 		http::response<http::string_body> res{http::status::internal_server_error, req.version()};
-		res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
+//		res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
 		res.set(http::field::content_type, "text/html");
-		res.keep_alive(req.keep_alive());
+//		res.keep_alive(req.keep_alive());
 		res.body() = "An error occurred: '" + what.to_string() + "'";
 		res.prepare_payload();
-		return res;
+		return set_common_fields(req, res);
 	}
 
 private:
-	boost::filesystem::path m_doc_root;
+	const Configuration& m_cfg;
 };
 
 } // end of namespace

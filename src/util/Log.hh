@@ -12,12 +12,27 @@
 
 #pragma once
 
+#include <boost/format.hpp>
+
 #include "config.hh"
 #include <syslog.h>
 
-#ifdef SYSTEMD_FOUND
-#include <systemd/sd-journal.h>
-#define LOG sd_journal_print
-#else
-#define LOG syslog
-#endif
+
+namespace hrb {
+
+namespace detail {
+int DetailLog(int priority, std::string&& line);
+}
+
+template <typename... Args>
+int Log(int priority, const std::string& fmt, Args... args)
+{
+	boost::format bfmt{fmt};
+	bfmt.exceptions(boost::io::no_error_bits);
+
+	// I love C++17
+	return detail::DetailLog(priority, (bfmt % ... % std::forward<Args>(args)).str());
+}
+
+} // end of namespace
+
