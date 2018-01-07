@@ -12,6 +12,9 @@
 
 #pragma once
 
+#include "Exception.hh"
+
+#include <boost/exception/error_info.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/filesystem/path.hpp>
 
@@ -22,6 +25,12 @@ namespace hrb {
 /// \brief  Parsing command line options and configuration file
 class Configuration
 {
+public:
+	struct Error : virtual Exception {};
+	using Path    = boost::error_info<struct tag_path,    boost::filesystem::path>;
+	using Message = boost::error_info<struct tag_message, std::string>;
+	using Offset  = boost::error_info<struct tag_offset,  std::size_t>;
+
 public:
 	Configuration(int argc, char **argv, const char *env);
 

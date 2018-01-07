@@ -14,6 +14,8 @@
 #include "config.hh"
 
 #include <boost/program_options.hpp>
+#include <boost/exception/info.hpp>
+
 #include <rapidjson/document.h>
 #include <rapidjson/istreamwrapper.h>
 #include <rapidjson/error/en.h>
@@ -53,18 +55,20 @@ Configuration::Configuration(int argc, char **argv, const char *env)
 	store(po::parse_command_line(argc, argv, the_desc()), config);
 	po::notify(config);
 
+	auto config_path = boost::filesystem::path{config["cfg"].as<std::string>()};
+
 	using namespace rapidjson;
-	std::ifstream config_file{config["cfg"].as<std::string>()};
+	std::ifstream config_file{config_path.string()};
 	IStreamWrapper wrapper{config_file};
 
 	Document json;
 	if (json.ParseStream(wrapper).HasParseError())
 	{
-	    std::cerr
-		    << "Error(offset " << json.GetErrorOffset() << ") "
-		    << GetParseError_En(json.GetParseError()) << std::endl;
-
-		throw -1;
+		BOOST_THROW_EXCEPTION(Error()
+			<< Path{config_path}
+			<< Offset{json.GetErrorOffset()}
+			<< Message{GetParseError_En(json.GetParseError())}
+		);
 	}
 
 	m_help = config.count("help") > 0;

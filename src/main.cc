@@ -6,34 +6,40 @@
     distribution for more details.
 */
 
-#include "util/Listener.hh"
-#include "net/Configuration.hh"
+#include "net/Listener.hh"
+#include "util/Configuration.hh"
+#include "util/Exception.hh"
+#include "util/Log.hh"
+#include "hrb/Server.hh"
 
 #include <boost/asio/ssl.hpp>
 #include <boost/asio/bind_executor.hpp>
-
-#include <systemd/sd-journal.h>
+#include <boost/exception/errinfo_api_function.hpp>
+#include <boost/exception/info.hpp>
+#include <boost/exception/diagnostic_information.hpp>
 
 #include <thread>
 #include <iostream>
 #include <cstdlib>
 
+namespace hrb {
 void drop_privileges()
 {
 	// drop privileges if run as root
 	if (::getuid() == 0)
 	{
 		if (setuid(65535) != 0)
-			throw std::system_error(errno, std::system_category());
+			BOOST_THROW_EXCEPTION(hrb::SystemError(errno, std::system_category())
+				<< boost::errinfo_api_function("setuid")
+			);
 	}
 
 	if (::getuid() == 0)
 		throw std::runtime_error("cannot run as root");
 }
 
-int main(int argc, char *argv[])
+int Main(int argc, char *argv[])
 {
-	using namespace hrb;
 	Configuration cfg{argc, argv, ::getenv("HEART_RABBIT_CONFIG")};
 
 	if (cfg.help())
@@ -43,7 +49,7 @@ int main(int argc, char *argv[])
 		return EXIT_SUCCESS;
 	}
 
-	sd_journal_print(LOG_NOTICE, "hearty_rabbit starting");
+	LOG(LOG_NOTICE, "hearty_rabbit starting");
 	auto const threads = std::max(1UL, cfg.thread_count());
 
 	boost::asio::ssl::context ctx{boost::asio::ssl::context::sslv23};
@@ -54,6 +60,8 @@ int main(int argc, char *argv[])
 	ctx.use_certificate_chain_file((cfg.cert_path() / "fullchain.pem").string());
 	ctx.use_private_key_file((cfg.cert_path() / "privkey.pem").string(), boost::asio::ssl::context::pem);
 
+	Server server{cfg.web_root()};
+
 	// The io_context is required for all I/O
 	boost::asio::io_context ioc{static_cast<int>(threads)};
 
@@ -61,13 +69,13 @@ int main(int argc, char *argv[])
 	std::make_shared<Listener>(
 		ioc,
 		cfg.listen_http(),
-		cfg.web_root(),
+		server,
 		nullptr
 	)->run();
 	std::make_shared<Listener>(
 		ioc,
 		cfg.listen_https(),
-		cfg.web_root(),
+		server,
 		&ctx
 	)->run();
 
@@ -79,9 +87,35 @@ int main(int argc, char *argv[])
 	v.reserve(threads - 1);
 	for (auto i = threads - 1; i > 0; --i)
 		v.emplace_back(
-			[&ioc]{ ioc.run(); }
+			[&ioc]
+			{ ioc.run(); }
 		);
 	ioc.run();
 	return EXIT_SUCCESS;
 }
 
+} // end of namespace
+
+int main(int argc, char *argv[])
+{
+	using namespace hrb;
+	try
+	{
+		return Main(argc, argv);
+	}
+	catch (Exception& e)
+	{
+		LOG(LOG_CRIT, "Uncaught boost::exception: %s", boost::diagnostic_information(e).c_str());
+		return EXIT_FAILURE;
+	}
+	catch (std::exception& e)
+	{
+		LOG(LOG_CRIT, "Uncaught std::exception: %s", e.what());
+		return EXIT_FAILURE;
+	}
+	catch (...)
+	{
+		LOG(LOG_CRIT, "Uncaught unknown exception");
+		return EXIT_FAILURE;
+	}
+}
