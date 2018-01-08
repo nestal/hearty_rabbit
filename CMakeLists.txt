@@ -15,6 +15,7 @@ set(VERSION "0.1")
 set(CONFIG_FILENAME "hearty_rabbit.json")
 
 include_directories(${Boost_INCLUDE_DIR} ${SYSTEMD_INCLUDE_DIRS} ${CMAKE_BINARY_DIR} ${PROJECT_SOURCE_DIR}/src)
+add_definitions(-D_GLIBCXX_USE_CXX11_ABI)
 
 # Post-processing
 configure_file(systemd/hearty_rabbit.service.in hearty_rabbit.service)
@@ -49,11 +50,11 @@ target_link_libraries(
 
 # Automatically run unit tests after the build
 add_custom_command(
-     TARGET unittest
-     COMMENT "Run unit tests"
-     POST_BUILD
-     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-     COMMAND unittest
+	TARGET unittest
+	COMMENT "Run unit tests"
+	POST_BUILD
+	WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+	COMMAND unittest
 )
 
 # Installation
