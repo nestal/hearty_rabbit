@@ -91,7 +91,12 @@ void Configuration::load_config(const std::string& path)
 	}
 	catch (std::ios_base::failure& e)
 	{
-		BOOST_THROW_EXCEPTION(FileError() << Path{config_path} << ErrorCode(e.code()));
+		BOOST_THROW_EXCEPTION(FileError()
+			<< Path{config_path}
+#if _GLIBCXX_USE_CXX11_ABI
+			<< ErrorCode(e.code())
+#endif
+		);
 	}
 
 	IStreamWrapper wrapper{config_file};
