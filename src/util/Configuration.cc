@@ -11,17 +11,19 @@
 //
 
 #include "Configuration.hh"
+#include "JsonHelper.hh"
+
 #include "config.hh"
 
 #include <boost/program_options.hpp>
 #include <boost/exception/info.hpp>
+#include <boost/exception/diagnostic_information.hpp>
 
 #include <rapidjson/document.h>
 #include <rapidjson/istreamwrapper.h>
 #include <rapidjson/error/en.h>
 
 #include <fstream>
-#include <iostream>
 
 namespace po = boost::program_options;
 
@@ -45,53 +47,79 @@ const po::options_description& the_desc()
 	return result;
 }
 
+boost::asio::ip::tcp::endpoint parse_endpoint(const rapidjson::Value& json)
+{
+	return {
+		boost::asio::ip::make_address(hrb::json::string(json["address"])),
+		static_cast<unsigned short>(json["port"].GetUint())
+	};
 }
+
+} // end of local namespace
 
 namespace hrb {
 
-Configuration::Configuration(int argc, char **argv, const char *env)
+Configuration::Configuration(int argc, const char *const *argv, const char *env)
 {
 	po::variables_map config;
 	store(po::parse_command_line(argc, argv, the_desc()), config);
 	po::notify(config);
 
-	auto config_path = boost::filesystem::path{config["cfg"].as<std::string>()};
-
-	using namespace rapidjson;
-	std::ifstream config_file{config_path.string()};
-	IStreamWrapper wrapper{config_file};
-
-	Document json;
-	if (json.ParseStream(wrapper).HasParseError())
-	{
-		BOOST_THROW_EXCEPTION(Error()
-			<< Path{config_path}
-			<< Offset{json.GetErrorOffset()}
-			<< Message{GetParseError_En(json.GetParseError())}
-		);
-	}
-
 	m_help = config.count("help") > 0;
 
 	// no need for other options when --help is specified
 	if (!m_help)
-	{
-		m_cert_chain    = json["cert_chain"].GetString();
-		m_private_key   = json["private_key"].GetString();
-		m_root          = json["web_root"].GetString();
-		m_server_name   = json["server_name"].GetString();
-
-		m_listen_http.address(boost::asio::ip::make_address(json["http"]["address"].GetString()));
-		m_listen_http.port(static_cast<unsigned short>(json["http"]["port"].GetUint()));
-
-		m_listen_https.address(boost::asio::ip::make_address(json["https"]["address"].GetString()));
-		m_listen_https.port(static_cast<unsigned short>(json["https"]["port"].GetUint()));
-	}
+		load_config(config["cfg"].as<std::string>());
 }
 
 void Configuration::usage(std::ostream &out)
 {
 	out << the_desc();
+}
+
+void Configuration::load_config(const std::string& path)
+{
+	try
+	{
+		using namespace rapidjson;
+		std::ifstream config_file;
+		config_file.open(path, std::ios::in);
+		if (!config_file)
+		{
+			BOOST_THROW_EXCEPTION(FileError()
+				<< ErrorCode({errno, std::system_category()})
+			);
+		}
+
+		IStreamWrapper wrapper{config_file};
+
+		Document json;
+		if (json.ParseStream(wrapper).HasParseError())
+		{
+			BOOST_THROW_EXCEPTION(Error()
+				<< Offset{json.GetErrorOffset()}
+				<< Message{GetParseError_En(json.GetParseError())}
+			);
+		}
+
+		using json::string;
+		m_cert_chain    = string(json["cert_chain"]);
+		m_private_key   = string(json["private_key"]);
+		m_root          = string(json["web_root"]);
+		m_server_name   = string(json["server_name"]);
+
+		m_listen_http  = parse_endpoint(json["http"]);
+		m_listen_https = parse_endpoint(json["https"]);
+	}
+	catch (Exception& e)
+	{
+		e << Path{path};
+		throw;
+	}
+	catch (std::exception& e)
+	{
+		throw boost::enable_error_info(e) << Path{path};
+	}
 }
 
 } // end of namespace
