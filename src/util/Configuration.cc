@@ -49,7 +49,7 @@ const po::options_description& the_desc()
 
 namespace hrb {
 
-Configuration::Configuration(int argc, char **argv, const char *env)
+Configuration::Configuration(int argc, const char *const *argv, const char *env)
 {
 	po::variables_map config;
 	store(po::parse_command_line(argc, argv, the_desc()), config);
@@ -72,7 +72,18 @@ void Configuration::load_config(const std::string& path)
 	auto config_path = boost::filesystem::path{path};
 
 	using namespace rapidjson;
-	std::ifstream config_file{config_path.string()};
+	std::ifstream config_file;
+	config_file.exceptions(config_file.exceptions() | std::ios::failbit);
+
+	try
+	{
+		config_file.open(config_path.string());
+	}
+	catch (std::ios_base::failure& e)
+	{
+		BOOST_THROW_EXCEPTION(FileError() << Path{config_path} << ErrorCode(e.code()));
+	}
+
 	IStreamWrapper wrapper{config_file};
 
 	Document json;
