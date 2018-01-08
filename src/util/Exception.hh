@@ -17,7 +17,10 @@
 
 namespace hrb {
 
-struct Exception : virtual boost::exception, virtual std::exception {};
+struct Exception : virtual boost::exception, virtual std::exception
+{
+	const char* what() const noexcept override ;
+};
 struct SystemError : virtual boost::exception, virtual std::system_error
 {
 	using system_error::system_error;
