@@ -16,8 +16,14 @@
 
 using namespace hrb;
 
-TEST_CASE( "Configuration", "[normal]" )
+TEST_CASE( "--help command line parsing", "[normal]" )
 {
-	Configuration cfg{0, nullptr, nullptr};
-	REQUIRE(cfg.server_name() == "");
+	const char *argv[] = {"hearty_rabbit", "--help"};
+	Configuration cfg{sizeof(argv)/sizeof(argv[1]), argv, nullptr};
+	REQUIRE(cfg.help());
+}
+
+TEST_CASE( "Configuration without command line argument", "[normal]" )
+{
+	REQUIRE_THROWS_AS(Configuration(0, nullptr, nullptr), Configuration::FileError);
 }

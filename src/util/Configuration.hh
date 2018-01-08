@@ -27,12 +27,14 @@ class Configuration
 {
 public:
 	struct Error : virtual Exception {};
-	using Path    = boost::error_info<struct tag_path,    boost::filesystem::path>;
-	using Message = boost::error_info<struct tag_message, std::string>;
-	using Offset  = boost::error_info<struct tag_offset,  std::size_t>;
+	struct FileError : virtual Error {};
+	using Path      = boost::error_info<struct tag_path,    boost::filesystem::path>;
+	using Message   = boost::error_info<struct tag_message, std::string>;
+	using Offset    = boost::error_info<struct tag_offset,  std::size_t>;
+	using ErrorCode = boost::error_info<struct tag_error_code,  std::error_code>;
 
 public:
-	Configuration(int argc, char **argv, const char *env);
+	Configuration(int argc, const char *const *argv, const char *env);
 
 	boost::asio::ip::tcp::endpoint listen_http() const { return m_listen_http;}
 	boost::asio::ip::tcp::endpoint listen_https() const { return m_listen_https;}

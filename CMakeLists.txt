@@ -16,8 +16,12 @@ set(CONFIG_FILENAME "hearty_rabbit.json")
 
 include_directories(${Boost_INCLUDE_DIR} ${SYSTEMD_INCLUDE_DIRS} ${CMAKE_BINARY_DIR} ${PROJECT_SOURCE_DIR}/src)
 
+# Post-processing
+configure_file(systemd/hearty_rabbit.service.in hearty_rabbit.service)
+configure_file(config.hh.in config.hh)
+
 file(GLOB LIB_SRC src/*/*.cc src/*/*.hh)
-add_library(hrblib ${LIB_SRC})
+add_library(hrblib ${LIB_SRC} ${CMAKE_CURRENT_BINARY_DIR}/config.hh)
 target_link_libraries(
 	hrblib
 	${Boost_LIBRARIES}
@@ -43,9 +47,14 @@ target_link_libraries(
 	hrblib
 )
 
-# Post-processing
-configure_file(systemd/hearty_rabbit.service.in hearty_rabbit.service)
-configure_file(config.hh.in config.hh)
+# Automatically run unit tests after the build
+add_custom_command(
+     TARGET unittest
+     COMMENT "Run unit tests"
+     POST_BUILD
+     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+     COMMAND unittest
+)
 
 # Installation
 install(TARGETS hearty_rabbit DESTINATION bin)
