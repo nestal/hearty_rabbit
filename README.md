@@ -18,17 +18,20 @@ It can be triggered by:
 
 	make -f automation/Makefile
 	
-To launch a build. The output RPM will be put in `/build/build/hearty-rabbit-0.1-9.el7.centos.x64_64.rpm`
-You can use `docker cp` to copy the RPM to target box.
+in the current source code directory to launch a build. The makefile assumes
+that the source code has been cloned in the current directory, and it will bind-mount
+the current directory to the container. The output RPM will be put in
+`/build/build/hearty-rabbit-0.1-9.el7.centos.x64_64.rpm`. You can use
+`docker cp` to copy the RPM to target box.
 
 ## Details About the Build Environment
 
 The [hearty_rabbit_dev](https://hub.docker.com/r/nestal/hearty_rabbit_dev/)
 image is base on latest [CentOS 7](https://hub.docker.com/_/centos/).
 [devtoolset-7](https://www.softwarecollections.org/en/scls/rhscl/devtoolset-7/),
-which contains [GCC 7.2.1](https://gcc.gnu.org/gcc-7/). In addition, the
-following libraries are included from official CentOS repository to build
-HeartyRabbit:
+which contains [GCC 7.2.1](https://gcc.gnu.org/gcc-7/), provides the whole tool
+chain that builds HeartyRabbit. In addition, the following libraries are included
+from official CentOS repository to build HeartyRabbit:
 
 - systemd-devel
 - RapidJSON
