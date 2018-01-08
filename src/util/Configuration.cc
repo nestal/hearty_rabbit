@@ -17,13 +17,13 @@
 
 #include <boost/program_options.hpp>
 #include <boost/exception/info.hpp>
+#include <boost/exception/diagnostic_information.hpp>
 
 #include <rapidjson/document.h>
 #include <rapidjson/istreamwrapper.h>
 #include <rapidjson/error/en.h>
 
 #include <fstream>
-#include <iostream>
 
 namespace po = boost::program_options;
 
@@ -79,46 +79,47 @@ void Configuration::usage(std::ostream &out)
 
 void Configuration::load_config(const std::string& path)
 {
-	auto config_path = boost::filesystem::path{path};
-
-	using namespace rapidjson;
-	std::ifstream config_file;
-	config_file.exceptions(config_file.exceptions() | std::ios::failbit);
-
 	try
 	{
-		config_file.open(config_path.string());
+		using namespace rapidjson;
+		std::ifstream config_file;
+		config_file.open(path, std::ios::in);
+		if (!config_file)
+		{
+			BOOST_THROW_EXCEPTION(FileError()
+				<< ErrorCode({errno, std::system_category()})
+			);
+		}
+
+		IStreamWrapper wrapper{config_file};
+
+		Document json;
+		if (json.ParseStream(wrapper).HasParseError())
+		{
+			BOOST_THROW_EXCEPTION(Error()
+				<< Offset{json.GetErrorOffset()}
+				<< Message{GetParseError_En(json.GetParseError())}
+			);
+		}
+
+		using json::string;
+		m_cert_chain    = string(json["cert_chain"]);
+		m_private_key   = string(json["private_key"]);
+		m_root          = string(json["web_root"]);
+		m_server_name   = string(json["server_name"]);
+
+		m_listen_http  = parse_endpoint(json["http"]);
+		m_listen_https = parse_endpoint(json["https"]);
 	}
-	catch (std::ios_base::failure& e)
+	catch (Exception& e)
 	{
-		BOOST_THROW_EXCEPTION(FileError()
-			<< Path{config_path}
-#if _GLIBCXX_USE_CXX11_ABI
-			<< ErrorCode(e.code())
-#endif
-		);
+		e << Path{path};
+		throw;
 	}
-
-	IStreamWrapper wrapper{config_file};
-
-	Document json;
-	if (json.ParseStream(wrapper).HasParseError())
+	catch (std::exception& e)
 	{
-		BOOST_THROW_EXCEPTION(Error()
-			<< Path{config_path}
-			<< Offset{json.GetErrorOffset()}
-			<< Message{GetParseError_En(json.GetParseError())}
-		);
+		throw boost::enable_error_info(e) << Path{path};
 	}
-
-	using json::string;
-	m_cert_chain    = string(json["cert_chain"]);
-	m_private_key   = string(json["private_key"]);
-	m_root          = string(json["web_root"]);
-	m_server_name   = string(json["server_name"]);
-
-	m_listen_http  = parse_endpoint(json["http"]);
-	m_listen_https = parse_endpoint(json["https"]);
 }
 
 } // end of namespace

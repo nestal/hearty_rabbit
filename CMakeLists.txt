@@ -15,7 +15,6 @@ set(VERSION "0.1")
 set(CONFIG_FILENAME "hearty_rabbit.json")
 
 include_directories(${Boost_INCLUDE_DIR} ${SYSTEMD_INCLUDE_DIRS} ${CMAKE_BINARY_DIR} ${PROJECT_SOURCE_DIR}/src)
-add_definitions(-D_GLIBCXX_USE_CXX11_ABI=1)
 
 # Post-processing
 configure_file(systemd/hearty_rabbit.service.in hearty_rabbit.service)
