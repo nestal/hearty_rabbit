@@ -50,6 +50,7 @@ public:
 private:
 	void load_config(const std::string& path);
 
+
 private:
 	bool m_help{false};
 
