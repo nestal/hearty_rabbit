@@ -16,12 +16,13 @@ set(CONFIG_FILENAME "hearty_rabbit.json")
 
 include_directories(${Boost_INCLUDE_DIR} ${SYSTEMD_INCLUDE_DIRS} ${CMAKE_BINARY_DIR} ${PROJECT_SOURCE_DIR}/src)
 
-file(GLOB LIB_SRC src/*/*.cc src/*/*.hh)
-add_library(hrblib ${LIB_SRC})
+# Post-processing
+configure_file(systemd/hearty_rabbit.service.in hearty_rabbit.service)
+configure_file(config.hh.in config.hh)
 
-add_executable(hearty_rabbit src/main.cc)
+file(GLOB LIB_SRC src/*/*.cc src/*/*.hh)
+add_library(hrblib ${LIB_SRC} ${CMAKE_CURRENT_BINARY_DIR}/config.hh)
 target_link_libraries(
-	hearty_rabbit
 	hrblib
 	${Boost_LIBRARIES}
 	OpenSSL::SSL
@@ -30,9 +31,30 @@ target_link_libraries(
 	${CMAKE_THREAD_LIBS_INIT}
 )
 
-# Post-processing
-configure_file(systemd/hearty_rabbit.service.in hearty_rabbit.service)
-configure_file(config.hh.in config.hh)
+# Main executable
+add_executable(hearty_rabbit src/main.cc)
+target_link_libraries(
+	hearty_rabbit
+	hrblib
+)
+
+# Unit tests
+file(GLOB UNITTEST_SRC unittest/tests/unittest.cc unittest/tests/*/*.cc unittest/tests/*/*.hh)
+add_executable(unittest ${UNITTEST_SRC})
+target_include_directories(unittest PRIVATE unittest/Catch2/single_include)
+target_link_libraries(
+	unittest
+	hrblib
+)
+
+# Automatically run unit tests after the build
+add_custom_command(
+	TARGET unittest
+	COMMENT "Run unit tests"
+	POST_BUILD
+	WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+	COMMAND unittest
+)
 
 # Installation
 install(TARGETS hearty_rabbit DESTINATION bin)
