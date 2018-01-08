@@ -11,6 +11,8 @@
 //
 
 #include "Configuration.hh"
+#include "JsonHelper.hh"
+
 #include "config.hh"
 
 #include <boost/program_options.hpp>
@@ -45,7 +47,15 @@ const po::options_description& the_desc()
 	return result;
 }
 
+boost::asio::ip::tcp::endpoint parse_endpoint(const rapidjson::Value& json)
+{
+	return {
+		boost::asio::ip::make_address(hrb::json::string(json["address"])),
+		static_cast<unsigned short>(json["port"].GetUint())
+	};
 }
+
+} // end of local namespace
 
 namespace hrb {
 
@@ -96,16 +106,14 @@ void Configuration::load_config(const std::string& path)
 		);
 	}
 
-	m_cert_chain    = json["cert_chain"].GetString();
-	m_private_key   = json["private_key"].GetString();
-	m_root          = json["web_root"].GetString();
-	m_server_name   = json["server_name"].GetString();
+	using json::string;
+	m_cert_chain    = string(json["cert_chain"]);
+	m_private_key   = string(json["private_key"]);
+	m_root          = string(json["web_root"]);
+	m_server_name   = string(json["server_name"]);
 
-	m_listen_http.address(boost::asio::ip::make_address(json["http"]["address"].GetString()));
-	m_listen_http.port(static_cast<unsigned short>(json["http"]["port"].GetUint()));
-
-	m_listen_https.address(boost::asio::ip::make_address(json["https"]["address"].GetString()));
-	m_listen_https.port(static_cast<unsigned short>(json["https"]["port"].GetUint()));
+	m_listen_http  = parse_endpoint(json["http"]);
+	m_listen_https = parse_endpoint(json["https"]);
 }
 
 } // end of namespace
