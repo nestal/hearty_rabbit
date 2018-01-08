@@ -12,11 +12,26 @@
 
 #include "JsonHelper.hh"
 
+#include <boost/exception/info.hpp>
+#include <boost/throw_exception.hpp>
+
 namespace hrb {
 namespace json {
 
+const rapidjson::Value& field(const rapidjson::Value& object, std::string_view field)
+{
+	auto it = object.FindMember(rapidjson::Value().SetString(field.data(), field.size()));
+	if (it == object.MemberEnd())
+		BOOST_THROW_EXCEPTION(Error() << MissingField{std::string{field}});
+
+	return it->value;
+}
+
 std::string_view string_view(const rapidjson::Value& value)
 {
+	if (!value.IsString())
+		BOOST_THROW_EXCEPTION(NotString());
+
 	return {value.GetString(), value.GetStringLength()};
 }
 

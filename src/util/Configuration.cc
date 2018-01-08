@@ -102,14 +102,14 @@ void Configuration::load_config(const std::string& path)
 			);
 		}
 
-		using json::string;
-		m_cert_chain    = string(json["cert_chain"]);
-		m_private_key   = string(json["private_key"]);
-		m_root          = string(json["web_root"]);
-		m_server_name   = string(json["server_name"]);
+		using namespace json;
+		m_cert_chain    = string(field(json, "cert_chain"));
+		m_private_key   = string(field(json, "private_key"));
+		m_root          = string(field(json, "web_root"));
+		m_server_name   = string(field(json, "server_name"));
 
-		m_listen_http  = parse_endpoint(json["http"]);
-		m_listen_https = parse_endpoint(json["https"]);
+		m_listen_http  = parse_endpoint(field(json, "http"));
+		m_listen_https = parse_endpoint(field(json, "https"));
 	}
 	catch (Exception& e)
 	{

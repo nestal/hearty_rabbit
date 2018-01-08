@@ -12,7 +12,10 @@
 
 #pragma once
 
+#include "Exception.hh"
+
 #include <rapidjson/document.h>
+#include <boost/exception/error_info.hpp>
 
 #include <string_view>
 #include <string>
@@ -20,7 +23,12 @@
 namespace hrb {
 namespace json {
 
+struct Error : virtual Exception {};
+struct NotString : virtual Error {};
+using MissingField = boost::error_info<struct tag_missing_field, std::string>;
+
 std::string_view string_view(const rapidjson::Value& value);
 std::string string(const rapidjson::Value& value);
+const rapidjson::Value& field(const rapidjson::Value& object, std::string_view field);
 
 }} // end of namespace
