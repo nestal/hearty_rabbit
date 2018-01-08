@@ -18,16 +18,29 @@ include_directories(${Boost_INCLUDE_DIR} ${SYSTEMD_INCLUDE_DIRS} ${CMAKE_BINARY_
 
 file(GLOB LIB_SRC src/*/*.cc src/*/*.hh)
 add_library(hrblib ${LIB_SRC})
-
-add_executable(hearty_rabbit src/main.cc)
 target_link_libraries(
-	hearty_rabbit
 	hrblib
 	${Boost_LIBRARIES}
 	OpenSSL::SSL
 	OpenSSL::Crypto
 	${SYSTEMD_LIBRARIES}
 	${CMAKE_THREAD_LIBS_INIT}
+)
+
+# Main executable
+add_executable(hearty_rabbit src/main.cc)
+target_link_libraries(
+	hearty_rabbit
+	hrblib
+)
+
+# Unit tests
+file(GLOB UNITTEST_SRC unittest/tests/unittest.cc unittest/tests/*/*.cc unittest/tests/*/*.hh)
+add_executable(unittest ${UNITTEST_SRC})
+target_include_directories(unittest PRIVATE unittest/Catch2/single_include)
+target_link_libraries(
+	unittest
+	hrblib
 )
 
 # Post-processing
