@@ -15,7 +15,6 @@
 #include "Exception.hh"
 
 #include <rapidjson/document.h>
-#include <boost/exception/error_info.hpp>
 
 #include <string_view>
 #include <string>
