@@ -88,11 +88,9 @@ public:
 		if (req.method() == http::verb::head)
 		{
 			http::response<http::empty_body> res{http::status::ok, req.version()};
-			res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
 			res.set(http::field::content_type, mime);
 			res.content_length(body.size());
-			res.keep_alive(req.keep_alive());
-			return send(std::move(res));
+			return send(set_common_fields(req, res));
 		}
 
 		if (req.target() == "/index.html")
@@ -121,16 +119,13 @@ public:
 			    std::make_tuple(std::move(file)),
 			    std::make_tuple(http::status::ok, req.version())
 			};
-//			res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
 			res.set(http::field::content_type, mime);
 			res.content_length(file_size);
-//			res.keep_alive(req.keep_alive());
 			return send(set_common_fields(req, res));
 		}
 
 		// Respond to GET request
 		http::response<http::string_body> res{http::status::ok, req.version()};
-//		res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
 		res.set(http::field::content_type, mime);
 		res.content_length(body.size());
 		res.body() = std::move(body);
@@ -159,9 +154,7 @@ private:
 	)
 	{
 		http::response<http::string_body> res{http::status::bad_request, req.version()};
-//		res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
 		res.set(http::field::content_type, "text/html");
-//		res.keep_alive(req.keep_alive());
 		res.body() = why.to_string();
 		res.prepare_payload();
 		return set_common_fields(req, res);
@@ -175,9 +168,7 @@ private:
 	)
 	{
 		http::response<http::string_body> res{http::status::not_found, req.version()};
-//		res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
 		res.set(http::field::content_type, "text/html");
-//		res.keep_alive(req.keep_alive());
 		res.body() = "The resource '" + target.to_string() + "' was not found.";
 		res.prepare_payload();
 		return set_common_fields(req, res);
@@ -190,9 +181,7 @@ private:
 	)
 	{
 		http::response<http::string_body> res{http::status::internal_server_error, req.version()};
-//		res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
 		res.set(http::field::content_type, "text/html");
-//		res.keep_alive(req.keep_alive());
 		res.body() = "An error occurred: '" + what.to_string() + "'";
 		res.prepare_payload();
 		return set_common_fields(req, res);
