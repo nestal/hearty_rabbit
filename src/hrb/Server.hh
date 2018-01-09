@@ -81,6 +81,11 @@ public:
 		    req.target().find("..") != boost::beast::string_view::npos)
 			return send(bad_request(req, "Illegal request-target"));
 
+//		std::cout << "Host = " << req.at("Host") << std::endl;
+
+//		if (req.at("Host") != m_cfg.server_name())
+//			return send(not_found(req, req.target()));
+
 		std::string mime = "text/html";
 		std::string body = "Hello world!";
 
