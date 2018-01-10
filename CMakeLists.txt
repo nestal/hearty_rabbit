@@ -57,13 +57,15 @@ add_custom_command(
 	COMMAND unittest
 )
 
-add_executable(test_redis unittest/test_redis.cc)
-target_link_libraries(
-	test_redis
-	${Boost_LIBRARIES}
-	${HIREDIS_LIBRARIES}
-	${CMAKE_THREAD_LIBS_INIT}
-)
+if (HIREDIS_FOUND)
+	add_executable(test_redis unittest/test_redis.cc)
+	target_link_libraries(
+		test_redis
+		${Boost_LIBRARIES}
+		${HIREDIS_LIBRARIES}
+		${CMAKE_THREAD_LIBS_INIT}
+	)
+endif()
 
 # Installation
 install(TARGETS hearty_rabbit DESTINATION bin)
