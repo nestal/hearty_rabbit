@@ -46,32 +46,23 @@ private:
 		std::cout << "OnAddRead()" << pthis->m_read.native_handle() << " " << pthis->m_ctx->c.fd << std::endl;
 
 		if (!pthis->m_read.is_open())
-		{
-			pthis->m_read.assign(boost::asio::ip::tcp::v4(), pthis->m_ctx->c.fd);
 			pthis->DoRead();
-		}
 	}
 	void DoRead()
 	{
+		m_read.assign(boost::asio::ip::tcp::v4(), m_ctx->c.fd);
 		m_read.async_wait(boost::asio::socket_base::wait_read, [this](auto&& ec)
 		{
-			OnRead(ec);
+			// release socket before calling redisAsyncHandleRead() because it may close the socket
+			m_read.release();
+			redisAsyncHandleRead(m_ctx);
 		});
-	}
-	void OnRead(const boost::system::error_code& ec)
-	{
-		m_read.release();
-		redisAsyncHandleRead(m_ctx);
-
-//		if (!ec)
-//			DoRead();
 	}
 	static void OnDelRead(void *pvthis)
 	{
 		std::cout << "OnDelRead()" << std::endl;
 
 		auto pthis = reinterpret_cast<RedisDriver*>(pvthis);
-
 		if (pthis->m_read.is_open())
 		{
 			boost::system::error_code ec;
@@ -85,25 +76,16 @@ private:
 
 		std::cout << "OnAddWrite()" << pthis->m_write.native_handle() << " " << pthis->m_ctx->c.fd << std::endl;
 		if (!pthis->m_write.is_open())
-		{
-			pthis->m_write.assign(boost::asio::ip::tcp::v4(), pthis->m_ctx->c.fd);
 			pthis->DoWrite();
-		}
 	}
 	void DoWrite()
 	{
+		m_write.assign(boost::asio::ip::tcp::v4(), m_ctx->c.fd);
 		m_write.async_wait(boost::asio::socket_base::wait_write, [this](auto&& ec)
 		{
-			OnWrite(ec);
+			m_write.release();
+			redisAsyncHandleWrite(m_ctx);
 		});
-	}
-	void OnWrite(const boost::system::error_code& ec)
-	{
-		m_write.release();
-		redisAsyncHandleWrite(m_ctx);
-
-//		if (!ec)
-//			DoWrite();
 	}
 	static void OnDelWrite(void *pvthis)
 	{
