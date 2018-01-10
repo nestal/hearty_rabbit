@@ -42,10 +42,7 @@ public:
 private:
 	static void OnAddRead(void *pvthis)
 	{
-		auto pthis = reinterpret_cast<RedisDriver*>(pvthis);
-		std::cout << "OnAddRead()" << pthis->m_read.native_handle() << " " << pthis->m_ctx->c.fd << std::endl;
-
-		if (!pthis->m_read.is_open())
+		if (auto pthis = reinterpret_cast<RedisDriver*>(pvthis); !pthis->m_read.is_open())
 			pthis->DoRead();
 	}
 	void DoRead()
@@ -60,10 +57,7 @@ private:
 	}
 	static void OnDelRead(void *pvthis)
 	{
-		std::cout << "OnDelRead()" << std::endl;
-
-		auto pthis = reinterpret_cast<RedisDriver*>(pvthis);
-		if (pthis->m_read.is_open())
+		if (auto pthis = reinterpret_cast<RedisDriver*>(pvthis); pthis->m_read.is_open())
 		{
 			boost::system::error_code ec;
 			pthis->m_read.cancel(ec);
@@ -72,10 +66,7 @@ private:
 	}
 	static void OnAddWrite(void *pvthis)
 	{
-		auto pthis = reinterpret_cast<RedisDriver*>(pvthis);
-
-		std::cout << "OnAddWrite()" << pthis->m_write.native_handle() << " " << pthis->m_ctx->c.fd << std::endl;
-		if (!pthis->m_write.is_open())
+		if (auto pthis = reinterpret_cast<RedisDriver*>(pvthis); !pthis->m_write.is_open())
 			pthis->DoWrite();
 	}
 	void DoWrite()
@@ -89,10 +80,7 @@ private:
 	}
 	static void OnDelWrite(void *pvthis)
 	{
-		auto pthis = reinterpret_cast<RedisDriver*>(pvthis);
-		std::cout << "OnDelWrite()" << pthis->m_write.native_handle() << std::endl;
-
-		if (pthis->m_write.is_open())
+		if (auto pthis = reinterpret_cast<RedisDriver*>(pvthis); pthis->m_write.is_open())
 		{
 			boost::system::error_code ec;
 			pthis->m_write.cancel(ec);
