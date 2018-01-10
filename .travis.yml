@@ -18,5 +18,5 @@ deploy:
   repository: hearty_rabbit
   token: $PACKAGECLOUD_TOKEN
   dist: "el/7"
-  package_glob: "*.rpm"
+  package_glob: "docker-build-release/*.rpm"
   skip_cleanup: true
