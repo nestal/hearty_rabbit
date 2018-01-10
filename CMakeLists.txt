@@ -2,13 +2,14 @@ cmake_minimum_required(VERSION 3.6)
 project(hearty_rabbit)
 
 set(Boost_USE_STATIC_LIBS  ON)
-find_package(Boost COMPONENTS system filesystem program_options REQUIRED)
+find_package(Boost REQUIRED COMPONENTS system filesystem program_options)
 find_package(Threads REQUIRED)
 find_package(PkgConfig REQUIRED)
 find_package(OpenSSL REQUIRED)
 
 pkg_check_modules(SYSTEMD libsystemd)
 pkg_check_modules(RapidJSON REQUIRED RapidJSON)
+pkg_check_modules(HIREDIS hiredis)
 
 set(CMAKE_CXX_STANDARD 17)
 set(VERSION "0.1")
@@ -54,6 +55,14 @@ add_custom_command(
 	POST_BUILD
 	WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
 	COMMAND unittest
+)
+
+add_executable(test_redis unittest/test_redis.cc)
+target_link_libraries(
+	test_redis
+	${Boost_LIBRARIES}
+	${HIREDIS_LIBRARIES}
+	${CMAKE_THREAD_LIBS_INIT}
 )
 
 # Installation
