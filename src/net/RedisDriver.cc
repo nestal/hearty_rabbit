@@ -68,6 +68,10 @@ RedisDriver::RedisDriver(boost::asio::io_context& bic) :
 		(pthis->m_ctx->ev.delRead)(pvthis);
 		(pthis->m_ctx->ev.delWrite)(pvthis);
 	};
+	::redisAsyncSetDisconnectCallback(m_ctx, [](const redisAsyncContext *ctx, int status)
+	{
+
+	});
 }
 
 RedisDriver::~RedisDriver()
