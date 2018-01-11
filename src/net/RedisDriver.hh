@@ -38,19 +38,14 @@ public:
 	}
 
 private:
-	static void OnAddRead(void *pvthis);
-	void DoRead();
-	static void OnDelRead(void *pvthis);
-	static void OnAddWrite(void *pvthis);
-	void DoWrite();
-	static void OnDelWrite(void *pvthis);
-	static void OnCleanUp(void *pvthis);
+	void do_read();
+	void do_write();
 
 private:
 	boost::asio::io_context& m_bic;
 	boost::asio::ip::tcp::socket m_read, m_write;
 
-	redisAsyncContext       *m_ctx{redisAsyncConnect("localhost", 6379)};
+	redisAsyncContext *m_ctx{redisAsyncConnect("localhost", 6379)};
 };
 
 } // end of namespace
