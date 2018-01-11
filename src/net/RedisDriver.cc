@@ -10,7 +10,10 @@
 // Created by nestal on 1/11/18.
 //
 
+#include <hiredis/async.h>
 #include "RedisDriver.hh"
+
+#include <cassert>
 
 namespace hrb {
 
@@ -21,12 +24,50 @@ RedisDriver::RedisDriver(boost::asio::io_context& bic) :
 {
 	assert(m_ctx);
 
-	m_ctx->ev.data = this;
-	m_ctx->ev.addRead = RedisDriver::OnAddRead;
-	m_ctx->ev.delRead = RedisDriver::OnDelRead;
-	m_ctx->ev.addWrite = RedisDriver::OnAddWrite;
-	m_ctx->ev.delWrite = RedisDriver::OnDelWrite;
-	m_ctx->ev.cleanup = RedisDriver::OnCleanUp;
+	m_ctx->ev.data    = this;
+	m_ctx->ev.addRead = [](void *pvthis)
+	{
+		assert(pvthis);
+		auto pthis = static_cast<RedisDriver*>(pvthis);
+		if (!pthis->m_read.is_open())
+			pthis->do_read();
+	};
+	m_ctx->ev.delRead = [](void *pvthis)
+	{
+		assert(pvthis);
+		auto pthis = static_cast<RedisDriver*>(pvthis);
+		if (pthis->m_read.is_open())
+		{
+			boost::system::error_code ec;
+			pthis->m_read.cancel(ec);
+			pthis->m_read.release();
+		}
+	};
+	m_ctx->ev.addWrite = [](void *pvthis)
+	{
+		assert(pvthis);
+		auto pthis = static_cast<RedisDriver*>(pvthis);
+		if (!pthis->m_write.is_open())
+			pthis->do_write();
+	};
+	m_ctx->ev.delWrite = [](void *pvthis)
+	{
+		assert(pvthis);
+		auto pthis = static_cast<RedisDriver*>(pvthis);
+		if (pthis->m_write.is_open())
+		{
+			boost::system::error_code ec;
+			pthis->m_write.cancel(ec);
+			pthis->m_write.release();
+		}
+	};
+	m_ctx->ev.cleanup = [](void *pvthis)
+	{
+		assert(pvthis);
+		auto pthis = static_cast<RedisDriver*>(pvthis);
+		(pthis->m_ctx->ev.delRead)(pvthis);
+		(pthis->m_ctx->ev.delWrite)(pvthis);
+	};
 }
 
 RedisDriver::~RedisDriver()
@@ -34,12 +75,7 @@ RedisDriver::~RedisDriver()
 	redisAsyncFree(m_ctx);
 }
 
-void RedisDriver::OnAddRead(void *pvthis)
-{
-	if (auto pthis = reinterpret_cast<RedisDriver*>(pvthis); !pthis->m_read.is_open())
-		pthis->DoRead();
-}
-void RedisDriver::DoRead()
+void RedisDriver::do_read()
 {
 	m_read.assign(boost::asio::ip::tcp::v4(), m_ctx->c.fd);
 	m_read.async_wait(boost::asio::socket_base::wait_read, [this](auto&& ec)
@@ -50,22 +86,7 @@ void RedisDriver::DoRead()
 	});
 }
 
-void RedisDriver::OnDelRead(void *pvthis)
-{
-	if (auto pthis = reinterpret_cast<RedisDriver*>(pvthis); pthis->m_read.is_open())
-	{
-		boost::system::error_code ec;
-		pthis->m_read.cancel(ec);
-		pthis->m_read.release();
-	}
-}
-
-void RedisDriver::OnAddWrite(void *pvthis)
-{
-	if (auto pthis = reinterpret_cast<RedisDriver*>(pvthis); !pthis->m_write.is_open())
-		pthis->DoWrite();
-}
-void RedisDriver::DoWrite()
+void RedisDriver::do_write()
 {
 	m_write.assign(boost::asio::ip::tcp::v4(), m_ctx->c.fd);
 	m_write.async_wait(boost::asio::socket_base::wait_write, [this](auto&& ec)
@@ -75,22 +96,4 @@ void RedisDriver::DoWrite()
 	});
 }
 
-void RedisDriver::OnDelWrite(void *pvthis)
-{
-	if (auto pthis = reinterpret_cast<RedisDriver*>(pvthis); pthis->m_write.is_open())
-	{
-		boost::system::error_code ec;
-		pthis->m_write.cancel(ec);
-		pthis->m_write.release();
-	}
-}
-
-void RedisDriver::OnCleanUp(void *pvthis)
-{
-	OnDelRead(pvthis);
-	OnDelWrite(pvthis);
-}
-
-
-
-}
+} // end of namespace
