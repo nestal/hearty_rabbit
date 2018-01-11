@@ -34,9 +34,23 @@ public:
 		m_ctx->ev.delWrite = RedisDriver::OnDelWrite;
 		m_ctx->ev.cleanup = RedisDriver::OnCleanUp;
 	}
+
 	~RedisDriver()
 	{
 		redisAsyncFree(m_ctx);
+	}
+
+	template <typename Callback>
+	void command(const std::string& command, Callback&& callback)
+	{
+		using CallbackType = std::remove_reference_t<Callback>;
+
+		auto callback_ptr = std::make_unique<CallbackType>(std::forward<Callback>(callback));
+		::redisAsyncCommand(m_ctx, [](redisAsyncContext *, void *reply, void *pv_callback)
+		{
+			std::unique_ptr<CallbackType> callback{static_cast<CallbackType*>(reply)};
+			(*callback)(static_cast<redisReply*>(reply));
+		}, callback_ptr.release(), command.c_str());
 	}
 
 private:
@@ -97,16 +111,8 @@ private:
 	boost::asio::io_context& m_bic;
 	boost::asio::ip::tcp::socket m_read, m_write;
 
-public:
 	redisAsyncContext       *m_ctx{redisAsyncConnect("localhost", 6379)};
 };
-
-void get_callback(redisAsyncContext *, void * r, void *)
-{
-    redisReply * reply = static_cast<redisReply *>(r);
-    if (reply)
-	    std::cout << "key: " << std::string_view{reply->str, (unsigned)reply->len} << std::endl;
-}
 
 int main()
 {
@@ -114,8 +120,12 @@ int main()
 
 	RedisDriver redis{ic};
 
-	redisAsyncCommand(redis.m_ctx, nullptr, nullptr, "SET key 100");
-	redisAsyncCommand(redis.m_ctx, get_callback, nullptr, "GET key");
+	redis.command("SET key 100", [](auto) {});
+	redis.command("GET key", [](auto reply)
+	{
+	    if (reply)
+		    std::cout << "key: " << std::string_view{reply->str, (unsigned)reply->len} << std::endl;
+	});
 
 	ic.run();
 
