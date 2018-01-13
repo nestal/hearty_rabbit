@@ -23,6 +23,7 @@ int main()
 {
 	boost::asio::io_context ic;
 
+	std::cout << "main thread: " << std::this_thread::get_id() << std::endl;
 	hrb::RedisDriver redis{ic};
 
 	redis.command("SET key 100", [](auto) {});

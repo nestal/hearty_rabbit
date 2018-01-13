@@ -16,6 +16,10 @@
 #include <hiredis/hiredis.h>
 #include <hiredis/async.h>
 
+#include "util/Backtrace.hh"
+
+#include <iostream>
+
 namespace hrb {
 
 class RedisDriver
@@ -34,6 +38,10 @@ public:
 		{
 			std::unique_ptr<CallbackType> callback{static_cast<CallbackType*>(reply)};
 			(*callback)(static_cast<redisReply*>(reply));
+
+			Backtrace bt;
+			std::cout << "in call back: " << bt << " " << std::this_thread::get_id() << std::endl;
+
 		}, callback_ptr.release(), command.c_str());
 	}
 
