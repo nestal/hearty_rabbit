@@ -17,15 +17,14 @@
 #include <hiredis/async.h>
 
 #include "util/Backtrace.hh"
-
-#include <iostream>
+#include <string>
 
 namespace hrb {
 
 class RedisDriver
 {
 public:
-	explicit RedisDriver(boost::asio::io_context& bic);
+	explicit RedisDriver(boost::asio::io_context& bic, const std::string& host, unsigned short port);
 	~RedisDriver();
 
 	template <typename Callback>
@@ -36,16 +35,14 @@ public:
 		auto callback_ptr = std::make_unique<CallbackType>(std::forward<Callback>(callback));
 		::redisAsyncCommand(m_ctx, [](redisAsyncContext *, void *reply, void *pv_callback)
 		{
-			std::unique_ptr<CallbackType> callback{static_cast<CallbackType*>(reply)};
+			std::unique_ptr<CallbackType> callback{static_cast<CallbackType*>(pv_callback)};
 			(*callback)(static_cast<redisReply*>(reply));
-
-			Backtrace bt;
-			std::cout << "in call back: " << bt << " " << std::this_thread::get_id() << std::endl;
-
 		}, callback_ptr.release(), command.c_str());
 	}
 
 private:
+	static redisAsyncContext* connect(const std::string& host, unsigned short port);
+
 	void do_read();
 	void do_write();
 
@@ -53,7 +50,7 @@ private:
 	boost::asio::io_context& m_bic;
 	boost::asio::ip::tcp::socket m_read, m_write;
 
-	redisAsyncContext *m_ctx{redisAsyncConnect("localhost", 6379)};
+	redisAsyncContext *m_ctx{};
 };
 
 } // end of namespace
