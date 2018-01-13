@@ -14,13 +14,15 @@
 #include "RedisDriver.hh"
 
 #include <cassert>
+#include <iostream>
 
 namespace hrb {
 
-RedisDriver::RedisDriver(boost::asio::io_context& bic) :
+RedisDriver::RedisDriver(boost::asio::io_context& bic, const std::string& host, unsigned short port) :
 	m_bic{bic},
 	m_read{m_bic},
-	m_write{m_bic}
+	m_write{m_bic},
+	m_ctx{connect(host, port)}
 {
 	assert(m_ctx);
 
@@ -70,7 +72,7 @@ RedisDriver::RedisDriver(boost::asio::io_context& bic) :
 	};
 	::redisAsyncSetDisconnectCallback(m_ctx, [](const redisAsyncContext *ctx, int status)
 	{
-
+		std::cout << "error???" << ctx->errstr << std::endl;
 	});
 }
 
@@ -98,6 +100,15 @@ void RedisDriver::do_write()
 		m_write.release();
 		redisAsyncHandleWrite(m_ctx);
 	});
+}
+
+redisAsyncContext* RedisDriver::connect(const std::string& host, unsigned short port)
+{
+	auto ctx = redisAsyncConnect(host.c_str(), port);
+	std::cout << "connect " << ctx->errstr << std::endl;
+	if (ctx->err)
+		throw std::runtime_error(ctx->errstr);
+	return ctx;
 }
 
 } // end of namespace
