@@ -18,7 +18,6 @@
 
 #include "util/Backtrace.hh"
 #include <string>
-#include <iostream>
 
 namespace hrb {
 
@@ -28,8 +27,8 @@ public:
 	explicit RedisDriver(boost::asio::io_context& bic, const std::string& host, unsigned short port);
 	~RedisDriver();
 
-	template <typename Callback>
-	void command(const std::string& command, Callback&& callback)
+	template <typename Callback, typename... Args>
+	void command(Callback&& callback, const char *fmt, Args... args)
 	{
 		using CallbackType = std::remove_reference_t<Callback>;
 
@@ -38,9 +37,7 @@ public:
 		{
 			std::unique_ptr<CallbackType> callback{static_cast<CallbackType*>(pv_callback)};
 			(*callback)(static_cast<redisReply*>(reply));
-		}, callback_ptr.release(), command.c_str());
-
-		std::cout << "command return " << r << " " << m_ctx->errstr << std::endl;
+		}, callback_ptr.release(), fmt, args...);
 	}
 
 private:

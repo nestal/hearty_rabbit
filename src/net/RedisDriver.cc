@@ -73,13 +73,13 @@ RedisDriver::RedisDriver(boost::asio::io_context& bic, const std::string& host, 
 	};
 	::redisAsyncSetConnectCallback(m_ctx, [](const redisAsyncContext *ctx, int status)
 	{
-		Backtrace bt;
-		std::cout << bt << std::endl;
-		abort();
+		if (ctx->err)
+			throw std::runtime_error(ctx->errstr);
 	});
 	::redisAsyncSetDisconnectCallback(m_ctx, [](const redisAsyncContext *ctx, int status)
 	{
-		std::cout << "error???" << ctx->errstr << std::endl;
+		if (ctx->err)
+			throw std::runtime_error(ctx->errstr);
 	});
 }
 
@@ -112,7 +112,6 @@ void RedisDriver::do_write()
 redisAsyncContext* RedisDriver::connect(const std::string& host, unsigned short port)
 {
 	auto ctx = redisAsyncConnect(host.c_str(), port);
-	std::cout << "connect " << ctx->errstr << std::endl;
 	if (ctx->err)
 		throw std::runtime_error(ctx->errstr);
 	return ctx;
