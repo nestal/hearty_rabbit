@@ -12,10 +12,13 @@
 
 
 #include "RedisDriver.hh"
+
 #include "util/Backtrace.hh"
 
+#include <boost/exception/info.hpp>
+#include <boost/exception/errinfo_api_function.hpp>
+
 #include <cassert>
-#include <iostream>
 
 namespace hrb {
 
@@ -74,18 +77,19 @@ RedisDriver::RedisDriver(boost::asio::io_context& bic, const std::string& host, 
 	::redisAsyncSetConnectCallback(m_ctx, [](const redisAsyncContext *ctx, int status)
 	{
 		if (ctx->err)
-			throw std::runtime_error(ctx->errstr);
+			BOOST_THROW_EXCEPTION(Error() << ErrorMsg(ctx->errstr));
 	});
 	::redisAsyncSetDisconnectCallback(m_ctx, [](const redisAsyncContext *ctx, int status)
 	{
 		if (ctx->err)
-			throw std::runtime_error(ctx->errstr);
+			BOOST_THROW_EXCEPTION(Error() << ErrorMsg(ctx->errstr));
 	});
 }
 
 RedisDriver::~RedisDriver()
 {
-	redisAsyncFree(m_ctx);
+	assert(m_ctx);
+	::redisAsyncFree(m_ctx);
 }
 
 void RedisDriver::do_read()
@@ -95,7 +99,7 @@ void RedisDriver::do_read()
 	{
 		// release socket before calling redisAsyncHandleRead() because it may close the socket
 		m_read.release();
-		redisAsyncHandleRead(m_ctx);
+		::redisAsyncHandleRead(m_ctx);
 	});
 }
 
@@ -105,15 +109,18 @@ void RedisDriver::do_write()
 	m_write.async_wait(boost::asio::socket_base::wait_write, [this](auto&& ec)
 	{
 		m_write.release();
-		redisAsyncHandleWrite(m_ctx);
+		::redisAsyncHandleWrite(m_ctx);
 	});
 }
 
 redisAsyncContext* RedisDriver::connect(const std::string& host, unsigned short port)
 {
-	auto ctx = redisAsyncConnect(host.c_str(), port);
+	auto ctx = ::redisAsyncConnect(host.c_str(), port);
 	if (ctx->err)
-		throw std::runtime_error(ctx->errstr);
+		BOOST_THROW_EXCEPTION(Error()
+			<< ErrorMsg(ctx->errstr)
+			<< boost::errinfo_api_function("redisAsyncConnect")
+		);
 	return ctx;
 }
 
