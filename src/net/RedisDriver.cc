@@ -60,8 +60,6 @@ RedisDriver::RedisDriver(boost::asio::io_context& bic, const std::string& host, 
 	});
 	::redisAsyncSetDisconnectCallback(m_ctx, [](const redisAsyncContext *ctx, int status)
 	{
-		std::cout << "disconnected context " << ctx << " " << status << std::endl;
-
 		if (ctx->err)
 			BOOST_THROW_EXCEPTION(Error() << ErrorMsg(ctx->errstr));
 
@@ -72,8 +70,8 @@ RedisDriver::RedisDriver(boost::asio::io_context& bic, const std::string& host, 
 
 RedisDriver::~RedisDriver()
 {
-//	if (m_ctx)
-//		::redisAsyncDisconnect(m_ctx);
+	if (m_ctx)
+		::redisAsyncDisconnect(m_ctx);
 }
 
 void RedisDriver::do_read()
