@@ -12,8 +12,8 @@
 
 #pragma once
 
-#define SYSTEMD_FOUND %SYSTEMD_FOUND%
-#define LIBUNWIND_FOUND %UNWIND_FOUND%
+#cmakedefine SYSTEMD_FOUND
+#cmakedefine LIBUNWIND_FOUND
 
 #include <string_view>
 

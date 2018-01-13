@@ -9,8 +9,8 @@ find_package(OpenSSL REQUIRED)
 
 pkg_check_modules(SYSTEMD libsystemd)
 pkg_check_modules(RapidJSON REQUIRED RapidJSON)
-pkg_check_modules(HIREDIS hiredis)
-pkg_check_modules(UNWIND libunwind)
+pkg_check_modules(HIREDIS REQUIRED hiredis)
+pkg_check_modules(LIBUNWIND libunwind)
 
 set(CMAKE_CXX_STANDARD 17)
 set(VERSION "0.1")
@@ -20,7 +20,7 @@ include_directories(
 	${Boost_INCLUDE_DIR}
 	${SYSTEMD_INCLUDE_DIRS}
 	${HIREDIS_INCLUDE_DIRS}
-	${UNWIND_INCLUDE_DIRS}
+	${LIBUNWIND_INCLUDE_DIRS}
 	${CMAKE_BINARY_DIR}
 	${PROJECT_SOURCE_DIR}/src
 )
@@ -37,7 +37,7 @@ target_link_libraries(
 	${HIREDIS_LIBRARIES}
 	OpenSSL::SSL
 	OpenSSL::Crypto
-	${UNWIND_LIBRARIES}
+	${LIBUNWIND_LIBRARIES}
 	${SYSTEMD_LIBRARIES}
 	${CMAKE_THREAD_LIBS_INIT}
 )
@@ -66,14 +66,6 @@ add_custom_command(
 	WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
 	COMMAND unittest
 )
-
-if (HIREDIS_FOUND)
-	add_executable(test_redis unittest/test_redis.cc)
-	target_link_libraries(
-		test_redis
-		hrblib
-	)
-endif()
 
 # Installation
 install(TARGETS hearty_rabbit DESTINATION bin)

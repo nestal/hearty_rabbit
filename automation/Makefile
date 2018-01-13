@@ -6,5 +6,6 @@ docker-build:
 		-e "BUILD_NUMBER=$(BUILD_NUMBER)" \
 		--mount type=bind,source=$(shell pwd),target=/build/hearty_rabbit,readonly \
 		--mount type=bind,source=$(shell pwd)/docker-build-release,target=/build/docker-build \
+		--net=host \
 		--rm \
 		nestal/hearty_rabbit_dev

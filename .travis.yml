@@ -4,6 +4,7 @@ env:
 language: c++
 services:
   - docker
+  - redis-server
 
 before_install:
   - docker pull nestal/hearty_rabbit_dev
