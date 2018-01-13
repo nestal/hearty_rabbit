@@ -14,7 +14,7 @@
 
 #include <boost/core/demangle.hpp>
 
-#ifndef LBUNWIND_FOUND
+#ifndef LIBUNWIND_FOUND
 #include <execinfo.h>
 #endif
 

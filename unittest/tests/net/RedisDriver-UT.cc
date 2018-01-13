@@ -7,23 +7,20 @@
 */
 
 //
-// Created by nestal on 1/10/18.
+// Created by nestal on 1/13/18.
 //
 
+#include <catch.hpp>
 
 #include "net/RedisDriver.hh"
 
 #include <boost/asio/io_context.hpp>
-
-#include <iostream>
 #include <cassert>
+#include <iostream>
 
-
-int main()
+TEST_CASE("simple redis", "[normal]")
 {
 	boost::asio::io_context ic;
-
-	std::cout << "main thread: " << std::this_thread::get_id() << std::endl;
 	hrb::RedisDriver redis{ic, "localhost", 6379};
 
 	redis.command([](auto) {}, "SET key %d", 100);
@@ -36,6 +33,4 @@ int main()
 	}, "GET key");
 
 	ic.run();
-
-	return 0;
 }
