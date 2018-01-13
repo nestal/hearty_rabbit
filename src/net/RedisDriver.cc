@@ -79,25 +79,25 @@ RedisDriver::~RedisDriver()
 
 void RedisDriver::run()
 {
-	if (m_request_read && !m_reading)
+	if (m_request_read && !m_reading && m_ctx)
 	{
 		m_reading = true;
 		m_socket.async_wait(boost::asio::socket_base::wait_read, [this](auto&& ec)
 		{
 			m_reading = false;
-			if (!ec)
+			if (!ec && m_ctx)
 				::redisAsyncHandleRead(m_ctx);
 			if (!ec || ec == boost::system::errc::operation_would_block)
 				run();
 		});
 	}
-	if (m_request_write && !m_writing)
+	if (m_request_write && !m_writing && m_ctx)
 	{
 		m_writing = true;
 		m_socket.async_wait(boost::asio::socket_base::wait_write, [this](auto&& ec)
 		{
 			m_writing = false;
-			if (!ec)
+			if (!ec && m_ctx)
 				::redisAsyncHandleWrite(m_ctx);
 			if (!ec || ec == boost::system::errc::operation_would_block)
 				run();
@@ -119,6 +119,7 @@ redisAsyncContext* RedisDriver::connect(const std::string& host, unsigned short 
 void RedisDriver::disconnect()
 {
 	::redisAsyncDisconnect(m_ctx);
+	m_ctx = nullptr;
 }
 
 } // end of namespace
