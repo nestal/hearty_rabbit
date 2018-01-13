@@ -31,15 +31,16 @@ TEST_CASE("simple redis", "[normal]")
 
 		std::string_view reply_str{reply->str, (unsigned)reply->len};
 		REQUIRE(reply_str == "100");
-	}, "GET key");
-	redis.command([&redis](auto reply)
-	{
-	    REQUIRE(reply);
-		REQUIRE(reply->type == REDIS_REPLY_INTEGER);
-		REQUIRE(reply->integer == 1);
 
-		redis.disconnect();
-	}, "DEL key");
+		redis.command([&redis](auto reply)
+		{
+		    REQUIRE(reply);
+			REQUIRE(reply->type == REDIS_REPLY_INTEGER);
+			REQUIRE(reply->integer == 1);
+
+			redis.disconnect();
+		}, "DEL key");
+	}, "GET key");
 
 	ic.run();
 }
