@@ -27,10 +27,12 @@ int main()
 	hrb::RedisDriver redis{ic, "localhost", 6379};
 
 	redis.command([](auto) {}, "SET key %d", 100);
-	redis.command([](auto reply)
+	redis.command([&redis](auto reply)
 	{
 	    if (reply)
 		    std::cout << "key: " << std::string_view{reply->str, (unsigned)reply->len} << std::endl;
+
+		redis.disconnect();
 	}, "GET key");
 
 	ic.run();

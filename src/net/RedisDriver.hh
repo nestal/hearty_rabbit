@@ -45,11 +45,15 @@ public:
 		}, callback_ptr.release(), fmt, args...);
 	}
 
+	void disconnect();
+
 private:
 	static redisAsyncContext* connect(const std::string& host, unsigned short port);
 
 	void do_read();
 	void do_write();
+	static void del_read(void *pvthis);
+	static void del_write(void *pvthis);
 
 private:
 	boost::asio::io_context& m_bic;

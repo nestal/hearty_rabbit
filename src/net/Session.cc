@@ -74,9 +74,9 @@ void Session::do_read()
 
 	// Read a request
 	if (m_stream)
-		boost::beast::http::async_read(*m_stream, m_buffer, m_req, std::move(executor));
+		async_read(*m_stream, m_buffer, m_req, std::move(executor));
 	else
-		boost::beast::http::async_read(m_socket, m_buffer, m_req, std::move(executor));
+		async_read(m_socket, m_buffer, m_req, std::move(executor));
 }
 
 void Session::on_read(boost::system::error_code ec, std::size_t)
@@ -106,9 +106,9 @@ void Session::on_read(boost::system::error_code ec, std::size_t)
 
 		// Write the response
 		if (m_stream)
-			boost::beast::http::async_write(*m_stream, *sp, std::move(executor));
+			async_write(*m_stream, *sp, std::move(executor));
 		else
-			boost::beast::http::async_write(m_socket, *sp, std::move(executor));
+			async_write(m_socket, *sp, std::move(executor));
 	};
 
 	if (m_stream)
