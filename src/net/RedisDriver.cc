@@ -17,6 +17,7 @@
 
 #include <boost/exception/info.hpp>
 #include <boost/exception/errinfo_api_function.hpp>
+#include <boost/system/error_code.hpp>
 
 #include <cassert>
 #include <iostream>
@@ -25,39 +26,41 @@ namespace hrb {
 
 RedisDriver::RedisDriver(boost::asio::io_context& bic, const std::string& host, unsigned short port) :
 	m_bic{bic},
-	m_read{m_bic},
-	m_write{m_bic},
+	m_socket{m_bic},
 	m_ctx{connect(host, port)}
 {
 	assert(m_ctx);
+
+	m_socket.assign(boost::asio::ip::tcp::v4(), m_ctx->c.fd);
 
 	m_ctx->ev.data    = this;
 	m_ctx->ev.addRead = [](void *pvthis)
 	{
 		assert(pvthis);
 		auto pthis = static_cast<RedisDriver*>(pvthis);
-		if (!pthis->m_read.is_open())
-			pthis->do_read();
+		pthis->m_request_read = true;
+		pthis->run();
 	};
-	m_ctx->ev.delRead = RedisDriver::del_read;
+	m_ctx->ev.delRead = [](void *pvthis)
+	{
+		static_cast<RedisDriver*>(pvthis)->m_request_read = false;
+	};
 	m_ctx->ev.addWrite = [](void *pvthis)
 	{
 		assert(pvthis);
 		auto pthis = static_cast<RedisDriver*>(pvthis);
-		if (!pthis->m_write.is_open())
-			pthis->do_write();
+		pthis->m_request_write = true;
+		pthis->run();
 	};
-	m_ctx->ev.delWrite = RedisDriver::del_write;
+	m_ctx->ev.delWrite = [](void *pvthis)
+	{
+		static_cast<RedisDriver*>(pvthis)->m_request_write = false;
+	};
 	m_ctx->ev.cleanup = [](void *pvthis)
 	{
-		RedisDriver::del_read(pvthis);
-		RedisDriver::del_write(pvthis);
+		auto pthis = static_cast<RedisDriver*>(pvthis);
+		pthis->m_socket.release();
 	};
-	::redisAsyncSetConnectCallback(m_ctx, [](const redisAsyncContext *ctx, int status)
-	{
-		if (ctx->err)
-			BOOST_THROW_EXCEPTION(Error() << ErrorMsg(ctx->errstr));
-	});
 	::redisAsyncSetDisconnectCallback(m_ctx, [](const redisAsyncContext *ctx, int status)
 	{
 		if (ctx->err)
@@ -74,31 +77,32 @@ RedisDriver::~RedisDriver()
 		::redisAsyncDisconnect(m_ctx);
 }
 
-void RedisDriver::do_read()
+void RedisDriver::run()
 {
-	m_read.assign(boost::asio::ip::tcp::v4(), m_ctx->c.fd);
-	m_read.async_wait(boost::asio::socket_base::wait_read, [this](auto&& ec)
+	if (m_request_read && !m_reading)
 	{
-		// release socket before calling redisAsyncHandleRead() because it may close the socket
-		if (!ec)
-			m_read.release();
-
-		if (m_ctx)
-			::redisAsyncHandleRead(m_ctx);
-	});
-}
-
-void RedisDriver::do_write()
-{
-	m_write.assign(boost::asio::ip::tcp::v4(), m_ctx->c.fd);
-	m_write.async_wait(boost::asio::socket_base::wait_write, [this](auto&& ec)
+		m_reading = true;
+		m_socket.async_wait(boost::asio::socket_base::wait_read, [this](auto&& ec)
+		{
+			m_reading = false;
+			if (!ec)
+				::redisAsyncHandleRead(m_ctx);
+			if (!ec || ec == boost::system::errc::operation_would_block)
+				run();
+		});
+	}
+	if (m_request_write && !m_writing)
 	{
-		if (!ec)
-			m_write.release();
-
-		if (m_ctx)
-			::redisAsyncHandleWrite(m_ctx);
-	});
+		m_writing = true;
+		m_socket.async_wait(boost::asio::socket_base::wait_write, [this](auto&& ec)
+		{
+			m_writing = false;
+			if (!ec)
+				::redisAsyncHandleWrite(m_ctx);
+			if (!ec || ec == boost::system::errc::operation_would_block)
+				run();
+		});
+	}
 }
 
 redisAsyncContext* RedisDriver::connect(const std::string& host, unsigned short port)
@@ -115,30 +119,6 @@ redisAsyncContext* RedisDriver::connect(const std::string& host, unsigned short 
 void RedisDriver::disconnect()
 {
 	::redisAsyncDisconnect(m_ctx);
-}
-
-void RedisDriver::del_read(void *pvthis)
-{
-	assert(pvthis);
-	auto pthis = static_cast<RedisDriver*>(pvthis);
-	if (pthis->m_read.is_open())
-	{
-		boost::system::error_code ec;
-		pthis->m_read.cancel(ec);
-		pthis->m_read.release();
-	}
-}
-
-void RedisDriver::del_write(void *pvthis)
-{
-	assert(pvthis);
-	auto pthis = static_cast<RedisDriver*>(pvthis);
-	if (pthis->m_write.is_open())
-	{
-		boost::system::error_code ec;
-		pthis->m_write.cancel(ec);
-		pthis->m_write.release();
-	}
 }
 
 } // end of namespace

@@ -22,6 +22,7 @@
 
 namespace hrb {
 
+// Copied from: https://github.com/ryangraham/hiredis-boostasio-adapter/blob/master/boostasio.cpp
 class RedisDriver
 {
 public:
@@ -50,16 +51,19 @@ public:
 private:
 	static redisAsyncContext* connect(const std::string& host, unsigned short port);
 
+	void run();
+
 	void do_read();
 	void do_write();
-	static void del_read(void *pvthis);
-	static void del_write(void *pvthis);
 
 private:
 	boost::asio::io_context& m_bic;
-	boost::asio::ip::tcp::socket m_read, m_write;
+	boost::asio::ip::tcp::socket m_socket;
 
 	redisAsyncContext *m_ctx{};
+
+	bool m_reading{false},      m_writing{false};
+	bool m_request_read{false}, m_request_write{false};
 };
 
 } // end of namespace
