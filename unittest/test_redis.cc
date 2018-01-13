@@ -26,12 +26,12 @@ int main()
 	std::cout << "main thread: " << std::this_thread::get_id() << std::endl;
 	hrb::RedisDriver redis{ic, "localhost", 6379};
 
-	redis.command("SET key 100", [](auto) {});
-	redis.command("GET key", [](auto reply)
+	redis.command([](auto) {}, "SET key %d", 100);
+	redis.command([](auto reply)
 	{
 	    if (reply)
 		    std::cout << "key: " << std::string_view{reply->str, (unsigned)reply->len} << std::endl;
-	});
+	}, "GET key");
 
 	ic.run();
 
