@@ -12,17 +12,22 @@
 
 #pragma once
 
+#include "util/Exception.hh"
+
 #include <boost/asio.hpp>
 #include <hiredis/hiredis.h>
 #include <hiredis/async.h>
 
-#include "util/Backtrace.hh"
 #include <string>
 
 namespace hrb {
 
 class RedisDriver
 {
+public:
+	struct Error : virtual Exception {};
+	using ErrorMsg = boost::error_info<struct tag_error_msg, std::string>;
+
 public:
 	explicit RedisDriver(boost::asio::io_context& bic, const std::string& host, unsigned short port);
 	~RedisDriver();
