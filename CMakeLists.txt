@@ -10,12 +10,20 @@ find_package(OpenSSL REQUIRED)
 pkg_check_modules(SYSTEMD libsystemd)
 pkg_check_modules(RapidJSON REQUIRED RapidJSON)
 pkg_check_modules(HIREDIS hiredis)
+pkg_check_modules(UNWIND libunwind)
 
 set(CMAKE_CXX_STANDARD 17)
 set(VERSION "0.1")
 set(CONFIG_FILENAME "hearty_rabbit.json")
 
-include_directories(${Boost_INCLUDE_DIR} ${SYSTEMD_INCLUDE_DIRS} ${CMAKE_BINARY_DIR} ${PROJECT_SOURCE_DIR}/src)
+include_directories(
+	${Boost_INCLUDE_DIR}
+	${SYSTEMD_INCLUDE_DIRS}
+	${HIREDIS_INCLUDE_DIRS}
+	${UNWIND_INCLUDE_DIRS}
+	${CMAKE_BINARY_DIR}
+	${PROJECT_SOURCE_DIR}/src
+)
 
 # Post-processing
 configure_file(systemd/hearty_rabbit.service.in hearty_rabbit.service)
@@ -29,6 +37,7 @@ target_link_libraries(
 	${HIREDIS_LIBRARIES}
 	OpenSSL::SSL
 	OpenSSL::Crypto
+	${UNWIND_LIBRARIES}
 	${SYSTEMD_LIBRARIES}
 	${CMAKE_THREAD_LIBS_INIT}
 )

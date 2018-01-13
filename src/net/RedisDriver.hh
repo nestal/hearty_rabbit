@@ -18,6 +18,7 @@
 
 #include "util/Backtrace.hh"
 #include <string>
+#include <iostream>
 
 namespace hrb {
 
@@ -33,11 +34,13 @@ public:
 		using CallbackType = std::remove_reference_t<Callback>;
 
 		auto callback_ptr = std::make_unique<CallbackType>(std::forward<Callback>(callback));
-		::redisAsyncCommand(m_ctx, [](redisAsyncContext *, void *reply, void *pv_callback)
+		auto r = ::redisAsyncCommand(m_ctx, [](redisAsyncContext *, void *reply, void *pv_callback)
 		{
 			std::unique_ptr<CallbackType> callback{static_cast<CallbackType*>(pv_callback)};
 			(*callback)(static_cast<redisReply*>(reply));
 		}, callback_ptr.release(), command.c_str());
+
+		std::cout << "command return " << r << " " << m_ctx->errstr << std::endl;
 	}
 
 private:
