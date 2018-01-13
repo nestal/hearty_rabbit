@@ -53,9 +53,6 @@ private:
 
 	void run();
 
-	void do_read();
-	void do_write();
-
 private:
 	boost::asio::io_context& m_bic;
 	boost::asio::ip::tcp::socket m_socket;
