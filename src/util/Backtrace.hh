@@ -12,6 +12,13 @@
 
 #pragma once
 
+#include "config.hh"
+
+#ifdef LIBUNWIND_FOUND
+#define UNW_LOCAL_ONLY
+#include <libunwind.h>
+#endif
+
 #include <array>
 #include <iosfwd>
 
@@ -27,8 +34,12 @@ public:
 	friend std::ostream& operator<<(std::ostream& os, const Backtrace& bs);
 
 private:
+#ifdef LIBUNWIND_FOUND
+	unw_context_t m_uctx;
+#else
 	std::array<void*, 100> m_stack;
 	int m_count{0};
+#endif
 };
 
 } // end of namespace
