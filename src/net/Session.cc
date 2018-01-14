@@ -107,7 +107,7 @@ void Session::handle_https(const EndPoint& peer, Request&& req, Send&& send)
 			http::response<http::empty_body> res{http::status::ok, req.version()};
 	//		res.set(http::field::content_type, mime);
 	//		res.content_length(body.size());
-			return send(m_server.set_common_fields(req, res));
+			return send(m_server.set_common_fields(req, std::move(res)));
 		}
 
 		return m_server.handle_https(peer, std::move(req), std::move(send));

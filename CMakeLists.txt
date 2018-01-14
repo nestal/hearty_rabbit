@@ -71,7 +71,7 @@ add_custom_command(
 install(TARGETS hearty_rabbit DESTINATION bin)
 install(FILES ${CMAKE_BINARY_DIR}/hearty_rabbit.service DESTINATION etc/systemd/system)
 install(FILES etc/${CONFIG_FILENAME} DESTINATION etc)
-install(DIRECTORY lib DESTINATION lib/hearty_rabbit)
+install(DIRECTORY lib/ DESTINATION lib)
 
 set(CPACK_PACKAGE_VERSION ${VERSION})
 set(CPACK_GENERATOR "RPM")
