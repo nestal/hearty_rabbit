@@ -64,28 +64,8 @@ public:
 		Send&& send
 	)
 	{
-		Log(LOG_INFO, "request %1% from %2%", req.target(), peer);
-
-		// Make sure we can handle the method
-		if (req.method() != http::verb::get &&
-		    req.method() != http::verb::head)
-			return send(bad_request(req, "Unknown HTTP-method"));
-
-		// Request path must be absolute and not contain "..".
-		if (req.target().empty() ||
-		    req.target()[0] != '/' ||
-		    req.target().find("..") != boost::beast::string_view::npos)
-			return send(bad_request(req, "Illegal request-target"));
-
-//		std::cout << "Host = " << req.at("Host") << std::endl;
-
-//		if (req.at("Host") != m_cfg.server_name())
-//			return send(not_found(req, req.target()));
-
 		std::string mime = "text/html";
 		std::string body = "Hello world!";
-
-
 
 		// Respond to HEAD request
 		if (req.method() == http::verb::head)
@@ -100,67 +80,36 @@ public:
 //			return send(set_common_fields(req, get_blob(req)));
 
 		else if (req.target() == "/index.html")
-		{
-			auto path = (m_cfg.web_root() / req.target().to_string()).string();
-			Log(LOG_NOTICE, "requesting path %1%", path);
+			return send(file_request(req));
 
-		    // Attempt to open the file
-		    boost::beast::error_code ec;
-		    http::file_body::value_type file;
-		    file.open(path.c_str(), boost::beast::file_mode::scan, ec);
-
-			// Handle the case where the file doesn't exist
-			if(ec == boost::system::errc::no_such_file_or_directory)
-				return send(not_found(req, req.target()));
-
-			// Handle an unknown error
-			if(ec)
-				return send(server_error(req, ec.message()));
-			    // Respond to GET request
-
-			auto file_size = file.size();
-
-			http::response<http::file_body> res{
-			    std::piecewise_construct,
-			    std::make_tuple(std::move(file)),
-			    std::make_tuple(http::status::ok, req.version())
-			};
-			res.set(http::field::content_type, mime);
-			res.content_length(file_size);
-			return send(set_common_fields(req, res));
-		}
-
-		// Respond to GET request
-		http::response<http::string_body> res{http::status::ok, req.version()};
-		res.set(http::field::content_type, mime);
-		res.content_length(body.size());
-		res.body() = std::move(body);
-		return send(set_common_fields(req, res));
+		return send(hello_world(req));
 	}
 
-private:
-	static http::response<http::empty_body> redirect(boost::beast::string_view where, unsigned version);
+	http::response<http::file_body> file_request(const Request& req);
+	http::response<http::string_body> hello_world(const Request& req);
+
+	// Returns a bad request response
+	http::response<http::string_body> bad_request(const Request& req, boost::beast::string_view why);
+
+	// Returns a not found response
+	http::response<http::string_body> not_found(const Request& req, boost::beast::string_view target);
+
+	http::response<http::string_body> server_error(const Request& req, boost::beast::string_view what);
+
+	http::response<http::empty_body> redirect(boost::beast::string_view where, unsigned version);
 
 	http::response<http::string_body> get_blob(http::request<http::string_body>&& req);
 
-	template<class ReqBody, class ReqAllocator, class ResBody, class ResAllocator>
+	template<class Body, class Allocator>
 	static auto&& set_common_fields(
-		const http::request<ReqBody, http::basic_fields<ReqAllocator>>& req,
-		http::response<ResBody, http::basic_fields<ResAllocator>>& res
+		const Request& req,
+		http::response<Body, http::basic_fields<Allocator>>& res
 	)
 	{
 		res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
 		res.keep_alive(req.keep_alive());
 		return std::move(res);
 	}
-
-	// Returns a bad request response
-	static http::response<http::string_body> bad_request(const Request& req, boost::beast::string_view why);
-
-	// Returns a not found response
-	static http::response<http::string_body> not_found(const Request& req, boost::beast::string_view target);
-
-	static http::response<http::string_body> server_error(const Request& req, boost::beast::string_view what);
 
 private:
 	const Configuration& m_cfg;

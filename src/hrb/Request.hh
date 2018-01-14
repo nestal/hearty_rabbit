@@ -22,5 +22,6 @@ using tcp = boost::asio::ip::tcp;       // from <boost/asio/ip/tcp.hpp>
 namespace http = boost::beast::http;    // from <boost/beast/http.hpp>
 
 using Request = http::request<http::string_body>;
+using EndPoint = boost::asio::ip::tcp::endpoint;
 
 }
