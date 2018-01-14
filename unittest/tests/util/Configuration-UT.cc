@@ -19,6 +19,10 @@
 using namespace hrb;
 
 namespace {
+
+// Put all test data (i.e. the configuration files in this test) in the same directory as
+// the source code, and use __FILE__ macro to find the test data.
+// Expect __FILE__ to give the absolute path so the unit test can be run in any directory.
 const boost::filesystem::path current_src = boost::filesystem::path{__FILE__}.parent_path();
 }
 
@@ -65,4 +69,13 @@ TEST_CASE( "Bad web root", "[error]" )
 
 	const char *argv[] = {"hearty_rabbit", "--cfg", error_json.c_str()};
 	REQUIRE_THROWS_AS(Configuration(sizeof(argv)/sizeof(argv[1]), argv, nullptr), json::NotString);
+}
+
+TEST_CASE( "Web root is .", "[normal]" )
+{
+	auto dot_json = (current_src / "web_root_is_dot.json").string();
+
+	const char *argv[] = {"hearty_rabbit", "--cfg", dot_json.c_str()};
+	Configuration subject{sizeof(argv)/sizeof(argv[1]), argv, nullptr};
+	REQUIRE(subject.web_root() == current_src / ".");
 }
