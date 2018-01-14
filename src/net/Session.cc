@@ -74,10 +74,48 @@ void Session::do_read()
 
 	// Read a request
 	if (m_stream)
-		boost::beast::http::async_read(*m_stream, m_buffer, m_req, std::move(executor));
+		async_read(*m_stream, m_buffer, m_req, std::move(executor));
 	else
-		boost::beast::http::async_read(m_socket, m_buffer, m_req, std::move(executor));
+		async_read(m_socket, m_buffer, m_req, std::move(executor));
 }
+
+// This function produces an HTTP response for the given
+// request. The type of the response object depends on the
+// contents of the request, so the interface requires the
+// caller to pass a generic lambda for receiving the response.
+template<class Send>
+void Session::handle_https(const EndPoint& peer, Request&& req, Send&& send)
+{
+	try
+	{
+		Log(LOG_INFO, "request %1% from %2%", req.target(), peer);
+
+		// Make sure we can handle the method
+		if (req.method() != http::verb::get &&
+		    req.method() != http::verb::head)
+			return send(m_server.bad_request(req, "Unknown HTTP-method"));
+
+		// Request path must be absolute and not contain "..".
+		if (req.target().empty() ||
+		    req.target()[0] != '/' ||
+		    req.target().find("..") != boost::beast::string_view::npos)
+			return send(m_server.bad_request(req, "Illegal request-target"));
+
+		return m_server.handle_https(peer, std::move(req), std::move(send));
+	}
+	catch (std::system_error& e)
+	{
+		auto ec = e.code();
+		// Handle the case where the file doesn't exist
+		if( ec == std::errc::no_such_file_or_directory)
+			return send(m_server.not_found(req, req.target()));
+
+		// Handle an unknown error
+		if(ec)
+			return send(m_server.server_error(req, ec.message()));
+	}
+}
+
 
 void Session::on_read(boost::system::error_code ec, std::size_t)
 {
@@ -106,15 +144,15 @@ void Session::on_read(boost::system::error_code ec, std::size_t)
 
 		// Write the response
 		if (m_stream)
-			boost::beast::http::async_write(*m_stream, *sp, std::move(executor));
+			async_write(*m_stream, *sp, std::move(executor));
 		else
-			boost::beast::http::async_write(m_socket, *sp, std::move(executor));
+			async_write(m_socket, *sp, std::move(executor));
 	};
 
 	if (m_stream)
-		m_server.handle_https(m_socket.remote_endpoint(ec), std::move(m_req), std::move(sender));
+		handle_https(m_socket.remote_endpoint(ec), std::move(m_req), std::move(sender));
 	else
-		m_server.handle_http(m_socket.remote_endpoint(ec), std::move(m_req), std::move(sender));
+		sender(m_server.redirect_http(m_req));
 
 	if (ec)
 		Log(LOG_WARNING, "remote_endpoint() error: %1%", ec);

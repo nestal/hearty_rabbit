@@ -2,31 +2,57 @@ cmake_minimum_required(VERSION 3.6)
 project(hearty_rabbit)
 
 set(Boost_USE_STATIC_LIBS  ON)
-find_package(Boost COMPONENTS system filesystem program_options REQUIRED)
+find_package(Boost REQUIRED COMPONENTS system filesystem program_options)
 find_package(Threads REQUIRED)
 find_package(PkgConfig REQUIRED)
 find_package(OpenSSL REQUIRED)
 
 pkg_check_modules(SYSTEMD libsystemd)
 pkg_check_modules(RapidJSON REQUIRED RapidJSON)
+pkg_check_modules(HIREDIS REQUIRED hiredis)
+pkg_check_modules(LIBUNWIND libunwind)
 
 set(CMAKE_CXX_STANDARD 17)
 set(VERSION "0.1")
 set(CONFIG_FILENAME "hearty_rabbit.json")
 
-include_directories(${Boost_INCLUDE_DIR} ${SYSTEMD_INCLUDE_DIRS} ${CMAKE_BINARY_DIR} ${PROJECT_SOURCE_DIR}/src)
+include_directories(
+	${Boost_INCLUDE_DIR}
+	${SYSTEMD_INCLUDE_DIRS}
+	${HIREDIS_INCLUDE_DIRS}
+	${LIBUNWIND_INCLUDE_DIRS}
+	${CMAKE_BINARY_DIR}
+	${PROJECT_SOURCE_DIR}/src
+)
 
 # Post-processing
 configure_file(systemd/hearty_rabbit.service.in hearty_rabbit.service)
 configure_file(config.hh.in config.hh)
 
+# Static files served by HTTP
+file(GLOB STATIC_RESOURCES lib/*)
+message(STATUS ${STATIC_RESOURCES})
+
+# Generate a list of static files
+set(WEB_RESOURCE_LIST "${CMAKE_CURRENT_BINARY_DIR}/WebResources.hh")
+file(REMOVE ${WEB_RESOURCE_LIST})
+file(APPEND ${WEB_RESOURCE_LIST} "#include <string>\n#include <unordered_set>\nnamespace hrb {\nconst std::unordered_set<std::string> web_resources = {\n")
+foreach(fullpath ${STATIC_RESOURCES})
+	get_filename_component(FILENAME_WO_DIR ${fullpath} NAME)
+    file(APPEND ${WEB_RESOURCE_LIST} "\t\"${FILENAME_WO_DIR}\",\n")
+endforeach(fullpath)
+file(APPEND ${WEB_RESOURCE_LIST} "};\n}")
+
+# Put all source code in a library for unit test
 file(GLOB LIB_SRC src/*/*.cc src/*/*.hh)
 add_library(hrblib ${LIB_SRC} ${CMAKE_CURRENT_BINARY_DIR}/config.hh)
 target_link_libraries(
 	hrblib
 	${Boost_LIBRARIES}
+	${HIREDIS_LIBRARIES}
 	OpenSSL::SSL
 	OpenSSL::Crypto
+	${LIBUNWIND_LIBRARIES}
 	${SYSTEMD_LIBRARIES}
 	${CMAKE_THREAD_LIBS_INIT}
 )
@@ -48,6 +74,9 @@ target_link_libraries(
 )
 
 # Automatically run unit tests after the build
+# Although we specific the ${CMAKE_BINARY_DIR} as the current directory when running unit tests,
+# the test cases should not use absolute path when referring to test data. The test cases
+# must not assume the location of ${CMAKE_BINARY_DIR} relative to the source code.
 add_custom_command(
 	TARGET unittest
 	COMMENT "Run unit tests"
@@ -60,7 +89,7 @@ add_custom_command(
 install(TARGETS hearty_rabbit DESTINATION bin)
 install(FILES ${CMAKE_BINARY_DIR}/hearty_rabbit.service DESTINATION etc/systemd/system)
 install(FILES etc/${CONFIG_FILENAME} DESTINATION etc)
-install(DIRECTORY lib DESTINATION lib/hearty_rabbit)
+install(DIRECTORY lib/ DESTINATION lib)
 
 set(CPACK_PACKAGE_VERSION ${VERSION})
 set(CPACK_GENERATOR "RPM")

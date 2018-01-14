@@ -48,7 +48,7 @@ public:
 	static void usage(std::ostream& out);
 
 private:
-	void load_config(const std::string& path);
+	void load_config(const boost::filesystem::path& path);
 
 
 private:

@@ -18,6 +18,7 @@
 #include <boost/program_options.hpp>
 #include <boost/exception/info.hpp>
 #include <boost/exception/diagnostic_information.hpp>
+#include <boost/filesystem.hpp>
 
 #include <rapidjson/document.h>
 #include <rapidjson/istreamwrapper.h>
@@ -77,13 +78,13 @@ void Configuration::usage(std::ostream &out)
 	out << the_desc();
 }
 
-void Configuration::load_config(const std::string& path)
+void Configuration::load_config(const boost::filesystem::path& path)
 {
 	try
 	{
 		using namespace rapidjson;
 		std::ifstream config_file;
-		config_file.open(path, std::ios::in);
+		config_file.open(path.string(), std::ios::in);
 		if (!config_file)
 		{
 			BOOST_THROW_EXCEPTION(FileError()
@@ -105,7 +106,7 @@ void Configuration::load_config(const std::string& path)
 		using namespace json;
 		m_cert_chain    = string(field(json, "cert_chain"));
 		m_private_key   = string(field(json, "private_key"));
-		m_root          = string(field(json, "web_root"));
+		m_root          = absolute(string(field(json, "web_root")), path.parent_path()).lexically_normal();
 		m_server_name   = string(field(json, "server_name"));
 
 		m_listen_http  = parse_endpoint(field(json, "http"));

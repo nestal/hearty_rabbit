@@ -28,8 +28,9 @@ void drop_privileges()
 	// drop privileges if run as root
 	if (::getuid() == 0)
 	{
-		if (setuid(65535) != 0)
-			BOOST_THROW_EXCEPTION(hrb::SystemError(errno, std::system_category())
+		if (::setuid(65535) != 0)
+			BOOST_THROW_EXCEPTION(hrb::SystemError()
+				<< ErrorCode(std::error_code(errno, std::system_category()))
 				<< boost::errinfo_api_function("setuid")
 			);
 	}
