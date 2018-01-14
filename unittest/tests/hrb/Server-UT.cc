@@ -29,6 +29,43 @@ const boost::filesystem::path current_src = boost::filesystem::path{__FILE__}.pa
 
 using namespace hrb;
 
+template <typename Body, typename Allocator>
+auto flatten_content(http::response<Body, http::basic_fields<Allocator>>&& res)
+{
+	boost::system::error_code ec;
+	boost::beast::flat_buffer fbuf;
+
+	// Spend a lot of time to get this line to compile...
+	typename http::request<Body, http::basic_fields<Allocator>>::body_type::writer writer{res};
+	while (auto buf = writer.get(ec))
+	{
+		if (!ec)
+		{
+			buffer_copy(fbuf.prepare(buf->first.size()), buf->first);
+			fbuf.commit(buf->first.size());
+		}
+	}
+	return fbuf;
+}
+
+template <typename ConstBuffer>
+bool check_file_content(const boost::filesystem::path& file, ConstBuffer content)
+{
+	// open index.html and compare
+	std::ifstream index{file.string()};
+	char buf[1024];
+	while (auto count = index.rdbuf()->sgetn(buf, sizeof(buf)))
+	{
+		auto result = std::memcmp(buf, content.data(), static_cast<std::size_t>(count));
+		if (result != 0)
+			return false;
+
+		content += count;
+	}
+
+	return content.size() == 0;
+}
+
 TEST_CASE("GET static resource", "[normal]")
 {
 	auto local_json = (current_src / "../../../etc/localhost.json").string();
@@ -40,37 +77,27 @@ TEST_CASE("GET static resource", "[normal]")
 
 	REQUIRE(cfg.web_root() == (current_src/"../../../lib").lexically_normal());
 	Request req;
-	req.target("/index.html");
 
-	subject.handle_https({}, std::move(req), [&cfg](auto&& response)
+	SECTION("requesting index.html")
 	{
-		REQUIRE(response.result() == http::status::ok);
+		req.target("/index.html");
 
-		boost::system::error_code ec;
-		boost::beast::flat_buffer fbuf;
-
-		// Spend a lot of time to get this line to compile...
-		typename std::remove_reference_t<decltype(response)>::body_type::writer writer{response};
-		while (auto buf = writer.get(ec))
+		subject.handle_https({}, std::move(req), [&cfg](auto &&res)
 		{
-			if (!ec)
-			{
-				buffer_copy(fbuf.prepare(buf->first.size()), buf->first);
-				fbuf.commit(buf->first.size());
-			}
-		}
+			REQUIRE(res.result() == http::status::ok);
+			auto content = flatten_content(std::move(res));
+			REQUIRE(check_file_content(cfg.web_root() / "index.html", content.data()));
+		});
+	}
+	SECTION("requesting other resources")
+	{
+		req.target("/");
 
-		auto data = fbuf.data();
-
-		// open index.html and compare
-		std::ifstream index{(cfg.web_root()/"index.html").string()};
-		char buf[1024];
-		while (auto count = index.rdbuf()->sgetn(buf, sizeof(buf)))
+		subject.handle_https({}, std::move(req), [&cfg](auto &&res)
 		{
-			REQUIRE(std::memcmp(buf, data.data(), count) == 0);
-
-			data += count;
-		}
-		REQUIRE(data.size() == 0);
-	});
+			REQUIRE(res.result() == http::status::ok);
+			auto content = flatten_content(std::move(res));
+			REQUIRE(check_file_content(cfg.web_root() / "index.html", content.data()));
+		});
+	}
 }
