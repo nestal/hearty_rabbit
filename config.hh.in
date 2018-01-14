@@ -12,7 +12,8 @@
 
 #pragma once
 
-#define SYSTEMD_FOUND %SYSTEMD_FOUND%
+#cmakedefine SYSTEMD_FOUND
+#cmakedefine LIBUNWIND_FOUND
 
 #include <string_view>
 
@@ -22,5 +23,7 @@ namespace constants {
 static const std:: string_view config_filename = "@CONFIG_FILENAME@";
 static const std:: string_view version         = "@VERSION@";
 static const std:: string_view install_prefix  = "@CMAKE_INSTALL_PREFIX@";
+
+@HTTP_SERVED_FILES@
 
 }} // end of namespace

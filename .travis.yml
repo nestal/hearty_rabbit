@@ -4,6 +4,7 @@ env:
 language: c++
 services:
   - docker
+  - redis-server
 
 before_install:
   - docker pull nestal/hearty_rabbit_dev
@@ -18,5 +19,5 @@ deploy:
   repository: hearty_rabbit
   token: $PACKAGECLOUD_TOKEN
   dist: "el/7"
-  package_glob: "*.rpm"
+  package_glob: "docker-build-release/*.rpm"
   skip_cleanup: true
