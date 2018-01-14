@@ -69,34 +69,35 @@ http::response<http::string_body> Server::server_error(const Request& req, boost
 
 http::response<http::file_body> Server::file_request(const Request& req)
 {
-	auto path = (m_cfg.web_root() / req.target().to_string()).string();
-	Log(LOG_NOTICE, "requesting path %1%", path);
+	Log(LOG_NOTICE, "requesting path %1%", req.target());
 
 	auto filepath = req.target();
 	filepath.remove_prefix(1);
-	if (web_resources.find(filepath.to_string()) != web_resources.end())
-	{
-		// Attempt to open the file
-		boost::beast::error_code ec;
-		http::file_body::value_type file;
-		file.open(path.c_str(), boost::beast::file_mode::scan, ec);
+	if (web_resources.find(filepath.to_string()) == web_resources.end())
+		filepath = "index.html";
 
-		// Handle the case where the file doesn't exist
-		if (!ec)
-			throw std::system_error(ec);
+	auto path = (m_cfg.web_root() / filepath.to_string()).string();
+	Log(LOG_NOTICE, "reading from %1%", path);
 
-		auto file_size = file.size();
+	// Attempt to open the file
+	boost::beast::error_code ec;
+	http::file_body::value_type file;
+	file.open(path.c_str(), boost::beast::file_mode::scan, ec);
 
-		http::response<http::file_body> res{
-			std::piecewise_construct,
-			std::make_tuple(std::move(file)),
-			std::make_tuple(http::status::ok, req.version())
-		};
-		res.set(http::field::content_type, "text/html");
-		res.content_length(file_size);
-		return set_common_fields(req, std::move(res));
-	}
-	throw -1;
+	// Handle the case where the file doesn't exist
+	if (ec)
+		throw std::system_error(ec);
+
+	auto file_size = file.size();
+
+	http::response<http::file_body> res{
+		std::piecewise_construct,
+		std::make_tuple(std::move(file)),
+		std::make_tuple(http::status::ok, req.version())
+	};
+	res.set(http::field::content_type, "text/html");
+	res.content_length(file_size);
+	return set_common_fields(req, std::move(res));
 }
 
 http::response<http::string_body> Server::hello_world(const Request &req)
