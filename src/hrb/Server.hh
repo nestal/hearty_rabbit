@@ -12,20 +12,20 @@
 
 #pragma once
 
+#include "Request.hh"
+
 #include "util/Log.hh"
 #include "util/Exception.hh"
 #include "util/Configuration.hh"
 
-#include <boost/beast.hpp>
 #include <boost/filesystem/path.hpp>
 #include <boost/beast/http/fields.hpp>
 #include <boost/beast/http/message.hpp>
+#include <boost/beast/http/empty_body.hpp>
+#include <boost/beast/http/file_body.hpp>
 #include <boost/beast/version.hpp>
 
 namespace hrb {
-
-using tcp = boost::asio::ip::tcp;       // from <boost/asio/ip/tcp.hpp>
-namespace http = boost::beast::http;    // from <boost/beast/http.hpp>
 
 class Server
 {
@@ -36,12 +36,10 @@ public:
 	// request. The type of the response object depends on the
 	// contents of the request, so the interface requires the
 	// caller to pass a generic lambda for receiving the response.
-	template<
-		class Body, class Allocator,
-		class Send>
+	template<class Send>
 	void handle_http(
 		const boost::asio::ip::tcp::endpoint& peer,
-		http::request<Body, http::basic_fields<Allocator>>&& req,
+		http::request<http::string_body>&& req,
 		Send&& send
 	)
 	{
@@ -59,12 +57,10 @@ public:
 	// request. The type of the response object depends on the
 	// contents of the request, so the interface requires the
 	// caller to pass a generic lambda for receiving the response.
-	template<
-		class Body, class Allocator,
-		class Send>
+	template<class Send>
 	void handle_https(
 		const boost::asio::ip::tcp::endpoint& peer,
-		http::request<Body, http::basic_fields<Allocator>>&& req,
+		http::request<http::string_body>&& req,
 		Send&& send
 	)
 	{
@@ -89,6 +85,8 @@ public:
 		std::string mime = "text/html";
 		std::string body = "Hello world!";
 
+
+
 		// Respond to HEAD request
 		if (req.method() == http::verb::head)
 		{
@@ -98,7 +96,10 @@ public:
 			return send(set_common_fields(req, res));
 		}
 
-		if (req.target() == "/index.html")
+//		if (req.target().start_with("/blob"))
+//			return send(set_common_fields(req, get_blob(req)));
+
+		else if (req.target() == "/index.html")
 		{
 			auto path = (m_cfg.web_root() / req.target().to_string()).string();
 			Log(LOG_NOTICE, "requesting path %1%", path);
@@ -140,6 +141,8 @@ public:
 private:
 	static http::response<http::empty_body> redirect(boost::beast::string_view where, unsigned version);
 
+	http::response<http::string_body> get_blob(http::request<http::string_body>&& req);
+
 	template<class ReqBody, class ReqAllocator, class ResBody, class ResAllocator>
 	static auto&& set_common_fields(
 		const http::request<ReqBody, http::basic_fields<ReqAllocator>>& req,
@@ -152,45 +155,12 @@ private:
 	}
 
 	// Returns a bad request response
-	template<class Body, class Allocator>
-	static http::response<http::string_body> bad_request(
-		const http::request<Body, http::basic_fields<Allocator>>& req,
-		boost::beast::string_view why
-	)
-	{
-		http::response<http::string_body> res{http::status::bad_request, req.version()};
-		res.set(http::field::content_type, "text/html");
-		res.body() = why.to_string();
-		res.prepare_payload();
-		return set_common_fields(req, res);
-	}
+	static http::response<http::string_body> bad_request(const Request& req, boost::beast::string_view why);
 
 	// Returns a not found response
-	template<class Body, class Allocator>
-	static http::response<http::string_body> not_found(
-		const http::request<Body, http::basic_fields<Allocator>>& req,
-		boost::beast::string_view target
-	)
-	{
-		http::response<http::string_body> res{http::status::not_found, req.version()};
-		res.set(http::field::content_type, "text/html");
-		res.body() = "The resource '" + target.to_string() + "' was not found.";
-		res.prepare_payload();
-		return set_common_fields(req, res);
-	}
+	static http::response<http::string_body> not_found(const Request& req, boost::beast::string_view target);
 
-	template<class Body, class Allocator>
-	static http::response<http::string_body> server_error(
-		const http::request<Body, http::basic_fields<Allocator>>& req,
-		boost::beast::string_view what
-	)
-	{
-		http::response<http::string_body> res{http::status::internal_server_error, req.version()};
-		res.set(http::field::content_type, "text/html");
-		res.body() = "An error occurred: '" + what.to_string() + "'";
-		res.prepare_payload();
-		return set_common_fields(req, res);
-	}
+	static http::response<http::string_body> server_error(const Request& req, boost::beast::string_view what);
 
 private:
 	const Configuration& m_cfg;
