@@ -19,7 +19,7 @@ Server::Server(const Configuration& cfg) :
 {
 }
 
-http::response<boost::beast::http::empty_body> Server::redirect(boost::beast::string_view where, unsigned version)
+http::response<http::empty_body> Server::redirect(boost::beast::string_view where, unsigned version)
 {
 	http::response<http::empty_body> res{http::status::moved_permanently, version};
 	res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
@@ -28,8 +28,12 @@ http::response<boost::beast::http::empty_body> Server::redirect(boost::beast::st
 	return res;
 }
 
-http::response<http::string_body>
-Server::get_blob(http::request<http::string_body> &&req)
+http::response<http::string_body> Server::get_blob(const Request& req)
+{
+	return http::response<http::string_body>();
+}
+
+http::response<http::string_body> Server::get_dir(const Request& req)
 {
 	return http::response<http::string_body>();
 }
@@ -40,7 +44,7 @@ http::response<http::string_body> Server::bad_request(const Request& req, boost:
 	res.set(http::field::content_type, "text/html");
 	res.body() = why.to_string();
 	res.prepare_payload();
-	return set_common_fields(req, res);
+	return set_common_fields(req, std::move(res));
 }
 
 // Returns a not found response
@@ -50,7 +54,7 @@ http::response<http::string_body> Server::not_found(const Request& req, boost::b
 	res.set(http::field::content_type, "text/html");
 	res.body() = "The resource '" + target.to_string() + "' was not found.";
 	res.prepare_payload();
-	return set_common_fields(req, res);
+	return set_common_fields(req, std::move(res));
 }
 
 http::response<http::string_body> Server::server_error(const Request& req, boost::beast::string_view what)
@@ -59,7 +63,7 @@ http::response<http::string_body> Server::server_error(const Request& req, boost
 	res.set(http::field::content_type, "text/html");
 	res.body() = "An error occurred: '" + what.to_string() + "'";
 	res.prepare_payload();
-	return set_common_fields(req, res);
+	return set_common_fields(req, std::move(res));
 }
 
 http::response<http::file_body> Server::file_request(const Request& req)
@@ -85,7 +89,7 @@ http::response<http::file_body> Server::file_request(const Request& req)
 	};
 	res.set(http::field::content_type, "text/html");
 	res.content_length(file_size);
-	return set_common_fields(req, res);
+	return set_common_fields(req, std::move(res));
 
 }
 
@@ -99,7 +103,7 @@ http::response<http::string_body> Server::hello_world(const Request &req)
 	res.set(http::field::content_type, mime);
 	res.content_length(body.size());
 	res.body() = std::move(body);
-	return set_common_fields(req, res);
+	return set_common_fields(req, std::move(res));
 
 }
 

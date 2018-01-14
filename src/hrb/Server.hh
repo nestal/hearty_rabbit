@@ -58,11 +58,7 @@ public:
 	// contents of the request, so the interface requires the
 	// caller to pass a generic lambda for receiving the response.
 	template<class Send>
-	void handle_https(
-		const boost::asio::ip::tcp::endpoint& peer,
-		http::request<http::string_body>&& req,
-		Send&& send
-	)
+	void handle_https(const EndPoint& peer, Request&& req, Send&& send)
 	{
 		std::string mime = "text/html";
 		std::string body = "Hello world!";
@@ -73,11 +69,14 @@ public:
 			http::response<http::empty_body> res{http::status::ok, req.version()};
 			res.set(http::field::content_type, mime);
 			res.content_length(body.size());
-			return send(set_common_fields(req, res));
+			return send(set_common_fields(req, std::move(res)));
 		}
 
-//		if (req.target().start_with("/blob"))
-//			return send(set_common_fields(req, get_blob(req)));
+		if (req.target().starts_with("/blob"))
+			return send(set_common_fields(req, get_blob(req)));
+
+		if (req.target().starts_with("/dir"))
+			return send(set_common_fields(req, get_dir(req)));
 
 		else if (req.target() == "/index.html")
 			return send(file_request(req));
@@ -98,12 +97,13 @@ public:
 
 	http::response<http::empty_body> redirect(boost::beast::string_view where, unsigned version);
 
-	http::response<http::string_body> get_blob(http::request<http::string_body>&& req);
+	http::response<http::string_body> get_blob(const Request& req);
+	http::response<http::string_body> get_dir(const Request& req);
 
 	template<class Body, class Allocator>
 	static auto&& set_common_fields(
 		const Request& req,
-		http::response<Body, http::basic_fields<Allocator>>& res
+		http::response<Body, http::basic_fields<Allocator>>&& res
 	)
 	{
 		res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
