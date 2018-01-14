@@ -29,7 +29,7 @@ TEST_CASE("simple redis", "[normal]")
 	    REQUIRE(reply);
 		REQUIRE(reply->type == REDIS_REPLY_STRING);
 
-		std::string_view reply_str{reply->str, (unsigned)reply->len};
+		std::string_view reply_str{reply->str, static_cast<unsigned>(reply->len)};
 		REQUIRE(reply_str == "100");
 
 		redis.command([&redis](auto reply)

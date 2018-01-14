@@ -29,6 +29,21 @@ include_directories(
 configure_file(systemd/hearty_rabbit.service.in hearty_rabbit.service)
 configure_file(config.hh.in config.hh)
 
+# Static files served by HTTP
+file(GLOB STATIC_RESOURCES lib/*)
+message(STATUS ${STATIC_RESOURCES})
+
+# Generate a list of static files
+set(WEB_RESOURCE_LIST "${CMAKE_CURRENT_BINARY_DIR}/WebResources.hh")
+file(REMOVE ${WEB_RESOURCE_LIST})
+file(APPEND ${WEB_RESOURCE_LIST} "#include <string>\n#include <unordered_set>\nnamespace hrb {\nconst std::unordered_set<std::string> web_resources = {\n")
+foreach(fullpath ${STATIC_RESOURCES})
+	get_filename_component(FILENAME_WO_DIR ${fullpath} NAME)
+    file(APPEND ${WEB_RESOURCE_LIST} "\t\"${FILENAME_WO_DIR}\",\n")
+endforeach(fullpath)
+file(APPEND ${WEB_RESOURCE_LIST} "};\n}")
+
+# Put all source code in a library for unit test
 file(GLOB LIB_SRC src/*/*.cc src/*/*.hh)
 add_library(hrblib ${LIB_SRC} ${CMAKE_CURRENT_BINARY_DIR}/config.hh)
 target_link_libraries(

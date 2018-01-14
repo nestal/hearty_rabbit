@@ -78,10 +78,11 @@ public:
 		if (req.target().starts_with("/dir"))
 			return send(set_common_fields(req, get_dir(req)));
 
-		else if (req.target() == "/index.html")
-			return send(file_request(req));
+//		else if (req.target() == "/index.html")
+//			return send(file_request(req));
 
-		return send(hello_world(req));
+//		return send(hello_world(req));
+		return send(file_request(req));
 	}
 
 	http::response<http::file_body> file_request(const Request& req);
