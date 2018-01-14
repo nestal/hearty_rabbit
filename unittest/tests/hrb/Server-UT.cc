@@ -15,6 +15,10 @@
 #include "util/Configuration.hh"
 #include "hrb/Server.hh"
 
+#include <iostream>
+#include <fstream>
+#include <boost/beast/core/flat_buffer.hpp>
+
 namespace {
 
 // Put all test data (i.e. the configuration files in this test) in the same directory as
@@ -38,8 +42,35 @@ TEST_CASE("GET static resource", "[normal]")
 	Request req;
 	req.target("/index.html");
 
-	subject.handle_https({}, std::move(req), [](auto&& response)
+	subject.handle_https({}, std::move(req), [&cfg](auto&& response)
 	{
 		REQUIRE(response.result() == http::status::ok);
+
+		boost::system::error_code ec;
+		boost::beast::flat_buffer fbuf;
+
+		// Spend a lot of time to get this line to compile...
+		typename std::remove_reference_t<decltype(response)>::body_type::writer writer{response};
+		while (auto buf = writer.get(ec))
+		{
+			if (!ec)
+			{
+				buffer_copy(fbuf.prepare(buf->first.size()), buf->first);
+				fbuf.commit(buf->first.size());
+			}
+		}
+
+		auto data = fbuf.data();
+
+		// open index.html and compare
+		std::ifstream index{(cfg.web_root()/"index.html").string()};
+		char buf[1024];
+		while (auto count = index.rdbuf()->sgetn(buf, sizeof(buf)))
+		{
+			REQUIRE(std::memcmp(buf, data.data(), count) == 0);
+
+			data += count;
+		}
+		REQUIRE(data.size() == 0);
 	});
 }
