@@ -12,6 +12,8 @@
 
 #pragma once
 
+#include "hrb/Request.hh"
+
 #include <boost/beast/core.hpp>
 #include <boost/beast/http.hpp>
 
@@ -54,7 +56,7 @@ private:
 	boost::asio::strand<boost::asio::io_context::executor_type> m_strand;
 	boost::beast::flat_buffer m_buffer;
 	Server& m_server;
-	boost::beast::http::request <boost::beast::http::string_body> m_req;
+	Request m_req;
 };
 
 } // end of namespace
