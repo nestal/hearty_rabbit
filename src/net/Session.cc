@@ -101,15 +101,6 @@ void Session::handle_https(const EndPoint& peer, Request&& req, Send&& send)
 		    req.target().find("..") != boost::beast::string_view::npos)
 			return send(m_server.bad_request(req, "Illegal request-target"));
 
-		// Respond to HEAD request
-		if (req.method() == http::verb::head)
-		{
-			http::response<http::empty_body> res{http::status::ok, req.version()};
-	//		res.set(http::field::content_type, mime);
-	//		res.content_length(body.size());
-			return send(m_server.set_common_fields(req, std::move(res)));
-		}
-
 		return m_server.handle_https(peer, std::move(req), std::move(send));
 	}
 	catch (std::system_error& e)
@@ -161,7 +152,7 @@ void Session::on_read(boost::system::error_code ec, std::size_t)
 	if (m_stream)
 		handle_https(m_socket.remote_endpoint(ec), std::move(m_req), std::move(sender));
 	else
-		m_server.handle_http(m_socket.remote_endpoint(ec), std::move(m_req), std::move(sender));
+		sender(m_server.redirect_http(m_req));
 
 	if (ec)
 		Log(LOG_WARNING, "remote_endpoint() error: %1%", ec);
