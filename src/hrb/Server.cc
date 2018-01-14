@@ -13,6 +13,12 @@
 #include "Server.hh"
 #include "WebResources.hh"
 
+#include "util/Configuration.hh"
+
+
+#include "util/Log.hh"
+#include "util/Exception.hh"
+
 namespace hrb {
 
 Server::Server(const Configuration& cfg) :
@@ -100,18 +106,16 @@ http::response<http::file_body> Server::file_request(const Request& req)
 	return set_common_fields(req, std::move(res));
 }
 
-http::response<http::string_body> Server::hello_world(const Request &req)
+http::response<http::empty_body> Server::redirect_http(const Request &req)
 {
-	std::string mime = "text/html";
-	std::string body = "Hello world!";
+	using namespace std::literals;
+	static const auto https_host = "https://" + m_cfg.server_name()
+		+ (m_cfg.listen_https().port() == 443 ? ""s : (":"s + std::to_string(m_cfg.listen_https().port())));
 
-	// Respond to GET request
-	http::response<http::string_body> res{http::status::ok, req.version()};
-	res.set(http::field::content_type, mime);
-	res.content_length(body.size());
-	res.body() = std::move(body);
-	return set_common_fields(req, std::move(res));
+	auto&& dest = https_host + req.target().to_string();
+	Log(LOG_INFO, "redirecting HTTP request %1% to host %2%", req.target(), dest);
 
+	return redirect(dest, req.version());
 }
 
 } // end of namespace
