@@ -51,6 +51,14 @@ public:
 	void on_shutdown(boost::system::error_code ec);
 
 private:
+	// This function produces an HTTP response for the given
+	// request. The type of the response object depends on the
+	// contents of the request, so the interface requires the
+	// caller to pass a generic lambda for receiving the response.
+	template<class Send>
+	void handle_https(const EndPoint& peer, Request&& req, Send&& send);
+
+private:
 	boost::asio::ip::tcp::socket m_socket;
 	std::optional<boost::asio::ssl::stream<boost::asio::ip::tcp::socket&>> m_stream;
 	boost::asio::strand<boost::asio::io_context::executor_type> m_strand;
