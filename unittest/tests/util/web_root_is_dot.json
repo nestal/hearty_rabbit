@@ -1,0 +1,14 @@
+{
+  "cert_chain": "certificate.pem",
+  "private_key": "key.pem",
+  "web_root": ".",
+  "server_name" : "example.com",
+  "http": {
+    "address": "0.0.0.0",
+    "port": 18080
+  },
+  "https": {
+    "address": "0.0.0.0",
+    "port": 44233
+  }
+}

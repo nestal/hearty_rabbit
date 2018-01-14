@@ -74,6 +74,9 @@ target_link_libraries(
 )
 
 # Automatically run unit tests after the build
+# Although we specific the ${CMAKE_BINARY_DIR} as the current directory when running unit tests,
+# the test cases should not use absolute path when referring to test data. The test cases
+# must not assume the location of ${CMAKE_BINARY_DIR} relative to the source code.
 add_custom_command(
 	TARGET unittest
 	COMMENT "Run unit tests"
