@@ -44,7 +44,11 @@ public:
 	using ErrorMsg = boost::error_info<struct tag_error_msg, std::string>;
 
 public:
-	explicit RedisDriver(boost::asio::io_context& bic, const std::string& host, unsigned short port);
+	explicit RedisDriver(
+		boost::asio::io_context& bic,
+		const std::string& host = "localhost",
+		unsigned short port = 6379
+	);
 	~RedisDriver();
 
 	template <typename Callback, typename... Args>
@@ -61,6 +65,7 @@ public:
 	}
 
 	void disconnect();
+	boost::asio::io_context& get_io_context() {return m_ioc;}
 
 private:
 	static redisAsyncContext* connect(const std::string& host, unsigned short port);
@@ -68,7 +73,7 @@ private:
 	void run();
 
 private:
-	boost::asio::io_context& m_bic;
+	boost::asio::io_context& m_ioc;
 	boost::asio::ip::tcp::socket m_socket;
 
 	redisAsyncContext *m_ctx{};
