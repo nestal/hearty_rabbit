@@ -19,15 +19,14 @@
 #include <fstream>
 #include <boost/beast/core/flat_buffer.hpp>
 
+using namespace hrb;
+
 namespace {
 
 // Put all test data (i.e. the configuration files in this test) in the same directory as
 // the source code, and use __FILE__ macro to find the test data.
 // Expect __FILE__ to give the absolute path so the unit test can be run in any directory.
 const boost::filesystem::path current_src = boost::filesystem::path{__FILE__}.parent_path();
-}
-
-using namespace hrb;
 
 template <typename Body, typename Allocator>
 auto flatten_content(http::response<Body, http::basic_fields<Allocator>>&& res)
@@ -64,6 +63,8 @@ bool check_file_content(const boost::filesystem::path& file, ConstBuffer content
 	}
 
 	return content.size() == 0;
+}
+
 }
 
 TEST_CASE("GET static resource", "[normal]")
