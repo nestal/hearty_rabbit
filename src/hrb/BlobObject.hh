@@ -14,6 +14,8 @@
 
 #include <boost/filesystem/path.hpp>
 
+#include <openssl/sha.h>
+
 #include <cstddef>
 #include <functional>
 
@@ -23,7 +25,7 @@ class RedisDriver;
 
 struct ObjectID
 {
-	static const std::size_t size = 20;
+	static const std::size_t size = SHA_DIGEST_LENGTH;
 	unsigned char data[size] {};
 };
 
@@ -32,16 +34,25 @@ class BlobObject
 public:
 	BlobObject() = default;
 	explicit BlobObject(const boost::filesystem::path& path);
+	BlobObject(BlobObject&&) = default;
+	BlobObject(const BlobObject&) = delete;
+	~BlobObject();
+
+	BlobObject& operator=(BlobObject&&) = default;
+	BlobObject& operator=(const BlobObject&) = delete;
 
 	const ObjectID& ID() const {return m_id;}
 
 	void Save(RedisDriver& db, std::function<void(BlobObject&)> completion);
-	void Load(RedisDriver& db, std::function<void(BlobObject&)> completion);
+	void Load(RedisDriver& db, const ObjectID& id, std::function<void(BlobObject&)> completion);
 
 private:
 	ObjectID    m_id;       //!< SHA1 hash of the blob
 	std::string m_name;     //!< Typically the file name of the blob
 	std::string m_mime;     //!< Mime-type of the blob, deduced by libmagic
+
+	void *m_mmap{};         //!< Pointer to memory mapped file
+	std::size_t m_size{};   //!< File size in bytes.
 };
 
 } // end of namespace hrb
