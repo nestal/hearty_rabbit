@@ -18,9 +18,10 @@
 
 #include <cassert>
 #include <fstream>
-#include <iostream>
 
 #include <sys/mman.h>
+
+#include <iostream>
 
 namespace hrb {
 
@@ -61,19 +62,43 @@ void BlobObject::save(RedisDriver& db, std::function<void(BlobObject &)> complet
 
 void BlobObject::load(RedisDriver& db, const ObjectID& id, std::function<void(BlobObject&)> completion)
 {
-	m_id = id;
-
-	db.command([callback=std::move(completion), this](RedisReply reply)
+	db.command([callback=std::move(completion), id, this](RedisReply reply)
 	{
 		for (auto i = 0ULL ; i < reply.array_size() ; i++)
 		{
 			if (reply.as_array(i).as_string() == "blob")
 			{
-				std::cout << "get reply " << reply.as_array(i+1).as_string() << std::endl;
+				// Assign the ID
+				m_id = id;
+
+				// The blob should be in the next field of the reply array.
+				auto blob = reply.as_array(i+1).as_string();
+
+				// Create an anonymous memory mapping to store the blob
+				m_mmap = ::mmap(nullptr, blob.size(), PROT_READ|PROT_WRITE, MAP_SHARED|MAP_ANONYMOUS, -1, 0);
+				if (m_mmap == MAP_FAILED)
+					throw std::system_error(errno, std::system_category());
+
+				std::cout << "size = " << blob.size() << std::endl;
+
+				// Copy the blob to the anonymous memory mapping
+				std::memcpy(m_mmap, blob.data(), blob.size());
+				m_size = blob.size();
+
 				callback(*this);
+				return;
 			}
 		}
-	}, "HGETALL %b", m_id.data, m_id.size);
+
+		// TODO: indicate error here
+		callback(*this);
+
+	}, "HGETALL %b", id.data, id.size);
+}
+
+std::string_view BlobObject::blob() const
+{
+	return {static_cast<const char*>(m_mmap), m_size};
 }
 
 } // end of namespace
