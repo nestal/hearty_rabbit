@@ -14,6 +14,9 @@
 
 #include <catch.hpp>
 
+#include "net/RedisDriver.hh"
+#include <boost/asio/io_context.hpp>
+
 using namespace hrb;
 
 TEST_CASE("Load BlobObject from file", "[normal]")
@@ -23,4 +26,11 @@ TEST_CASE("Load BlobObject from file", "[normal]")
 	ObjectID zero{};
 
 	REQUIRE(std::memcmp(blob.ID().data, zero.data, zero.size) != 0);
+
+	boost::asio::io_context ioc;
+	RedisDriver db{ioc, "localhost", 6379};
+
+	blob.Save(db, [&db](auto&){ db.disconnect();});
+
+	ioc.run();
 }

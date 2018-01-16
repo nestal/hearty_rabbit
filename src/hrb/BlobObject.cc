@@ -50,9 +50,12 @@ BlobObject::~BlobObject()
 	::munmap(m_mmap, m_size);
 }
 
-void BlobObject::Save(RedisDriver &db, std::function<void(BlobObject &)> completion)
+void BlobObject::Save(RedisDriver& db, std::function<void(BlobObject &)> completion)
 {
-
+	db.command([callback=std::move(completion), this](redisReply *reply)
+	{
+		callback(*this);
+	}, "HSET %b blob %b", m_id.data, m_id.size, m_mmap, m_size);
 }
 
 } // end of namespace
