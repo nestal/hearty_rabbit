@@ -122,4 +122,28 @@ void RedisDriver::disconnect()
 	m_ctx = nullptr;
 }
 
+RedisReply::RedisReply(redisReply *r) :
+	m_reply{r}
+{
+	assert(m_reply);
+}
+
+std::string_view RedisReply::as_string() const
+{
+	return (m_reply->type == REDIS_REPLY_STRING || m_reply->type == REDIS_REPLY_STATUS) ?
+		std::string_view{m_reply->str, static_cast<std::size_t>(m_reply->len)} : std::string_view{};
+}
+
+RedisReply RedisReply::as_array(std::size_t i) const
+{
+	return m_reply->type == REDIS_REPLY_ARRAY && i < m_reply->elements ?
+		RedisReply{m_reply->element[i]} : RedisReply{};
+}
+
+std::size_t RedisReply::array_size() const
+{
+	return m_reply->type == REDIS_REPLY_ARRAY ? m_reply->elements : 0ULL;
+}
+
+
 } // end of namespace

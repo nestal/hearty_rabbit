@@ -63,18 +63,14 @@ void BlobObject::load(RedisDriver& db, const ObjectID& id, std::function<void(Bl
 {
 	m_id = id;
 
-	db.command([callback=std::move(completion), this](redisReply *reply)
+	db.command([callback=std::move(completion), this](RedisReply reply)
 	{
-		if (reply->type == REDIS_REPLY_ARRAY)
+		for (auto i = 0ULL ; i < reply.array_size() ; i++)
 		{
-			for (auto i = 0ULL ; i < reply->elements ; i++)
+			if (reply.as_array(i).as_string() == "blob")
 			{
-				if (reply->element[i]->type == REDIS_REPLY_STRING &&
-					std::string_view{reply->element[i]->str, static_cast<std::size_t>(reply->element[i]->len)} == "blob")
-				{
-					std::cout << "get reply " << std::string_view{reply->element[i]->str, static_cast<std::size_t>(reply->element[i]->len)} << std::endl;
-					callback(*this);
-				}
+				std::cout << "get reply " << reply.as_array(i+1).as_string() << std::endl;
+				callback(*this);
 			}
 		}
 	}, "HGETALL %b", m_id.data, m_id.size);

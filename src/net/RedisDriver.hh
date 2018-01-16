@@ -22,6 +22,20 @@
 
 namespace hrb {
 
+class RedisReply
+{
+public:
+	RedisReply(redisReply *r = nullptr);
+
+	std::string_view as_string() const;
+
+	RedisReply as_array(std::size_t i) const;
+	std::size_t array_size() const;
+
+private:
+	::redisReply *m_reply;
+};
+
 // Copied from: https://github.com/ryangraham/hiredis-boostasio-adapter/blob/master/boostasio.cpp
 class RedisDriver
 {
