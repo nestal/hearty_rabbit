@@ -10,12 +10,13 @@
 // Created by nestal on 1/16/18.
 //
 
-#include "hrb/BlobObject.hh"
-
 #include <catch.hpp>
 
+#include "hrb/BlobObject.hh"
+
 #include "net/RedisDriver.hh"
-#include <boost/asio/io_context.hpp>
+
+#include <iostream>
 
 using namespace hrb;
 
@@ -30,12 +31,15 @@ TEST_CASE("Load BlobObject from file", "[normal]")
 	boost::asio::io_context ioc;
 	RedisDriver db{ioc, "localhost", 6379};
 
-	blob.save(db, [&db](auto& src)
+	BlobObject copy;
+
+	blob.save(db, [&db, &copy](auto& src)
 	{
 		// read it back
-		BlobObject copy;
-		copy.load(db, src.ID(), [&db](auto&)
+		copy.load(db, src.ID(), [&db](auto& copy)
 		{
+			std::cout << "reply is: " << copy.blob() << std::endl;
+
 			db.disconnect();
 		});
 	});

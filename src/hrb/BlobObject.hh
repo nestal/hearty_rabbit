@@ -46,6 +46,8 @@ public:
 	void save(RedisDriver& db, std::function<void(BlobObject&)> completion);
 	void load(RedisDriver& db, const ObjectID& id, std::function<void(BlobObject&)> completion);
 
+	std::string_view blob() const;
+
 private:
 	ObjectID    m_id;       //!< SHA1 hash of the blob
 	std::string m_name;     //!< Typically the file name of the blob
