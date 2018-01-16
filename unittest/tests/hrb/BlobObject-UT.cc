@@ -36,9 +36,10 @@ TEST_CASE("Load BlobObject from file", "[normal]")
 	blob.save(db, [&db, &copy](auto& src)
 	{
 		// read it back
-		copy.load(db, src.ID(), [&db](auto& copy)
+		copy.load(db, src.ID(), [&db, &src](auto& copy)
 		{
-			std::cout << "reply is: " << copy.blob() << std::endl;
+			REQUIRE(src.blob() == copy.blob());
+			REQUIRE(copy.blob().substr(0,2) == "/*");
 
 			db.disconnect();
 		});

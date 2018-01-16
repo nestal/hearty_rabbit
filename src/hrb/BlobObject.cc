@@ -21,8 +21,6 @@
 
 #include <sys/mman.h>
 
-#include <iostream>
-
 namespace hrb {
 
 BlobObject::BlobObject(const boost::filesystem::path &path)
@@ -78,8 +76,6 @@ void BlobObject::load(RedisDriver& db, const ObjectID& id, std::function<void(Bl
 				m_mmap = ::mmap(nullptr, blob.size(), PROT_READ|PROT_WRITE, MAP_SHARED|MAP_ANONYMOUS, -1, 0);
 				if (m_mmap == MAP_FAILED)
 					throw std::system_error(errno, std::system_category());
-
-				std::cout << "size = " << blob.size() << std::endl;
 
 				// Copy the blob to the anonymous memory mapping
 				std::memcpy(m_mmap, blob.data(), blob.size());
