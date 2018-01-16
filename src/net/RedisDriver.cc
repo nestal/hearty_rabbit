@@ -25,8 +25,8 @@
 namespace hrb {
 
 RedisDriver::RedisDriver(boost::asio::io_context& bic, const std::string& host, unsigned short port) :
-	m_bic{bic},
-	m_socket{m_bic},
+	m_ioc{bic},
+	m_socket{m_ioc},
 	m_ctx{connect(host, port)}
 {
 	assert(m_ctx);
