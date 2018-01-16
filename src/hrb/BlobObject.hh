@@ -43,8 +43,8 @@ public:
 
 	const ObjectID& ID() const {return m_id;}
 
-	void Save(RedisDriver& db, std::function<void(BlobObject&)> completion);
-	void Load(RedisDriver& db, const ObjectID& id, std::function<void(BlobObject&)> completion);
+	void save(RedisDriver& db, std::function<void(BlobObject&)> completion);
+	void load(RedisDriver& db, const ObjectID& id, std::function<void(BlobObject&)> completion);
 
 private:
 	ObjectID    m_id;       //!< SHA1 hash of the blob

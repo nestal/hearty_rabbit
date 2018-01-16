@@ -30,7 +30,15 @@ TEST_CASE("Load BlobObject from file", "[normal]")
 	boost::asio::io_context ioc;
 	RedisDriver db{ioc, "localhost", 6379};
 
-	blob.Save(db, [&db](auto&){ db.disconnect();});
+	blob.save(db, [&db](auto& src)
+	{
+		// read it back
+		BlobObject copy;
+		copy.load(db, src.ID(), [&db](auto&)
+		{
+			db.disconnect();
+		});
+	});
 
 	ioc.run();
 }

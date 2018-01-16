@@ -18,6 +18,7 @@
 
 #include <cassert>
 #include <fstream>
+#include <iostream>
 
 #include <sys/mman.h>
 
@@ -46,16 +47,37 @@ BlobObject::BlobObject(const boost::filesystem::path &path)
 
 BlobObject::~BlobObject()
 {
-	assert(m_mmap);
-	::munmap(m_mmap, m_size);
+	if (m_mmap)
+		::munmap(m_mmap, m_size);
 }
 
-void BlobObject::Save(RedisDriver& db, std::function<void(BlobObject &)> completion)
+void BlobObject::save(RedisDriver& db, std::function<void(BlobObject &)> completion)
 {
-	db.command([callback=std::move(completion), this](redisReply *reply)
+	db.command([callback=std::move(completion), this](redisReply *)
 	{
 		callback(*this);
 	}, "HSET %b blob %b", m_id.data, m_id.size, m_mmap, m_size);
+}
+
+void BlobObject::load(RedisDriver& db, const ObjectID& id, std::function<void(BlobObject&)> completion)
+{
+	m_id = id;
+
+	db.command([callback=std::move(completion), this](redisReply *reply)
+	{
+		if (reply->type == REDIS_REPLY_ARRAY)
+		{
+			for (auto i = 0ULL ; i < reply->elements ; i++)
+			{
+				if (reply->element[i]->type == REDIS_REPLY_STRING &&
+					std::string_view{reply->element[i]->str, static_cast<std::size_t>(reply->element[i]->len)} == "blob")
+				{
+					std::cout << "get reply " << std::string_view{reply->element[i]->str, static_cast<std::size_t>(reply->element[i]->len)} << std::endl;
+					callback(*this);
+				}
+			}
+		}
+	}, "HGETALL %b", m_id.data, m_id.size);
 }
 
 } // end of namespace
