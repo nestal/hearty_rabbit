@@ -33,15 +33,15 @@ void MMap::open(int fd, std::error_code& ec)
 	assert(!is_opened());
 	struct stat s{};
 	if (fstat(fd, &s) == 0)
-		map(fd, static_cast<std::size_t>(s.st_size), MAP_SHARED, ec);
+		map(fd, static_cast<std::size_t>(s.st_size), PROT_READ, MAP_SHARED, ec);
 	else
 		ec.assign(errno, std::system_category());
 }
 
-void MMap::map(int fd, std::size_t size, int flags, std::error_code& ec)
+void MMap::map(int fd, std::size_t size, int prot, int flags, std::error_code& ec)
 {
 	assert(!is_opened());
-	auto addr = ::mmap(nullptr, size, PROT_READ|PROT_WRITE, flags, fd, 0);
+	auto addr = ::mmap(nullptr, size, prot, flags, fd, 0);
 	if (addr == MAP_FAILED)
 	{
 		m_mmap = nullptr;
@@ -71,7 +71,7 @@ void MMap::clear()
 void MMap::create(int fd, const void *data, std::size_t size, std::error_code& ec)
 {
 	assert(!is_opened());
-	map(fd, size, MAP_SHARED, ec);
+	map(fd, size, PROT_READ|PROT_WRITE, MAP_SHARED, ec);
 	if (!ec)
 		std::memcpy(m_mmap, data, size);
 }
@@ -85,7 +85,7 @@ void MMap::swap(MMap& target)
 void MMap::allocate(std::size_t size, std::error_code& ec)
 {
 	assert(!is_opened());
-	map(-1, size, MAP_SHARED|MAP_ANONYMOUS, ec);
+	map(-1, size, PROT_READ|PROT_WRITE, MAP_SHARED|MAP_ANONYMOUS, ec);
 }
 
 } // end of namespace

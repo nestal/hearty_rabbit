@@ -36,7 +36,7 @@ void BlobObject::open(const boost::filesystem::path &path, std::error_code& ec)
 	// read the file and calculate the sha and mime_type
 	boost::system::error_code bec;
 	boost::beast::file_posix file;
-	file.open(path.string().c_str(), boost::beast::file_mode::write_existing, bec);
+	file.open(path.string().c_str(), boost::beast::file_mode::read, bec);
 	if (bec)
 		ec.assign(bec.value(), bec.category());
 	else

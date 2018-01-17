@@ -39,7 +39,7 @@ public:
 	void swap(MMap& target);
 
 private:
-	void map(int fd, std::size_t size, int flags, std::error_code& ec);
+	void map(int fd, std::size_t size, int prot, int flags, std::error_code& ec);
 
 private:
 	void *m_mmap{};         //!< Pointer to memory mapped file
