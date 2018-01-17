@@ -62,18 +62,26 @@ Database::Database(boost::asio::io_context& bic, const std::string& host, unsign
 		if (pthis->m_socket.is_open())
 			pthis->m_socket.release();
 	};
+	::redisAsyncSetConnectCallback(m_ctx, [](const redisAsyncContext *ctx, int status)
+	{
+		std::cout << "connect callback " << status << std::endl;
+		if (status == REDIS_ERR)
+		{
+			std::cout << "connect error: " << ctx->err << " " << ctx->errstr << std::endl;
+			static_cast<Database*>(ctx->ev.data)->m_ctx = nullptr;
+		}
+	});
 	::redisAsyncSetDisconnectCallback(m_ctx, [](const redisAsyncContext *ctx, int status)
 	{
 		// The caller will free the context anyway, so set our own context to nullptr
 		// to avoid double free
-		auto pthis = static_cast<Database*>(ctx->ev.data);
-		pthis->m_ctx = nullptr;
+		static_cast<Database*>(ctx->ev.data)->m_ctx = nullptr;
 
-		std::cout << "disconnect! " << ctx->errstr << std::endl;;;;;;;;;;;;;
+		std::cout << "disconnect! " << ctx->errstr << " " << status << std::endl;
 
 		// Throw exception if we have error
-		if (ctx->err)
-			BOOST_THROW_EXCEPTION(Error() << ErrorMsg(ctx->errstr));
+//		if (ctx->err)
+//			BOOST_THROW_EXCEPTION(Error() << ErrorMsg(ctx->errstr));
 	});
 }
 
@@ -115,10 +123,13 @@ redisAsyncContext* Database::connect(const std::string& host, unsigned short por
 {
 	auto ctx = ::redisAsyncConnect(host.c_str(), port);
 	if (ctx->err)
+	{
+		std::cout << "connect error: " << ctx->errstr << std::endl;
 		BOOST_THROW_EXCEPTION(Error()
 			<< ErrorMsg(ctx->errstr)
 			<< boost::errinfo_api_function("redisAsyncConnect")
 		);
+	}
 	return ctx;
 }
 
@@ -131,7 +142,9 @@ void Database::disconnect()
 Reply::Reply(redisReply *r) :
 	m_reply{r}
 {
-	assert(m_reply);
+	static const redisReply empty{};
+	if (!m_reply)
+		m_reply = &empty;
 }
 
 std::string_view Reply::as_string() const
@@ -149,6 +162,11 @@ Reply Reply::as_array(std::size_t i) const
 std::size_t Reply::array_size() const
 {
 	return m_reply->type == REDIS_REPLY_ARRAY ? m_reply->elements : 0ULL;
+}
+
+long Reply::as_int() const
+{
+	return m_reply->type == REDIS_REPLY_INTEGER ? m_reply->integer : 0;
 }
 
 

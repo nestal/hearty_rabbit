@@ -52,7 +52,7 @@ BlobObject::~BlobObject()
 
 void BlobObject::save(Database& db, std::function<void(BlobObject &)> completion)
 {
-	db.command([callback=std::move(completion), this](redisReply *)
+	db.command([callback=std::move(completion), this](Reply)
 	{
 		callback(*this);
 	}, "HSET %b blob %b", m_id.data, m_id.size, m_mmap, m_size);

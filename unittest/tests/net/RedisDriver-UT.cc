@@ -26,17 +26,10 @@ TEST_CASE("simple redis", "[normal]")
 	redis.command([](auto) {}, "SET key %d", 100);
 	redis.command([&redis](auto reply)
 	{
-	    REQUIRE(reply);
-		REQUIRE(reply->type == REDIS_REPLY_STRING);
-
-		std::string_view reply_str{reply->str, static_cast<unsigned>(reply->len)};
-		REQUIRE(reply_str == "100");
-
+		REQUIRE(reply.as_string() == "100");
 		redis.command([&redis](auto reply)
 		{
-		    REQUIRE(reply);
-			REQUIRE(reply->type == REDIS_REPLY_INTEGER);
-			REQUIRE(reply->integer == 1);
+		    REQUIRE(reply.as_int() == 1);
 
 			redis.disconnect();
 		}, "DEL key");
