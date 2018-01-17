@@ -21,7 +21,7 @@
 
 namespace hrb {
 
-class RedisDriver;
+class Database;
 
 struct ObjectID
 {
@@ -43,8 +43,8 @@ public:
 
 	const ObjectID& ID() const {return m_id;}
 
-	void save(RedisDriver& db, std::function<void(BlobObject&)> completion);
-	void load(RedisDriver& db, const ObjectID& id, std::function<void(BlobObject&)> completion);
+	void save(Database& db, std::function<void(BlobObject&)> completion);
+	void load(Database& db, const ObjectID& id, std::function<void(BlobObject&)> completion);
 
 	std::string_view blob() const;
 
