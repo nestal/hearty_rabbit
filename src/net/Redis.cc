@@ -28,6 +28,7 @@ namespace redis {
 Database::Database(boost::asio::io_context& bic, const std::string& host, unsigned short port) :
 	m_ioc{bic},
 	m_socket{m_ioc},
+	m_strand{m_socket.get_executor()},
 	m_ctx{connect(host, port)}
 {
 	assert(m_ctx);
@@ -82,7 +83,7 @@ Database::Database(boost::asio::io_context& bic, const std::string& host, unsign
 
 void Database::on_connect_error(const redisAsyncContext *ctx)
 {
-	std::cout << "connect error: " << ctx->err << " " << ctx->c.err << " " << errno << " " << " \"" << ctx->errstr << "\"" << std::endl;
+	// save the error enum and errno so that the next command() will return it
 	m_conn_error = static_cast<Error>(ctx->c.err);
 	if (m_conn_error == Error::io)
 		m_errno = errno;
@@ -103,28 +104,28 @@ void Database::run()
 	{
 		m_reading = true;
 		m_socket.async_wait(
-			boost::asio::socket_base::wait_read, [this](auto&& ec)
+			boost::asio::socket_base::wait_read, boost::asio::bind_executor(m_strand, [this](auto&& ec)
 			{
 				m_reading = false;
 				if (!ec && m_ctx)
 					::redisAsyncHandleRead(m_ctx);
 				if (!ec || ec == boost::system::errc::operation_would_block)
 					run();
-			}
+			})
 		);
 	}
 	if (m_request_write && !m_writing && m_ctx)
 	{
 		m_writing = true;
 		m_socket.async_wait(
-			boost::asio::socket_base::wait_write, [this](auto&& ec)
+			boost::asio::socket_base::wait_write, boost::asio::bind_executor(m_strand, [this](auto&& ec)
 			{
 				m_writing = false;
 				if (!ec && m_ctx)
 					::redisAsyncHandleWrite(m_ctx);
 				if (!ec || ec == boost::system::errc::operation_would_block)
 					run();
-			}
+			})
 		);
 	}
 }
