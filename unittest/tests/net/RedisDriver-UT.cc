@@ -18,10 +18,12 @@
 #include <cassert>
 #include <iostream>
 
+using namespace hrb::redis;
+
 TEST_CASE("simple redis", "[normal]")
 {
 	boost::asio::io_context ic;
-	hrb::Database redis{ic, "localhost", 6379};
+	Database redis{ic, "localhost", 6379};
 
 	redis.command([](auto) {}, "SET key %d", 100);
 	redis.command([&redis](auto reply)

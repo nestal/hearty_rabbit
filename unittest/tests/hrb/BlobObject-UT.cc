@@ -19,6 +19,7 @@
 #include <iostream>
 
 using namespace hrb;
+using namespace hrb::redis;
 
 TEST_CASE("Load BlobObject from file", "[normal]")
 {

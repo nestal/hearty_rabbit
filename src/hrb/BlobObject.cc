@@ -50,17 +50,17 @@ BlobObject::~BlobObject()
 		::munmap(m_mmap, m_size);
 }
 
-void BlobObject::save(Database& db, std::function<void(BlobObject &)> completion)
+void BlobObject::save(redis::Database& db, std::function<void(BlobObject &)> completion)
 {
-	db.command([callback=std::move(completion), this](Reply)
+	db.command([callback=std::move(completion), this](redis::Reply)
 	{
 		callback(*this);
 	}, "HSET %b blob %b", m_id.data, m_id.size, m_mmap, m_size);
 }
 
-void BlobObject::load(Database& db, const ObjectID& id, std::function<void(BlobObject&)> completion)
+void BlobObject::load(redis::Database& db, const ObjectID& id, std::function<void(BlobObject&)> completion)
 {
-	db.command([callback=std::move(completion), id, this](Reply reply)
+	db.command([callback=std::move(completion), id, this](redis::Reply reply)
 	{
 		for (auto i = 0ULL ; i < reply.array_size() ; i++)
 		{
