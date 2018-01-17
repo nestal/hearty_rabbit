@@ -68,24 +68,21 @@ public:
 	template <typename Callback, typename... Args>
 	void command(Callback&& callback, const char *fmt, Args... args)
 	{
-		if (!m_ctx)
-		{
-			callback(Reply{}, std::error_code{Error::other});
-			return;
-		}
-
 		using CallbackType = std::remove_reference_t<Callback>;
 
 		auto callback_ptr = std::make_unique<CallbackType>(std::forward<Callback>(callback));
-		auto r = ::redisAsyncCommand(
-			m_ctx, [](redisAsyncContext *, void *reply, void *pv_callback)
+		auto r = m_ctx ? ::redisAsyncCommand(
+			m_ctx, [](redisAsyncContext *ctx, void *reply, void *pv_callback)
 			{
 				std::unique_ptr<CallbackType> callback{static_cast<CallbackType *>(pv_callback)};
-				(*callback)(Reply{static_cast<redisReply *>(reply)}, std::error_code{Error::ok});
-			}, callback_ptr.release(), fmt, args...
-		);
+				(*callback)(Reply{static_cast<redisReply *>(reply)}, std::error_code{static_cast<Error>(ctx->err)});
+			}, callback_ptr.get(), fmt, args...
+		) : REDIS_ERR;
+
 		if (r == REDIS_ERR)
-			callback(Reply{}, std::error_code{static_cast<Error>(m_ctx->err)});
+			callback(Reply{}, std::error_code{m_ctx ? static_cast<Error>(m_ctx->err) : m_conn_error});
+		else
+			callback_ptr.release();
 	}
 
 	void disconnect();
@@ -96,6 +93,7 @@ private:
 	static redisAsyncContext *connect(const std::string& host, unsigned short port);
 
 	void run();
+	void on_connect_error(const redisAsyncContext *ctx);
 
 private:
 	boost::asio::io_context& m_ioc;
@@ -105,6 +103,9 @@ private:
 
 	bool m_reading{false}, m_writing{false};
 	bool m_request_read{false}, m_request_write{false};
+
+	Error   m_conn_error{Error::ok};
+	int     m_errno{0};
 };
 
 }} // end of namespace

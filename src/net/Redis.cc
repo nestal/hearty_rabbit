@@ -66,12 +66,8 @@ Database::Database(boost::asio::io_context& bic, const std::string& host, unsign
 	::redisAsyncSetConnectCallback(
 		m_ctx, [](const redisAsyncContext *ctx, int status)
 		{
-			std::cout << "connect callback " << status << std::endl;
 			if (status == REDIS_ERR)
-			{
-				std::cout << "connect error: " << ctx->err << " " << ctx->errstr << std::endl;
-				static_cast<Database *>(ctx->ev.data)->m_ctx = nullptr;
-			}
+				static_cast<Database *>(ctx->ev.data)->on_connect_error(ctx);
 		}
 	);
 	::redisAsyncSetDisconnectCallback(
@@ -80,15 +76,20 @@ Database::Database(boost::asio::io_context& bic, const std::string& host, unsign
 			// The caller will free the context anyway, so set our own context to nullptr
 			// to avoid double free
 			static_cast<Database *>(ctx->ev.data)->m_ctx = nullptr;
-
-			std::cout << "disconnect! " << ctx->errstr << " " << status << std::endl;
-
-			// Throw exception if we have error
-//		if (ctx->err)
-//			BOOST_THROW_EXCEPTION(Error() << ErrorMsg(ctx->errstr));
 		}
 	);
 }
+
+void Database::on_connect_error(const redisAsyncContext *ctx)
+{
+	std::cout << "connect error: " << ctx->err << " " << ctx->c.err << " " << errno << " " << " \"" << ctx->errstr << "\"" << std::endl;
+	m_conn_error = static_cast<Error>(ctx->c.err);
+	if (m_conn_error == Error::io)
+		m_errno = errno;
+
+	m_ctx = nullptr;
+}
+
 
 Database::~Database()
 {

@@ -20,6 +20,24 @@
 
 using namespace hrb::redis;
 
+TEST_CASE("redis server not started", "[normal]")
+{
+	boost::asio::io_context ic;
+	Database redis{ic, "localhost", 1}; // assume no one listen to this port
+
+	bool tested = false;
+
+	// need to write something otherwise hiredis does not detect error
+	redis.command([&tested](auto, auto&& ec)
+	{
+		REQUIRE(ec == Error::io);
+		tested = true;
+	}, "SET key 100");
+
+	ic.run();
+	REQUIRE(tested);
+}
+
 TEST_CASE("simple redis", "[normal]")
 {
 	boost::asio::io_context ic;
