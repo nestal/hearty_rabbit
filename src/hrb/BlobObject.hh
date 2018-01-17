@@ -49,6 +49,7 @@ public:
 
 	void save(redis::Database& db, std::function<void(BlobObject&, bool)> completion);
 	void load(redis::Database& db, const ObjectID& id, std::function<void(BlobObject&, bool)> completion);
+	void open(const boost::filesystem::path& path, std::error_code& ec);
 
 	std::string_view blob() const;
 

@@ -25,21 +25,26 @@ namespace hrb {
 
 BlobObject::BlobObject(const boost::filesystem::path &path)
 {
-	// read the file and calculate the sha and mime_type
-	boost::system::error_code ec;
-	boost::beast::file_posix file;
-	file.open(path.string().c_str(), boost::beast::file_mode::write_existing, ec);
-
-	std::error_code sec;
-	if (!ec)
-		m_blob.open(file.native_handle(), sec);
-	else
+	std::error_code ec;
+	open(path, ec);
+	if (ec)
 		throw std::system_error(ec);
+}
 
-	if (!sec)
-		::SHA1(static_cast<const unsigned char*>(m_blob.data()), m_blob.size(), m_id.data);
+void BlobObject::open(const boost::filesystem::path &path, std::error_code& ec)
+{
+	// read the file and calculate the sha and mime_type
+	boost::system::error_code bec;
+	boost::beast::file_posix file;
+	file.open(path.string().c_str(), boost::beast::file_mode::write_existing, bec);
+	if (bec)
+		ec.assign(bec.value(), bec.category());
 	else
-		throw std::system_error(sec);
+	{
+		m_blob.open(file.native_handle(), ec);
+		if (!ec)
+			::SHA1(static_cast<const unsigned char *>(m_blob.data()), m_blob.size(), m_id.data);
+	}
 }
 
 void BlobObject::save(redis::Database& db, std::function<void(BlobObject&, bool)> completion)
@@ -65,9 +70,13 @@ void BlobObject::load(redis::Database& db, const ObjectID& id, std::function<voi
 				auto blob = reply.as_array(i+1).as_string();
 
 				// Create an anonymous memory mapping to store the blob
-				m_blob.allocate(blob.size(), ec);
+				MMap new_mem;
+				new_mem.allocate(blob.size(), ec);
 				if (!ec)
-					std::memcpy(m_blob.data(), blob.data(), blob.size());
+					std::memcpy(new_mem.data(), blob.data(), blob.size());
+
+				// everything OK, now commit
+				m_blob.swap(new_mem);
 
 				callback(*this, !ec);
 				return;

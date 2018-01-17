@@ -34,6 +34,12 @@ TEST_CASE("Load BlobObject from file", "[normal]")
 
 	bool tested = false;
 	BlobObject copy;
+	SECTION("reopen file")
+	{
+		std::error_code ec;
+		copy.open(boost::filesystem::path{__FILE__}.parent_path()/"Server-UT.cc", ec);
+		REQUIRE(!ec);
+	}
 
 	blob.save(db, [&db, &copy, &tested](auto& src, bool success)
 	{
@@ -66,6 +72,8 @@ TEST_CASE("Load non-exist BlobObject from redis", "[error]")
 	bool tested = false;
 
 	BlobObject blob;
+	REQUIRE(blob.empty());
+
 	blob.load(db, ObjectID{}, [&db, &tested](auto& blob, bool success)
 	{
 		REQUIRE(!success);
