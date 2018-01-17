@@ -52,7 +52,7 @@ BlobObject::~BlobObject()
 
 void BlobObject::save(redis::Database& db, std::function<void(BlobObject &)> completion)
 {
-	db.command([callback=std::move(completion), this](redis::Reply)
+	db.command([callback=std::move(completion), this](redis::Reply, std::error_code)
 	{
 		callback(*this);
 	}, "HSET %b blob %b", m_id.data, m_id.size, m_mmap, m_size);
@@ -60,7 +60,7 @@ void BlobObject::save(redis::Database& db, std::function<void(BlobObject &)> com
 
 void BlobObject::load(redis::Database& db, const ObjectID& id, std::function<void(BlobObject&)> completion)
 {
-	db.command([callback=std::move(completion), id, this](redis::Reply reply)
+	db.command([callback=std::move(completion), id, this](redis::Reply reply, std::error_code)
 	{
 		for (auto i = 0ULL ; i < reply.array_size() ; i++)
 		{

@@ -25,11 +25,11 @@ TEST_CASE("simple redis", "[normal]")
 	boost::asio::io_context ic;
 	Database redis{ic, "localhost", 6379};
 
-	redis.command([](auto) {}, "SET key %d", 100);
-	redis.command([&redis](auto reply)
+	redis.command([](auto, auto) {}, "SET key %d", 100);
+	redis.command([&redis](auto reply, auto)
 	{
 		REQUIRE(reply.as_string() == "100");
-		redis.command([&redis](auto reply)
+		redis.command([&redis](auto reply, auto)
 		{
 		    REQUIRE(reply.as_int() == 1);
 

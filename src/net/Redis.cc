@@ -134,10 +134,7 @@ redisAsyncContext *Database::connect(const std::string& host, unsigned short por
 	if (ctx->err)
 	{
 		std::cout << "connect error: " << ctx->errstr << std::endl;
-		BOOST_THROW_EXCEPTION(Error()
-			<< ErrorMsg(ctx->errstr)
-			<< boost::errinfo_api_function("redisAsyncConnect")
-		);
+		BOOST_THROW_EXCEPTION(std::runtime_error("cannot connect"));
 	}
 	return ctx;
 }
@@ -176,6 +173,37 @@ std::size_t Reply::array_size() const
 long Reply::as_int() const
 {
 	return m_reply->type == REDIS_REPLY_INTEGER ? m_reply->integer : 0;
+}
+
+struct ErrorCategory : std::error_category
+{
+	const char *name() const noexcept override;
+	std::string message(int ev) const override;
+};
+const ErrorCategory redis_error{};
+
+const char *ErrorCategory::name() const noexcept
+{
+	return "redis";
+}
+
+std::string ErrorCategory::message(int ev) const
+{
+	switch (ev)
+	{
+		case REDIS_OK: return "no error";
+		case REDIS_ERR_IO: return "IO error";
+		case REDIS_ERR_EOF: return "EOF error";
+		case REDIS_ERR_PROTOCOL: return "protocol error";
+		case REDIS_ERR_OOM: return "out-of-memory error";
+		case REDIS_ERR_OTHER: return "other error";
+		default: return "unknown error";
+	}
+}
+
+std::error_code make_error_code(Error err)
+{
+	return std::error_code(static_cast<int>(err), redis_error);
 }
 
 }} // end of namespace

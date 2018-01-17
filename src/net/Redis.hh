@@ -24,6 +24,17 @@ namespace hrb {
 namespace redis {
 
 // Error enum
+enum class Error
+{
+	ok = REDIS_OK,
+	io = REDIS_ERR_IO,
+	eof = REDIS_ERR_EOF,
+	protocol = REDIS_ERR_PROTOCOL,
+	oom = REDIS_ERR_OOM,
+	other = REDIS_ERR_OTHER
+};
+
+std::error_code make_error_code(Error err);
 
 class Reply
 {
@@ -46,12 +57,6 @@ private:
 class Database
 {
 public:
-	struct Error : virtual Exception
-	{
-	};
-	using ErrorMsg = boost::error_info<struct tag_error_msg, std::string>;
-
-public:
 	explicit Database(
 		boost::asio::io_context& bic,
 		const std::string& host = "localhost",
@@ -65,7 +70,7 @@ public:
 	{
 		if (!m_ctx)
 		{
-			callback(Reply{});
+			callback(Reply{}, std::error_code{Error::other});
 			return;
 		}
 
@@ -76,15 +81,16 @@ public:
 			m_ctx, [](redisAsyncContext *, void *reply, void *pv_callback)
 			{
 				std::unique_ptr<CallbackType> callback{static_cast<CallbackType *>(pv_callback)};
-				(*callback)(Reply{static_cast<redisReply *>(reply)});
+				(*callback)(Reply{static_cast<redisReply *>(reply)}, std::error_code{Error::ok});
 			}, callback_ptr.release(), fmt, args...
 		);
+		if (r == REDIS_ERR)
+			callback(Reply{}, std::error_code{static_cast<Error>(m_ctx->err)});
 	}
 
 	void disconnect();
 
-	boost::asio::io_context& get_io_context()
-	{ return m_ioc; }
+	boost::asio::io_context& get_io_context() { return m_ioc; }
 
 private:
 	static redisAsyncContext *connect(const std::string& host, unsigned short port);
@@ -102,3 +108,8 @@ private:
 };
 
 }} // end of namespace
+
+namespace std
+{
+	template <> struct is_error_code_enum<hrb::redis::Error> : true_type {};
+}
