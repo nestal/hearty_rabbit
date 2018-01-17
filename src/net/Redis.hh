@@ -30,12 +30,13 @@ public:
 	Reply(redisReply *r = nullptr);
 
 	std::string_view as_string() const;
+	long as_int() const;
 
 	Reply as_array(std::size_t i) const;
 	std::size_t array_size() const;
 
 private:
-	::redisReply *m_reply;
+	const ::redisReply *m_reply;
 };
 
 // Copied from: https://github.com/ryangraham/hiredis-boostasio-adapter/blob/master/boostasio.cpp
@@ -56,13 +57,19 @@ public:
 	template <typename Callback, typename... Args>
 	void command(Callback&& callback, const char *fmt, Args... args)
 	{
+		if (!m_ctx)
+		{
+			callback(Reply{});
+			return;
+		}
+
 		using CallbackType = std::remove_reference_t<Callback>;
 
 		auto callback_ptr = std::make_unique<CallbackType>(std::forward<Callback>(callback));
 		auto r = ::redisAsyncCommand(m_ctx, [](redisAsyncContext *, void *reply, void *pv_callback)
 		{
 			std::unique_ptr<CallbackType> callback{static_cast<CallbackType*>(pv_callback)};
-			(*callback)(static_cast<redisReply*>(reply));
+			(*callback)(Reply{static_cast<redisReply*>(reply)});
 		}, callback_ptr.release(), fmt, args...);
 	}
 
