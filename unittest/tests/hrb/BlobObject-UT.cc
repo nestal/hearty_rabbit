@@ -32,19 +32,48 @@ TEST_CASE("Load BlobObject from file", "[normal]")
 	boost::asio::io_context ioc;
 	Database db{ioc, "localhost", 6379};
 
+	bool tested = false;
 	BlobObject copy;
 
-	blob.save(db, [&db, &copy](auto& src)
+	blob.save(db, [&db, &copy, &tested](auto& src, bool success)
 	{
+		REQUIRE(success);
+		REQUIRE(!src.empty());
+
 		// read it back
-		copy.load(db, src.ID(), [&db, &src](auto& copy)
+		copy.load(db, src.ID(), [&db, &src, &tested](auto& copy, bool success)
 		{
+			REQUIRE(success);
+			REQUIRE(!copy.empty());
+
 			REQUIRE(src.blob() == copy.blob());
 			REQUIRE(copy.blob().substr(0,2) == "/*");
 
+			tested = true;
 			db.disconnect();
 		});
 	});
 
 	ioc.run();
+	REQUIRE(tested);
+}
+
+TEST_CASE("Load non-exist BlobObject from redis", "[error]")
+{
+	boost::asio::io_context ioc;
+	Database db{ioc, "localhost", 6379};
+
+	bool tested = false;
+
+	BlobObject blob;
+	blob.load(db, ObjectID{}, [&db, &tested](auto& blob, bool success)
+	{
+		REQUIRE(!success);
+		REQUIRE(blob.empty());
+		tested = true;
+		db.disconnect();
+	});
+
+	ioc.run();
+	REQUIRE(tested);
 }

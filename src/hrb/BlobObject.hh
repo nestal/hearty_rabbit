@@ -43,9 +43,10 @@ public:
 	BlobObject& operator=(const BlobObject&) = delete;
 
 	const ObjectID& ID() const {return m_id;}
+	bool empty() const {return !m_mmap && m_size == 0;}
 
-	void save(redis::Database& db, std::function<void(BlobObject&)> completion);
-	void load(redis::Database& db, const ObjectID& id, std::function<void(BlobObject&)> completion);
+	void save(redis::Database& db, std::function<void(BlobObject&, bool)> completion);
+	void load(redis::Database& db, const ObjectID& id, std::function<void(BlobObject&, bool)> completion);
 
 	std::string_view blob() const;
 
