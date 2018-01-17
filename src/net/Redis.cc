@@ -23,6 +23,7 @@
 #include <iostream>
 
 namespace hrb {
+namespace redis {
 
 Database::Database(boost::asio::io_context& bic, const std::string& host, unsigned short port) :
 	m_ioc{bic},
@@ -33,56 +34,60 @@ Database::Database(boost::asio::io_context& bic, const std::string& host, unsign
 
 	m_socket.assign(boost::asio::ip::tcp::v4(), m_ctx->c.fd);
 
-	m_ctx->ev.data    = this;
+	m_ctx->ev.data = this;
 	m_ctx->ev.addRead = [](void *pvthis)
 	{
 		assert(pvthis);
-		auto pthis = static_cast<Database*>(pvthis);
+		auto pthis = static_cast<Database *>(pvthis);
 		pthis->m_request_read = true;
 		pthis->run();
 	};
 	m_ctx->ev.delRead = [](void *pvthis)
 	{
-		static_cast<Database*>(pvthis)->m_request_read = false;
+		static_cast<Database *>(pvthis)->m_request_read = false;
 	};
 	m_ctx->ev.addWrite = [](void *pvthis)
 	{
 		assert(pvthis);
-		auto pthis = static_cast<Database*>(pvthis);
+		auto pthis = static_cast<Database *>(pvthis);
 		pthis->m_request_write = true;
 		pthis->run();
 	};
 	m_ctx->ev.delWrite = [](void *pvthis)
 	{
-		static_cast<Database*>(pvthis)->m_request_write = false;
+		static_cast<Database *>(pvthis)->m_request_write = false;
 	};
 	m_ctx->ev.cleanup = [](void *pvthis)
 	{
-		auto pthis = static_cast<Database*>(pvthis);
+		auto pthis = static_cast<Database *>(pvthis);
 		if (pthis->m_socket.is_open())
 			pthis->m_socket.release();
 	};
-	::redisAsyncSetConnectCallback(m_ctx, [](const redisAsyncContext *ctx, int status)
-	{
-		std::cout << "connect callback " << status << std::endl;
-		if (status == REDIS_ERR)
+	::redisAsyncSetConnectCallback(
+		m_ctx, [](const redisAsyncContext *ctx, int status)
 		{
-			std::cout << "connect error: " << ctx->err << " " << ctx->errstr << std::endl;
-			static_cast<Database*>(ctx->ev.data)->m_ctx = nullptr;
+			std::cout << "connect callback " << status << std::endl;
+			if (status == REDIS_ERR)
+			{
+				std::cout << "connect error: " << ctx->err << " " << ctx->errstr << std::endl;
+				static_cast<Database *>(ctx->ev.data)->m_ctx = nullptr;
+			}
 		}
-	});
-	::redisAsyncSetDisconnectCallback(m_ctx, [](const redisAsyncContext *ctx, int status)
-	{
-		// The caller will free the context anyway, so set our own context to nullptr
-		// to avoid double free
-		static_cast<Database*>(ctx->ev.data)->m_ctx = nullptr;
+	);
+	::redisAsyncSetDisconnectCallback(
+		m_ctx, [](const redisAsyncContext *ctx, int status)
+		{
+			// The caller will free the context anyway, so set our own context to nullptr
+			// to avoid double free
+			static_cast<Database *>(ctx->ev.data)->m_ctx = nullptr;
 
-		std::cout << "disconnect! " << ctx->errstr << " " << status << std::endl;
+			std::cout << "disconnect! " << ctx->errstr << " " << status << std::endl;
 
-		// Throw exception if we have error
+			// Throw exception if we have error
 //		if (ctx->err)
 //			BOOST_THROW_EXCEPTION(Error() << ErrorMsg(ctx->errstr));
-	});
+		}
+	);
 }
 
 Database::~Database()
@@ -96,30 +101,34 @@ void Database::run()
 	if (m_request_read && !m_reading && m_ctx)
 	{
 		m_reading = true;
-		m_socket.async_wait(boost::asio::socket_base::wait_read, [this](auto&& ec)
-		{
-			m_reading = false;
-			if (!ec && m_ctx)
-				::redisAsyncHandleRead(m_ctx);
-			if (!ec || ec == boost::system::errc::operation_would_block)
-				run();
-		});
+		m_socket.async_wait(
+			boost::asio::socket_base::wait_read, [this](auto&& ec)
+			{
+				m_reading = false;
+				if (!ec && m_ctx)
+					::redisAsyncHandleRead(m_ctx);
+				if (!ec || ec == boost::system::errc::operation_would_block)
+					run();
+			}
+		);
 	}
 	if (m_request_write && !m_writing && m_ctx)
 	{
 		m_writing = true;
-		m_socket.async_wait(boost::asio::socket_base::wait_write, [this](auto&& ec)
-		{
-			m_writing = false;
-			if (!ec && m_ctx)
-				::redisAsyncHandleWrite(m_ctx);
-			if (!ec || ec == boost::system::errc::operation_would_block)
-				run();
-		});
+		m_socket.async_wait(
+			boost::asio::socket_base::wait_write, [this](auto&& ec)
+			{
+				m_writing = false;
+				if (!ec && m_ctx)
+					::redisAsyncHandleWrite(m_ctx);
+				if (!ec || ec == boost::system::errc::operation_would_block)
+					run();
+			}
+		);
 	}
 }
 
-redisAsyncContext* Database::connect(const std::string& host, unsigned short port)
+redisAsyncContext *Database::connect(const std::string& host, unsigned short port)
 {
 	auto ctx = ::redisAsyncConnect(host.c_str(), port);
 	if (ctx->err)
@@ -169,5 +178,4 @@ long Reply::as_int() const
 	return m_reply->type == REDIS_REPLY_INTEGER ? m_reply->integer : 0;
 }
 
-
-} // end of namespace
+}} // end of namespace
