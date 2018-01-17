@@ -12,7 +12,7 @@
 
 #include <catch.hpp>
 
-#include "net/RedisDriver.hh"
+#include "net/Redis.hh"
 
 #include <boost/asio/io_context.hpp>
 #include <cassert>
@@ -21,7 +21,7 @@
 TEST_CASE("simple redis", "[normal]")
 {
 	boost::asio::io_context ic;
-	hrb::RedisDriver redis{ic, "localhost", 6379};
+	hrb::Database redis{ic, "localhost", 6379};
 
 	redis.command([](auto) {}, "SET key %d", 100);
 	redis.command([&redis](auto reply)

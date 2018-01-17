@@ -14,7 +14,7 @@
 
 #include "hrb/BlobObject.hh"
 
-#include "net/RedisDriver.hh"
+#include "net/Redis.hh"
 
 #include <iostream>
 
@@ -29,7 +29,7 @@ TEST_CASE("Load BlobObject from file", "[normal]")
 	REQUIRE(std::memcmp(blob.ID().data, zero.data, zero.size) != 0);
 
 	boost::asio::io_context ioc;
-	RedisDriver db{ioc, "localhost", 6379};
+	Database db{ioc, "localhost", 6379};
 
 	BlobObject copy;
 

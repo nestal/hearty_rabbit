@@ -12,7 +12,7 @@
 
 #include "BlobObject.hh"
 
-#include "net/RedisDriver.hh"
+#include "net/Redis.hh"
 
 #include <boost/beast/core/file_posix.hpp>
 
@@ -50,7 +50,7 @@ BlobObject::~BlobObject()
 		::munmap(m_mmap, m_size);
 }
 
-void BlobObject::save(RedisDriver& db, std::function<void(BlobObject &)> completion)
+void BlobObject::save(Database& db, std::function<void(BlobObject &)> completion)
 {
 	db.command([callback=std::move(completion), this](redisReply *)
 	{
@@ -58,9 +58,9 @@ void BlobObject::save(RedisDriver& db, std::function<void(BlobObject &)> complet
 	}, "HSET %b blob %b", m_id.data, m_id.size, m_mmap, m_size);
 }
 
-void BlobObject::load(RedisDriver& db, const ObjectID& id, std::function<void(BlobObject&)> completion)
+void BlobObject::load(Database& db, const ObjectID& id, std::function<void(BlobObject&)> completion)
 {
-	db.command([callback=std::move(completion), id, this](RedisReply reply)
+	db.command([callback=std::move(completion), id, this](Reply reply)
 	{
 		for (auto i = 0ULL ; i < reply.array_size() ; i++)
 		{
