@@ -99,6 +99,8 @@ private:
 	boost::asio::io_context& m_ioc;
 	boost::asio::ip::tcp::socket m_socket;
 
+	boost::asio::strand<boost::asio::io_context::executor_type> m_strand;
+
 	redisAsyncContext *m_ctx{};
 
 	bool m_reading{false}, m_writing{false};
