@@ -28,26 +28,18 @@ BlobObject::BlobObject(const boost::filesystem::path &path)
 	// read the file and calculate the sha and mime_type
 	boost::system::error_code ec;
 	boost::beast::file_posix file;
-	file.open(path.string().c_str(), boost::beast::file_mode::read, ec);
+	file.open(path.string().c_str(), boost::beast::file_mode::write_existing, ec);
 
-	if (ec)
+	std::error_code sec;
+	if (!ec)
+		m_blob.open(file.native_handle(), sec);
+	else
 		throw std::system_error(ec);
 
-	struct stat s{};
-	fstat(file.native_handle(), &s);
-	m_size = static_cast<std::size_t>(s.st_size);
-
-	m_mmap = ::mmap(nullptr, m_size, PROT_READ, MAP_SHARED, file.native_handle(), 0);
-	if (m_mmap == MAP_FAILED)
-		throw std::system_error(errno, std::system_category());
-
-	::SHA1(static_cast<const unsigned char*>(m_mmap), m_size, m_id.data);
-}
-
-BlobObject::~BlobObject()
-{
-	if (m_mmap)
-		::munmap(m_mmap, m_size);
+	if (!sec)
+		::SHA1(static_cast<const unsigned char*>(m_blob.data()), m_blob.size(), m_id.data);
+	else
+		throw std::system_error(sec);
 }
 
 void BlobObject::save(redis::Database& db, std::function<void(BlobObject&, bool)> completion)
@@ -55,14 +47,14 @@ void BlobObject::save(redis::Database& db, std::function<void(BlobObject&, bool)
 	db.command([callback=std::move(completion), this](redis::Reply, std::error_code ec)
 	{
 		callback(*this, !ec);
-	}, "HSET %b blob %b", m_id.data, m_id.size, m_mmap, m_size);
+	}, "HSET %b blob %b", m_id.data, m_id.size, m_blob.data(), m_blob.size());
 }
 
 void BlobObject::load(redis::Database& db, const ObjectID& id, std::function<void(BlobObject&, bool)> completion)
 {
-	db.command([callback=std::move(completion), id, this](redis::Reply reply, std::error_code)
+	db.command([callback=std::move(completion), id, this](redis::Reply reply, std::error_code ec)
 	{
-		for (auto i = 0ULL ; i < reply.array_size() ; i++)
+		for (auto i = 0ULL ; i < reply.array_size() && !ec ; i++)
 		{
 			if (reply.as_array(i).as_string() == "blob")
 			{
@@ -73,15 +65,11 @@ void BlobObject::load(redis::Database& db, const ObjectID& id, std::function<voi
 				auto blob = reply.as_array(i+1).as_string();
 
 				// Create an anonymous memory mapping to store the blob
-				m_mmap = ::mmap(nullptr, blob.size(), PROT_READ|PROT_WRITE, MAP_SHARED|MAP_ANONYMOUS, -1, 0);
-				if (m_mmap == MAP_FAILED)
-					throw std::system_error(errno, std::system_category());
+				m_blob.allocate(blob.size(), ec);
+				if (!ec)
+					std::memcpy(m_blob.data(), blob.data(), blob.size());
 
-				// Copy the blob to the anonymous memory mapping
-				std::memcpy(m_mmap, blob.data(), blob.size());
-				m_size = blob.size();
-
-				callback(*this, true);
+				callback(*this, !ec);
 				return;
 			}
 		}
@@ -94,7 +82,7 @@ void BlobObject::load(redis::Database& db, const ObjectID& id, std::function<voi
 
 std::string_view BlobObject::blob() const
 {
-	return {static_cast<const char*>(m_mmap), m_size};
+	return {static_cast<const char*>(m_blob.data()), m_blob.size()};
 }
 
 } // end of namespace
