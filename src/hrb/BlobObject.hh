@@ -12,6 +12,8 @@
 
 #pragma once
 
+#include "util/MMap.hh"
+
 #include <boost/filesystem/path.hpp>
 
 #include <openssl/sha.h>
@@ -37,13 +39,13 @@ public:
 	explicit BlobObject(const boost::filesystem::path& path);
 	BlobObject(BlobObject&&) = default;
 	BlobObject(const BlobObject&) = delete;
-	~BlobObject();
+	~BlobObject() = default;
 
 	BlobObject& operator=(BlobObject&&) = default;
 	BlobObject& operator=(const BlobObject&) = delete;
 
 	const ObjectID& ID() const {return m_id;}
-	bool empty() const {return !m_mmap && m_size == 0;}
+	bool empty() const {return !m_blob.is_opened();}
 
 	void save(redis::Database& db, std::function<void(BlobObject&, bool)> completion);
 	void load(redis::Database& db, const ObjectID& id, std::function<void(BlobObject&, bool)> completion);
@@ -55,8 +57,7 @@ private:
 	std::string m_name;     //!< Typically the file name of the blob
 	std::string m_mime;     //!< Mime-type of the blob, deduced by libmagic
 
-	void *m_mmap{};         //!< Pointer to memory mapped file
-	std::size_t m_size{};   //!< File size in bytes.
+	MMap        m_blob;
 };
 
 } // end of namespace hrb

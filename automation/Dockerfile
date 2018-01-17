@@ -7,7 +7,7 @@ RUN yum install -y centos-release-scl epel-release \
 	&& rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-SIG-SCLo \
 	&& rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-EPEL-7 \
 	&& yum install -y wget devtoolset-7 systemd-devel openssl-devel \
-		rpm-build rapidjson-devel hiredis-devel \
+		rpm-build rapidjson-devel hiredis-devel file-devel \
 		libicu-devel zlib-devel bzip2-devel xz-devel \
 	&& source scl_source enable devtoolset-7 \
 	&& mkdir /build
