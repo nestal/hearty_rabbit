@@ -50,15 +50,15 @@ BlobObject::~BlobObject()
 		::munmap(m_mmap, m_size);
 }
 
-void BlobObject::save(redis::Database& db, std::function<void(BlobObject &)> completion)
+void BlobObject::save(redis::Database& db, std::function<void(BlobObject&, bool)> completion)
 {
-	db.command([callback=std::move(completion), this](redis::Reply, std::error_code)
+	db.command([callback=std::move(completion), this](redis::Reply, std::error_code ec)
 	{
-		callback(*this);
+		callback(*this, !ec);
 	}, "HSET %b blob %b", m_id.data, m_id.size, m_mmap, m_size);
 }
 
-void BlobObject::load(redis::Database& db, const ObjectID& id, std::function<void(BlobObject&)> completion)
+void BlobObject::load(redis::Database& db, const ObjectID& id, std::function<void(BlobObject&, bool)> completion)
 {
 	db.command([callback=std::move(completion), id, this](redis::Reply reply, std::error_code)
 	{
@@ -81,13 +81,13 @@ void BlobObject::load(redis::Database& db, const ObjectID& id, std::function<voi
 				std::memcpy(m_mmap, blob.data(), blob.size());
 				m_size = blob.size();
 
-				callback(*this);
+				callback(*this, true);
 				return;
 			}
 		}
 
 		// TODO: indicate error here
-		callback(*this);
+		callback(*this, false);
 
 	}, "HGETALL %b", id.data, id.size);
 }
