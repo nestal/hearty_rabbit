@@ -43,7 +43,14 @@ void BlobObject::open(const boost::filesystem::path &path, std::error_code& ec)
 	{
 		m_blob.open(file.native_handle(), ec);
 		if (!ec)
-			::SHA256(static_cast<const unsigned char *>(m_blob.data()), m_blob.size(), m_id.data);
+		{
+			::SHA256_CTX sha;
+			::SHA256_Init(&sha);
+			auto size = m_blob.size();
+			::SHA256_Update(&sha, &size, sizeof(size));
+			::SHA256_Update(&sha, static_cast<const unsigned char *>(m_blob.data()), m_blob.size());
+			::SHA256_Final(m_id.data, &sha);
+		}
 	}
 }
 
