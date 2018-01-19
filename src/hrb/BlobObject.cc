@@ -43,7 +43,7 @@ void BlobObject::open(const boost::filesystem::path &path, std::error_code& ec)
 	{
 		m_blob.open(file.native_handle(), ec);
 		if (!ec)
-			::SHA1(static_cast<const unsigned char *>(m_blob.data()), m_blob.size(), m_id.data);
+			::SHA256(static_cast<const unsigned char *>(m_blob.data()), m_blob.size(), m_id.data);
 	}
 }
 

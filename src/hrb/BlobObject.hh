@@ -28,7 +28,7 @@ class Database;
 
 struct ObjectID
 {
-	static const std::size_t size = SHA_DIGEST_LENGTH;
+	static const std::size_t size = SHA256_DIGEST_LENGTH;
 	unsigned char data[size] {};
 };
 

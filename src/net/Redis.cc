@@ -143,7 +143,8 @@ redisAsyncContext *Database::connect(const std::string& host, unsigned short por
 
 void Database::disconnect()
 {
-	::redisAsyncDisconnect(m_ctx);
+	if (m_ctx)
+		::redisAsyncDisconnect(m_ctx);
 	m_ctx = nullptr;
 }
 
