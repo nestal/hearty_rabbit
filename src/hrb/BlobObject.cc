@@ -76,10 +76,16 @@ ObjectID BlobObject::hash(std::string_view blob)
 
 void BlobObject::save(redis::Database& db, Completion completion)
 {
-	db.command([callback=std::move(completion), this](redis::Reply, std::error_code ec)
-	{
-		callback(*this, ec);
-	}, "HSET %b blob %b", m_id.data, m_id.size, m_blob.data(), m_blob.size());
+	db.command(
+		[callback=std::move(completion), this](redis::Reply, std::error_code ec)
+		{
+			callback(*this, ec);
+		},
+		"HSET %b blob %b name %b",
+		m_id.data, m_id.size,
+		m_blob.data(), m_blob.size(),
+		m_name.c_str(), m_name.size()
+	);
 }
 
 void BlobObject::load(redis::Database& db, const ObjectID& id, Completion completion)
@@ -92,6 +98,7 @@ void BlobObject::load(redis::Database& db, const ObjectID& id, Completion comple
 		if (!ec && reply.array_size() == 0)
 			ec = Error::object_not_exist;
 
+		bool valid = false;
 		for (auto i = 0ULL ; i < reply.array_size() && !ec ; i++)
 		{
 			if (reply.as_array(i).as_string() == "blob")
@@ -108,10 +115,20 @@ void BlobObject::load(redis::Database& db, const ObjectID& id, Completion comple
 					std::memcpy(new_mem.data(), blob.data(), blob.size());
 					result.m_id = id;
 					result.m_blob = std::move(new_mem);
+
+					// blob is require
+					valid = true;
 				}
-				break;
 			}
+
+			// name is optional
+			else if (reply.as_array(i).as_string() == "name")
+				result.m_name = reply.as_array(i+1).as_string();
 		}
+
+		// if redis return OK but we don't have blob, then the object is notvalid
+		if (!valid)
+			ec = Error::invalid_object;
 
 		callback(result, ec);
 

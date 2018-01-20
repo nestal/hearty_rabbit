@@ -27,6 +27,7 @@ const std::error_category& hrb_error_category()
 			{
 				case Error::ok: return "no error";
 				case Error::object_not_exist: return "object not exist";
+				case Error::invalid_object: return "invalid object";
 				case Error::mmap_already_opened: return "mmap already opened";
 				default: return "unknown error " + std::to_string(ev);
 			}

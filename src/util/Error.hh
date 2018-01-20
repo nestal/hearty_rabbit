@@ -20,6 +20,7 @@ enum class Error
 {
 	ok,
 	object_not_exist,
+	invalid_object,
 	mmap_already_opened
 };
 
