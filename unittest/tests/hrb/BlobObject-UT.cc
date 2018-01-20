@@ -47,6 +47,7 @@ TEST_CASE("Load BlobObject from file", "[normal]")
 
 			REQUIRE(src.blob() == loaded.blob());
 			REQUIRE(loaded.blob().substr(0,2) == "/*");
+			REQUIRE(loaded.name() == "BlobObject-UT.cc");
 
 			SECTION("move operator")
 			{
@@ -59,6 +60,7 @@ TEST_CASE("Load BlobObject from file", "[normal]")
 				REQUIRE(loaded.blob().empty());
 				REQUIRE(!copy.empty());
 				REQUIRE(src.blob() == copy.blob());
+				REQUIRE(copy.name() == "BlobObject-UT.cc");
 			}
 
 			tested = true;
