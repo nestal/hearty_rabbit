@@ -15,11 +15,11 @@
 #include "util/MMap.hh"
 
 #include <boost/filesystem/path.hpp>
-
 #include <openssl/sha.h>
 
 #include <cstddef>
 #include <functional>
+#include <system_error>
 
 namespace hrb {
 namespace redis {
@@ -34,10 +34,6 @@ struct ObjectID
 
 class BlobObject
 {
-public:
-	enum Error {ok, object_not_exist};
-	struct ErrorCategory;
-
 public:
 	BlobObject() = default;
 	explicit BlobObject(const boost::filesystem::path& path);
@@ -67,11 +63,4 @@ private:
 	MMap        m_blob;
 };
 
-std::error_code make_error_code(BlobObject::Error err);
-
 } // end of namespace hrb
-
-namespace std
-{
-	template <> struct is_error_code_enum<hrb::BlobObject::Error> : true_type {};
-}

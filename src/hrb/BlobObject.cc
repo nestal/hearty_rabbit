@@ -13,6 +13,7 @@
 #include "BlobObject.hh"
 
 #include "net/Redis.hh"
+#include "util/Error.hh"
 
 #include <boost/beast/core/file_posix.hpp>
 
@@ -102,34 +103,6 @@ void BlobObject::load(redis::Database& db, const ObjectID& id, Completion comple
 std::string_view BlobObject::blob() const
 {
 	return {static_cast<const char*>(m_blob.data()), m_blob.size()};
-}
-
-
-struct BlobObject::ErrorCategory : std::error_category
-{
-	const char *name() const noexcept override;
-	std::string message(int ev) const override;
-};
-const BlobObject::ErrorCategory blob_object_error{};
-
-const char *BlobObject::ErrorCategory::name() const noexcept
-{
-	return "blob-object";
-}
-
-std::string BlobObject::ErrorCategory::message(int ev) const
-{
-	switch (static_cast<Error>(ev))
-	{
-		case Error::ok:                 return "success";
-		case Error::object_not_exist:   return "object not exist";
-		default: return "unknown error";
-	}
-}
-
-std::error_code make_error_code(BlobObject::Error err)
-{
-	return std::error_code(static_cast<int>(err), blob_object_error);
 }
 
 } // end of namespace

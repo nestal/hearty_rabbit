@@ -178,35 +178,34 @@ long Reply::as_int() const
 	return m_reply->type == REDIS_REPLY_INTEGER ? m_reply->integer : 0;
 }
 
-struct ErrorCategory : std::error_category
+const std::error_category& redis_error_category()
 {
-	const char *name() const noexcept override;
-	std::string message(int ev) const override;
-};
-const ErrorCategory redis_error{};
-
-const char *ErrorCategory::name() const noexcept
-{
-	return "redis";
-}
-
-std::string ErrorCategory::message(int ev) const
-{
-	switch (ev)
+	struct Cat : std::error_category
 	{
-		case REDIS_OK: return "no error";
-		case REDIS_ERR_IO: return "IO error";
-		case REDIS_ERR_EOF: return "EOF error";
-		case REDIS_ERR_PROTOCOL: return "protocol error";
-		case REDIS_ERR_OOM: return "out-of-memory error";
-		case REDIS_ERR_OTHER: return "other error";
-		default: return "unknown error";
-	}
+		Cat() = default;
+		const char *name() const noexcept override { return "redis"; }
+
+		std::string message(int ev) const override
+		{
+			switch (ev)
+			{
+				case REDIS_OK: return "no error";
+				case REDIS_ERR_IO: return "IO error";
+				case REDIS_ERR_EOF: return "EOF error";
+				case REDIS_ERR_PROTOCOL: return "protocol error";
+				case REDIS_ERR_OOM: return "out-of-memory error";
+				case REDIS_ERR_OTHER: return "other error";
+				default: return "unknown error";
+			}
+		}
+	};
+	static const Cat cat;
+	return cat;
 }
 
 std::error_code make_error_code(Error err)
 {
-	return std::error_code(static_cast<int>(err), redis_error);
+	return std::error_code(static_cast<int>(err), redis_error_category());
 }
 
 }} // end of namespace

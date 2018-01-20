@@ -31,7 +31,9 @@ MMap::MMap(int fd)
 
 void MMap::open(int fd, std::error_code& ec)
 {
-	assert(!is_opened());
+	if (is_opened())
+		ec.assign(EEXIST, std::generic_category());
+
 	struct stat s{};
 	if (fstat(fd, &s) == 0)
 		mmap(fd, static_cast<std::size_t>(s.st_size), PROT_READ, MAP_SHARED, ec);
