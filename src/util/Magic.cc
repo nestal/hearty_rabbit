@@ -16,7 +16,7 @@ namespace hrb {
 
 Magic::Magic() : m_cookie{::magic_open(MAGIC_MIME_TYPE)}
 {
-	::magic_compile(m_cookie, nullptr);
+	::magic_load(m_cookie, nullptr);
 }
 
 Magic::~Magic()
