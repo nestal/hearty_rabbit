@@ -48,6 +48,7 @@ file(GLOB LIB_SRC src/*/*.cc src/*/*.hh)
 add_library(hrblib ${LIB_SRC} ${CMAKE_CURRENT_BINARY_DIR}/config.hh)
 target_link_libraries(
 	hrblib
+	magic
 	${Boost_LIBRARIES}
 	${HIREDIS_LIBRARIES}
 	OpenSSL::SSL

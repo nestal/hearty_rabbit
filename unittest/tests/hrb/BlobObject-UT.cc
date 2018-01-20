@@ -24,7 +24,10 @@ using namespace hrb::redis;
 TEST_CASE("Load BlobObject from file", "[normal]")
 {
 	BlobObject blob{__FILE__};
+	INFO("blob = " << blob.name() << " " << blob.mime());
+
 	REQUIRE(blob.name() == "BlobObject-UT.cc");
+	REQUIRE(blob.mime() == "text/plain");
 
 	ObjectID zero{};
 

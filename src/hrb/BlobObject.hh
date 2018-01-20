@@ -57,9 +57,11 @@ public:
 
 	std::string_view blob() const;
 	const std::string& name() const {return m_name;}
+	const std::string& mime() const {return m_mime;}
 
 private:
 	static ObjectID hash(std::string_view blob);
+	static std::string deduce_mime(std::string_view blob);
 
 private:
 	ObjectID    m_id;       //!< SHA1 hash of the blob
