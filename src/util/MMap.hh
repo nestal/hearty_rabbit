@@ -22,9 +22,9 @@ class MMap
 public:
 	MMap() = default;
 	explicit MMap(int fd);
-	MMap(MMap&&) = default;
+	MMap(MMap&&);
 	MMap(const MMap&) = delete;
-	MMap& operator=(MMap&&) = default;
+	MMap& operator=(MMap&&);
 	MMap& operator=(const MMap&) = delete;
 	~MMap();
 

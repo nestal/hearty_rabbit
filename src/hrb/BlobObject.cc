@@ -39,15 +39,18 @@ void BlobObject::open(const boost::filesystem::path &path, std::error_code& ec)
 		ec.assign(bec.value(), bec.category());
 	else
 	{
-		m_blob.open(file.native_handle(), ec);
+		MMap blob;
+		blob.open(file.native_handle(), ec);
 		if (!ec)
 		{
 			::SHA256_CTX sha{};
 			::SHA256_Init(&sha);
-			auto size = m_blob.size();
+			auto size = blob.size();
 			::SHA256_Update(&sha, &size, sizeof(size));
-			::SHA256_Update(&sha, m_blob.data(), m_blob.size());
+			::SHA256_Update(&sha, blob.data(), blob.size());
 			::SHA256_Final(m_id.data, &sha);
+
+			m_blob = std::move(blob);
 		}
 	}
 }
@@ -62,8 +65,10 @@ void BlobObject::save(redis::Database& db, Completion completion)
 
 void BlobObject::load(redis::Database& db, const ObjectID& id, Completion completion)
 {
-	db.command([callback=std::move(completion), id, this](redis::Reply reply, std::error_code ec)
+	db.command([callback=std::move(completion), id](redis::Reply reply, std::error_code ec)
 	{
+		BlobObject result;
+
 		// Keep the redis error code if it is non-zero
 		if (!ec && reply.array_size() == 0)
 			ec = Error::object_not_exist;
@@ -72,9 +77,6 @@ void BlobObject::load(redis::Database& db, const ObjectID& id, Completion comple
 		{
 			if (reply.as_array(i).as_string() == "blob")
 			{
-				// Assign the ID
-				m_id = id;
-
 				// The blob should be in the next field of the reply array.
 				auto blob = reply.as_array(i+1).as_string();
 
@@ -82,15 +84,17 @@ void BlobObject::load(redis::Database& db, const ObjectID& id, Completion comple
 				MMap new_mem;
 				new_mem.allocate(blob.size(), ec);
 				if (!ec)
+				{
+					// everything OK, now commit
 					std::memcpy(new_mem.data(), blob.data(), blob.size());
-
-				// everything OK, now commit
-				m_blob.swap(new_mem);
+					result.m_id = id;
+					result.m_blob = std::move(new_mem);
+				}
 				break;
 			}
 		}
 
-		callback(*this, ec);
+		callback(result, ec);
 
 	}, "HGETALL %b", id.data, id.size);
 }

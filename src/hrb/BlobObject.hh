@@ -53,8 +53,8 @@ public:
 
 	using Completion = std::function<void(BlobObject&, std::error_code ec)>;
 
+	static void load(redis::Database& db, const ObjectID& id, Completion completion);
 	void save(redis::Database& db, Completion completion);
-	void load(redis::Database& db, const ObjectID& id, Completion completion);
 	void open(const boost::filesystem::path& path, std::error_code& ec);
 
 	std::string_view blob() const;
