@@ -35,6 +35,7 @@ enum class Error
 };
 
 std::error_code make_error_code(Error err);
+const std::error_category& redis_error_category();
 
 class Reply
 {

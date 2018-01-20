@@ -31,5 +31,43 @@ TEST_CASE("mmap self", "[normal]")
 	MMap subject;
 	subject.open(file.native_handle(), sec);
 	REQUIRE(!sec);
+	REQUIRE(subject.size() > 2);
+	REQUIRE(subject.string_view().substr(0,2) == "/*");
+
+	subject.clear();
+	REQUIRE(subject.string_view().empty());
+}
+
+TEST_CASE("mmap non-exist", "[error]")
+{
+	std::error_code ec;
+
+	MMap subject;
+	subject.open(0x10000, ec);
+	INFO("error_code is " << ec);
+	REQUIRE(ec == std::errc::bad_file_descriptor);
+}
+
+TEST_CASE("Allocate and then re-open", "[normal]")
+{
+	std::error_code ec;
+
+	MMap subject;
+	subject.allocate(102, ec);
+	REQUIRE(!ec);
+	REQUIRE(subject.size() == 102);
+
+	// clear() and then open() again
+	subject.clear();
+	REQUIRE(!subject.is_opened());
+
+	boost::beast::file_posix file;
+
+	boost::system::error_code bec;
+	file.open(__FILE__, boost::beast::file_mode::read, bec);
+	REQUIRE(!bec);
+
+	subject.open(file.native_handle(), ec);
+	REQUIRE(!ec);
 	REQUIRE(subject.string_view().substr(0,2) == "/*");
 }
