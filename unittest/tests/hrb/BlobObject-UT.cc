@@ -24,6 +24,7 @@ using namespace hrb::redis;
 TEST_CASE("Load BlobObject from file", "[normal]")
 {
 	BlobObject blob{__FILE__};
+	REQUIRE(blob.name() == "BlobObject-UT.cc");
 
 	ObjectID zero{};
 
@@ -89,4 +90,19 @@ TEST_CASE("Load non-exist BlobObject from redis", "[error]")
 
 	ioc.run();
 	REQUIRE(tested);
+}
+
+TEST_CASE("Create BlobObject from string_view", "[normal]")
+{
+	BlobObject subject("hello world!", "hello");
+	INFO("hello world hash is " << subject.ID());
+
+	REQUIRE(subject.name() == "hello");
+	REQUIRE(subject.blob() == "hello world!");
+
+	// test move ctor
+	BlobObject moved{std::move(subject)};
+	REQUIRE(subject.empty());
+	REQUIRE(moved.name() == "hello");
+	REQUIRE(moved.blob() == "hello world!");
 }

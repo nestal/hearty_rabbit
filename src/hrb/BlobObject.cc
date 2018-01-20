@@ -19,6 +19,7 @@
 
 #include <cassert>
 #include <fstream>
+#include <iomanip>
 
 namespace hrb {
 
@@ -26,6 +27,14 @@ BlobObject::BlobObject(const boost::filesystem::path &path)
 {
 	std::error_code ec;
 	open(path, ec);
+	if (ec)
+		throw std::system_error(ec);
+}
+
+BlobObject::BlobObject(std::string_view blob, std::string_view name)
+{
+	std::error_code ec;
+	assign(blob, name, ec);
 	if (ec)
 		throw std::system_error(ec);
 }
@@ -44,16 +53,25 @@ void BlobObject::open(const boost::filesystem::path &path, std::error_code& ec)
 		blob.open(file.native_handle(), ec);
 		if (!ec)
 		{
-			::SHA256_CTX sha{};
-			::SHA256_Init(&sha);
-			auto size = blob.size();
-			::SHA256_Update(&sha, &size, sizeof(size));
-			::SHA256_Update(&sha, blob.data(), blob.size());
-			::SHA256_Final(m_id.data, &sha);
-
+			m_id   = hash(blob.string_view());
 			m_blob = std::move(blob);
+			m_name = path.filename().string();
 		}
 	}
+}
+
+ObjectID BlobObject::hash(std::string_view blob)
+{
+	ObjectID result{};
+
+	::SHA256_CTX sha{};
+	::SHA256_Init(&sha);
+	std::uint64_t size = blob.size();
+	::SHA256_Update(&sha, &size, sizeof(size));
+	::SHA256_Update(&sha, blob.data(), blob.size());
+	::SHA256_Final(result.data, &sha);
+
+	return result;
 }
 
 void BlobObject::save(redis::Database& db, Completion completion)
@@ -100,9 +118,33 @@ void BlobObject::load(redis::Database& db, const ObjectID& id, Completion comple
 	}, "HGETALL %b", id.data, id.size);
 }
 
+void BlobObject::assign(std::string_view blob, std::string_view name, std::error_code& ec)
+{
+	// Create an anonymous memory mapping to store the blob
+	MMap new_mem;
+	new_mem.allocate(blob.size(), ec);
+	if (!ec)
+	{
+		// everything OK, now commit
+		std::memcpy(new_mem.data(), blob.data(), blob.size());
+		m_blob = std::move(new_mem);
+		m_id   = hash(m_blob.string_view());
+		m_name = name;
+	}
+}
+
 std::string_view BlobObject::blob() const
 {
 	return {static_cast<const char*>(m_blob.data()), m_blob.size()};
+}
+
+std::ostream& operator<<(std::ostream& os, const ObjectID& id)
+{
+	for (auto ch : id.data)
+	{
+		os << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(ch);
+	}
+	return os;
 }
 
 } // end of namespace
