@@ -31,6 +31,8 @@ public:
 	void* data() const {return m_mmap;}
 	std::size_t size() const {return m_size;}
 
+	std::string_view string_view() const {return {static_cast<const char*>(m_mmap), m_size};}
+
 	void clear();
 	void open(int fd, std::error_code& ec);
 	void create(int fd, const void *data, std::size_t size, std::error_code& ec);

@@ -14,9 +14,10 @@
 
 #include <sys/mman.h>
 #include <sys/stat.h>
+
+#include <cassert>
 #include <cstring>
 #include <utility>
-#include <cassert>
 
 namespace hrb {
 
