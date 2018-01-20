@@ -42,6 +42,8 @@ TEST_CASE("Load BlobObject from file", "[normal]")
 		REQUIRE(!ec);
 		REQUIRE(!src.empty());
 
+		db.command([](auto, auto){}, "HDEL %b mime", src.ID().data, src.ID().size);
+
 		// read it back
 		BlobObject::load(db, src.ID(), [&db, &src, &tested](auto& loaded, auto ec)
 		{

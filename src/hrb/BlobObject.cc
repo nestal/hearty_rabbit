@@ -130,7 +130,7 @@ void BlobObject::load(redis::Database& db, const ObjectID& id, Completion comple
 
 			// mime is also optional
 			else if (reply.as_array(i).as_string() == "mime")
-				result.m_mime = reply.as_array(i+1).as_string();
+				result.m_mime = reply.as_array(i + 1).as_string();
 		}
 
 		// if redis return OK but we don't have blob, then the object is notvalid
@@ -138,6 +138,8 @@ void BlobObject::load(redis::Database& db, const ObjectID& id, Completion comple
 			ec = Error::invalid_object;
 
 		// TODO: deduce mime
+		if (result.m_mime.empty())
+			result.m_mime = deduce_mime(result.blob());
 
 		callback(result, ec);
 
