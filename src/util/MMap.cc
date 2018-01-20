@@ -33,12 +33,12 @@ void MMap::open(int fd, std::error_code& ec)
 	assert(!is_opened());
 	struct stat s{};
 	if (fstat(fd, &s) == 0)
-		map(fd, static_cast<std::size_t>(s.st_size), PROT_READ, MAP_SHARED, ec);
+		mmap(fd, static_cast<std::size_t>(s.st_size), PROT_READ, MAP_SHARED, ec);
 	else
 		ec.assign(errno, std::generic_category());
 }
 
-void MMap::map(int fd, std::size_t size, int prot, int flags, std::error_code& ec)
+void MMap::mmap(int fd, std::size_t size, int prot, int flags, std::error_code& ec)
 {
 	assert(!is_opened());
 	auto addr = ::mmap(nullptr, size, prot, flags, fd, 0);
@@ -66,12 +66,14 @@ void MMap::clear()
 {
 	assert(is_opened());
 	::munmap(m_mmap, m_size);
+	m_mmap = nullptr;
+	m_size = 0;
 }
 
 void MMap::create(int fd, const void *data, std::size_t size, std::error_code& ec)
 {
 	assert(!is_opened());
-	map(fd, size, PROT_READ|PROT_WRITE, MAP_SHARED, ec);
+	mmap(fd, size, PROT_READ | PROT_WRITE, MAP_SHARED, ec);
 	if (!ec)
 		std::memcpy(m_mmap, data, size);
 }
@@ -85,17 +87,16 @@ void MMap::swap(MMap& target)
 void MMap::allocate(std::size_t size, std::error_code& ec)
 {
 	assert(!is_opened());
-	map(-1, size, PROT_READ|PROT_WRITE, MAP_SHARED|MAP_ANONYMOUS, ec);
+	mmap(-1, size, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, ec);
 }
 
-MMap::MMap(MMap&& m)
+MMap::MMap(MMap&& m) noexcept
 {
+	assert(!is_opened());
 	swap(m);
-	assert(!m.m_mmap);
-	assert(m.m_size == 0);
 }
 
-MMap& MMap::operator=(MMap&& rhs)
+MMap& MMap::operator=(MMap&& rhs) noexcept
 {
 	MMap copy{std::move(rhs)};
 	swap(copy);

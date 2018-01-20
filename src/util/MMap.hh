@@ -22,9 +22,9 @@ class MMap
 public:
 	MMap() = default;
 	explicit MMap(int fd);
-	MMap(MMap&&);
+	MMap(MMap&&) noexcept ;
 	MMap(const MMap&) = delete;
-	MMap& operator=(MMap&&);
+	MMap& operator=(MMap&&) noexcept ;
 	MMap& operator=(const MMap&) = delete;
 	~MMap();
 
@@ -39,7 +39,7 @@ public:
 	void swap(MMap& target);
 
 private:
-	void map(int fd, std::size_t size, int prot, int flags, std::error_code& ec);
+	void mmap(int fd, std::size_t size, int prot, int flags, std::error_code& ec);
 
 private:
 	void *m_mmap{};         //!< Pointer to memory mapped file

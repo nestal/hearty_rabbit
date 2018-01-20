@@ -33,27 +33,32 @@ TEST_CASE("Load BlobObject from file", "[normal]")
 	Database db{ioc, "localhost", 6379};
 
 	bool tested = false;
-	BlobObject copy;
-	SECTION("reopen file")
-	{
-		std::error_code ec;
-		copy.open(boost::filesystem::path{__FILE__}.parent_path()/"Server-UT.cc", ec);
-		REQUIRE(!ec);
-	}
-
-	blob.save(db, [&db, &copy, &tested](auto& src, auto ec)
+	blob.save(db, [&db, &tested](auto& src, auto ec)
 	{
 		REQUIRE(!ec);
 		REQUIRE(!src.empty());
 
 		// read it back
-		copy.load(db, src.ID(), [&db, &src, &tested](auto& copy, auto ec)
+		BlobObject::load(db, src.ID(), [&db, &src, &tested](auto& loaded, auto ec)
 		{
 			REQUIRE(!ec);
-			REQUIRE(!copy.empty());
+			REQUIRE(!loaded.empty());
 
-			REQUIRE(src.blob() == copy.blob());
-			REQUIRE(copy.blob().substr(0,2) == "/*");
+			REQUIRE(src.blob() == loaded.blob());
+			REQUIRE(loaded.blob().substr(0,2) == "/*");
+
+			SECTION("move operator")
+			{
+				BlobObject copy;
+				copy.open(boost::filesystem::path{__FILE__}.parent_path()/"Server-UT.cc", ec);
+				REQUIRE(!ec);
+				REQUIRE(!copy.empty());
+
+				copy = std::move(loaded);
+				REQUIRE(loaded.blob().empty());
+				REQUIRE(!copy.empty());
+				REQUIRE(src.blob() == copy.blob());
+			}
 
 			tested = true;
 			db.disconnect();
@@ -74,7 +79,7 @@ TEST_CASE("Load non-exist BlobObject from redis", "[error]")
 	BlobObject blob;
 	REQUIRE(blob.empty());
 
-	blob.load(db, ObjectID{}, [&db, &tested](auto& blob, auto ec)
+	BlobObject::load(db, ObjectID{}, [&db, &tested](auto& blob, auto ec)
 	{
 		REQUIRE(ec);
 		REQUIRE(blob.empty());
