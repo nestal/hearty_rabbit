@@ -41,15 +41,15 @@ TEST_CASE("Load BlobObject from file", "[normal]")
 		REQUIRE(!ec);
 	}
 
-	blob.save(db, [&db, &copy, &tested](auto& src, bool success)
+	blob.save(db, [&db, &copy, &tested](auto& src, auto ec)
 	{
-		REQUIRE(success);
+		REQUIRE(!ec);
 		REQUIRE(!src.empty());
 
 		// read it back
-		copy.load(db, src.ID(), [&db, &src, &tested](auto& copy, bool success)
+		copy.load(db, src.ID(), [&db, &src, &tested](auto& copy, auto ec)
 		{
-			REQUIRE(success);
+			REQUIRE(!ec);
 			REQUIRE(!copy.empty());
 
 			REQUIRE(src.blob() == copy.blob());
@@ -74,9 +74,9 @@ TEST_CASE("Load non-exist BlobObject from redis", "[error]")
 	BlobObject blob;
 	REQUIRE(blob.empty());
 
-	blob.load(db, ObjectID{}, [&db, &tested](auto& blob, bool success)
+	blob.load(db, ObjectID{}, [&db, &tested](auto& blob, auto ec)
 	{
-		REQUIRE(!success);
+		REQUIRE(ec);
 		REQUIRE(blob.empty());
 		tested = true;
 		db.disconnect();
