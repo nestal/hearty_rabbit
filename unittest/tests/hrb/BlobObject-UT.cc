@@ -27,7 +27,7 @@ TEST_CASE("Load BlobObject from file", "[normal]")
 	INFO("blob = " << blob.name() << " " << blob.mime());
 
 	REQUIRE(blob.name() == "BlobObject-UT.cc");
-	REQUIRE(blob.mime() == "text/plain");
+	REQUIRE(blob.mime() == "text/x-c");
 
 	ObjectID zero{};
 
