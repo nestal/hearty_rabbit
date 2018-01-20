@@ -14,6 +14,7 @@
 
 #include "net/Redis.hh"
 #include "util/Error.hh"
+#include "util/Magic.hh"
 
 #include <boost/beast/core/file_posix.hpp>
 
@@ -56,6 +57,7 @@ void BlobObject::open(const boost::filesystem::path &path, std::error_code& ec)
 			m_id   = hash(blob.string_view());
 			m_blob = std::move(blob);
 			m_name = path.filename().string();
+			m_mime = deduce_mime(m_blob.string_view());
 		}
 	}
 }
@@ -81,10 +83,11 @@ void BlobObject::save(redis::Database& db, Completion completion)
 		{
 			callback(*this, ec);
 		},
-		"HSET %b blob %b name %b",
+		"HSET %b blob %b name %b mime %b",
 		m_id.data, m_id.size,
 		m_blob.data(), m_blob.size(),
-		m_name.c_str(), m_name.size()
+		m_name.c_str(), m_name.size(),
+		m_mime.c_str(), m_mime.size()
 	);
 }
 
@@ -124,11 +127,17 @@ void BlobObject::load(redis::Database& db, const ObjectID& id, Completion comple
 			// name is optional
 			else if (reply.as_array(i).as_string() == "name")
 				result.m_name = reply.as_array(i+1).as_string();
+
+			// mime is also optional
+			else if (reply.as_array(i).as_string() == "mime")
+				result.m_mime = reply.as_array(i+1).as_string();
 		}
 
 		// if redis return OK but we don't have blob, then the object is notvalid
 		if (!valid)
 			ec = Error::invalid_object;
+
+		// TODO: deduce mime
 
 		callback(result, ec);
 
@@ -147,7 +156,14 @@ void BlobObject::assign(std::string_view blob, std::string_view name, std::error
 		m_blob = std::move(new_mem);
 		m_id   = hash(m_blob.string_view());
 		m_name = name;
+		m_mime = deduce_mime(m_blob.string_view());
 	}
+}
+
+std::string BlobObject::deduce_mime(std::string_view blob)
+{
+	static const thread_local Magic magic;
+	return std::string{magic.mime(blob)};
 }
 
 std::string_view BlobObject::blob() const
