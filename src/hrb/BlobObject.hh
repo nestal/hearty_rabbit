@@ -35,6 +35,10 @@ struct ObjectID
 class BlobObject
 {
 public:
+	enum Error {ok, object_not_exist};
+	struct ErrorCategory;
+
+public:
 	BlobObject() = default;
 	explicit BlobObject(const boost::filesystem::path& path);
 	BlobObject(BlobObject&&) = default;
@@ -47,8 +51,10 @@ public:
 	const ObjectID& ID() const {return m_id;}
 	bool empty() const {return !m_blob.is_opened();}
 
-	void save(redis::Database& db, std::function<void(BlobObject&, bool)> completion);
-	void load(redis::Database& db, const ObjectID& id, std::function<void(BlobObject&, bool)> completion);
+	using Completion = std::function<void(BlobObject&, std::error_code ec)>;
+
+	void save(redis::Database& db, Completion completion);
+	void load(redis::Database& db, const ObjectID& id, Completion completion);
 	void open(const boost::filesystem::path& path, std::error_code& ec);
 
 	std::string_view blob() const;
@@ -61,4 +67,11 @@ private:
 	MMap        m_blob;
 };
 
+std::error_code make_error_code(BlobObject::Error err);
+
 } // end of namespace hrb
+
+namespace std
+{
+	template <> struct is_error_code_enum<hrb::BlobObject::Error> : true_type {};
+}
