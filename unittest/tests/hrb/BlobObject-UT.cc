@@ -17,7 +17,7 @@
 #include "net/Redis.hh"
 
 #include <bitset>
-#include <iostream>
+#include <chrono>
 
 using namespace hrb;
 using namespace hrb::redis;
@@ -93,7 +93,8 @@ TEST_CASE("Load BlobObject from file", "[normal]")
 		});
 	});
 
-	ioc.run();
+	using namespace std::chrono_literals;
+	REQUIRE(ioc.run_for(10s) > 0);
 	REQUIRE(tested.all());
 }
 
@@ -115,7 +116,8 @@ TEST_CASE("Load non-exist BlobObject from redis", "[error]")
 		db.disconnect();
 	});
 
-	ioc.run();
+	using namespace std::chrono_literals;
+	REQUIRE(ioc.run_for(10s) > 0);
 	REQUIRE(tested);
 }
 

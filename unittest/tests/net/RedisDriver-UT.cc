@@ -16,14 +16,14 @@
 
 #include <boost/asio/io_context.hpp>
 #include <cassert>
-#include <iostream>
+#include <chrono>
 
 using namespace hrb::redis;
 
 TEST_CASE("redis server not started", "[normal]")
 {
-	boost::asio::io_context ic;
-	Database redis{ic, "localhost", 1}; // assume no one listen to this port
+	boost::asio::io_context ioc;
+	Database redis{ioc, "localhost", 1}; // assume no one listen to this port
 
 	bool tested = false;
 
@@ -34,26 +34,36 @@ TEST_CASE("redis server not started", "[normal]")
 		tested = true;
 	}, "SET key 100");
 
-	ic.run();
+	using namespace std::chrono_literals;
+	REQUIRE(ioc.run_for(10s) > 0);
 	REQUIRE(tested);
 }
 
 TEST_CASE("simple redis", "[normal]")
 {
-	boost::asio::io_context ic;
-	Database redis{ic, "localhost", 6379};
+	boost::asio::io_context ioc;
+	Database redis{ioc, "localhost", 6379};
 
-	redis.command([](auto, auto) {}, "SET key %d", 100);
-	redis.command([&redis](auto reply, auto)
+	auto tested = 0;
+
+	redis.command([&tested](auto, auto) {tested++;}, "SET key %d", 100);
+	redis.command([&redis, &tested](auto reply, auto)
 	{
+		// Check if redis executes our commands sequencially
+		REQUIRE(tested++ == 1);
+
 		REQUIRE(reply.as_string() == "100");
-		redis.command([&redis](auto reply, auto)
+
+		redis.command([&redis, &tested](auto reply, auto)
 		{
+			REQUIRE(tested++ == 2);
 		    REQUIRE(reply.as_int() == 1);
 
 			redis.disconnect();
 		}, "DEL key");
 	}, "GET key");
 
-	ic.run();
+	using namespace std::chrono_literals;
+	REQUIRE(ioc.run_for(10s) > 0);
+	REQUIRE(tested == 3);
 }
