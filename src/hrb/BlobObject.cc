@@ -141,9 +141,10 @@ void BlobObject::load(
 	BlobObject::Completion completion
 )
 {
-	db.command([callback=std::move(completion), id](redis::Reply reply, std::error_code ec)
+	db.command([callback=std::move(completion), id, path](redis::Reply reply, std::error_code ec)
 	{
 		BlobObject result;
+		result.m_blob = MMap::open(path, ec);
 
 		for (auto i = 0ULL ; i+1 < reply.array_size() && !ec ; i+=2)
 			result.assign_field(reply.as_array(i).as_string(), reply.as_array(i+1).as_string());
@@ -152,7 +153,6 @@ void BlobObject::load(
 			result.m_mime = deduce_mime(result.blob());
 
 		callback(result, ec);
-
 	}, "HGETALL %b", id.data, id.size);
 }
 
