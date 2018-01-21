@@ -11,6 +11,9 @@
 //
 
 #include "MMap.hh"
+#include "Error.hh"
+
+#include <boost/beast/core/file_posix.hpp>
 
 #include <sys/mman.h>
 #include <sys/stat.h>
@@ -29,16 +32,32 @@ MMap::MMap(int fd)
 		throw std::system_error(ec);
 }
 
-void MMap::open(int fd, std::error_code& ec)
+MMap MMap::open(int fd, std::error_code& ec)
 {
-	if (is_opened())
-		ec.assign(EEXIST, std::generic_category());
+	MMap result;
 
 	struct stat s{};
 	if (fstat(fd, &s) == 0)
-		mmap(fd, static_cast<std::size_t>(s.st_size), PROT_READ, MAP_SHARED, ec);
+		result.mmap(fd, static_cast<std::size_t>(s.st_size), PROT_READ, MAP_SHARED, ec);
 	else
 		ec.assign(errno, std::generic_category());
+
+	return result;
+}
+
+MMap MMap::open(const boost::filesystem::path& path, std::error_code& ec)
+{
+	MMap result;
+
+	boost::system::error_code bec;
+	boost::beast::file_posix file;
+	file.open(path.string().c_str(), boost::beast::file_mode::read, bec);
+	if (bec)
+		ec.assign(bec.value(), bec.category());
+	else
+		result = open(file.native_handle(), ec);
+
+	return result;
 }
 
 void MMap::mmap(int fd, std::size_t size, int prot, int flags, std::error_code& ec)
@@ -73,12 +92,14 @@ void MMap::clear()
 	m_size = 0;
 }
 
-void MMap::create(int fd, const void *data, std::size_t size, std::error_code& ec)
+MMap MMap::create(int fd, const void *data, std::size_t size, std::error_code& ec)
 {
-	assert(!is_opened());
-	mmap(fd, size, PROT_READ | PROT_WRITE, MAP_SHARED, ec);
+	MMap result;
+	result.mmap(fd, size, PROT_READ | PROT_WRITE, MAP_SHARED, ec);
 	if (!ec)
-		std::memcpy(m_mmap, data, size);
+		std::memcpy(result.m_mmap, data, size);
+
+	return result;
 }
 
 void MMap::swap(MMap& target)
@@ -87,10 +108,11 @@ void MMap::swap(MMap& target)
 	std::swap(m_size, target.m_size);
 }
 
-void MMap::allocate(std::size_t size, std::error_code& ec)
+MMap MMap::allocate(std::size_t size, std::error_code& ec)
 {
-	assert(!is_opened());
-	mmap(-1, size, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, ec);
+	MMap result;
+	result.mmap(-1, size, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, ec);
+	return result;
 }
 
 MMap::MMap(MMap&& m) noexcept
