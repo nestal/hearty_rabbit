@@ -16,8 +16,6 @@
 #include "util/Error.hh"
 #include "util/Magic.hh"
 
-#include <boost/beast/core/file_posix.hpp>
-
 #include <cassert>
 #include <fstream>
 #include <iomanip>
@@ -42,28 +40,19 @@ BlobObject::BlobObject(std::string_view blob, std::string_view name)
 
 void BlobObject::open(const boost::filesystem::path &path, std::error_code& ec)
 {
-	open(path, nullptr, path.filename().string(), deduce_mime(m_blob.string_view()), ec);
+	open(path, nullptr, path.filename().string(), {}, ec);
 }
 
 void BlobObject::open(const boost::filesystem::path& path, const ObjectID* id, std::string_view name, std::string_view mime, std::error_code& ec)
 {
 	// read the file and calculate the sha and mime_type
-	boost::system::error_code bec;
-	boost::beast::file_posix file;
-	file.open(path.string().c_str(), boost::beast::file_mode::read, bec);
-	if (bec)
-		ec.assign(bec.value(), bec.category());
-	else
+	auto blob = MMap::open(path, ec);
+	if (!ec)
 	{
-		MMap blob;
-		blob.open(file.native_handle(), ec);
-		if (!ec)
-		{
-			m_blob = std::move(blob);
-			m_id   = (id ? *id : hash(m_blob.string_view()));
-			m_name = name;
-			m_mime = mime;
-		}
+		m_blob = std::move(blob);
+		m_id   = (id ? *id : hash(m_blob.string_view()));
+		m_name = name;
+		m_mime = (mime.empty() ? deduce_mime(m_blob.string_view()) : mime);
 	}
 }
 
@@ -107,7 +96,7 @@ void BlobObject::load(redis::Database& db, const ObjectID& id, Completion comple
 			ec = Error::object_not_exist;
 
 		bool valid = false;
-		for (auto i = 0ULL ; i < reply.array_size() && !ec ; i++)
+		for (auto i = 0ULL ; i+1 < reply.array_size() && !ec ; i+=2)
 		{
 			if (reply.as_array(i).as_string() == "blob")
 			{
@@ -115,8 +104,7 @@ void BlobObject::load(redis::Database& db, const ObjectID& id, Completion comple
 				auto blob = reply.as_array(i+1).as_string();
 
 				// Create an anonymous memory mapping to store the blob
-				MMap new_mem;
-				new_mem.allocate(blob.size(), ec);
+				auto new_mem = MMap::allocate(blob.size(), ec);
 				if (!ec)
 				{
 					// everything OK, now commit
@@ -129,13 +117,8 @@ void BlobObject::load(redis::Database& db, const ObjectID& id, Completion comple
 				}
 			}
 
-			// name is optional
-			else if (reply.as_array(i).as_string() == "name")
-				result.m_name = reply.as_array(i+1).as_string();
-
-			// mime is also optional
-			else if (reply.as_array(i).as_string() == "mime")
-				result.m_mime = reply.as_array(i + 1).as_string();
+			else
+				result.assign_field(reply.as_array(i).as_string(), reply.as_array(i+1).as_string());
 		}
 
 		// if redis return OK but we don't have blob, then the object is notvalid
@@ -162,16 +145,8 @@ void BlobObject::load(
 	{
 		BlobObject result;
 
-		for (auto i = 0ULL ; i < reply.array_size() && !ec ; i++)
-		{
-			// name is optional
-			if (reply.as_array(i).as_string() == "name")
-				result.m_name = reply.as_array(i+1).as_string();
-
-			// mime is also optional
-			else if (reply.as_array(i).as_string() == "mime")
-				result.m_mime = reply.as_array(i + 1).as_string();
-		}
+		for (auto i = 0ULL ; i+1 < reply.array_size() && !ec ; i+=2)
+			result.assign_field(reply.as_array(i).as_string(), reply.as_array(i+1).as_string());
 
 		if (result.m_mime.empty())
 			result.m_mime = deduce_mime(result.blob());
@@ -184,11 +159,9 @@ void BlobObject::load(
 void BlobObject::assign(std::string_view blob, std::string_view name, std::error_code& ec)
 {
 	// Create an anonymous memory mapping to store the blob
-	MMap new_mem;
-	new_mem.allocate(blob.size(), ec);
+	auto new_mem = MMap::allocate(blob.size(), ec);
 	if (!ec)
 	{
-		// everything OK, now commit
 		std::memcpy(new_mem.data(), blob.data(), blob.size());
 		m_blob = std::move(new_mem);
 		m_id   = hash(m_blob.string_view());
@@ -206,6 +179,17 @@ std::string BlobObject::deduce_mime(std::string_view blob)
 std::string_view BlobObject::blob() const
 {
 	return {static_cast<const char*>(m_blob.data()), m_blob.size()};
+}
+
+void BlobObject::assign_field(std::string_view field, std::string_view value)
+{
+	// name is optional
+	if (field == "name")
+		m_name = value;
+
+	// mime is also optional
+	else if (field == "mime")
+		m_mime = value;
 }
 
 std::ostream& operator<<(std::ostream& os, const ObjectID& id)

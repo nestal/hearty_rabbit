@@ -12,6 +12,8 @@
 
 #pragma once
 
+#include <boost/filesystem/path.hpp>
+
 #include <cstddef>
 #include <system_error>
 
@@ -28,16 +30,18 @@ public:
 	MMap& operator=(const MMap&) = delete;
 	~MMap();
 
+	static MMap open(int fd, std::error_code& ec);
+	static MMap open(const boost::filesystem::path& path, std::error_code& ec);
+	static MMap create(int fd, const void *data, std::size_t size, std::error_code& ec);
+	static MMap allocate(std::size_t size, std::error_code& ec);
+
 	void* data() const {return m_mmap;}
 	std::size_t size() const {return m_size;}
 
 	std::string_view string_view() const {return {static_cast<const char*>(m_mmap), m_size};}
 
+	bool is_opened() const {return m_mmap != nullptr;}
 	void clear();
-	void open(int fd, std::error_code& ec);
-	void create(int fd, const void *data, std::size_t size, std::error_code& ec);
-	void allocate(std::size_t size, std::error_code& ec);
-	bool is_opened() const {return m_mmap;}
 	void swap(MMap& target);
 
 private:

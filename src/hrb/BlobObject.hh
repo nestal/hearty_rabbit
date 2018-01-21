@@ -78,6 +78,7 @@ private:
 		std::string_view mime,
 		std::error_code& ec
 	);
+	void assign_field(std::string_view field, std::string_view value);
 
 private:
 	ObjectID    m_id;       //!< SHA1 hash of the blob
