@@ -85,6 +85,9 @@ private:
 	std::string m_name;     //!< Typically the file name of the blob
 	std::string m_mime;     //!< Mime-type of the blob, deduced by libmagic
 
+	// TODO:    use a variant to support other backing store in addition to memory mappings
+	//          e.g. std::string_view (non-owning), std::vector (owning)
+	//          also enforce the memory mapping to be read-only
 	MMap        m_blob;
 };
 

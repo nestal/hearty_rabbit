@@ -10,17 +10,21 @@
 // Created by nestal on 1/17/18.
 //
 
+// Application headers
 #include "MMap.hh"
 #include "Error.hh"
 
+// Boost library
 #include <boost/beast/core/file_posix.hpp>
 
-#include <sys/mman.h>
-#include <sys/stat.h>
-
+// Standard C++ library
 #include <cassert>
 #include <cstring>
-#include <utility>
+
+// Linux/POSIX specific
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <sys/mman.h>
 
 namespace hrb {
 
@@ -38,7 +42,14 @@ MMap MMap::open(int fd, std::error_code& ec)
 
 	struct stat s{};
 	if (fstat(fd, &s) == 0)
+	{
 		result.mmap(fd, static_cast<std::size_t>(s.st_size), PROT_READ, MAP_SHARED, ec);
+
+		// Tell the kernel to do aggressive read-ahead and free up memory that we have read once.
+		if (!ec)
+			::madvise(result.m_mmap, result.m_size, MADV_SEQUENTIAL);
+
+	}
 	else
 		ec.assign(errno, std::generic_category());
 
@@ -117,14 +128,16 @@ MMap MMap::allocate(std::size_t size, std::error_code& ec)
 
 MMap::MMap(MMap&& m) noexcept
 {
-	assert(!is_opened());
 	swap(m);
+	assert(!m.is_opened());
 }
 
 MMap& MMap::operator=(MMap&& rhs) noexcept
 {
 	MMap copy{std::move(rhs)};
 	swap(copy);
+	assert(!rhs.is_opened());
+
 	return *this;
 }
 
