@@ -19,6 +19,7 @@
 
 #include <cstddef>
 #include <functional>
+#include <optional>
 #include <system_error>
 
 namespace hrb {
@@ -50,7 +51,15 @@ public:
 
 	using Completion = std::function<void(BlobObject&, std::error_code ec)>;
 
+	// Load BlobObject from redis database
 	static void load(redis::Database& db, const ObjectID& id, Completion completion);
+	static void load(
+		redis::Database& db,
+		const ObjectID& id,
+		const boost::filesystem::path& path,
+		Completion completion
+	);
+
 	void save(redis::Database& db, Completion completion);
 	void open(const boost::filesystem::path& path, std::error_code& ec);
 	void assign(std::string_view blob, std::string_view name, std::error_code& ec);
@@ -62,6 +71,13 @@ public:
 private:
 	static ObjectID hash(std::string_view blob);
 	static std::string deduce_mime(std::string_view blob);
+	void open(
+		const boost::filesystem::path& path,
+		const ObjectID* id,
+		std::string_view name,
+		std::string_view mime,
+		std::error_code& ec
+	);
 
 private:
 	ObjectID    m_id;       //!< SHA1 hash of the blob

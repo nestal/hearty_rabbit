@@ -42,6 +42,11 @@ BlobObject::BlobObject(std::string_view blob, std::string_view name)
 
 void BlobObject::open(const boost::filesystem::path &path, std::error_code& ec)
 {
+	open(path, nullptr, path.filename().string(), deduce_mime(m_blob.string_view()), ec);
+}
+
+void BlobObject::open(const boost::filesystem::path& path, const ObjectID* id, std::string_view name, std::string_view mime, std::error_code& ec)
+{
 	// read the file and calculate the sha and mime_type
 	boost::system::error_code bec;
 	boost::beast::file_posix file;
@@ -54,10 +59,10 @@ void BlobObject::open(const boost::filesystem::path &path, std::error_code& ec)
 		blob.open(file.native_handle(), ec);
 		if (!ec)
 		{
-			m_id   = hash(blob.string_view());
 			m_blob = std::move(blob);
-			m_name = path.filename().string();
-			m_mime = deduce_mime(m_blob.string_view());
+			m_id   = (id ? *id : hash(m_blob.string_view()));
+			m_name = name;
+			m_mime = mime;
 		}
 	}
 }
@@ -138,6 +143,36 @@ void BlobObject::load(redis::Database& db, const ObjectID& id, Completion comple
 			ec = Error::invalid_object;
 
 		// TODO: deduce mime
+		if (result.m_mime.empty())
+			result.m_mime = deduce_mime(result.blob());
+
+		callback(result, ec);
+
+	}, "HGETALL %b", id.data, id.size);
+}
+
+void BlobObject::load(
+	redis::Database& db,
+	const ObjectID& id,
+	const boost::filesystem::path& path,
+	BlobObject::Completion completion
+)
+{
+	db.command([callback=std::move(completion), id](redis::Reply reply, std::error_code ec)
+	{
+		BlobObject result;
+
+		for (auto i = 0ULL ; i < reply.array_size() && !ec ; i++)
+		{
+			// name is optional
+			if (reply.as_array(i).as_string() == "name")
+				result.m_name = reply.as_array(i+1).as_string();
+
+			// mime is also optional
+			else if (reply.as_array(i).as_string() == "mime")
+				result.m_mime = reply.as_array(i + 1).as_string();
+		}
+
 		if (result.m_mime.empty())
 			result.m_mime = deduce_mime(result.blob());
 
