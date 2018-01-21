@@ -16,6 +16,7 @@
 
 #include "net/Redis.hh"
 
+#include <bitset>
 #include <iostream>
 
 using namespace hrb;
@@ -36,7 +37,8 @@ TEST_CASE("Load BlobObject from file", "[normal]")
 	boost::asio::io_context ioc;
 	Database db{ioc, "localhost", 6379};
 
-	bool tested = false;
+	std::bitset<2> tested{};
+
 	blob.save(db, [&db, &tested](auto& src, auto ec)
 	{
 		REQUIRE(!ec);
@@ -53,6 +55,7 @@ TEST_CASE("Load BlobObject from file", "[normal]")
 			REQUIRE(src.blob() == loaded.blob());
 			REQUIRE(loaded.blob().substr(0,2) == "/*");
 			REQUIRE(loaded.name() == "BlobObject-UT.cc");
+			REQUIRE(loaded.mime() == "text/x-c");
 
 			SECTION("move operator")
 			{
@@ -62,19 +65,36 @@ TEST_CASE("Load BlobObject from file", "[normal]")
 				REQUIRE(!copy.empty());
 
 				copy = std::move(loaded);
+
 				REQUIRE(loaded.blob().empty());
 				REQUIRE(!copy.empty());
 				REQUIRE(src.blob() == copy.blob());
 				REQUIRE(copy.name() == "BlobObject-UT.cc");
 			}
 
-			tested = true;
-			db.disconnect();
+			tested.set(0);
+			if (tested.all())
+				db.disconnect();
+		});
+
+		// read again without loading the blob out
+		BlobObject::load(db, src.ID(), __FILE__, [&db, &src, &tested](auto& loaded, auto ec)
+		{
+			REQUIRE(!ec);
+			REQUIRE(!loaded.empty());
+			REQUIRE(src.blob() == loaded.blob());
+			REQUIRE(loaded.blob().substr(0,2) == "/*");
+			REQUIRE(loaded.name() == "BlobObject-UT.cc");
+			REQUIRE(loaded.mime() == "text/x-c");
+
+			tested.set(1);
+			if (tested.all())
+				db.disconnect();
 		});
 	});
 
 	ioc.run();
-	REQUIRE(tested);
+	REQUIRE(tested.all());
 }
 
 TEST_CASE("Load non-exist BlobObject from redis", "[error]")
