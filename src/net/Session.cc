@@ -91,8 +91,9 @@ void Session::handle_https(const EndPoint& peer, Request&& req, Send&& send)
 		Log(LOG_INFO, "request %1% from %2%", req.target(), peer);
 
 		// Make sure we can handle the method
-		if (req.method() != http::verb::get &&
-		    req.method() != http::verb::head)
+		if (req.method() != http::verb::get  &&
+		    req.method() != http::verb::post &&
+			req.method() != http::verb::head)
 			return send(m_server.bad_request(req, "Unknown HTTP-method"));
 
 		// Request path must be absolute and not contain "..".

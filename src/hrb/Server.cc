@@ -10,6 +10,7 @@
 // Created by nestal on 1/7/18.
 //
 
+#include <iostream>
 #include "Server.hh"
 #include "WebResources.hh"
 
@@ -29,9 +30,7 @@ Server::Server(const Configuration& cfg) :
 http::response<http::empty_body> Server::redirect(boost::beast::string_view where, unsigned version)
 {
 	http::response<http::empty_body> res{http::status::moved_permanently, version};
-	res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
 	res.set(http::field::location, where);
-	res.keep_alive(true);
 	return res;
 }
 
@@ -115,7 +114,7 @@ http::response<http::empty_body> Server::redirect_http(const Request &req)
 	auto&& dest = https_host + req.target().to_string();
 	Log(LOG_INFO, "redirecting HTTP request %1% to host %2%", req.target(), dest);
 
-	return redirect(dest, req.version());
+	return set_common_fields(req, redirect(dest, req.version()));
 }
 
 std::string_view Server::resource_mime(const std::string& ext)
@@ -126,5 +125,13 @@ std::string_view Server::resource_mime(const std::string& ext)
 	else if (ext == ".svg")     return "image/svg+xml";
 	else                        return "application/octet-stream";
 }
+
+http::response<boost::beast::http::empty_body> Server::on_login(const Request& req)
+{
+	auto&& body = req.body();
+	std::cout << body << " " << req.at("content-type") << std::endl;
+	return set_common_fields(req, redirect("/index.html", req.version()));
+}
+
 
 } // end of namespace

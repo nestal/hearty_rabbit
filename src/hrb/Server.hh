@@ -39,6 +39,9 @@ public:
 	template<class Send>
 	void handle_https(const EndPoint& peer, Request&& req, Send&& send)
 	{
+		if (req.target().starts_with("/login"))
+			return send(set_common_fields(req, on_login(req)));
+
 		if (req.target().starts_with("/blob"))
 			return send(set_common_fields(req, get_blob(req)));
 
@@ -54,6 +57,7 @@ public:
 	http::response<http::string_body> server_error(const Request& req, boost::beast::string_view what);
 
 	http::response<http::empty_body> redirect(boost::beast::string_view where, unsigned version);
+	http::response<http::empty_body> on_login(const Request& req);
 
 	http::response<http::string_body> get_blob(const Request& req);
 	http::response<http::string_body> get_dir(const Request& req);
