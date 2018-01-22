@@ -15,7 +15,7 @@
 #include "WebResources.hh"
 
 #include "util/Configuration.hh"
-
+#include "util/Escape.hh"
 
 #include "util/Log.hh"
 #include "util/Exception.hh"
@@ -129,6 +129,14 @@ std::string_view Server::resource_mime(const std::string& ext)
 http::response<boost::beast::http::empty_body> Server::on_login(const Request& req)
 {
 	auto&& body = req.body();
+	if (req.at("content-type") == "application/x-www-form-urlencoded")
+	{
+		visit_form_string({body}, [](auto name, auto val)
+		{
+			std::cout << "field " << name << ": " << val << std::endl;
+		});
+	}
+
 	std::cout << body << " " << req.at("content-type") << std::endl;
 	return set_common_fields(req, redirect("/index.html", req.version()));
 }
