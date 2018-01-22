@@ -123,6 +123,7 @@ std::string_view Server::resource_mime(const std::string& ext)
 	// don't expect a big list
 	     if (ext == ".html")    return "text/html";
 	else if (ext == ".css")     return "text/css";
+	else if (ext == ".svg")     return "image/svg+xml";
 	else                        return "application/octet-stream";
 }
 
