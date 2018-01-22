@@ -5,6 +5,10 @@ div.login {
     padding: 10px;
 }
 
+div.login h1 {
+    font-family: sans-serif;
+}
+
 div.login input[type=text], input[type=password] {
     width: 100%;
     padding: 12px 20px;
