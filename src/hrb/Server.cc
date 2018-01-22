@@ -78,8 +78,10 @@ http::response<http::file_body> Server::file_request(const Request& req)
 
 	auto filepath = req.target();
 	filepath.remove_prefix(1);
+
+	// TODO: use redirect instead
 	if (web_resources.find(filepath.to_string()) == web_resources.end())
-		filepath = "index.html";
+		filepath = "login.html";
 
 	auto path = m_cfg.web_root() / filepath.to_string();
 	Log(LOG_NOTICE, "reading from %1%", path);

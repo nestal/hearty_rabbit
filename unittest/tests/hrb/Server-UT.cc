@@ -88,7 +88,7 @@ TEST_CASE("GET static resource", "[normal]")
 		{
 			REQUIRE(res.result() == http::status::ok);
 			auto content = flatten_content(std::move(res));
-			REQUIRE(check_file_content(cfg.web_root() / "index.html", content.data()));
+			REQUIRE(check_file_content(cfg.web_root() / "login.html", content.data()));
 		});
 	}
 	SECTION("requesting other resources")
@@ -99,7 +99,7 @@ TEST_CASE("GET static resource", "[normal]")
 		{
 			REQUIRE(res.result() == http::status::ok);
 			auto content = flatten_content(std::move(res));
-			REQUIRE(check_file_content(cfg.web_root() / "index.html", content.data()));
+			REQUIRE(check_file_content(cfg.web_root() / "login.html", content.data()));
 		});
 	}
 }
