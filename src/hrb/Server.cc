@@ -82,13 +82,13 @@ http::response<http::file_body> Server::file_request(const Request& req)
 	if (web_resources.find(filepath.to_string()) == web_resources.end())
 		filepath = "index.html";
 
-	auto path = (m_cfg.web_root() / filepath.to_string()).string();
+	auto path = m_cfg.web_root() / filepath.to_string();
 	Log(LOG_NOTICE, "reading from %1%", path);
 
 	// Attempt to open the file
 	boost::beast::error_code ec;
 	http::file_body::value_type file;
-	file.open(path.c_str(), boost::beast::file_mode::scan, ec);
+	file.open(path.string().c_str(), boost::beast::file_mode::scan, ec);
 
 	// Handle the case where the file doesn't exist
 	if (ec)
@@ -101,7 +101,7 @@ http::response<http::file_body> Server::file_request(const Request& req)
 		std::make_tuple(std::move(file)),
 		std::make_tuple(http::status::ok, req.version())
 	};
-	res.set(http::field::content_type, "text/html");
+	res.set(http::field::content_type, resource_mime(path.extension().string()));
 	res.content_length(file_size);
 	return set_common_fields(req, std::move(res));
 }
@@ -116,6 +116,14 @@ http::response<http::empty_body> Server::redirect_http(const Request &req)
 	Log(LOG_INFO, "redirecting HTTP request %1% to host %2%", req.target(), dest);
 
 	return redirect(dest, req.version());
+}
+
+std::string_view Server::resource_mime(const std::string& ext)
+{
+	// don't expect a big list
+	     if (ext == ".html")    return "text/html";
+	else if (ext == ".css")     return "text/css";
+	else                        return "application/octet-stream";
 }
 
 } // end of namespace

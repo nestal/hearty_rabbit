@@ -70,6 +70,9 @@ public:
 	}
 
 private:
+	static std::string_view resource_mime(const std::string& ext);
+
+private:
 	const Configuration& m_cfg;
 };
 
