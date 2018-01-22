@@ -40,8 +40,9 @@ auto flatten_content(http::response<Body, http::basic_fields<Allocator>>&& res)
 	{
 		if (!ec)
 		{
-			buffer_copy(fbuf.prepare(buf->first.size()), buf->first);
-			fbuf.commit(buf->first.size());
+			auto size = buffer_size(buf->first);
+			buffer_copy(fbuf.prepare(size), buf->first);
+			fbuf.commit(size);
 		}
 	}
 	return fbuf;
