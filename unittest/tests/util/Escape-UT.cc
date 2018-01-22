@@ -55,3 +55,15 @@ TEST_CASE( "no value in www-form", "[normal]" )
 		called = true;
 	});
 }
+
+TEST_CASE( "split-front", "[normal]" )
+{
+	std::string_view in{"name=value"};
+	REQUIRE(split_front(in, "=&;") == "name");
+	REQUIRE(in == "value");
+	REQUIRE(split_front(in, "&;")  == "value");
+	REQUIRE(in.empty());
+
+	REQUIRE(split_front(in, "=&;") == "");
+	REQUIRE(in.empty());
+}
