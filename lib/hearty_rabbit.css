@@ -5,7 +5,7 @@ div.login {
     padding: 10px;
 }
 
-input[type=text], input[type=password] {
+div.login input[type=text], input[type=password] {
     width: 100%;
     padding: 12px 20px;
     margin: 8px 0;
@@ -14,7 +14,7 @@ input[type=text], input[type=password] {
     box-sizing: border-box;
 }
 
-button {
+div.login button {
     background-color: #4CAF50;
     color: white;
     padding: 14px 20px;
@@ -26,4 +26,16 @@ button {
 
 div.login button:hover {
     opacity: 0.8;
+}
+
+div.login div.logo {
+    text-align: center;
+}
+
+div.login div.log img {
+    width: 50%;
+}
+
+div.login div.login-form {
+    padding: 20px;
 }
