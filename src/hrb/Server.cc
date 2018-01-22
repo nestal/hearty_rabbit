@@ -141,5 +141,4 @@ http::response<boost::beast::http::empty_body> Server::on_login(const Request& r
 	return set_common_fields(req, redirect("/index.html", req.version()));
 }
 
-
 } // end of namespace

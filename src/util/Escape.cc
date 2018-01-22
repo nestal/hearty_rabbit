@@ -53,4 +53,19 @@ std::string url_decode(std::string_view in)
 	return {};
 }
 
+std::string_view split_front(std::string_view& in, std::string_view value)
+{
+	// substr() will not throw even if "in" is empty and location==npos
+	auto location = in.find_first_of(value);
+	auto result   = in.substr(0, location);
+
+	in.remove_prefix(result.size());
+
+	// Remove the matching character, if any
+	if (location != in.npos)
+		in.remove_prefix(1);
+
+	return result;
+}
+
 } // end of hrb namespace
