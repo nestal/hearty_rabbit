@@ -34,7 +34,6 @@ RUN tar zxf boost_1_66_0.tar.gz \
 
 ADD https://cmake.org/files/v3.10/cmake-3.10.2-Linux-x86_64.tar.gz /build
 RUN tar zxf cmake-3.10.2-Linux-x86_64.tar.gz
-RUN ls /build/cmake*
 
 ENV PATH $PATH:/build/cmake-3.10.2-Linux-x86_64/bin
 

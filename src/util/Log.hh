@@ -21,11 +21,11 @@
 namespace hrb {
 
 namespace detail {
-int DetailLog(int priority, std::string&& line);
+void DetailLog(int priority, std::string&& line);
 }
 
 template <typename... Args>
-int Log(int priority, const std::string& fmt, Args... args)
+void Log(int priority, const std::string& fmt, Args... args)
 {
 	boost::format bfmt{fmt};
 	bfmt.exceptions(boost::io::no_error_bits);
