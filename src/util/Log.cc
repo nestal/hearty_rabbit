@@ -19,14 +19,13 @@
 namespace hrb {
 namespace detail {
 
-int DetailLog(int priority, std::string &&line)
+void DetailLog(int priority, std::string &&line)
 {
 	// preprocessor is bad
-	return
 #ifdef SYSTEMD_FOUND
 	::sd_journal_print
 #else
-	::syslog
+	syslog
 #endif
 	(priority, "%s", line.c_str());
 }

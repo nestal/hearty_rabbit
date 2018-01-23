@@ -7,7 +7,8 @@ find_package(Threads REQUIRED)
 find_package(PkgConfig REQUIRED)
 find_package(OpenSSL REQUIRED)
 
-pkg_check_modules(SYSTEMD libsystemd)
+# Need to remove libsystemd as it pulls a lot of dependencies
+#pkg_check_modules(SYSTEMD libsystemd)
 pkg_check_modules(RapidJSON REQUIRED RapidJSON)
 pkg_check_modules(HIREDIS REQUIRED hiredis)
 pkg_check_modules(LIBUNWIND libunwind)
