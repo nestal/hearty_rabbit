@@ -11,7 +11,7 @@ before_install:
   - git submodule update --init --recursive
 
 script:
-  - make -f automation/Makefile BUILD_NUMBER=$TRAVIS_BUILD_NUMBER
+  - docker build -t hearty_rabbit --network="host" .
 
 deploy:
   provider: packagecloud
