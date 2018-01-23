@@ -45,9 +45,9 @@ TEST_CASE( "Load normal.json", "[normal]" )
 	const char *argv[] = {"hearty_rabbit", "--cfg", normal_json.c_str()};
 	Configuration cfg{sizeof(argv)/sizeof(argv[1]), argv, nullptr};
 
-	REQUIRE(cfg.private_key() == "key.pem");
-	REQUIRE(cfg.cert_chain() == "certificate.pem");
-	REQUIRE(cfg.web_root() == "/usr/lib/hearty_rabbit");
+	REQUIRE(cfg.private_key() == (current_src/"key.pem").string());
+	REQUIRE(cfg.cert_chain()  == (current_src/"certificate.pem").string());
+	REQUIRE(cfg.web_root()    == "/usr/lib/hearty_rabbit");
 	REQUIRE(cfg.server_name() == "example.com");
 	REQUIRE(cfg.listen_https().address() == boost::asio::ip::make_address("0.0.0.0"));
 	REQUIRE(cfg.listen_http().address() == boost::asio::ip::make_address("0.0.0.0"));

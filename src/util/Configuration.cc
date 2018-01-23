@@ -104,9 +104,11 @@ void Configuration::load_config(const boost::filesystem::path& path)
 		}
 
 		using namespace json;
-		m_cert_chain    = string(field(json, "cert_chain"));
-		m_private_key   = string(field(json, "private_key"));
-		m_root          = absolute(string(field(json, "web_root")), path.parent_path()).lexically_normal();
+
+		// Paths are relative to the configuration file
+		m_cert_chain    = absolute(string(field(json, "cert_chain")),  path.parent_path()).lexically_normal();
+		m_private_key   = absolute(string(field(json, "private_key")), path.parent_path()).lexically_normal();
+		m_root          = absolute(string(field(json, "web_root")),    path.parent_path()).lexically_normal();
 		m_server_name   = string(field(json, "server_name"));
 
 		m_listen_http  = parse_endpoint(field(json, "http"));
