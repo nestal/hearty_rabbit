@@ -21,8 +21,6 @@ namespace detail {
 
 void DetailLog(int priority, std::string &&line)
 {
-	return
-
 	// preprocessor is bad
 #ifdef SYSTEMD_FOUND
 	::sd_journal_print
@@ -30,7 +28,8 @@ void DetailLog(int priority, std::string &&line)
 	::syslog
 #endif
 	(priority, "%s", line.c_str());
+
+	::printf("%s\n", line.c_str());
 }
 
 }} // end of namespace
-
