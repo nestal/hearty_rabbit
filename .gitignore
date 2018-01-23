@@ -70,6 +70,7 @@ dkms.conf
 
 # Executables
 
+build/
 .idea/
 cmake-build-debug/
 cmake-build-release/

@@ -1,3 +1,5 @@
+#!/bin/sh
+
 mkdir -p docker-build-release
 sudo docker run -it \
 	--name hearty_rabbit_builder \
