@@ -2,7 +2,7 @@ FROM nestal/hearty_rabbit_dev as builder
 MAINTAINER [Nestal Wan <me@nestal.net>]
 ENV container docker
 
-ENV PATH $PATH:/build/cmake-3.10.2-Linux-x86_64/bin
+ENV PATH $PATH:/opt/rh/devtoolset-7/root/usr/bin:/build/cmake-3.10.2/bin
 
 # Copy source code. Not using git clone because the code may not be committed
 # yet in development builds
