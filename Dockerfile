@@ -18,13 +18,6 @@ ENV PATH $PATH:/opt/rh/devtoolset-7/root/usr/bin:/build/cmake-3.10.2/bin
 
 WORKDIR /build
 
-# build cmake 3.10.1 (>= 3.9 to support building RPM with default filename)
-#ADD https://cmake.org/files/v3.10/cmake-3.10.1.tar.gz /build
-#RUN tar zxf cmake-3.10.1.tar.gz \
-#	&& cd cmake-3.10.1 \
-#	&& ./configure --prefix=/opt/cmake-3.10.1 \
-#	&& make -j8 install
-
 # build boost (>1.65 to support boost beast)
 ADD https://dl.bintray.com/boostorg/release/1.66.0/source/boost_1_66_0.tar.gz /build
 RUN tar zxf boost_1_66_0.tar.gz \
@@ -48,7 +41,41 @@ RUN mkdir /build/docker-build \
 
 FROM scratch
 COPY --from=builder /opt/hearty_rabbit/ /
-COPY --from=builder /bin/bash /bin
-COPY --from=builder /bin/ls /bin
-RUN ls /
+#COPY --from=builder /bin/sh /bin
+#COPY --from=builder /bin/ls /bin
+#COPY --from=builder /lib64/libtinfo.so.6    /lib64
+#COPY --from=builder /lib64/libdl.so.2       /lib64
+#COPY --from=builder /lib64/libc.so.6        /lib64
+#COPY --from=builder /lib64/ld-linux-x86-64.so.2 /lib64
+#COPY --from=builder /lib64/libpcre2-8.so.0  /lib64
+#COPY --from=builder /lib64/libpthread.so.0  /lib64
+#COPY --from=builder /lib64/libcap.so.2      /lib64
+#COPY --from=builder /lib64/libselinux.so.1  /lib64
+#RUN ls /
 #ENTRYPOINT /hearty_rabbit
+
+COPY --from=builder /bin/sh   /bin
+COPY --from=builder /bin/bash /bin
+
+COPY --from=builder /lib64/libmagic.so.1 /lib64/
+COPY --from=builder /lib64/libhiredis.so.0.12 /lib64/
+COPY --from=builder /lib64/libssl.so.10 /lib64/
+COPY --from=builder /lib64/libcrypto.so.10 /lib64/
+COPY --from=builder /lib64/libpthread.so.0 /lib64/
+COPY --from=builder /lib64/libstdc++.so.6 /lib64/
+COPY --from=builder /lib64/libm.so.6 /lib64/
+COPY --from=builder /lib64/libgcc_s.so.1 /lib64/
+COPY --from=builder /lib64/libc.so.6 /lib64/
+COPY --from=builder /lib64/libz.so.1 /lib64/
+COPY --from=builder /lib64/libgssapi_krb5.so.2 /lib64/
+COPY --from=builder /lib64/libkrb5.so.3 /lib64/
+COPY --from=builder /lib64/libcom_err.so.2 /lib64/
+COPY --from=builder /lib64/libk5crypto.so.3 /lib64/
+COPY --from=builder /lib64/libdl.so.2 /lib64/
+COPY --from=builder /lib64/ld-linux-x86-64.so.2 /lib64/
+COPY --from=builder /lib64/libkrb5support.so.0 /lib64/
+COPY --from=builder /lib64/libkeyutils.so.1 /lib64/
+COPY --from=builder /lib64/libresolv.so.2 /lib64/
+COPY --from=builder /lib64/libselinux.so.1 /lib64/
+COPY --from=builder /lib64/libpcre.so.1 /lib64/
+COPY --from=builder /lib64/libtinfo.so.5 /lib64/
