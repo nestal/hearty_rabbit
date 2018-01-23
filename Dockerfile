@@ -48,5 +48,8 @@ RUN mkdir /build/docker-build \
 	&& make -j8 install
 
 FROM scratch
-COPY --from=builder /build/docker-build/hearty_rabbit /
-CMD /hearty_rabbit
+COPY --from=builder /opt/hearty_rabbit/ /
+COPY --from=builder /bin/bash /bin
+COPY --from=builder /bin/ls /bin
+RUN ls /
+#ENTRYPOINT /hearty_rabbit
