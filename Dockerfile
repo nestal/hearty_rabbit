@@ -39,43 +39,32 @@ RUN mkdir /build/docker-build \
 		-DCMAKE_INSTALL_PREFIX=/opt/hearty_rabbit ../hearty_rabbit \
 	&& make -j8 install
 
+# Copy products to runtime docker image
 FROM scratch
 COPY --from=builder /opt/hearty_rabbit/ /
-#COPY --from=builder /bin/sh /bin
-#COPY --from=builder /bin/ls /bin
-#COPY --from=builder /lib64/libtinfo.so.6    /lib64
-#COPY --from=builder /lib64/libdl.so.2       /lib64
-#COPY --from=builder /lib64/libc.so.6        /lib64
-#COPY --from=builder /lib64/ld-linux-x86-64.so.2 /lib64
-#COPY --from=builder /lib64/libpcre2-8.so.0  /lib64
-#COPY --from=builder /lib64/libpthread.so.0  /lib64
-#COPY --from=builder /lib64/libcap.so.2      /lib64
-#COPY --from=builder /lib64/libselinux.so.1  /lib64
-#RUN ls /
-#ENTRYPOINT /hearty_rabbit
+COPY --from=builder /bin/sh /bin/bash /bin/
 
-COPY --from=builder /bin/sh   /bin
-COPY --from=builder /bin/bash /bin
-
-COPY --from=builder /lib64/libmagic.so.1 /lib64/
-COPY --from=builder /lib64/libhiredis.so.0.12 /lib64/
-COPY --from=builder /lib64/libssl.so.10 /lib64/
-COPY --from=builder /lib64/libcrypto.so.10 /lib64/
-COPY --from=builder /lib64/libpthread.so.0 /lib64/
-COPY --from=builder /lib64/libstdc++.so.6 /lib64/
-COPY --from=builder /lib64/libm.so.6 /lib64/
-COPY --from=builder /lib64/libgcc_s.so.1 /lib64/
-COPY --from=builder /lib64/libc.so.6 /lib64/
-COPY --from=builder /lib64/libz.so.1 /lib64/
-COPY --from=builder /lib64/libgssapi_krb5.so.2 /lib64/
-COPY --from=builder /lib64/libkrb5.so.3 /lib64/
-COPY --from=builder /lib64/libcom_err.so.2 /lib64/
-COPY --from=builder /lib64/libk5crypto.so.3 /lib64/
-COPY --from=builder /lib64/libdl.so.2 /lib64/
-COPY --from=builder /lib64/ld-linux-x86-64.so.2 /lib64/
-COPY --from=builder /lib64/libkrb5support.so.0 /lib64/
-COPY --from=builder /lib64/libkeyutils.so.1 /lib64/
-COPY --from=builder /lib64/libresolv.so.2 /lib64/
-COPY --from=builder /lib64/libselinux.so.1 /lib64/
-COPY --from=builder /lib64/libpcre.so.1 /lib64/
-COPY --from=builder /lib64/libtinfo.so.5 /lib64/
+COPY --from=builder \
+	/lib64/libmagic.so.1 \
+	/lib64/libhiredis.so.0.12  \
+	/lib64/libssl.so.10  \
+	/lib64/libcrypto.so.10  \
+	/lib64/libpthread.so.0  \
+	/lib64/libstdc++.so.6  \
+	/lib64/libm.so.6  \
+	/lib64/libgcc_s.so.1  \
+	/lib64/libc.so.6  \
+	/lib64/libz.so.1  \
+	/lib64/libgssapi_krb5.so.2  \
+	/lib64/libkrb5.so.3  \
+	/lib64/libcom_err.so.2  \
+	/lib64/libk5crypto.so.3  \
+	/lib64/libdl.so.2  \
+	/lib64/ld-linux-x86-64.so.2  \
+	/lib64/libkrb5support.so.0  \
+	/lib64/libkeyutils.so.1  \
+	/lib64/libresolv.so.2  \
+	/lib64/libselinux.so.1  \
+	/lib64/libpcre.so.1  \
+	/lib64/libtinfo.so.5  /lib64/
+ENTRYPOINT /bin/hearty_rabbit
