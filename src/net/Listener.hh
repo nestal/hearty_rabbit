@@ -43,6 +43,9 @@ private:
 	boost::asio::ip::tcp::socket    m_socket;
 	Server&                         m_server;
 	boost::asio::ssl::context       *m_ssl_ctx{};
+
+	// stats
+	std::size_t m_session_count{};
 };
 
 } // end of hrb namespace
