@@ -48,3 +48,9 @@ from source.
 
 The [`.travis.yaml`](.travis.yml) script basically calls `make -f automation/Makefile` so the
 travis build is basically the same as local builds.
+
+# Notes/Reminder
+
+Need a "ROOT" search index base on the date of the images taken
+
+year -> month -> day level of containers
