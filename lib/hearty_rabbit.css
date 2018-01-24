@@ -1,8 +1,8 @@
 div.login {
     margin: auto;
-    width: 30%;
+    width: 90vmin;
     border: 3px solid green;
-    padding: 10px;
+    padding: 20px;
 }
 
 div.login h1 {
@@ -36,8 +36,8 @@ div.login div.logo {
     text-align: center;
 }
 
-div.login div.log img {
-    width: 50%;
+div.login div.logo img {
+    width: 60vmin;
 }
 
 div.login div.login-form {
