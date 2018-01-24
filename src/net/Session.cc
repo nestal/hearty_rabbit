@@ -25,11 +25,13 @@ namespace http = boost::beast::http;    // from <boost/beast/http.hpp>
 Session::Session(
 	boost::asio::ip::tcp::socket socket,
 	Server& server,
-	boost::asio::ssl::context *ssl_ctx
+	boost::asio::ssl::context *ssl_ctx,
+	std::size_t nth
 ) :
 	m_socket{std::move(socket)},
 	m_strand{m_socket.get_executor()},
-	m_server{server}
+	m_server{server},
+	m_nth_session{nth}
 {
 	// TLS is optional for this class
 	if (ssl_ctx)
@@ -88,7 +90,7 @@ void Session::handle_https(const EndPoint& peer, Request&& req, Send&& send)
 {
 	try
 	{
-		Log(LOG_INFO, "request %1% from %2%", req.target(), peer);
+		Log(LOG_INFO, "%1%:%2% request %3% from %4%", m_nth_session, m_nth_transaction, req.target(), peer);
 
 		// Make sure we can handle the method
 		if (req.method() != http::verb::get  &&
@@ -154,6 +156,7 @@ void Session::on_read(boost::system::error_code ec, std::size_t)
 		handle_https(m_socket.remote_endpoint(ec), std::move(m_req), std::move(sender));
 	else
 		sender(m_server.redirect_http(m_req));
+	m_nth_transaction++;
 
 	if (ec)
 		Log(LOG_WARNING, "remote_endpoint() error: %1%", ec);
@@ -201,7 +204,7 @@ void Session::do_close()
 void Session::on_shutdown(boost::system::error_code ec)
 {
 	if (ec)
-		Log(LOG_WARNING, "shutdown error: %1%", ec);
+		Log(LOG_WARNING, "shutdown error: %1% (%2%)", ec, ec.message());
 
 	// At this point the connection is closed gracefully
 }

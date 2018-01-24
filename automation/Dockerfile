@@ -24,9 +24,7 @@ RUN tar zxf boost_1_66_0.tar.gz \
 	&& ./bootstrap.sh --with-libraries=program_options,filesystem,system \
 	&& (./b2 -j8; exit 0)
 
-#ADD https://cmake.org/files/v3.10/cmake-3.10.2-Linux-x86_64.tar.gz /build
-#RUN tar zxf cmake-3.10.2-Linux-x86_64.tar.gz
-# build cmake 3.10.1 (>= 3.9 to support building RPM with default filename)
+# build cmake 3.10.2 (>= 3.8 to support C++17)
 ADD https://cmake.org/files/v3.10/cmake-3.10.2.tar.gz /build
 RUN tar zxf cmake-3.10.2.tar.gz \
 	&& cd cmake-3.10.2 \

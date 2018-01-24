@@ -38,7 +38,8 @@ public:
 	explicit Session(
 		boost::asio::ip::tcp::socket socket,
 		Server& server,
-		boost::asio::ssl::context *ssl_ctx
+		boost::asio::ssl::context *ssl_ctx,
+		std::size_t nth
 	);
 
 	// Start the asynchronous operation
@@ -65,6 +66,10 @@ private:
 	boost::beast::flat_buffer m_buffer;
 	Server& m_server;
 	Request m_req;
+
+	// stats
+	std::size_t m_nth_session;
+	std::size_t m_nth_transaction{};
 };
 
 } // end of namespace
