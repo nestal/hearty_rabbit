@@ -37,6 +37,10 @@ public:
 	Key derive_key(std::string_view salt, int iteration) const;
 	std::string_view get() const;
 
+	void clear();
+	bool empty() const;
+	std::size_t size() const;
+
 private:
 	std::vector<char>   m_val;
 };

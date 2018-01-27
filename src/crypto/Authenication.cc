@@ -60,10 +60,11 @@ void add_user(
 		{
 
 		},
-		"HSETNX user:%b salt %b key %b",
+		"HSETNX user:%b salt %b key %b iteration %d",
 		username.data(), username.size(),
 		salt.ucs.data(), salt.ucs.size(),
-		key.data(), key.size()
+		key.data(), key.size(),
+		min_iteration
 	);
 }
 
