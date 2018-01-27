@@ -12,10 +12,18 @@
 
 #pragma once
 
-#include <cstddef>
+#include <array>
 
 namespace hrb {
 
 void random(void *buf, std::size_t size);
+
+template <std::size_t size>
+auto random()
+{
+	std::array<unsigned char, size> buf;
+	random(buf.data(), size);
+	return buf;
+}
 
 } // end of namespace hrb

@@ -13,8 +13,9 @@
 #include "Authenication.hh"
 
 #include "net/Redis.hh"
-
+#include "util/Random.hh"
 #include <openssl/evp.h>
+#include <openssl/sha.h>
 
 namespace hrb {
 
@@ -30,10 +31,26 @@ void add_user(
 	std::function<void(std::string_view cookie, std::error_code)> completion
 )
 {
-/*	db.command([](auto reply, auto& ec)
+	auto salt = random<32>();
+	std::array<unsigned char, SHA512_DIGEST_LENGTH> key{};
+
+	::PKCS5_PBKDF2_HMAC(
+		password.data(),
+		static_cast<int>(password.size()),
+		salt.data(),
+		static_cast<int>(salt.size()),
+		5000,
+		::EVP_sha512(),
+		static_cast<int>(key.size()),
+		&key[0]
+	);
+
+	std::string uname{username};
+
+	db.command([uname, key, salt](auto reply, auto& ec)
 	{
 
-	}, "HSETNX user:%s field value ");*/
+	}, "HSETNX user:%s username %s salt %b key %b");
 }
 
 } // end of namespace hrb
