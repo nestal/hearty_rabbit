@@ -34,4 +34,10 @@ TEST_CASE("Test password init", "[normal]")
 	auto key1 = subject.derive_key("1", 100);
 	auto key2 = subject.derive_key("2", 100);
 	REQUIRE(key1 != key2);
+
+	subject.clear();
+	REQUIRE(subject.empty());
+	REQUIRE(subject.size() == 0);
+
+	REQUIRE_NOTHROW(subject.derive_key("salt", 100));
 }

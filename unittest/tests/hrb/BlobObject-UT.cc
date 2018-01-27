@@ -32,7 +32,7 @@ TEST_CASE("Load BlobObject from file", "[normal]")
 
 	ObjectID zero{};
 
-	REQUIRE(std::memcmp(blob.ID().data, zero.data, zero.size) != 0);
+	REQUIRE(blob.ID() != zero);
 
 	boost::asio::io_context ioc;
 	Database db{ioc, "localhost", 6379};
@@ -44,7 +44,7 @@ TEST_CASE("Load BlobObject from file", "[normal]")
 		REQUIRE(!ec);
 		REQUIRE(!src.empty());
 
-		db.command([](auto, auto){}, "HDEL %b mime", src.ID().data, src.ID().size);
+		db.command([](auto, auto){}, "HDEL %b mime", src.ID().data(), src.ID().size());
 
 		// read it back
 		BlobObject::load(db, src.ID(), [&db, &src, &tested](auto& loaded, auto ec)

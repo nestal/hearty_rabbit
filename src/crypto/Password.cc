@@ -48,16 +48,18 @@ void Password::swap(Password& other)
 Password::Key Password::derive_key(std::string_view salt, int iteration) const
 {
 	Key key{};
-	::PKCS5_PBKDF2_HMAC(
-		&m_val[0],
+	if (::PKCS5_PBKDF2_HMAC(
+		m_val.empty() ? nullptr : &m_val[0],
 		static_cast<int>(m_val.size()),
 		reinterpret_cast<const unsigned char*>(salt.data()),
 		static_cast<int>(salt.size()),
-		5000,
+		iteration,
 		::EVP_sha512(),
 		static_cast<int>(key.size()),
 		&key[0]
-	);
+	) != 1)
+		throw std::system_error(errno, std::generic_category());
+
 	return key;
 }
 
@@ -72,6 +74,7 @@ void Password::clear()
 	{
 		::memset(&m_val[0], 0, m_val.size());
 		::munlock(&m_val[0], m_val.size());
+		m_val.clear();
 	}
 }
 

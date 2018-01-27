@@ -27,11 +27,10 @@ namespace redis {
 class Database;
 }
 
-struct ObjectID
-{
-	static const std::size_t size = SHA256_DIGEST_LENGTH;
-	unsigned char data[size] {};
-};
+// If use a typedef (or using), then the argument-dependent lookup (ADL) will not
+// work for operator<<
+struct ObjectID : std::array<unsigned char, 64> {using array::array;};
+static_assert(std::is_standard_layout<ObjectID>::value);
 
 class BlobObject
 {
