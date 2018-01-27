@@ -54,7 +54,7 @@ Password::Key Password::derive_key(std::string_view salt, int iteration) const
 		reinterpret_cast<const unsigned char*>(salt.data()),
 		static_cast<int>(salt.size()),
 		iteration,
-		::EVP_sha512(),
+		::EVP_blake2b512(),
 		static_cast<int>(key.size()),
 		&key[0]
 	) != 1)
