@@ -21,22 +21,22 @@
 #include <unistd.h>
 #include <sys/syscall.h>
 #include <linux/random.h>
-#endif
 
 namespace {
 
-#if ! __has_include(<sys/random.h>)
+// The glibc in CentOS 7 does not have the getrandom() wrapper yet, but its kernel does
+// support the getrandom() system call.
 ssize_t getrandom(void *buf, size_t size, unsigned int flags)
 {
 	return syscall(SYS_getrandom, buf, size, flags);
 }
-#endif
 
-}
+} // end of local namespace
+#endif
 
 namespace hrb {
 
-void random(void *buf, std::size_t size)
+void secure_random(void *buf, std::size_t size)
 {
 	if (::getrandom(buf, size, 0) != size)
 		throw std::system_error(errno, std::generic_category());

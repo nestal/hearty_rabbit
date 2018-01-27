@@ -14,19 +14,22 @@
 
 #include <openssl/sha.h>
 #include <array>
+#include <vector>
+#include <string_view>
 
 namespace hrb {
 
 class Password
 {
 public:
-	Password() = default;
-	Password(Password&& other);
-	Password(const Password&) = delete;
 	explicit Password(std::string_view val);
 	~Password();
 
-	Password& operator=(Password&& other);
+	Password() = default;
+	Password(Password&& other) noexcept = default;
+	Password(const Password&) = delete;
+
+	Password& operator=(Password&& other) noexcept = default;
 	Password& operator=(const Password&) = delete;
 	void swap(Password& other);
 
@@ -35,8 +38,7 @@ public:
 	std::string_view get() const;
 
 private:
-	char *m_mem{};
-	std::size_t m_size{};
+	std::vector<char>   m_val;
 };
 
 } // end of namespace hrb

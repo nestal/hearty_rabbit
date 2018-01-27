@@ -13,17 +13,24 @@
 #pragma once
 
 #include <array>
+#include <type_traits>
 
 namespace hrb {
 
-void random(void *buf, std::size_t size);
+void secure_random(void *buf, std::size_t size);
 
-template <std::size_t size>
-auto random()
+template <typename T>
+std::enable_if_t<std::is_standard_layout<T>::value, T> secure_random()
 {
-	std::array<char, size> buf;
-	random(buf.data(), size);
-	return buf;
+	T val;
+	secure_random(&val, sizeof(val));
+	return val;
+}
+
+template <typename T, std::size_t size>
+std::enable_if_t<std::is_standard_layout<T>::value, std::array<T, size>> secure_random_array()
+{
+	return secure_random<std::array<T, size>>();
 }
 
 } // end of namespace hrb

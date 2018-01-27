@@ -104,9 +104,3 @@ TEST_CASE("GET static resource", "[normal]")
 		});
 	}
 }
-
-TEST_CASE("Test random number", "[normal]")
-{
-	int rand{0};
-	REQUIRE_NOTHROW(random(&rand, sizeof(rand)));
-}

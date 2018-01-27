@@ -20,53 +20,35 @@
 
 namespace hrb {
 
-Password::Password(Password&& other)
-{
-	swap(other);
-}
-
-Password::~Password()
-{
-	if (m_mem)
-	{
-		::memset(m_mem, 0, m_size);
-		::free(m_mem);
-	}
-}
-
 Password::Password(std::string_view val)
 {
 	if (!val.empty())
 	{
-		m_mem = static_cast<char*>(::malloc(val.size()));
-		if (!m_mem)
-			throw std::bad_alloc();
-
-		m_size = val.size();
-		::mlock(m_mem, m_size);
-		::memcpy(m_mem, val.data(), val.size());
+		m_val.assign(val.begin(), val.end());
+		::munlock(&m_val[0], m_val.size());
 	}
 }
 
-Password& Password::operator=(Password&& other)
+Password::~Password()
 {
-	Password tmp{std::move(other)};
-	swap(tmp);
-	return *this;
+	if (!m_val.empty())
+	{
+		::memset(&m_val[0], 0, m_val.size());
+		::munlock(&m_val[0], m_val.size());
+	}
 }
 
 void Password::swap(Password& other)
 {
-	std::swap(m_mem, other.m_mem);
-	std::swap(m_size, other.m_size);
+	m_val.swap(other.m_val);
 }
 
 Password::Key Password::derive_key(std::string_view salt, int iteration) const
 {
 	Key key{};
 	::PKCS5_PBKDF2_HMAC(
-		m_mem,
-		static_cast<int>(m_size),
+		&m_val[0],
+		static_cast<int>(m_val.size()),
 		reinterpret_cast<const unsigned char*>(salt.data()),
 		static_cast<int>(salt.size()),
 		5000,
@@ -79,7 +61,7 @@ Password::Key Password::derive_key(std::string_view salt, int iteration) const
 
 std::string_view Password::get() const
 {
-	return {static_cast<const char*>(m_mem), m_size};
+	return {&m_val[0], m_val.size()};
 }
 
 } // end of namespace hrb
