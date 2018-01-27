@@ -12,15 +12,17 @@
 
 #pragma once
 
+#include <memory>
 #include <openssl/evp.h>
 
 namespace hrb {
 
-using HashCTX = std::unique_ptr<EVP_MD_CTX, decltype(&EVP_MD_CTX_free)>;
-
-inline auto NewHashCTX()
+struct HashCTXRelease
 {
-	return HashCTX{EVP_MD_CTX_new(), EVP_MD_CTX_free};
-}
+	void operator()(EVP_MD_CTX *ctx) const;
+};
+using HashCTX = std::unique_ptr<EVP_MD_CTX, HashCTXRelease>;
+
+HashCTX NewHashCTX();
 
 } // end of namespace hrb

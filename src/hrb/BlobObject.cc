@@ -62,7 +62,7 @@ void BlobObject::open(const boost::filesystem::path& path, const ObjectID* id, s
 ObjectID BlobObject::hash(std::string_view blob)
 {
 	auto ctx = NewHashCTX();
-	::EVP_DigestInit_ex(ctx.get(), ::EVP_blake2b512(), nullptr);
+	::EVP_DigestInit_ex(ctx.get(), ::EVP_sha512(), nullptr);
 
 	std::uint64_t size = blob.size();
 	::EVP_DigestUpdate(ctx.get(), &size, sizeof(size));
