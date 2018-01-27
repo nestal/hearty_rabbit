@@ -18,6 +18,11 @@
 #include <openssl/evp.h>
 #include <openssl/sha.h>
 
+namespace {
+using Salt = std::array<char, 32>;
+const int min_iteration = 5000;
+}
+
 namespace hrb {
 
 Authenication::Authenication(std::string_view username, std::string_view password, hrb::redis::Database& db)
@@ -32,8 +37,8 @@ void add_user(
 	std::function<void(std::string_view cookie, std::error_code)> completion
 )
 {
-	auto salt = random<32>();
-	auto key = password.derive_key({salt.data(), salt.size()}, 5000);
+	auto salt = secure_random<Salt>();
+	auto key = password.derive_key({salt.data(), salt.size()}, min_iteration);
 
 	db.command(
 		[key, salt](auto reply, auto&& ec)
