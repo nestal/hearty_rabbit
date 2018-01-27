@@ -13,6 +13,7 @@
 #include <catch.hpp>
 
 #include "util/Configuration.hh"
+#include "util/Random.hh"
 #include "hrb/Server.hh"
 
 #include <iostream>
@@ -102,4 +103,10 @@ TEST_CASE("GET static resource", "[normal]")
 			REQUIRE(check_file_content(cfg.web_root() / "login.html", content.data()));
 		});
 	}
+}
+
+TEST_CASE("Test random number", "[normal]")
+{
+	int rand{0};
+	REQUIRE_NOTHROW(random(&rand, sizeof(rand)));
 }
