@@ -21,7 +21,7 @@ void random(void *buf, std::size_t size);
 template <std::size_t size>
 auto random()
 {
-	std::array<unsigned char, size> buf;
+	std::array<char, size> buf;
 	random(buf.data(), size);
 	return buf;
 }

@@ -13,7 +13,7 @@
 #include <catch.hpp>
 
 #include "util/Configuration.hh"
-#include "util/Random.hh"
+#include "crypto/Random.hh"
 #include "hrb/Server.hh"
 
 #include <iostream>

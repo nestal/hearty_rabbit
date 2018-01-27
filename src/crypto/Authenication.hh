@@ -22,6 +22,8 @@ namespace redis {
 class Database;
 }
 
+class Password;
+
 class Authenication
 {
 public:
@@ -33,7 +35,7 @@ private:
 
 void add_user(
 	std::string_view username,
-	std::string_view password,
+	const Password& password,
 	redis::Database& db,
 	std::function<void(std::string_view cookie, std::error_code)> completion
 );
