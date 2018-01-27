@@ -16,7 +16,7 @@ RUN mkdir /build/docker-build \
 # Copy products to runtime docker image
 FROM scratch
 COPY --from=builder /opt/hearty_rabbit/ /
-COPY --from=builder /bin/sh /bin/bash /bin/
+#COPY --from=builder /bin/sh /bin/bash /bin/
 
 COPY --from=builder \
 	/lib64/libmagic.so.1 \
