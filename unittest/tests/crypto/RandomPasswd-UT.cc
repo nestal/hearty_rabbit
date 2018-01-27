@@ -13,6 +13,7 @@
 #include <catch.hpp>
 
 #include "crypto/Random.hh"
+#include "crypto/Password.hh"
 
 using namespace hrb;
 
@@ -20,4 +21,17 @@ TEST_CASE("Test random number", "[normal]")
 {
 	auto rand = secure_random_array<std::uint64_t, 2>();
 	REQUIRE_NOTHROW(rand[0] > 0 && rand[1] > 0);
+}
+
+TEST_CASE("Test password init", "[normal]")
+{
+	Password subject{"Hello"};
+	REQUIRE(subject.get() == "Hello");
+	REQUIRE(subject.size() == 5);
+	REQUIRE(!subject.empty());
+
+	// different salt must produce different keys
+	auto key1 = subject.derive_key("1", 100);
+	auto key2 = subject.derive_key("2", 100);
+	REQUIRE(key1 != key2);
 }
