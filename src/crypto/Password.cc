@@ -47,14 +47,17 @@ void Password::swap(Password& other)
 
 Password::Key Password::derive_key(std::string_view salt, int iteration) const
 {
+	// openssl v1.0 does not accept null pointer even if size = 0
+	static const char empty[0] = {};
+
 	Key key{};
 	if (::PKCS5_PBKDF2_HMAC(
-		m_val.empty() ? nullptr : &m_val[0],
+		m_val.empty() ? empty : &m_val[0],
 		static_cast<int>(m_val.size()),
 		reinterpret_cast<const unsigned char*>(salt.data()),
 		static_cast<int>(salt.size()),
 		iteration,
-		::EVP_blake2b512(),
+		::EVP_sha512(),
 		static_cast<int>(key.size()),
 		&key[0]
 	) != 1)
