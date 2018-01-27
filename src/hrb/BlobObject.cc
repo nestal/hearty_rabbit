@@ -16,6 +16,8 @@
 #include "util/Error.hh"
 #include "util/Magic.hh"
 
+#include <openssl/evp.h>
+
 #include <cassert>
 #include <fstream>
 #include <iomanip>
@@ -58,14 +60,27 @@ void BlobObject::open(const boost::filesystem::path& path, const ObjectID* id, s
 
 ObjectID BlobObject::hash(std::string_view blob)
 {
-	ObjectID result{};
+	auto ctx = ::EVP_MD_CTX_new();
+	::EVP_DigestInit_ex(ctx, ::EVP_blake2b512(), nullptr);
 
-	::SHA256_CTX sha{};
-	::SHA256_Init(&sha);
 	std::uint64_t size = blob.size();
-	::SHA256_Update(&sha, &size, sizeof(size));
-	::SHA256_Update(&sha, blob.data(), blob.size());
-	::SHA256_Final(result.data, &sha);
+	::EVP_DigestUpdate(ctx, &size, sizeof(size));
+	::EVP_DigestUpdate(ctx, blob.data(), blob.size());
+
+	unsigned out_size = 0;
+
+	ObjectID result{};
+	if constexpr (result.size() == EVP_MAX_MD_SIZE)
+	{
+		::EVP_DigestFinal_ex(ctx, &result[0], &out_size);
+	}
+	else
+	{
+		std::array<unsigned char, EVP_MAX_MD_SIZE> hash;
+		::EVP_DigestFinal_ex(ctx, &hash[0], &out_size);
+		assert(out_size == result.size());
+		::memcpy(&result[0], hash.data(), out_size);
+	}
 
 	return result;
 }
@@ -78,7 +93,7 @@ void BlobObject::save(redis::Database& db, Completion completion)
 			callback(*this, ec);
 		},
 		"HSET %b blob %b name %b mime %b",
-		m_id.data, m_id.size,
+		m_id.data(), m_id.size(),
 		m_blob.data(), m_blob.size(),
 		m_name.c_str(), m_name.size(),
 		m_mime.c_str(), m_mime.size()
@@ -131,7 +146,7 @@ void BlobObject::load(redis::Database& db, const ObjectID& id, Completion comple
 
 		callback(result, ec);
 
-	}, "HGETALL %b", id.data, id.size);
+	}, "HGETALL %b", id.data(), id.size());
 }
 
 void BlobObject::load(
@@ -153,7 +168,7 @@ void BlobObject::load(
 			result.m_mime = deduce_mime(result.blob());
 
 		callback(result, ec);
-	}, "HGETALL %b", id.data, id.size);
+	}, "HGETALL %b", id.data(), id.size());
 }
 
 void BlobObject::assign(std::string_view blob, std::string_view name, std::error_code& ec)
@@ -194,7 +209,7 @@ void BlobObject::assign_field(std::string_view field, std::string_view value)
 
 std::ostream& operator<<(std::ostream& os, const ObjectID& id)
 {
-	for (auto ch : id.data)
+	for (auto ch : id)
 	{
 		os << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(ch);
 	}
