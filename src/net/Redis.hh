@@ -40,14 +40,20 @@ const std::error_category& redis_error_category();
 class Reply
 {
 public:
-	Reply(redisReply *r = nullptr);
+	Reply(redisReply *r = nullptr) noexcept;
 
-	std::string_view as_string() const;
+	std::string_view as_string() const noexcept;
+	std::string_view as_status() const noexcept;
+	std::string_view as_error() const noexcept;
+	std::string_view as_any_string() const noexcept;
 
-	long as_int() const;
+	explicit operator bool() const noexcept ;
 
-	Reply as_array(std::size_t i) const;
-	std::size_t array_size() const;
+	long as_int() const noexcept;
+	long to_int() const noexcept;
+
+	Reply as_array(std::size_t i) const noexcept;
+	std::size_t array_size() const noexcept;
 
 	std::unordered_map<std::string_view, Reply> map_array() const;
 

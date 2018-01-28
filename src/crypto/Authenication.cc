@@ -13,13 +13,15 @@
 #include "Authenication.hh"
 
 #include "Password.hh"
-#include "net/Redis.hh"
 #include "crypto/Random.hh"
+#include "net/Redis.hh"
+#include "util/Error.hh"
 
 #include <openssl/evp.h>
 #include <openssl/sha.h>
 
 #include <random>
+#include <iostream>
 
 namespace hrb {
 namespace {
@@ -57,9 +59,12 @@ void add_user(
 	db.command(
 		[completion=std::move(completion)](auto reply, auto&& ec)
 		{
+			if (!reply)
+				ec = Error::redis_command_error;
+
 			completion(ec);
 		},
-		"HSETNX user:%b salt %b key %b iteration %d",
+		"HMSET user:%b salt %b key %b iteration %d",
 		username.data(), username.size(),
 		salt.data(), salt.size(),
 		key.data(), key.size(),
@@ -74,6 +79,31 @@ void verify_user(
 	std::function<void(std::error_code)> completion
 )
 {
+	db.command(
+		[password=std::move(password), completion=std::move(completion)](redis::Reply reply, auto&& ec)
+		{
+			if (!ec)
+			{
+				auto map = reply.map_array();
+				auto salt = map["salt"].as_string();
+				auto key = map["key"].as_string();
+				auto iter = map["iteration"].to_int();
+
+				if (auto pkey = password.derive_key(salt, iter);
+					!salt.empty() && !key.empty() && iter >= min_iteration &&
+					!std::equal(
+					pkey.begin(), pkey.end(),
+					key.begin(), key.end(),
+					[](unsigned char p, char k){return p == static_cast<unsigned char>(k);}))
+				{
+					ec = Error::login_incorrect;
+				}
+			}
+			completion(ec);
+		},
+		"HGETALL user:%b",
+		username.data(), username.size()
+	);
 }
 
 } // end of namespace hrb

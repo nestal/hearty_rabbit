@@ -21,7 +21,9 @@ enum class Error
 	ok,
 	object_not_exist,
 	invalid_object,
-	mmap_already_opened
+	mmap_already_opened,
+	redis_command_error,
+	login_incorrect
 };
 
 const std::error_category& hrb_error_category();

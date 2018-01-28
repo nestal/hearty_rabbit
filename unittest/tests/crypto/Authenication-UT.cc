@@ -12,8 +12,12 @@
 
 #include <catch.hpp>
 
+#include "net/Redis.hh"
+#include "crypto/Authenication.hh"
 #include "crypto/Random.hh"
 #include "crypto/Password.hh"
+
+#include <boost/asio/io_context.hpp>
 
 using namespace hrb;
 
@@ -40,4 +44,28 @@ TEST_CASE("Test password init", "[normal]")
 	REQUIRE(subject.size() == 0);
 
 	REQUIRE_NOTHROW(subject.derive_key("salt", 100));
+}
+
+TEST_CASE("Test normal user login", "[normal]")
+{
+	boost::asio::io_context ioc;
+	redis::Database redis{ioc, "localhost", 6379};
+
+	bool tested = false;
+
+	add_user("sumsum", Password{"bearbear"}, redis, [&redis, &tested](std::error_code ec)
+	{
+		REQUIRE(!ec);
+
+		verify_user("sumsum", Password{"bearbear"}, redis, [&redis, &tested](std::error_code ec)
+		{
+			REQUIRE(!ec);
+			tested = true;
+			redis.disconnect();
+		});
+	});
+
+	using namespace std::chrono_literals;
+	REQUIRE(ioc.run_for(10s) > 0);
+	REQUIRE(tested);
 }
