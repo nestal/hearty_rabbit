@@ -27,20 +27,31 @@
 #include <fstream>
 
 namespace po = boost::program_options;
+namespace ip = boost::asio::ip;
 
+namespace hrb {
 namespace {
 
-boost::asio::ip::tcp::endpoint parse_endpoint(const rapidjson::Value& json)
+ip::tcp::endpoint parse_endpoint(const rapidjson::Value& json)
 {
 	return {
-		boost::asio::ip::make_address(hrb::json::string(json["address"])),
+		ip::make_address(json::string(json["address"])),
 		static_cast<unsigned short>(json["port"].GetUint())
 	};
 }
 
-} // end of local namespace
+ip::tcp::endpoint parse_endpoint(const rapidjson::Value& json, const ip::tcp::endpoint& default_endpoint)
+{
+	auto default_address = default_endpoint.address().to_string();
+	auto default_port    = static_cast<std::uint32_t>(default_endpoint.port());
 
-namespace hrb {
+	return {
+		boost::asio::ip::make_address(std::string{json::optional(json, "address", default_address)}),
+		static_cast<unsigned short>(json::optional(json, "port", default_port))
+	};
+}
+
+} // end of local namespace
 
 Configuration::Configuration(int argc, const char *const *argv, const char *env)
 {
@@ -102,6 +113,11 @@ void Configuration::load_config(const boost::filesystem::path& path)
 
 		m_listen_http  = parse_endpoint(field(json, "http"));
 		m_listen_https = parse_endpoint(field(json, "https"));
+		m_redis = parse_endpoint(
+			optional(json, "redis", rapidjson::Value().SetObject()),
+			ip::tcp::endpoint{ip::make_address("127.0.0.1"), 6379}
+		);
+
 	}
 	catch (Exception& e)
 	{

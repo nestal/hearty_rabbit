@@ -41,6 +41,7 @@ public:
 
 	boost::asio::ip::tcp::endpoint listen_http() const { return m_listen_http;}
 	boost::asio::ip::tcp::endpoint listen_https() const { return m_listen_https;}
+	boost::asio::ip::tcp::endpoint redis() const {return m_redis;}
 	boost::filesystem::path cert_chain() const {return m_cert_chain;}
 	boost::filesystem::path private_key() const {return m_private_key;}
 	boost::filesystem::path web_root() const {return m_root;}
@@ -67,6 +68,7 @@ private:
 	boost::program_options::variables_map       m_args;
 
 	boost::asio::ip::tcp::endpoint m_listen_http, m_listen_https;
+	boost::asio::ip::tcp::endpoint m_redis;
 	boost::filesystem::path m_cert_chain, m_private_key;
 	boost::filesystem::path m_root;
 	std::string m_server_name;
