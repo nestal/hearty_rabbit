@@ -45,6 +45,7 @@ void drop_privileges()
 int Main(int argc, const char* const* argv)
 {
 	Configuration cfg{argc, argv, ::getenv("HEART_RABBIT_CONFIG")};
+	OpenSSL_add_all_digests();
 
 	if (cfg.help())
 	{

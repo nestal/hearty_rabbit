@@ -10,5 +10,14 @@
 // Created by nestal on 1/8/18.
 //
 
-#define CATCH_CONFIG_MAIN
+#define CATCH_CONFIG_RUNNER
 #include <catch.hpp>
+
+#include <openssl/evp.h>
+
+int main( int argc, char* argv[] )
+{
+	OpenSSL_add_all_digests();
+
+	return Catch::Session().run(argc, argv);
+}
