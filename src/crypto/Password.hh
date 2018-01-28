@@ -12,7 +12,6 @@
 
 #pragma once
 
-#include <openssl/sha.h>
 #include <array>
 #include <vector>
 #include <string_view>
@@ -33,8 +32,8 @@ public:
 	Password& operator=(const Password&) = delete;
 	void swap(Password& other);
 
-	using Key = std::array<unsigned char, SHA512_DIGEST_LENGTH>;
-	Key derive_key(std::string_view salt, int iteration) const;
+	using Key = std::array<unsigned char, 64>;
+	Key derive_key(std::string_view salt, int iteration, const std::string& hash_name) const;
 	std::string_view get() const;
 
 	void clear();

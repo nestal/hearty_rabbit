@@ -42,6 +42,7 @@ Salt random_salt()
 }
 
 const int min_iteration = 5000;
+const std::string default_hash_algorithm = "sha512";
 
 } // end of anonymous namespace
 
@@ -53,7 +54,7 @@ void add_user(
 )
 {
 	auto salt = random_salt();
-	auto key = password.derive_key({salt.data(), salt.size()}, min_iteration);
+	auto key = password.derive_key({salt.data(), salt.size()}, min_iteration, default_hash_algorithm);
 
 	db.command(
 		[completion=std::move(completion)](auto reply, auto&& ec)
@@ -63,11 +64,12 @@ void add_user(
 
 			completion(ec);
 		},
-		"HMSET user:%b salt %b key %b iteration %d",
+		"HMSET user:%b salt %b key %b iteration %d hash_algorithm %b",
 		username.data(), username.size(),
 		salt.data(), salt.size(),
 		key.data(), key.size(),
-		min_iteration
+		min_iteration,
+		default_hash_algorithm.c_str(), default_hash_algorithm.size()
 	);
 }
 
@@ -83,10 +85,14 @@ void verify_user(
 		{
 			if (!ec)
 			{
-				auto [salt, key, iter] = reply.as_tuple<3>(ec);
+				auto [salt, key, iter, hash_algorithm] = reply.as_tuple<4>(ec);
 				if (!ec && salt.is_string() && key.is_string() && iter.is_string() && iter.to_int() > 0)
 				{
-					auto pkey = password.derive_key(salt.as_string(), iter.to_int());
+					auto hash_algorithm_to_use = default_hash_algorithm;
+					if (hash_algorithm)
+						hash_algorithm_to_use = std::string{hash_algorithm.as_string()};
+
+					auto pkey = password.derive_key(salt.as_string(), iter.to_int(), hash_algorithm_to_use);
 					auto skey = key.as_string();
 					if (!std::equal(
 						pkey.begin(), pkey.end(),
@@ -103,7 +109,7 @@ void verify_user(
 			}
 			completion(ec);
 		},
-		"HMGET user:%b salt key iteration",
+		"HMGET user:%b salt key iteration hash_algorithm",
 		username.data(), username.size()
 	);
 }

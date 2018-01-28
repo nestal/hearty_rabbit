@@ -36,15 +36,15 @@ TEST_CASE("Test password init", "[normal]")
 	REQUIRE(!subject.empty());
 
 	// different salt must produce different keys
-	auto key1 = subject.derive_key("1", 100);
-	auto key2 = subject.derive_key("2", 100);
+	auto key1 = subject.derive_key("1", 100, "sha512");
+	auto key2 = subject.derive_key("2", 100, "sha512");
 	REQUIRE(key1 != key2);
 
 	subject.clear();
 	REQUIRE(subject.empty());
 	REQUIRE(subject.size() == 0);
 
-	REQUIRE_NOTHROW(subject.derive_key("salt", 100));
+	REQUIRE_NOTHROW(subject.derive_key("salt", 100, "sha512"));
 }
 
 TEST_CASE("Test normal user login", "[normal]")
