@@ -8,10 +8,12 @@
 
 #include "net/Listener.hh"
 #include "crypto/Authenication.hh"
+#include "crypto/Password.hh"
 #include "util/Configuration.hh"
 #include "util/Exception.hh"
 #include "util/Log.hh"
 #include "hrb/Server.hh"
+#include "net/Redis.hh"
 
 #include <boost/asio/ssl.hpp>
 #include <boost/asio/bind_executor.hpp>
@@ -50,13 +52,21 @@ int Main(int argc, const char* const* argv)
 		std::cout << "\n";
 		return EXIT_SUCCESS;
 	}
-	else if (cfg.add_user([](auto&& username)
+	else if (cfg.add_user([&cfg](auto&& username)
 	{
 		std::cout << "Please input password of the new user " << username << ":\n";
 		std::string password;
 		if (std::getline(std::cin, password))
 		{
-
+			boost::asio::io_context ioc;
+			auto endpoint = cfg.redis();
+			redis::Database db{ioc, endpoint.address().to_string(), endpoint.port()};
+			add_user(username, Password{std::string_view{password}}, db, [&db](std::error_code&& ec)
+			{
+				std::cout << "result = " << ec << " " << ec.message() << std::endl;
+				db.disconnect();
+			});
+			ioc.run();
 		}
 	}))
 	{

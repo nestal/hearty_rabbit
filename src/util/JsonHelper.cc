@@ -27,6 +27,12 @@ const rapidjson::Value& field(const rapidjson::Value& object, std::string_view f
 	return it->value;
 }
 
+const rapidjson::Value& optional(const rapidjson::Value& object, std::string_view field, const rapidjson::Value& default_value)
+{
+	auto it = object.FindMember(rapidjson::Value().SetString(field.data(), field.size()));
+	return it == object.MemberEnd() ? default_value : it->value;
+}
+
 std::string_view string_view(const rapidjson::Value& value)
 {
 	if (!value.IsString())
@@ -40,6 +46,12 @@ std::string string(const rapidjson::Value& value)
 	return std::string{string_view(value)};
 }
 
+std::string_view optional(const rapidjson::Value& object, std::string_view field, std::string_view default_value)
+{
+	auto it = object.FindMember(rapidjson::Value().SetString(field.data(), field.size()));
+	return it == object.MemberEnd() ? default_value : string_view(it->value);
+}
+
 std::uint64_t optional(const rapidjson::Value& object, std::string_view field, std::uint64_t default_value)
 {
 	auto it = object.FindMember(rapidjson::Value().SetString(field.data(), field.size()));
@@ -47,6 +59,15 @@ std::uint64_t optional(const rapidjson::Value& object, std::string_view field, s
 		return default_value;
 
 	return it->value.IsUint64() ? it->value.GetUint64() : default_value;
+}
+
+std::uint32_t optional(const rapidjson::Value& object, std::string_view field, std::uint32_t default_value)
+{
+	auto it = object.FindMember(rapidjson::Value().SetString(field.data(), field.size()));
+	if (it == object.MemberEnd())
+		return default_value;
+
+	return it->value.IsUint() ? it->value.GetUint() : default_value;
 }
 
 }} // end of namespace
