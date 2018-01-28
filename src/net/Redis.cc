@@ -14,6 +14,7 @@
 #include "Redis.hh"
 
 #include "util/Backtrace.hh"
+#include "util/Error.hh"
 
 #include <boost/exception/info.hpp>
 #include <boost/exception/errinfo_api_function.hpp>
@@ -183,6 +184,23 @@ Reply Reply::as_array(std::size_t i) const noexcept
 		Reply{m_reply->element[i]} : Reply{};
 }
 
+Reply Reply::as_array(std::size_t i, std::error_code& ec) const noexcept
+{
+	// If there is already an error, do nothing and because we can't report error.
+	if (ec)
+		return Reply{};
+
+	if (m_reply->type == REDIS_REPLY_ARRAY && i < m_reply->elements)
+	{
+		return Reply{m_reply->element[i]};
+	}
+	else
+	{
+		ec = Error::field_not_found;
+		return Reply{};
+	}
+}
+
 std::size_t Reply::array_size() const noexcept
 {
 	return m_reply->type == REDIS_REPLY_ARRAY ? m_reply->elements : 0ULL;
@@ -222,14 +240,16 @@ const std::error_category& redis_error_category()
 
 		std::string message(int ev) const override
 		{
-			switch (ev)
+			switch (static_cast<Error>(ev))
 			{
-				case REDIS_OK: return "no error";
-				case REDIS_ERR_IO: return "IO error";
-				case REDIS_ERR_EOF: return "EOF error";
-				case REDIS_ERR_PROTOCOL: return "protocol error";
-				case REDIS_ERR_OOM: return "out-of-memory error";
-				case REDIS_ERR_OTHER: return "other error";
+				case Error::ok: return "no error";
+				case Error::io: return "IO error";
+				case Error::eof: return "EOF error";
+				case Error::protocol: return "protocol error";
+				case Error::oom: return "out-of-memory error";
+				case Error::other: return "other error";
+				case Error::command_error: return "command error";
+				case Error::field_not_found: return "field not found";
 				default: return "unknown error";
 			}
 		}

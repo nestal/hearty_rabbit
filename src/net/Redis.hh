@@ -31,7 +31,11 @@ enum class Error
 	eof = REDIS_ERR_EOF,
 	protocol = REDIS_ERR_PROTOCOL,
 	oom = REDIS_ERR_OOM,
-	other = REDIS_ERR_OTHER
+	other = REDIS_ERR_OTHER,
+
+	// other logical errors
+	command_error = 1000,
+	field_not_found
 };
 
 std::error_code make_error_code(Error err);
@@ -40,7 +44,15 @@ const std::error_category& redis_error_category();
 class Reply
 {
 public:
-	Reply(redisReply *r = nullptr) noexcept;
+	explicit Reply(redisReply *r = nullptr) noexcept;
+	Reply(const Reply&) = default;
+	Reply(Reply&&) = default;
+	~Reply() = default;
+
+	Reply& operator=(const Reply&) = default;
+	Reply& operator=(Reply&&) = default;
+
+	bool is_string() const {return m_reply->type == REDIS_REPLY_STRING;}
 
 	std::string_view as_string() const noexcept;
 	std::string_view as_status() const noexcept;
@@ -53,9 +65,23 @@ public:
 	long to_int() const noexcept;
 
 	Reply as_array(std::size_t i) const noexcept;
+	Reply as_array(std::size_t i, std::error_code& ec) const noexcept;
 	std::size_t array_size() const noexcept;
 
 	std::unordered_map<std::string_view, Reply> map_array() const;
+
+	template <std::size_t count>
+	auto as_tuple(std::error_code& ec) const
+	{
+		return as_tuple_impl(ec, std::make_index_sequence<count>{});
+	}
+
+private:
+	template <std::size_t... index>
+	auto as_tuple_impl(std::error_code& ec, std::index_sequence<index...>) const
+	{
+		return std::make_tuple(as_array(index, ec)...);
+	}
 
 private:
 	const ::redisReply *m_reply;
@@ -80,10 +106,16 @@ public:
 
 		auto callback_ptr = std::make_unique<CallbackType>(std::forward<Callback>(callback));
 		auto r = m_ctx ? ::redisAsyncCommand(
-			m_ctx, [](redisAsyncContext *ctx, void *reply, void *pv_callback)
+			m_ctx, [](redisAsyncContext *ctx, void *pv_reply, void *pv_callback)
 			{
+				std::error_code ec{static_cast<Error>(ctx->err)};
+
+				Reply reply{static_cast<redisReply *>(pv_reply)};
+				if (!reply && !ec)
+					ec = Error::command_error;
+
 				std::unique_ptr<CallbackType> callback{static_cast<CallbackType *>(pv_callback)};
-				(*callback)(Reply{static_cast<redisReply *>(reply)}, std::error_code{static_cast<Error>(ctx->err)});
+				(*callback)(reply, std::move(ec));
 			}, callback_ptr.get(), fmt, args...
 		) : REDIS_ERR;
 

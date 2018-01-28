@@ -83,22 +83,23 @@ void verify_user(
 		{
 			if (!ec)
 			{
-				auto salt = reply.as_array(0).as_string();
-				auto key  = reply.as_array(1).as_string();
-				auto iter = reply.as_array(2).to_int();
-
-				if (
-					auto pkey = password.derive_key(salt, iter);
-					salt.empty() || key.empty() || iter < min_iteration ||
-					!std::equal(
-						pkey.begin(), pkey.end(),
-						key.begin(), key.end(),
-						[](unsigned char p, char k){return p == static_cast<unsigned char>(k);}
-					)
-				)
+				auto [salt, key, iter] = reply.as_tuple<3>(ec);
+				if (!ec && salt.is_string() && key.is_string() && iter.is_string() && iter.to_int() > 0)
 				{
-					ec = Error::login_incorrect;
+					auto pkey = password.derive_key(salt.as_string(), iter.to_int());
+					auto skey = key.as_string();
+					if (!std::equal(
+						pkey.begin(), pkey.end(),
+						skey.begin(), skey.end(),
+						[](unsigned char p, char k)
+						{ return p == static_cast<unsigned char>(k); }
+					))
+					{
+						ec = Error::login_incorrect;
+					}
 				}
+				else if (!ec)
+					ec = Error::login_incorrect;
 			}
 			completion(ec);
 		},

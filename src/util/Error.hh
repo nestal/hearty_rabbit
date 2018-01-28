@@ -23,6 +23,7 @@ enum class Error
 	invalid_object,
 	mmap_already_opened,
 	redis_command_error,
+	redis_field_not_found,
 	login_incorrect
 };
 

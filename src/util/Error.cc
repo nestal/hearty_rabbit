@@ -30,6 +30,7 @@ const std::error_category& hrb_error_category()
 				case Error::invalid_object: return "invalid object";
 				case Error::mmap_already_opened: return "mmap already opened";
 				case Error::redis_command_error: return "redis command error";
+				case Error::redis_field_not_found: return "redis field not found";
 				case Error::login_incorrect: return "login incorrect";
 				default: return "unknown error " + std::to_string(ev);
 			}
