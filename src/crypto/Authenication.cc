@@ -12,60 +12,68 @@
 
 #include "Authenication.hh"
 
+#include "Password.hh"
 #include "net/Redis.hh"
 #include "crypto/Random.hh"
 
-#include "Password.hh"
 #include <openssl/evp.h>
 #include <openssl/sha.h>
+
 #include <random>
 
+namespace hrb {
 namespace {
 
-union Salt
+using Salt = std::array<char, 32>;
+Salt random_salt()
 {
-	std::array<std::uint64_t, 4> lls;
-	std::array<char, 32>     ucs;
-};
+	union
+	{
+		std::array<std::uint64_t, 4>    lls;
+		Salt salt;
+	} tmp;
+
+	// There is no need to use cryptographically secure random number to generate the
+	// salt because it is not a secret to the attacker.
+	static thread_local std::mt19937_64 salt_generator{secure_random<std::uint64_t>()};
+	std::generate(tmp.lls.begin(), tmp.lls.end(), std::ref(salt_generator));
+	return tmp.salt;
+}
+
 const int min_iteration = 5000;
 
 } // end of anonymous namespace
-
-
-namespace hrb {
-
-Authenication::Authenication(std::string_view username, std::string_view password, hrb::redis::Database& db)
-{
-
-}
 
 void add_user(
 	std::string_view username,
 	const Password& password,
 	redis::Database& db,
-	std::function<void(std::string_view cookie, std::error_code)> completion
+	std::function<void(std::error_code)> completion
 )
 {
-	// There is no need to use cryptographically secure random number to generate the
-	// salt because it is not a secret to the attacker.
-	thread_local std::mt19937_64 salt_generator{secure_random<std::uint64_t>()};
-
-	Salt salt;
-	std::generate(salt.lls.begin(), salt.lls.end(), std::ref(salt_generator));
-
-	auto key = password.derive_key({salt.ucs.data(), salt.ucs.size()}, min_iteration);
+	auto salt = random_salt();
+	auto key = password.derive_key({salt.data(), salt.size()}, min_iteration);
 
 	db.command(
-		[key, salt](auto reply, auto&& ec)
+		[completion=std::move(completion)](auto reply, auto&& ec)
 		{
-
+			completion(ec);
 		},
 		"HSETNX user:%b salt %b key %b iteration %d",
 		username.data(), username.size(),
-		salt.ucs.data(), salt.ucs.size(),
+		salt.data(), salt.size(),
 		key.data(), key.size(),
 		min_iteration
 	);
+}
+
+void verify_user(
+	std::string_view username,
+	Password&& password,
+	redis::Database& db,
+	std::function<void(std::error_code)> completion
+)
+{
 }
 
 } // end of namespace hrb

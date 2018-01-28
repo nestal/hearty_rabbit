@@ -15,7 +15,6 @@
 #include "util/MMap.hh"
 
 #include <boost/filesystem/path.hpp>
-#include <openssl/sha.h>
 
 #include <cstddef>
 #include <functional>

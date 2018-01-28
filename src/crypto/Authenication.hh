@@ -12,8 +12,9 @@
 
 #pragma once
 
-#include <string_view>
+#include <array>
 #include <functional>
+#include <string_view>
 #include <system_error>
 
 namespace hrb {
@@ -24,20 +25,18 @@ class Database;
 
 class Password;
 
-class Authenication
-{
-public:
-	Authenication(std::string_view username, std::string_view password, redis::Database& db);
-
-private:
-	std::string m_cookie;
-};
-
 void add_user(
 	std::string_view username,
 	const Password& password,
 	redis::Database& db,
-	std::function<void(std::string_view cookie, std::error_code)> completion
+	std::function<void(std::error_code)> completion
+);
+
+void verify_user(
+	std::string_view username,
+	Password&& password,
+	redis::Database& db,
+	std::function<void(std::error_code)> completion
 );
 
 } // end of namespace
