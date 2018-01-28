@@ -130,7 +130,7 @@ void Session::on_read(boost::system::error_code ec, std::size_t)
 		Log(LOG_WARNING, "read error: %1%", ec);
 
 	// Send the response
-	auto sender = [this](auto&& msg)
+	auto sender = [this, self=shared_from_this()](auto&& msg)
 	{
 		// The lifetime of the message has to extend
 		// for the duration of the async operation so
@@ -139,9 +139,9 @@ void Session::on_read(boost::system::error_code ec, std::size_t)
 
 		auto&& executor = boost::asio::bind_executor(
 			m_strand,
-			[self=this->shared_from_this(), sp](auto error_code, auto bytes_transferred)
+			[this, self, sp](auto error_code, auto bytes_transferred)
 			{
-				self->on_write(error_code, bytes_transferred, sp->need_eof());
+				on_write(error_code, bytes_transferred, sp->need_eof());
 			}
 		);
 
