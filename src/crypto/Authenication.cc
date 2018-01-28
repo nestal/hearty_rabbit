@@ -89,18 +89,22 @@ void verify_user(
 				auto key = map["key"].as_string();
 				auto iter = map["iteration"].to_int();
 
-				if (auto pkey = password.derive_key(salt, iter);
-					!salt.empty() && !key.empty() && iter >= min_iteration &&
+				if (
+					auto pkey = password.derive_key(salt, iter);
+					salt.empty() || key.empty() || iter < min_iteration ||
 					!std::equal(
-					pkey.begin(), pkey.end(),
-					key.begin(), key.end(),
-					[](unsigned char p, char k){return p == static_cast<unsigned char>(k);}))
+						pkey.begin(), pkey.end(),
+						key.begin(), key.end(),
+						[](unsigned char p, char k){return p == static_cast<unsigned char>(k);}
+					)
+				)
 				{
 					ec = Error::login_incorrect;
 				}
 			}
 			completion(ec);
 		},
+		//"HMGET user:%b salt key iteration",
 		"HGETALL user:%b",
 		username.data(), username.size()
 	);

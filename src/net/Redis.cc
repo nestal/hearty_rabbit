@@ -209,7 +209,8 @@ Reply::operator bool() const noexcept
 
 long Reply::to_int() const noexcept
 {
-	return std::stol(std::string{as_any_string()});
+	auto s = as_any_string();
+	return s.empty() ? 0 : std::stol(std::string{s});
 	// auto r = std::from_chars()
 }
 
