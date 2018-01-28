@@ -30,24 +30,6 @@ namespace po = boost::program_options;
 
 namespace {
 
-const po::options_description& the_desc()
-{
-	using namespace std::literals;
-	auto make_desc = []
-	{
-		// Declare the supported options.
-		static po::options_description self{"Allowed options"};
-		self.add_options()
-			("help", "produce help message")
-			("cfg",  po::value<std::string>()->default_value(std::string{hrb::constants::config_filename}), "Configuration file")
-		;
-		return &self;
-	};
-
-	static const auto& result = *make_desc();
-	return result;
-}
-
 boost::asio::ip::tcp::endpoint parse_endpoint(const rapidjson::Value& json)
 {
 	return {
@@ -62,20 +44,26 @@ namespace hrb {
 
 Configuration::Configuration(int argc, const char *const *argv, const char *env)
 {
-	po::variables_map config;
-	store(po::parse_command_line(argc, argv, the_desc()), config);
-	po::notify(config);
+	using namespace std::literals;
+	m_desc.add_options()
+		("help",      "produce help message")
+		("add-user",  po::value<std::string>()->value_name("username"), "add a new user given a user name")
+		("cfg",       po::value<std::string>()->default_value(
+			env ? std::string{env} : std::string{hrb::constants::config_filename}
+		)->value_name("path"), "Configuration file. Use environment variable HEART_RABBIT_CONFIG to set default path.")
+	;
 
-	m_help = config.count("help") > 0;
+	store(po::parse_command_line(argc, argv, m_desc), m_args);
+	po::notify(m_args);
 
 	// no need for other options when --help is specified
-	if (!m_help)
-		load_config(config["cfg"].as<std::string>());
+	if (!help())
+		load_config(m_args["cfg"].as<std::string>());
 }
 
-void Configuration::usage(std::ostream &out)
+void Configuration::usage(std::ostream &out) const
 {
-	out << the_desc();
+	out << m_desc;
 }
 
 void Configuration::load_config(const boost::filesystem::path& path)

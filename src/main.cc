@@ -7,6 +7,7 @@
 */
 
 #include "net/Listener.hh"
+#include "crypto/Authenication.hh"
 #include "util/Configuration.hh"
 #include "util/Exception.hh"
 #include "util/Log.hh"
@@ -39,7 +40,7 @@ void drop_privileges()
 		throw std::runtime_error("cannot run as root");
 }
 
-int Main(int argc, char *argv[])
+int Main(int argc, const char* const* argv)
 {
 	Configuration cfg{argc, argv, ::getenv("HEART_RABBIT_CONFIG")};
 
@@ -47,6 +48,18 @@ int Main(int argc, char *argv[])
 	{
 		cfg.usage(std::cout);
 		std::cout << "\n";
+		return EXIT_SUCCESS;
+	}
+	else if (cfg.add_user([](auto&& username)
+	{
+		std::cout << "Please input password of the new user " << username << ":\n";
+		std::string password;
+		if (std::getline(std::cin, password))
+		{
+
+		}
+	}))
+	{
 		return EXIT_SUCCESS;
 	}
 
