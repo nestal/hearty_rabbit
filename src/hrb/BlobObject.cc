@@ -77,21 +77,20 @@ ObjectID BlobObject::hash(std::string_view blob)
 	}
 	else
 	{
-		std::array<unsigned char, EVP_MAX_MD_SIZE> hash;
+		std::array<unsigned char, EVP_MAX_MD_SIZE> hash{};
 		::EVP_DigestFinal_ex(ctx.get(), &hash[0], &out_size);
 		assert(out_size == result.size());
 		::memcpy(&result[0], hash.data(), out_size);
 	}
-
 	return result;
 }
 
 void BlobObject::save(redis::Database& db, Completion completion)
 {
 	db.command(
-		[callback=std::move(completion), this](redis::Reply, std::error_code ec)
+		[callback=std::move(completion), this](redis::Reply, std::error_code&& ec)
 		{
-			callback(*this, ec);
+			callback(*this, std::move(ec));
 		},
 		"HSET %b blob %b name %b mime %b",
 		m_id.data(), m_id.size(),
@@ -111,39 +110,38 @@ void BlobObject::load(redis::Database& db, const ObjectID& id, Completion comple
 		if (!ec && reply.array_size() == 0)
 			ec = Error::object_not_exist;
 
-		bool valid = false;
-		for (auto i = 0ULL ; i+1 < reply.array_size() && !ec ; i+=2)
+		auto map = reply.map_array();
+		if (auto it = map.find("blob"); it != map.end())
 		{
-			if (reply.as_array(i).as_string() == "blob")
+			// The blob should be in the next field of the reply array.
+			auto blob = it->second.as_string();
+
+			// Create an anonymous memory mapping to store the blob
+			auto new_mem = MMap::allocate(blob.size(), ec);
+			if (!ec)
 			{
-				// The blob should be in the next field of the reply array.
-				auto blob = reply.as_array(i+1).as_string();
+				// everything OK, now commit
+				std::memcpy(new_mem.data(), blob.data(), blob.size());
+				result.m_id = id;
+				result.m_blob = std::move(new_mem);
 
-				// Create an anonymous memory mapping to store the blob
-				auto new_mem = MMap::allocate(blob.size(), ec);
-				if (!ec)
+				for (auto&& field : map)
 				{
-					// everything OK, now commit
-					std::memcpy(new_mem.data(), blob.data(), blob.size());
-					result.m_id = id;
-					result.m_blob = std::move(new_mem);
-
-					// blob is require
-					valid = true;
+					if (field.first != "blob")
+						result.assign_field(field.first, field.second.as_string());
 				}
-			}
 
-			else
-				result.assign_field(reply.as_array(i).as_string(), reply.as_array(i+1).as_string());
+				// deduce mime if it is not present in database
+				if (result.m_mime.empty())
+					result.m_mime = deduce_mime(result.blob());
+			}
 		}
 
-		// if redis return OK but we don't have blob, then the object is notvalid
-		if (!valid)
+
+		// if redis return OK but we don't have blob, then the object is not valid
+		else
 			ec = Error::invalid_object;
 
-		// TODO: deduce mime
-		if (result.m_mime.empty())
-			result.m_mime = deduce_mime(result.blob());
 
 		callback(result, ec);
 

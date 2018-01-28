@@ -178,11 +178,19 @@ long Reply::as_int() const
 	return m_reply->type == REDIS_REPLY_INTEGER ? m_reply->integer : 0;
 }
 
+std::unordered_map<std::string_view, Reply> Reply::map_array() const
+{
+	std::unordered_map<std::string_view, Reply> result;
+	for (auto i = 0ULL ; i+1 < array_size() ; i+=2)
+		result.emplace(as_array(i).as_string(), as_array(i+1));
+
+	return result;
+}
+
 const std::error_category& redis_error_category()
 {
 	struct Cat : std::error_category
 	{
-		Cat() = default;
 		const char *name() const noexcept override { return "redis"; }
 
 		std::string message(int ev) const override
@@ -199,7 +207,7 @@ const std::error_category& redis_error_category()
 			}
 		}
 	};
-	static const Cat cat;
+	static const Cat cat{};
 	return cat;
 }
 

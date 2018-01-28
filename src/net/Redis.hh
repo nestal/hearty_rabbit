@@ -47,8 +47,9 @@ public:
 	long as_int() const;
 
 	Reply as_array(std::size_t i) const;
-
 	std::size_t array_size() const;
+
+	std::unordered_map<std::string_view, Reply> map_array() const;
 
 private:
 	const ::redisReply *m_reply;
