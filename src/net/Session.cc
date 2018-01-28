@@ -48,8 +48,7 @@ void Session::run()
 			boost::asio::ssl::stream_base::server,
 			boost::asio::bind_executor(
 				m_strand,
-				[self = shared_from_this()](auto ec)
-				{ self->on_handshake(ec); }
+				[self = shared_from_this()](auto ec){self->on_handshake(ec);}
 			)
 		);
 	}
@@ -137,19 +136,16 @@ void Session::on_read(boost::system::error_code ec, std::size_t)
 		// we use a shared_ptr to manage it.
 		auto sp = std::make_shared<std::remove_reference_t<decltype(msg)>>(std::move(msg));
 
-		auto&& executor = boost::asio::bind_executor(
+		auto&& callback = boost::asio::bind_executor(
 			m_strand,
-			[this, self, sp](auto error_code, auto bytes_transferred)
-			{
-				on_write(error_code, bytes_transferred, sp->need_eof());
-			}
+			[self, sp](auto&& ec, auto bytes) {self->on_write(ec, bytes, sp->need_eof());}
 		);
 
 		// Write the response
 		if (m_stream)
-			async_write(*m_stream, *sp, std::move(executor));
+			async_write(*m_stream, *sp, std::move(callback));
 		else
-			async_write(m_socket, *sp, std::move(executor));
+			async_write(m_socket, *sp, std::move(callback));
 	};
 
 	if (m_stream)
