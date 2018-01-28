@@ -57,7 +57,7 @@ private:
 	// contents of the request, so the interface requires the
 	// caller to pass a generic lambda for receiving the response.
 	template<class Send>
-	void handle_https(const EndPoint& peer, Request&& req, Send&& send);
+	void handle_https(Request&& req, Send&& send);
 
 private:
 	boost::asio::ip::tcp::socket m_socket;

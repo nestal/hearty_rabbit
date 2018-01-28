@@ -10,15 +10,17 @@
 // Created by nestal on 1/7/18.
 //
 
-#include <iostream>
 #include "Server.hh"
 #include "WebResources.hh"
 
+#include "crypto/Password.hh"
 #include "util/Configuration.hh"
 #include "util/Escape.hh"
-
 #include "util/Log.hh"
 #include "util/Exception.hh"
+#include "net/Redis.hh"
+
+#include <iostream>
 
 namespace hrb {
 
@@ -133,10 +135,19 @@ http::response<boost::beast::http::empty_body> Server::on_login(const Request& r
 	auto&& body = req.body();
 	if (req.at("content-type") == "application/x-www-form-urlencoded")
 	{
-		visit_form_string({body}, [](auto name, auto val)
+		std::string_view username;
+		Password password;
+		visit_form_string({body}, [&username, &password](auto name, auto val)
 		{
 			std::cout << "field " << name << ": " << val << std::endl;
+			if (name == "username")
+				username = val;
+			else if (name == "password")
+				password = Password{val};
 		});
+//		auto endpoint = m_cfg.redis();
+//		redis::Database db{sock.get_io_context(), endpoint.address().to_string(), endpoint.port()};
+
 	}
 
 	std::cout << body << " " << req.at("content-type") << std::endl;

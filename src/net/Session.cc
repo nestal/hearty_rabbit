@@ -86,11 +86,11 @@ void Session::do_read()
 // contents of the request, so the interface requires the
 // caller to pass a generic lambda for receiving the response.
 template<class Send>
-void Session::handle_https(const EndPoint& peer, Request&& req, Send&& send)
+void Session::handle_https(Request&& req, Send&& send)
 {
 	try
 	{
-		Log(LOG_INFO, "%1%:%2% request %3% from %4%", m_nth_session, m_nth_transaction, req.target(), peer);
+		Log(LOG_INFO, "%1%:%2% request %3% from %4%", m_nth_session, m_nth_transaction, req.target(), m_socket.remote_endpoint());
 
 		// Make sure we can handle the method
 		if (req.method() != http::verb::get  &&
@@ -104,7 +104,7 @@ void Session::handle_https(const EndPoint& peer, Request&& req, Send&& send)
 		    req.target().find("..") != boost::beast::string_view::npos)
 			return send(m_server.bad_request(req, "Illegal request-target"));
 
-		return m_server.handle_https(peer, std::move(req), std::move(send));
+		return m_server.handle_https(std::move(req), std::move(send));
 	}
 	catch (std::system_error& e)
 	{
@@ -153,7 +153,7 @@ void Session::on_read(boost::system::error_code ec, std::size_t)
 	};
 
 	if (m_stream)
-		handle_https(m_socket.remote_endpoint(ec), std::move(m_req), std::move(sender));
+		handle_https(std::move(m_req), std::move(sender));
 	else
 		sender(m_server.redirect_http(m_req));
 	m_nth_transaction++;
