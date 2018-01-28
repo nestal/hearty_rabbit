@@ -21,7 +21,6 @@
 #include <openssl/sha.h>
 
 #include <random>
-#include <iostream>
 
 namespace hrb {
 namespace {
@@ -84,10 +83,9 @@ void verify_user(
 		{
 			if (!ec)
 			{
-				auto map = reply.map_array();
-				auto salt = map["salt"].as_string();
-				auto key = map["key"].as_string();
-				auto iter = map["iteration"].to_int();
+				auto salt = reply.as_array(0).as_string();
+				auto key  = reply.as_array(1).as_string();
+				auto iter = reply.as_array(2).to_int();
 
 				if (
 					auto pkey = password.derive_key(salt, iter);
@@ -104,8 +102,7 @@ void verify_user(
 			}
 			completion(ec);
 		},
-		//"HMGET user:%b salt key iteration",
-		"HGETALL user:%b",
+		"HMGET user:%b salt key iteration",
 		username.data(), username.size()
 	);
 }
