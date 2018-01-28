@@ -37,7 +37,7 @@ public:
 	// contents of the request, so the interface requires the
 	// caller to pass a generic lambda for receiving the response.
 	template<class Send>
-	void handle_https(const EndPoint& peer, Request&& req, Send&& send)
+	void handle_https(Request&& req, Send&& send)
 	{
 		if (req.target().starts_with("/login"))
 			return send(set_common_fields(req, on_login(req)));

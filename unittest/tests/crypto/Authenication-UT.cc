@@ -44,7 +44,7 @@ TEST_CASE("Test password init", "[normal]")
 	REQUIRE(subject.empty());
 	REQUIRE(subject.size() == 0);
 
-	REQUIRE_NOTHROW(subject.derive_key("salt", 100, "sha512"));
+	REQUIRE_NOTHROW(subject.derive_key("salt", 100, "sha512" ));
 }
 
 TEST_CASE("Test normal user login", "[normal]")

@@ -81,11 +81,13 @@ TEST_CASE("GET static resource", "[normal]")
 	REQUIRE(cfg.web_root() == (current_src/"../../../lib").lexically_normal());
 	Request req;
 
+
+
 	SECTION("requesting index.html")
 	{
 		req.target("/index.html");
 
-		subject.handle_https({}, std::move(req), [&cfg](auto &&res)
+		subject.handle_https(std::move(req), [&cfg](auto &&res)
 		{
 			REQUIRE(res.result() == http::status::ok);
 			auto content = flatten_content(std::move(res));
@@ -96,7 +98,7 @@ TEST_CASE("GET static resource", "[normal]")
 	{
 		req.target("/");
 
-		subject.handle_https({}, std::move(req), [&cfg](auto &&res)
+		subject.handle_https(std::move(req), [&cfg](auto &&res)
 		{
 			REQUIRE(res.result() == http::status::ok);
 			auto content = flatten_content(std::move(res));
