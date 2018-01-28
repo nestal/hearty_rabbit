@@ -13,6 +13,7 @@
 #include <catch.hpp>
 
 #include "net/Redis.hh"
+#include "util/Error.hh"
 #include "crypto/Authenication.hh"
 #include "crypto/Random.hh"
 #include "crypto/Password.hh"
@@ -57,12 +58,28 @@ TEST_CASE("Test normal user login", "[normal]")
 	{
 		REQUIRE(!ec);
 
-		verify_user("sumsum", Password{"bearbear"}, redis, [&redis, &tested](std::error_code ec)
+		SECTION("correct user")
 		{
-			REQUIRE(!ec);
-			tested = true;
-			redis.disconnect();
-		});
+			verify_user(
+				"sumsum", Password{"bearbear"}, redis, [&redis, &tested](std::error_code ec)
+				{
+					REQUIRE(!ec);
+					tested = true;
+					redis.disconnect();
+				}
+			);
+		}
+		SECTION("incorrect user")
+		{
+			verify_user(
+				"siuyung", Password{"rabbit"}, redis, [&redis, &tested](std::error_code ec)
+				{
+					REQUIRE(ec == Error::login_incorrect);
+					tested = true;
+					redis.disconnect();
+				}
+			);
+		}
 	});
 
 	using namespace std::chrono_literals;
