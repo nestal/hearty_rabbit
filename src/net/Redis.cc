@@ -148,7 +148,7 @@ void Database::disconnect()
 	m_ctx = nullptr;
 }
 
-Reply::Reply(redisReply *r) :
+Reply::Reply(redisReply *r) noexcept :
 	m_reply{r}
 {
 	static const redisReply empty{};
@@ -156,24 +156,39 @@ Reply::Reply(redisReply *r) :
 		m_reply = &empty;
 }
 
-std::string_view Reply::as_string() const
+std::string_view Reply::as_string() const noexcept
 {
-	return (m_reply->type == REDIS_REPLY_STRING || m_reply->type == REDIS_REPLY_STATUS) ?
+	return (m_reply->type == REDIS_REPLY_STRING) ? as_any_string() : std::string_view{};
+}
+
+std::string_view Reply::as_status() const noexcept
+{
+	return (m_reply->type == REDIS_REPLY_STATUS) ? as_any_string() : std::string_view{};
+}
+
+std::string_view Reply::as_error() const noexcept
+{
+	return (m_reply->type == REDIS_REPLY_ERROR) ? as_any_string() : std::string_view{};
+}
+
+std::string_view Reply::as_any_string() const noexcept
+{
+	return (m_reply->type == REDIS_REPLY_STRING || m_reply->type == REDIS_REPLY_STATUS || m_reply->type == REDIS_REPLY_ERROR) ?
 		std::string_view{m_reply->str, static_cast<std::size_t>(m_reply->len)} : std::string_view{};
 }
 
-Reply Reply::as_array(std::size_t i) const
+Reply Reply::as_array(std::size_t i) const noexcept
 {
 	return m_reply->type == REDIS_REPLY_ARRAY && i < m_reply->elements ?
 		Reply{m_reply->element[i]} : Reply{};
 }
 
-std::size_t Reply::array_size() const
+std::size_t Reply::array_size() const noexcept
 {
 	return m_reply->type == REDIS_REPLY_ARRAY ? m_reply->elements : 0ULL;
 }
 
-long Reply::as_int() const
+long Reply::as_int() const noexcept
 {
 	return m_reply->type == REDIS_REPLY_INTEGER ? m_reply->integer : 0;
 }
@@ -185,6 +200,17 @@ std::unordered_map<std::string_view, Reply> Reply::map_array() const
 		result.emplace(as_array(i).as_string(), as_array(i+1));
 
 	return result;
+}
+
+Reply::operator bool() const noexcept
+{
+	return m_reply->type != REDIS_REPLY_ERROR;
+}
+
+long Reply::to_int() const noexcept
+{
+	return std::stol(std::string{as_any_string()});
+	// auto r = std::from_chars()
 }
 
 const std::error_category& redis_error_category()

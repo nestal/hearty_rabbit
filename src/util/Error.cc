@@ -29,6 +29,8 @@ const std::error_category& hrb_error_category()
 				case Error::object_not_exist: return "object not exist";
 				case Error::invalid_object: return "invalid object";
 				case Error::mmap_already_opened: return "mmap already opened";
+				case Error::redis_command_error: return "redis command error";
+				case Error::login_incorrect: return "login incorrect";
 				default: return "unknown error " + std::to_string(ev);
 			}
 		}
