@@ -58,7 +58,7 @@ private:
 	boost::filesystem::path m_cert_chain, m_private_key;
 	boost::filesystem::path m_root;
 	std::string m_server_name;
-	std::size_t m_thread_count{0};
+	std::size_t m_thread_count{1};
 };
 
 } // end of namespace

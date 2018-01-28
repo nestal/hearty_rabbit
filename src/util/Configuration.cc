@@ -110,6 +110,7 @@ void Configuration::load_config(const boost::filesystem::path& path)
 		m_private_key   = absolute(string(field(json, "private_key")), path.parent_path()).lexically_normal();
 		m_root          = absolute(string(field(json, "web_root")),    path.parent_path()).lexically_normal();
 		m_server_name   = string(field(json, "server_name"));
+		m_thread_count  = optional(json, "thread_count", m_thread_count);
 
 		m_listen_http  = parse_endpoint(field(json, "http"));
 		m_listen_https = parse_endpoint(field(json, "https"));
