@@ -3,6 +3,7 @@
   "private_key": "key.pem",
   "web_root": "../lib",
   "server_name" : "localhost",
+  "thread_count": 8,
   "http": {
     "address": "0.0.0.0",
     "port": 8081

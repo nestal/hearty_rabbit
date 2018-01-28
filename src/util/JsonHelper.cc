@@ -40,4 +40,13 @@ std::string string(const rapidjson::Value& value)
 	return std::string{string_view(value)};
 }
 
+std::uint64_t optional(const rapidjson::Value& object, std::string_view field, std::uint64_t default_value)
+{
+	auto it = object.FindMember(rapidjson::Value().SetString(field.data(), field.size()));
+	if (it == object.MemberEnd())
+		return default_value;
+
+	return it->value.IsUint64() ? it->value.GetUint64() : default_value;
+}
+
 }} // end of namespace

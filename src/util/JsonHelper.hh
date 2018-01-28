@@ -28,6 +28,7 @@ using MissingField = boost::error_info<struct tag_missing_field, std::string>;
 
 std::string_view string_view(const rapidjson::Value& value);
 std::string string(const rapidjson::Value& value);
+std::uint64_t optional(const rapidjson::Value& object, std::string_view field, std::uint64_t default_value = 0);
 const rapidjson::Value& field(const rapidjson::Value& object, std::string_view field);
 
 }} // end of namespace
