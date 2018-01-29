@@ -18,14 +18,18 @@
 #include "util/Escape.hh"
 #include "util/Log.hh"
 #include "util/Exception.hh"
-#include "net/Redis.hh"
+#include "net/Listener.hh"
+
+#include <boost/exception/errinfo_api_function.hpp>
+#include <boost/exception/info.hpp>
 
 #include <iostream>
 
 namespace hrb {
 
 Server::Server(const Configuration& cfg) :
-	m_cfg{cfg}
+	m_cfg{cfg},
+	m_ioc{static_cast<int>(std::max(1UL, cfg.thread_count()))}
 {
 }
 
@@ -152,6 +156,60 @@ http::response<boost::beast::http::empty_body> Server::on_login(const Request& r
 
 	std::cout << body << " " << req.at("content-type") << std::endl;
 	return set_common_fields(req, redirect("/index.html", req.version()));
+}
+
+void Server::run()
+{
+	auto const threads = std::max(1UL, m_cfg.thread_count());
+
+	boost::asio::ssl::context ctx{boost::asio::ssl::context::sslv23};
+	ctx.set_options(
+		boost::asio::ssl::context::default_workarounds |
+		boost::asio::ssl::context::no_sslv2
+	);
+	ctx.use_certificate_chain_file(m_cfg.cert_chain().string());
+	ctx.use_private_key_file(m_cfg.private_key().string(), boost::asio::ssl::context::pem);
+
+	// Create and launch a listening port for HTTP and HTTPS
+	std::make_shared<Listener>(
+		m_ioc,
+		m_cfg.listen_http(),
+		*this,
+		nullptr
+	)->run();
+	std::make_shared<Listener>(
+		m_ioc,
+		m_cfg.listen_https(),
+		*this,
+		&ctx
+	)->run();
+
+	// make sure we load the certificates and listen before dropping root privileges
+	drop_privileges();
+
+	// Run the I/O service on the requested number of threads
+	std::vector<std::thread> v;
+	v.reserve(threads - 1);
+	for (auto i = threads - 1; i > 0; --i)
+		v.emplace_back([this]{m_ioc.run();});
+
+	m_ioc.run();
+}
+
+void Server::drop_privileges()
+{
+	// drop privileges if run as root
+	if (::getuid() == 0)
+	{
+		if (::setuid(65535) != 0)
+			BOOST_THROW_EXCEPTION(hrb::SystemError()
+				<< ErrorCode(std::error_code(errno, std::system_category()))
+				<< boost::errinfo_api_function("setuid")
+			);
+	}
+
+	if (::getuid() == 0)
+		throw std::runtime_error("cannot run as root");
 }
 
 } // end of namespace

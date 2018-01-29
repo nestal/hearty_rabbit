@@ -13,6 +13,7 @@
 #pragma once
 
 #include "Request.hh"
+#include "net/Redis.hh"
 
 #include <boost/filesystem/path.hpp>
 #include <boost/beast/http/fields.hpp>
@@ -20,6 +21,10 @@
 #include <boost/beast/http/empty_body.hpp>
 #include <boost/beast/http/file_body.hpp>
 #include <boost/beast/version.hpp>
+#include <boost/asio/io_context.hpp>
+
+#include <mutex>
+#include <list>
 
 namespace hrb {
 
@@ -73,11 +78,18 @@ public:
 		return std::move(res);
 	}
 
-private:
-	static std::string_view resource_mime(const std::string& ext);
+	void run();
 
 private:
-	const Configuration& m_cfg;
+	static std::string_view resource_mime(const std::string& ext);
+	static void drop_privileges();
+
+private:
+	const Configuration&    m_cfg;
+	boost::asio::io_context m_ioc;
+
+	std::mutex m_redis_mx;
+	std::list<redis::Database> m_redis_pool;
 };
 
 } // end of namespace
