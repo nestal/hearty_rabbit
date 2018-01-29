@@ -21,6 +21,7 @@
 #include <boost/filesystem.hpp>
 
 #include <rapidjson/document.h>
+#include <rapidjson/pointer.h>
 #include <rapidjson/istreamwrapper.h>
 #include <rapidjson/error/en.h>
 
@@ -111,13 +112,11 @@ void Configuration::load_config(const boost::filesystem::path& path)
 		m_server_name   = string(field(json, "server_name"));
 		m_thread_count  = optional(json, "thread_count", m_thread_count);
 
-		m_listen_http  = parse_endpoint(field(json, "http"));
-		m_listen_https = parse_endpoint(field(json, "https"));
-		m_redis = parse_endpoint(
-			optional(json, "redis", rapidjson::Value().SetObject()),
-			ip::tcp::endpoint{ip::make_address("127.0.0.1"), 6379}
-		);
+		m_listen_http   = parse_endpoint(field(json, "http"));
+		m_listen_https  = parse_endpoint(field(json, "https"));
 
+		m_redis_addr    = string(rapidjson::Pointer{"/redis/address"}.GetWithDefault(json, "localhost"));
+		m_redis_port    = static_cast<unsigned short>(rapidjson::Pointer{"/redis/port"}.GetWithDefault(json, 6379).GetUint());
 	}
 	catch (Exception& e)
 	{
