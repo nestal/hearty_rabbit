@@ -13,11 +13,6 @@
 #include "Server.hh"
 #include "WebResources.hh"
 
-#include "crypto/Authenication.hh"
-#include "crypto/Password.hh"
-#include "util/Configuration.hh"
-#include "util/Escape.hh"
-#include "util/Log.hh"
 #include "util/Exception.hh"
 #include "net/Listener.hh"
 
@@ -134,34 +129,6 @@ std::string_view Server::resource_mime(const std::string& ext)
 	else if (ext == ".css")     return "text/css";
 	else if (ext == ".svg")     return "image/svg+xml";
 	else                        return "application/octet-stream";
-}
-
-http::response<boost::beast::http::empty_body> Server::on_login(const Request& req)
-{
-	auto&& body = req.body();
-	if (req.at("content-type") == "application/x-www-form-urlencoded")
-	{
-		std::string_view username;
-		Password password;
-		visit_form_string({body}, [&username, &password](auto name, auto val)
-		{
-			std::cout << "field " << name << ": " << val << std::endl;
-			if (name == "username")
-				username = val;
-			else if (name == "password")
-				password = Password{val};
-		});
-
-		auto db = std::make_shared<redis::Database>(m_ioc, m_cfg.redis_host(), m_cfg.redis_port());
-		verify_user(username, std::move(password), *db, [db](std::error_code ec)
-		{
-			Log(LOG_INFO, "login result: %1% %2%", ec, ec.message());
-			db->disconnect();
-		});
-	}
-
-	std::cout << body << " " << req.at("content-type") << std::endl;
-	return set_common_fields(req, redirect("/index.html", req.version()));
 }
 
 void Server::run()
