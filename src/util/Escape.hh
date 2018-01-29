@@ -9,6 +9,7 @@
 #include <string>
 #include <string_view>
 #include <tuple>
+#include <iostream>
 
 namespace hrb {
 
@@ -34,27 +35,51 @@ void visit_form_string(std::string_view remain, Callback&& callback)
 	}
 }
 
-inline std::string_view find_field(std::string_view form_string, std::string_view field)
+template <typename Field, typename ResultTuple>
+void match_field(ResultTuple& result, std::string_view name, std::string_view value, Field field)
 {
-	std::string_view result;
-	visit_form_string(form_string, [field, &result](auto name, auto value)
+	static_assert(std::tuple_size<ResultTuple>::value > 0);
+	if (name == field)
+		std::get<std::tuple_size<ResultTuple>::value-1>(result) = value;
+}
+
+template <typename... Fields, typename Field, typename ResultTuple>
+void match_field(ResultTuple& result, std::string_view name, std::string_view value, Field field, Fields... remain)
+{
+	static_assert(sizeof...(remain) < std::tuple_size<ResultTuple>::value);
+	if (name == field)
+		std::get<std::tuple_size<ResultTuple>::value - sizeof...(remain) - 1>(result) = value;
+	else
+		match_field(result, name, value, remain...);
+}
+
+template<typename Dependent, std::size_t>
+using DependOn = Dependent;
+
+template<typename T, std::size_t N, typename Indices = std::make_index_sequence<N>>
+struct Repeat;
+
+template<typename T, std::size_t N, std::size_t... Indices>
+struct Repeat<T, N, std::index_sequence<Indices...>>
+{
+    using type = std::tuple<DependOn<T, Indices>...>;
+};
+
+template <typename... Fields>
+auto find_fields(std::string_view remain, Fields... fields)
+{
+	typename Repeat<std::string_view, sizeof...(fields)>::type result;
+	while (!remain.empty())
 	{
-		if (name == field)
-		{
-			result = value;
-			return false;
-		}
-		else
-			return true;
-	});
+		// Don't remove the temporary variables because the order
+		// of execution in function parameters is undefined.
+		// i.e. don't need change to callback(split_front("=;&"), split_front(";&"))
+		auto name  = split_front(remain, "=;&");
+		auto value = split_front(remain, ";&");
+
+		match_field(result, name, value, fields...);
+	}
 	return result;
 }
-
-template <typename... Field>
-auto find_fields(std::string_view form_string, Field... fields)
-{
-	return std::make_tuple(find_field(form_string, fields)...);
-}
-
 
 } // end of namespace

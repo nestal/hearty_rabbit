@@ -99,21 +99,12 @@ private:
 		auto&& body = req.body();
 		if (req[http::field::content_type] == "application/x-www-form-urlencoded")
 		{
-			std::string_view username;
-			Password password;
-			visit_form_string({body}, [&username, &password](auto name, auto val)
-			{
-				if (name == "username")
-					username = val;
-				else if (name == "password")
-					password = Password{val};
-				return true;
-			});
+			auto [username, password] = find_fields({body}, "username", "password");
 
 			auto db = std::make_shared<redis::Database>(m_ioc, m_cfg.redis_host(), m_cfg.redis_port());
 			verify_user(
 				username,
-				std::move(password),
+				Password{password},
 				*db,
 				[db, version=req.version(), send=std::forward<Send>(send), this, keep_alive=req.keep_alive()](std::error_code ec)
 				{
