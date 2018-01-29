@@ -67,6 +67,54 @@ bool check_file_content(const boost::filesystem::path& file, ConstBuffer content
 	return content.size() == 0;
 }
 
+class MovedResponseChecker
+{
+public:
+	MovedResponseChecker(std::string_view redirect) : m_redirect{redirect} {}
+
+	template <typename Response>
+	void operator()(Response&& res) const
+	{
+		REQUIRE(res.result() == http::status::moved_permanently);
+		REQUIRE(res.at(http::field::location) == m_redirect);
+		m_tested = true;
+	}
+
+	bool tested() const {return m_tested;}
+
+private:
+	std::string m_redirect;
+	mutable bool m_tested = false;
+};
+
+class FileResponseChecker
+{
+public:
+	FileResponseChecker(http::status status, std::string_view filename, boost::filesystem::path web_root) :
+		m_status{status}, m_filename{filename}, m_web_root{web_root}
+	{
+	}
+
+	template <typename Response>
+	void operator()(Response&& res) const
+	{
+		REQUIRE(res.result() == http::status::ok);
+		auto content = flatten_content(std::move(res));
+		REQUIRE(check_file_content(m_web_root / m_filename, content.data()));
+
+		m_tested = true;
+	}
+
+	bool tested() const {return m_tested;}
+
+private:
+	http::status m_status;
+	std::string  m_filename;
+	boost::filesystem::path m_web_root;
+
+	mutable bool m_tested{false};
+};
+
 }
 
 TEST_CASE("GET static resource", "[normal]")
@@ -81,28 +129,45 @@ TEST_CASE("GET static resource", "[normal]")
 	REQUIRE(cfg.web_root() == (current_src/"../../../lib").lexically_normal());
 	Request req;
 
-
-
 	SECTION("requesting index.html")
 	{
-		req.target("/index.html");
+		FileResponseChecker checker{http::status::ok, "login.html", cfg.web_root()};
 
-		subject.handle_https(std::move(req), [&cfg](auto &&res)
-		{
-			REQUIRE(res.result() == http::status::ok);
-			auto content = flatten_content(std::move(res));
-			REQUIRE(check_file_content(cfg.web_root() / "login.html", content.data()));
-		});
+		req.target("/index.html");
+		subject.handle_https(std::move(req), std::ref(checker));
+		REQUIRE(checker.tested());
 	}
+
+	SECTION("Only allow login with POST: redirect GET request to login.html")
+	{
+		FileResponseChecker checker{http::status::ok, "login.html", cfg.web_root()};
+
+		req.target("/login");
+		subject.handle_https(std::move(req), std::ref(checker));
+		REQUIRE(checker.tested());
+	}
+
+	SECTION("Login Incorrect")
+	{
+		MovedResponseChecker checker{"/login_incorrect.html"};
+
+		req.target("/login");
+		req.method(http::verb::post);
+		req.insert(http::field::content_type, "application/x-www-form-urlencoded");
+		req.body() = "username=user&password=123";
+
+		subject.handle_https(std::move(req), std::ref(checker));
+		subject.get_io_context().run();
+
+		REQUIRE(checker.tested());
+	}
+
 	SECTION("requesting other resources")
 	{
-		req.target("/");
+		FileResponseChecker checker{http::status::ok, "login.html", cfg.web_root()};
 
-		subject.handle_https(std::move(req), [&cfg](auto &&res)
-		{
-			REQUIRE(res.result() == http::status::ok);
-			auto content = flatten_content(std::move(res));
-			REQUIRE(check_file_content(cfg.web_root() / "login.html", content.data()));
-		});
+		req.target("/");
+		subject.handle_https(std::move(req), std::ref(checker));
+		REQUIRE(checker.tested());
 	}
 }
