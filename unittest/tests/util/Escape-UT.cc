@@ -73,9 +73,10 @@ TEST_CASE( "split-front", "[normal]" )
 
 TEST_CASE("get_fields_from_form_string", "[normal]")
 {
-	std::string_view in{"username=nestal&password=123"};
+	std::string_view in{"username=nestal&password=123&something=else"};
 
-	auto [username, password] = find_fields(in, "username", "password");
+	auto [username, password, something] = find_fields(in, "username", "password", "something");
 	REQUIRE(username == "nestal");
 	REQUIRE(password == "123");
+	REQUIRE(something == "else");
 }
