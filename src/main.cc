@@ -60,8 +60,7 @@ int Main(int argc, const char* const* argv)
 		if (std::getline(std::cin, password))
 		{
 			boost::asio::io_context ioc;
-			auto endpoint = cfg.redis();
-			redis::Database db{ioc, endpoint.address().to_string(), endpoint.port()};
+			redis::Database db{ioc, cfg.redis_addr(), cfg.redis_port()};
 			add_user(username, Password{std::string_view{password}}, db, [&db](std::error_code&& ec)
 			{
 				std::cout << "result = " << ec << " " << ec.message() << std::endl;
