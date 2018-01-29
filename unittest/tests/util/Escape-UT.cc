@@ -32,6 +32,7 @@ TEST_CASE( "simple www-form", "[normal]" )
 			REQUIRE(name == "other");
 			REQUIRE(value == "same");
 		}
+		return true;
 	});
 }
 
@@ -44,6 +45,7 @@ TEST_CASE( "no value in www-form", "[normal]" )
 		REQUIRE(value.empty());
 		REQUIRE(!called);
 		called = true;
+		return true;
 	});
 
 	called = false;
@@ -53,6 +55,7 @@ TEST_CASE( "no value in www-form", "[normal]" )
 		REQUIRE(value.empty());
 		REQUIRE(!called);
 		called = true;
+		return true;
 	});
 }
 
@@ -66,4 +69,13 @@ TEST_CASE( "split-front", "[normal]" )
 
 	REQUIRE(split_front(in, "=&;") == "");
 	REQUIRE(in.empty());
+}
+
+TEST_CASE("get_fields_from_form_string", "[normal]")
+{
+	std::string_view in{"username=nestal&password=123"};
+
+	auto [username, password] = find_fields(in, "username", "password");
+	REQUIRE(username == "nestal");
+	REQUIRE(password == "123");
 }

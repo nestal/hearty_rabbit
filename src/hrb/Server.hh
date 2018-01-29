@@ -107,6 +107,7 @@ private:
 					username = val;
 				else if (name == "password")
 					password = Password{val};
+				return true;
 			});
 
 			auto db = std::make_shared<redis::Database>(m_ioc, m_cfg.redis_host(), m_cfg.redis_port());

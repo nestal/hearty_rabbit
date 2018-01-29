@@ -8,6 +8,7 @@
 
 #include <string>
 #include <string_view>
+#include <tuple>
 
 namespace hrb {
 
@@ -28,8 +29,32 @@ void visit_form_string(std::string_view remain, Callback&& callback)
 		auto name  = split_front(remain, "=;&");
 		auto value = split_front(remain, ";&");
 
-		callback(name, value);
+		if (!callback(name, value))
+			break;
 	}
 }
+
+inline std::string_view find_field(std::string_view form_string, std::string_view field)
+{
+	std::string_view result;
+	visit_form_string(form_string, [field, &result](auto name, auto value)
+	{
+		if (name == field)
+		{
+			result = value;
+			return false;
+		}
+		else
+			return true;
+	});
+	return result;
+}
+
+template <typename... Field>
+auto find_fields(std::string_view form_string, Field... fields)
+{
+	return std::make_tuple(find_field(form_string, fields)...);
+}
+
 
 } // end of namespace
