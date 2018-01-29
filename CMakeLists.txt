@@ -17,6 +17,8 @@ set(CMAKE_CXX_STANDARD 17)
 set(VERSION "0.1")
 set(CONFIG_FILENAME "hearty_rabbit.json")
 
+add_definitions(-DRAPIDJSON_HAS_STDSTRING=1)
+
 include_directories(
 	${Boost_INCLUDE_DIR}
 	${SYSTEMD_INCLUDE_DIRS}
