@@ -29,6 +29,7 @@
 namespace hrb {
 
 class Configuration;
+class Password;
 
 class Server
 {
@@ -79,6 +80,9 @@ public:
 	}
 
 	void run();
+
+	// Administrative commands
+	void add_user(std::string_view username, Password&& password, std::function<void(std::error_code)> complete);
 
 private:
 	static std::string_view resource_mime(const std::string& ext);
