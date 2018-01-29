@@ -196,4 +196,9 @@ void Server::add_user(std::string_view username, Password&& password, std::funct
 	m_ioc.run();
 }
 
+boost::asio::io_context& Server::get_io_context()
+{
+	return m_ioc;
+}
+
 } // end of namespace

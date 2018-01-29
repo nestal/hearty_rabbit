@@ -84,6 +84,7 @@ public:
 	}
 
 	void run();
+	boost::asio::io_context& get_io_context();
 
 	// Administrative commands
 	void add_user(std::string_view username, Password&& password, std::function<void(std::error_code)> complete);
