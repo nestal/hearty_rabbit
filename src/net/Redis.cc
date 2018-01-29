@@ -242,7 +242,7 @@ const std::error_category& redis_error_category()
 		{
 			switch (static_cast<Error>(ev))
 			{
-				case Error::ok: return "no error";
+				case Error::ok: return "success";
 				case Error::io: return "IO error";
 				case Error::eof: return "EOF error";
 				case Error::protocol: return "protocol error";

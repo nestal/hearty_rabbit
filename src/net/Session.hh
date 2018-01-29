@@ -13,7 +13,6 @@
 #pragma once
 
 #include "hrb/Request.hh"
-#include "net/Redis.hh"
 
 #include <boost/beast/core.hpp>
 #include <boost/beast/http.hpp>
@@ -67,7 +66,6 @@ private:
 	boost::beast::flat_buffer m_buffer;
 	Server& m_server;
 	Request m_req;
-//	redis::Database m_redis;
 
 	// stats
 	std::size_t m_nth_session;
