@@ -6,14 +6,11 @@
     distribution for more details.
 */
 
-#include "net/Listener.hh"
-#include "crypto/Authenication.hh"
 #include "crypto/Password.hh"
 #include "util/Configuration.hh"
 #include "util/Exception.hh"
 #include "util/Log.hh"
 #include "hrb/Server.hh"
-#include "net/Redis.hh"
 
 #include <boost/exception/errinfo_api_function.hpp>
 #include <boost/exception/info.hpp>
@@ -28,7 +25,7 @@ namespace hrb {
 int Main(int argc, const char* const* argv)
 {
 	Configuration cfg{argc, argv, ::getenv("HEART_RABBIT_CONFIG")};
-	OpenSSL_add_all_digests();
+	Server server{cfg};
 
 	if (cfg.help())
 	{
@@ -36,20 +33,16 @@ int Main(int argc, const char* const* argv)
 		std::cout << "\n";
 		return EXIT_SUCCESS;
 	}
-	else if (cfg.add_user([&cfg](auto&& username)
+	else if (cfg.add_user([&server](auto&& username)
 	{
 		std::cout << "Please input password of the new user " << username << ":\n";
 		std::string password;
 		if (std::getline(std::cin, password))
 		{
-			boost::asio::io_context ioc;
-			redis::Database db{ioc, cfg.redis_host(), cfg.redis_port()};
-			add_user(username, Password{std::string_view{password}}, db, [&db](std::error_code&& ec)
+			server.add_user(username, Password{std::string_view{password}}, [](std::error_code&& ec)
 			{
 				std::cout << "result = " << ec << " " << ec.message() << std::endl;
-				db.disconnect();
 			});
-			ioc.run();
 		}
 	}))
 	{
@@ -57,7 +50,6 @@ int Main(int argc, const char* const* argv)
 	}
 
 	Log(LOG_NOTICE, "hearty_rabbit starting");
-	Server server{cfg};
 	server.run();
 	return EXIT_SUCCESS;
 }

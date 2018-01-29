@@ -13,6 +13,7 @@
 #include "Server.hh"
 #include "WebResources.hh"
 
+#include "crypto/Authenication.hh"
 #include "crypto/Password.hh"
 #include "util/Configuration.hh"
 #include "util/Escape.hh"
@@ -31,6 +32,7 @@ Server::Server(const Configuration& cfg) :
 	m_cfg{cfg},
 	m_ioc{static_cast<int>(std::max(1UL, cfg.thread_count()))}
 {
+	OpenSSL_add_all_digests();
 }
 
 http::response<http::empty_body> Server::redirect(boost::beast::string_view where, unsigned version)
@@ -210,6 +212,17 @@ void Server::drop_privileges()
 
 	if (::getuid() == 0)
 		throw std::runtime_error("cannot run as root");
+}
+
+void Server::add_user(std::string_view username, Password&& password, std::function<void(std::error_code)> complete)
+{
+	redis::Database db{m_ioc, m_cfg.redis_host(), m_cfg.redis_port()};
+	hrb::add_user(username, std::move(password), db, [&db, &complete](std::error_code&& ec)
+	{
+		complete(std::move(ec));
+		db.disconnect();
+	});
+	m_ioc.run();
 }
 
 } // end of namespace
