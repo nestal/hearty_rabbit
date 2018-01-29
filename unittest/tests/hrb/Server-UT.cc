@@ -161,6 +161,18 @@ TEST_CASE("GET static resource", "[normal]")
 
 		REQUIRE(checker.tested());
 	}
+	SECTION("Login incorrect without content-type")
+	{
+		MovedResponseChecker checker{"/login.html"};
+
+		req.target("/login");
+		req.method(http::verb::post);
+		req.erase(http::field::content_type);
+		REQUIRE(req[http::field::content_type] == "");
+		req.body() = "username=user&password=123";
+		subject.handle_https(std::move(req), std::ref(checker));
+		REQUIRE(checker.tested());
+	}
 
 	SECTION("requesting other resources")
 	{
