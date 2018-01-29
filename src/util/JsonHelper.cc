@@ -14,23 +14,18 @@
 
 #include <boost/exception/info.hpp>
 #include <boost/throw_exception.hpp>
+#include <rapidjson/pointer.h>
 
 namespace hrb {
 namespace json {
 
-const rapidjson::Value& field(const rapidjson::Value& object, std::string_view field)
+const rapidjson::Value& required(const rapidjson::Value& object, std::string_view field)
 {
-	auto it = object.FindMember(rapidjson::Value().SetString(field.data(), field.size()));
-	if (it == object.MemberEnd())
+	auto val = rapidjson::Pointer{field.data(), field.size()}.Get(object);
+	if (!val)
 		BOOST_THROW_EXCEPTION(Error() << MissingField{std::string{field}});
 
-	return it->value;
-}
-
-const rapidjson::Value& optional(const rapidjson::Value& object, std::string_view field, const rapidjson::Value& default_value)
-{
-	auto it = object.FindMember(rapidjson::Value().SetString(field.data(), field.size()));
-	return it == object.MemberEnd() ? default_value : it->value;
+	return *val;
 }
 
 std::string_view string_view(const rapidjson::Value& value)
@@ -44,30 +39,6 @@ std::string_view string_view(const rapidjson::Value& value)
 std::string string(const rapidjson::Value& value)
 {
 	return std::string{string_view(value)};
-}
-
-std::string_view optional(const rapidjson::Value& object, std::string_view field, std::string_view default_value)
-{
-	auto it = object.FindMember(rapidjson::Value().SetString(field.data(), field.size()));
-	return it == object.MemberEnd() ? default_value : string_view(it->value);
-}
-
-std::uint64_t optional(const rapidjson::Value& object, std::string_view field, std::uint64_t default_value)
-{
-	auto it = object.FindMember(rapidjson::Value().SetString(field.data(), field.size()));
-	if (it == object.MemberEnd())
-		return default_value;
-
-	return it->value.IsUint64() ? it->value.GetUint64() : default_value;
-}
-
-std::uint32_t optional(const rapidjson::Value& object, std::string_view field, std::uint32_t default_value)
-{
-	auto it = object.FindMember(rapidjson::Value().SetString(field.data(), field.size()));
-	if (it == object.MemberEnd())
-		return default_value;
-
-	return it->value.IsUint() ? it->value.GetUint() : default_value;
 }
 
 }} // end of namespace

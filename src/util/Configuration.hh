@@ -42,7 +42,7 @@ public:
 	boost::asio::ip::tcp::endpoint listen_http() const { return m_listen_http;}
 	boost::asio::ip::tcp::endpoint listen_https() const { return m_listen_https;}
 	const std::string& redis_addr() const {return m_redis_addr;}
-	unsigned short redis_port() const {return m_redis_port;}
+	unsigned short redis_port() const {return static_cast<unsigned short>(m_redis_port);}
 	boost::filesystem::path cert_chain() const {return m_cert_chain;}
 	boost::filesystem::path private_key() const {return m_private_key;}
 	boost::filesystem::path web_root() const {return m_root;}
@@ -72,8 +72,8 @@ private:
 
 	// redisAsyncConnect() takes string as address, so it's easier to use string
 	// instead of tcp::endpoint.
-	std::string m_redis_addr;
-	unsigned short m_redis_port;
+	std::string m_redis_addr{"localhost"};
+	unsigned    m_redis_port{6379};
 
 	boost::filesystem::path m_cert_chain, m_private_key;
 	boost::filesystem::path m_root;
