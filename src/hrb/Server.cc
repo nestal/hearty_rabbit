@@ -151,9 +151,13 @@ http::response<boost::beast::http::empty_body> Server::on_login(const Request& r
 			else if (name == "password")
 				password = Password{val};
 		});
-//		auto endpoint = m_cfg.redis();
-//		redis::Database db{sock.get_io_context(), endpoint.address().to_string(), endpoint.port()};
 
+		auto db = std::make_shared<redis::Database>(m_ioc, m_cfg.redis_host(), m_cfg.redis_port());
+		verify_user(username, std::move(password), *db, [db](std::error_code ec)
+		{
+			Log(LOG_INFO, "login result: %1% %2%", ec, ec.message());
+			db->disconnect();
+		});
 	}
 
 	std::cout << body << " " << req.at("content-type") << std::endl;
