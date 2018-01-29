@@ -12,12 +12,3 @@ before_install:
 
 script:
   - docker build -t hearty_rabbit --network="host" .
-
-deploy:
-  provider: packagecloud
-  username: $PACKAGECLOUD_USERNAME
-  repository: hearty_rabbit
-  token: $PACKAGECLOUD_TOKEN
-  dist: "el/7"
-  package_glob: "docker-build-release/*.rpm"
-  skip_cleanup: true
