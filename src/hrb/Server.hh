@@ -13,7 +13,13 @@
 #pragma once
 
 #include "Request.hh"
+
+#include "crypto/Password.hh"
+#include "crypto/Authenication.hh"
 #include "net/Redis.hh"
+#include "util/Configuration.hh"
+#include "util/Escape.hh"
+#include "util/Log.hh"
 
 #include <boost/filesystem/path.hpp>
 #include <boost/beast/http/fields.hpp>
@@ -45,8 +51,8 @@ public:
 	template<class Send>
 	void handle_https(Request&& req, Send&& send)
 	{
-		if (req.target().starts_with("/login"))
-			return send(set_common_fields(req, on_login(req)));
+		if (req.target() == "/login" && req.method() == http::verb::post)
+			return on_login(req, std::forward<Send>(send));
 
 		if (req.target().starts_with("/blob"))
 			return send(set_common_fields(req, get_blob(req)));
@@ -61,9 +67,7 @@ public:
 	http::response<http::string_body> bad_request(const Request& req, boost::beast::string_view why);
 	http::response<http::string_body> not_found(const Request& req, boost::beast::string_view target);
 	http::response<http::string_body> server_error(const Request& req, boost::beast::string_view what);
-
 	http::response<http::empty_body> redirect(boost::beast::string_view where, unsigned version);
-	http::response<http::empty_body> on_login(const Request& req);
 
 	http::response<http::string_body> get_blob(const Request& req);
 	http::response<http::string_body> get_dir(const Request& req);
@@ -88,6 +92,42 @@ private:
 	static std::string_view resource_mime(const std::string& ext);
 	static void drop_privileges();
 
+	template <typename Send>
+	void on_login(const Request& req, Send&& send)
+	{
+		auto&& body = req.body();
+		if (req.at("content-type") == "application/x-www-form-urlencoded")
+		{
+			std::string_view username;
+			Password password;
+			visit_form_string({body}, [&username, &password](auto name, auto val)
+			{
+				if (name == "username")
+					username = val;
+				else if (name == "password")
+					password = Password{val};
+			});
+
+			auto db = std::make_shared<redis::Database>(m_ioc, m_cfg.redis_host(), m_cfg.redis_port());
+			verify_user(
+				username,
+				std::move(password),
+				*db,
+				[db, version=req.version(), send=std::forward<Send>(send), this, keep_alive=req.keep_alive()](std::error_code ec)
+				{
+					Log(LOG_INFO, "login result: %1% %2%", ec, ec.message());
+					db->disconnect();
+
+					auto&& res = redirect(ec ? "/login_incorrect.html" : "/login_correct.html", version);
+					res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
+					res.keep_alive(keep_alive);
+					send(std::move(res));
+				}
+			);
+		}
+		else
+			send(set_common_fields(req, redirect("/login.html", req.version())));
+	}
 private:
 	const Configuration&    m_cfg;
 	boost::asio::io_context m_ioc;
