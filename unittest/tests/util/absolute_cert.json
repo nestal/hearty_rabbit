@@ -1,0 +1,14 @@
+{
+  "cert_chain": "/etc/certificate.pem",
+  "private_key": "/etc/key.pem",
+  "web_root": ".",
+  "server_name" : "example.com",
+  "http": {
+    "address": "0.0.0.0",
+    "port": 1
+  },
+  "https": {
+    "address": "0.0.0.0",
+    "port": 2
+  }
+}
