@@ -13,8 +13,14 @@
 #include "Server.hh"
 #include "WebResources.hh"
 
-#include "util/Exception.hh"
+#include "crypto/Password.hh"
+#include "crypto/Authenication.hh"
 #include "net/Listener.hh"
+#include "util/Configuration.hh"
+#include "util/Exception.hh"
+#include "util/Escape.hh"
+#include "util/Log.hh"
+
 
 #include <boost/exception/errinfo_api_function.hpp>
 #include <boost/exception/info.hpp>
@@ -28,6 +34,34 @@ Server::Server(const Configuration& cfg) :
 	m_ioc{static_cast<int>(std::max(1UL, cfg.thread_count()))}
 {
 	OpenSSL_add_all_digests();
+}
+
+void Server::on_login(const Request& req, std::function<void(http::response<http::empty_body>&&)>&& send)
+{
+	auto&& body = req.body();
+	if (req[http::field::content_type] == "application/x-www-form-urlencoded")
+	{
+		auto [username, password] = find_fields({body}, "username", "password");
+
+		auto db = std::make_shared<redis::Database>(m_ioc, m_cfg.redis_host(), m_cfg.redis_port());
+		verify_user(
+			username,
+			Password{password},
+			*db,
+			[db, version=req.version(), send=std::move(send), this, keep_alive=req.keep_alive()](std::error_code ec)
+			{
+				Log(LOG_INFO, "login result: %1% %2%", ec, ec.message());
+				db->disconnect();
+
+				auto&& res = redirect(ec ? "/login_incorrect.html" : "/login_correct.html", version);
+				res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
+				res.keep_alive(keep_alive);
+				send(std::move(res));
+			}
+		);
+	}
+	else
+		send(set_common_fields(req, redirect("/login.html", req.version())));
 }
 
 http::response<http::empty_body> Server::redirect(boost::beast::string_view where, unsigned version)
