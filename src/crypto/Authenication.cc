@@ -49,7 +49,7 @@ const std::string default_hash_algorithm = "sha512";
 void add_user(
 	std::string_view username,
 	const Password& password,
-	redis::Database& db,
+	redis::Connection& db,
 	std::function<void(std::error_code)> completion
 )
 {
@@ -76,7 +76,7 @@ void add_user(
 void verify_user(
 	std::string_view username,
 	Password&& password,
-	redis::Database& db,
+	redis::Connection& db,
 	std::function<void(std::error_code)> completion
 )
 {

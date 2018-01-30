@@ -43,7 +43,7 @@ void Server::on_login(const Request& req, std::function<void(http::response<http
 	{
 		auto [username, password] = find_fields({body}, "username", "password");
 
-		auto db = std::make_shared<redis::Database>(m_ioc, m_cfg.redis_host(), m_cfg.redis_port());
+		auto db = std::make_shared<redis::Connection>(m_ioc, m_cfg.redis_host(), m_cfg.redis_port());
 		verify_user(
 			username,
 			Password{password},
@@ -221,7 +221,7 @@ void Server::drop_privileges()
 
 void Server::add_user(std::string_view username, Password&& password, std::function<void(std::error_code)> complete)
 {
-	redis::Database db{m_ioc, m_cfg.redis_host(), m_cfg.redis_port()};
+	redis::Connection db{m_ioc, m_cfg.redis_host(), m_cfg.redis_port()};
 	hrb::add_user(username, std::move(password), db, [&db, &complete](std::error_code&& ec)
 	{
 		complete(std::move(ec));
