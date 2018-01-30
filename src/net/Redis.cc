@@ -26,7 +26,7 @@
 namespace hrb {
 namespace redis {
 
-Database::Database(boost::asio::io_context& bic, const std::string& host, unsigned short port) :
+Connection::Connection(boost::asio::io_context& bic, const std::string& host, unsigned short port) :
 	m_ioc{bic},
 	m_socket{m_ioc},
 	m_strand{m_socket.get_executor()},
@@ -40,28 +40,28 @@ Database::Database(boost::asio::io_context& bic, const std::string& host, unsign
 	m_ctx->ev.addRead = [](void *pvthis)
 	{
 		assert(pvthis);
-		auto pthis = static_cast<Database *>(pvthis);
+		auto pthis = static_cast<Connection *>(pvthis);
 		pthis->m_request_read = true;
 		pthis->run();
 	};
 	m_ctx->ev.delRead = [](void *pvthis)
 	{
-		static_cast<Database *>(pvthis)->m_request_read = false;
+		static_cast<Connection *>(pvthis)->m_request_read = false;
 	};
 	m_ctx->ev.addWrite = [](void *pvthis)
 	{
 		assert(pvthis);
-		auto pthis = static_cast<Database *>(pvthis);
+		auto pthis = static_cast<Connection *>(pvthis);
 		pthis->m_request_write = true;
 		pthis->run();
 	};
 	m_ctx->ev.delWrite = [](void *pvthis)
 	{
-		static_cast<Database *>(pvthis)->m_request_write = false;
+		static_cast<Connection *>(pvthis)->m_request_write = false;
 	};
 	m_ctx->ev.cleanup = [](void *pvthis)
 	{
-		auto pthis = static_cast<Database *>(pvthis);
+		auto pthis = static_cast<Connection *>(pvthis);
 		if (pthis->m_socket.is_open())
 			pthis->m_socket.release();
 	};
@@ -69,7 +69,7 @@ Database::Database(boost::asio::io_context& bic, const std::string& host, unsign
 		m_ctx, [](const redisAsyncContext *ctx, int status)
 		{
 			if (status == REDIS_ERR)
-				static_cast<Database *>(ctx->ev.data)->on_connect_error(ctx);
+				static_cast<Connection *>(ctx->ev.data)->on_connect_error(ctx);
 		}
 	);
 	::redisAsyncSetDisconnectCallback(
@@ -77,12 +77,12 @@ Database::Database(boost::asio::io_context& bic, const std::string& host, unsign
 		{
 			// The caller will free the context anyway, so set our own context to nullptr
 			// to avoid double free
-			static_cast<Database *>(ctx->ev.data)->m_ctx = nullptr;
+			static_cast<Connection *>(ctx->ev.data)->m_ctx = nullptr;
 		}
 	);
 }
 
-void Database::on_connect_error(const redisAsyncContext *ctx)
+void Connection::on_connect_error(const redisAsyncContext *ctx)
 {
 	// save the error enum and errno so that the next command() will return it
 	m_conn_error = static_cast<Error>(ctx->c.err);
@@ -93,13 +93,13 @@ void Database::on_connect_error(const redisAsyncContext *ctx)
 }
 
 
-Database::~Database()
+Connection::~Connection()
 {
 	if (m_ctx)
 		::redisAsyncDisconnect(m_ctx);
 }
 
-void Database::run()
+void Connection::run()
 {
 	if (m_request_read && !m_reading && m_ctx)
 	{
@@ -131,7 +131,7 @@ void Database::run()
 	}
 }
 
-redisAsyncContext *Database::connect(const std::string& host, unsigned short port)
+redisAsyncContext *Connection::connect(const std::string& host, unsigned short port)
 {
 	auto ctx = ::redisAsyncConnect(host.c_str(), port);
 	if (ctx->err)
@@ -142,7 +142,7 @@ redisAsyncContext *Database::connect(const std::string& host, unsigned short por
 	return ctx;
 }
 
-void Database::disconnect()
+void Connection::disconnect()
 {
 	if (m_ctx)
 		::redisAsyncDisconnect(m_ctx);

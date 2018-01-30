@@ -35,7 +35,7 @@ TEST_CASE("Load BlobObject from file", "[normal]")
 	REQUIRE(blob.ID() != zero);
 
 	boost::asio::io_context ioc;
-	Database db{ioc, "localhost", 6379};
+	Connection db{ioc, "localhost", 6379};
 
 	std::bitset<2> tested{};
 
@@ -101,7 +101,7 @@ TEST_CASE("Load BlobObject from file", "[normal]")
 TEST_CASE("Load non-exist BlobObject from redis", "[error]")
 {
 	boost::asio::io_context ioc;
-	Database db{ioc, "localhost", 6379};
+	Connection db{ioc, "localhost", 6379};
 
 	bool tested = false;
 

@@ -13,13 +13,7 @@
 #pragma once
 
 #include "Request.hh"
-
-#include "crypto/Password.hh"
-#include "crypto/Authenication.hh"
 #include "net/Redis.hh"
-#include "util/Configuration.hh"
-#include "util/Escape.hh"
-#include "util/Log.hh"
 
 #include <boost/filesystem/path.hpp>
 #include <boost/beast/http/fields.hpp>
@@ -93,40 +87,14 @@ private:
 	static std::string_view resource_mime(const std::string& ext);
 	static void drop_privileges();
 
-	template <typename Send>
-	void on_login(const Request& req, Send&& send)
-	{
-		auto&& body = req.body();
-		if (req[http::field::content_type] == "application/x-www-form-urlencoded")
-		{
-			auto [username, password] = find_fields({body}, "username", "password");
+	void on_login(const Request& req, std::function<void(http::response<http::empty_body>&&)>&& send);
 
-			auto db = std::make_shared<redis::Database>(m_ioc, m_cfg.redis_host(), m_cfg.redis_port());
-			verify_user(
-				username,
-				Password{password},
-				*db,
-				[db, version=req.version(), send=std::forward<Send>(send), this, keep_alive=req.keep_alive()](std::error_code ec)
-				{
-					Log(LOG_INFO, "login result: %1% %2%", ec, ec.message());
-					db->disconnect();
-
-					auto&& res = redirect(ec ? "/login_incorrect.html" : "/login_correct.html", version);
-					res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
-					res.keep_alive(keep_alive);
-					send(std::move(res));
-				}
-			);
-		}
-		else
-			send(set_common_fields(req, redirect("/login.html", req.version())));
-	}
 private:
 	const Configuration&    m_cfg;
 	boost::asio::io_context m_ioc;
 
 	std::mutex m_redis_mx;
-	std::list<redis::Database> m_redis_pool;
+	std::list<redis::Connection> m_redis_pool;
 };
 
 } // end of namespace

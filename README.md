@@ -5,25 +5,20 @@ not doing anything useful yet.
 # Build Environment
 
 In order maintain a stable build environment to product predictable software
-builds, HeartyRabbit uses docker containers to build. The docker image of the
-build environment can be found in [docker hub](https://hub.docker.com/r/nestal/hearty_rabbit_dev/).
+builds, HeartyRabbit uses docker containers to build. The `hearty_rabbit_dev` image 
+contain a full snapshot of the build environment. It can be found in [docker hub](https://hub.docker.com/r/nestal/hearty_rabbit_dev/).
 
-The docker image can be built by the dockerfile is [`automatic/Dockerfile`](automation/Dockerfile).
+The docker `hearty_rabbit_dev` image can be built by the dockerfile [`automation/Dockerfile`](automation/Dockerfile).
+
 Run
 
-	docker build -t hearty_rabbit_dev .
+	docker build -t hearty_rabbit_dev automation
 	
-In the `automation` directory to build the docker image. The command to run the image
-and start the build process in encapsulated in a [Makefile](automation/Makefile).
-It can be triggered by:
+in the source directory to build the docker image.
 
-	make -f automation/Makefile
-	
-in the current source code directory to launch a build. The makefile assumes
-that the source code has been cloned in the current directory, and it will bind-mount
-the current directory to the container. The output RPM will be put in
-`/build/build/hearty-rabbit-0.1-9.el7.centos.x64_64.rpm`. You can use
-`docker cp` to copy the RPM to target box.
+The `hearty_rabbit_dev` is a big image base on CentOS 7. The complete development
+tool-chain, e.g. `devtoolset-7`, `cmake` and `boost` have been installed to
+make sure Hearty Rabbit can be built successfully.
 
 ## Details About the Build Environment
 
@@ -34,15 +29,25 @@ which contains [GCC 7.2.1](https://gcc.gnu.org/gcc-7/), provides the whole tool
 chain that builds HeartyRabbit. In addition, the following libraries are included
 from official CentOS repository to build HeartyRabbit:
 
-- systemd-devel
 - RapidJSON
 - openssl-devel
 - postgresql-libs
+- hiredis
 
 In addition, HeartyRabbit also requires [Boost libraries](http://boost.org) and
 [CMake](https://cmake.org) to build. However, the official packages from
 CentOS 7.4 is too old to build HeartyRabbit. These two packages are built
 from source.
+
+# Building Hearty Rabbit
+
+Run
+
+	docker build -t hearty_rabbit .
+	
+in the source directory to build Hearty Rabbit. The resultant image is a
+complete installation of Hearty Rabbit encapsulated in a docker container.
+
 
 # Travis Automation
 
