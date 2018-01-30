@@ -16,7 +16,7 @@ RUN mkdir /build/docker-build \
 # Copy products to runtime docker image
 FROM scratch
 COPY --from=builder /opt/hearty_rabbit/ /
-#COPY --from=builder /bin/sh /bin/bash /bin/
+#COPY --from=builder /bin/sh /bin/bash /bin/ls /bin/cat /bin/
 
 COPY --from=builder \
 	/lib64/libmagic.so.1 \
@@ -42,4 +42,4 @@ COPY --from=builder \
 	/lib64/libpcre.so.1  \
 	/lib64/libtinfo.so.5  /lib64/
 
-ENTRYPOINT /bin/hearty_rabbit
+CMD ["/bin/hearty_rabbit", "--cfg", "/etc/hearty_rabbit/hearty_rabbit.json"]
