@@ -89,7 +89,11 @@ void Session::handle_https(Request&& req, Send&& send)
 {
 	try
 	{
-		Log(LOG_INFO, "%1%:%2% request %3% from %4%", m_nth_session, m_nth_transaction, req.target(), m_socket.remote_endpoint());
+		boost::system::error_code ec;
+		if (ec)
+			Log(LOG_WARNING, "remote_endpoint() error: %1% %2%", ec, ec.message());
+
+		Log(LOG_INFO, "%1%:%2% request %3% from %4%", m_nth_session, m_nth_transaction, req.target(), m_socket.remote_endpoint(ec));
 
 		// Make sure we can handle the method
 		if (req.method() != http::verb::get  &&
@@ -153,9 +157,6 @@ void Session::on_read(boost::system::error_code ec, std::size_t)
 	else
 		sender(m_server.redirect_http(m_req));
 	m_nth_transaction++;
-
-	if (ec)
-		Log(LOG_WARNING, "remote_endpoint() error: %1%", ec);
 }
 
 void Session::on_write(

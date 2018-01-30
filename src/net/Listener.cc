@@ -44,6 +44,8 @@ Listener::Listener(
 	m_acceptor.listen(boost::asio::socket_base::max_listen_connections, ec);
 	if (ec)
 		throw std::system_error(ec);
+
+	m_acceptor.set_option(boost::asio::socket_base::reuse_address{true});
 }
 
 void Listener::run()
