@@ -11,4 +11,10 @@ before_install:
   - git submodule update --init --recursive
 
 script:
-  - docker build -t hearty_rabbit --network="host" .
+  - docker build -t nestal/hearty_rabbit --network="host" .
+
+after_success:
+  - if [ "$TRAVIS_BRANCH" == "master" ]; then
+    docker login -u "$DOCKER_USER" -p "$DOCKER_PASSWORD";
+    docker push nestal/hearty_rabbit;
+    fi
