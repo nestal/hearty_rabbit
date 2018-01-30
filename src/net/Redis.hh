@@ -88,16 +88,16 @@ private:
 };
 
 // Copied from: https://github.com/ryangraham/hiredis-boostasio-adapter/blob/master/boostasio.cpp
-class Database
+class Connection
 {
 public:
-	explicit Database(
+	explicit Connection(
 		boost::asio::io_context& bic,
 		const std::string& host = "localhost",
 		unsigned short port = 6379
 	);
 
-	~Database();
+	~Connection();
 
 	template <typename Callback, typename... Args>
 	void command(Callback&& callback, const char *fmt, Args... args)

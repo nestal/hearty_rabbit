@@ -94,7 +94,7 @@ private:
 	boost::asio::io_context m_ioc;
 
 	std::mutex m_redis_mx;
-	std::list<redis::Database> m_redis_pool;
+	std::list<redis::Connection> m_redis_pool;
 };
 
 } // end of namespace
