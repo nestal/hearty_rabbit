@@ -16,67 +16,76 @@
 
 using namespace hrb;
 
-TEST_CASE( "simple www-form", "[normal]" )
-{
-	auto count = 0;
-	visit_form_string("name=value&other=same", [&count](auto name, auto value)
-	{
-		if (count == 0)
-		{
-			REQUIRE(name == "name");
-			REQUIRE(value == "value");
-			count++;
-		}
-		else
-		{
-			REQUIRE(name == "other");
-			REQUIRE(value == "same");
-		}
-		return true;
-	});
-}
-
-TEST_CASE( "no value in www-form", "[normal]" )
-{
-	auto called = false;
-	visit_form_string("I am the only name", [&called](auto name, auto value)
-	{
-		REQUIRE(name == "I am the only name");
-		REQUIRE(value.empty());
-		REQUIRE(!called);
-		called = true;
-		return true;
-	});
-
-	called = false;
-	visit_form_string("some+name+without+value=", [&called](auto name, auto value)
-	{
-		REQUIRE(name == "some+name+without+value");
-		REQUIRE(value.empty());
-		REQUIRE(!called);
-		called = true;
-		return true;
-	});
-}
-
 TEST_CASE( "split-front", "[normal]" )
 {
 	std::string_view in{"name=value"};
-	REQUIRE(split_front(in, "=&;") == "name");
+	REQUIRE(split_front(in, "=&;") == std::make_tuple("name", '='));
 	REQUIRE(in == "value");
-	REQUIRE(split_front(in, "&;")  == "value");
+	REQUIRE(split_front(in, "&;")  == std::make_tuple("value", '\0'));
 	REQUIRE(in.empty());
 
-	REQUIRE(split_front(in, "=&;") == "");
+	REQUIRE(split_front(in, "=&;") == std::make_tuple("", '\0'));
 	REQUIRE(in.empty());
 }
 
 TEST_CASE("get_fields_from_form_string", "[normal]")
 {
-	std::string_view in{"username=nestal&password=123&something=else"};
+	SECTION("simple 2 fields")
+	{
+		auto [name, other] = find_fields("name=value&other=same", "name", "other");
+		REQUIRE(name == "value");
+		REQUIRE(other == "same");
+	}
+	SECTION("single empty field")
+	{
+		auto [only] = find_fields("I am the only name", "I am the only name");
+		REQUIRE(only == "");
+	}
+	SECTION("single empty field not found")
+	{
+		auto [only] = find_fields("I am the only name", "not found");
+		REQUIRE(only == "");
+	}
+	SECTION("some name without value")
+	{
+		auto [field] = find_fields("some+name+without+value=", "some+name+without+value");
+		REQUIRE(field == "");
+	}
+	SECTION("simple 3 fields")
+	{
+		std::string_view in{"username=nestal&password=123&something=else"};
 
-	auto [username, password, something] = find_fields(in, "username", "password", "something");
-	REQUIRE(username == "nestal");
-	REQUIRE(password == "123");
-	REQUIRE(something == "else");
+		auto [username, password, something] = find_fields(in, "username", "password", "something");
+		REQUIRE(username == "nestal");
+		REQUIRE(password == "123");
+		REQUIRE(something == "else");
+	}
+	SECTION("4 fields: 1st one has no value")
+	{
+		auto [user, name, password, something] = find_fields(
+			"user&name=nestal;password=123+++++%%&something=$$%%else",
+			"user", "name", "password", "something"
+		);
+		REQUIRE(user == "");
+		REQUIRE(password == "123+++++%%");
+		REQUIRE(something == "$$%%else");
+	}
+	SECTION("4 fields: find two of them")
+	{
+		auto [ink, pen] = find_fields(
+			"happy&birthday=2017-12-31;ink=blue&pen=good",
+			"ink", "pen"
+		);
+		REQUIRE(ink == "blue");
+		REQUIRE(pen == "good");
+	}
+	SECTION("4 fields: tailing ;")
+	{
+		auto [ink, pen] = find_fields(
+			"happy&2017-12-31;;ink=_I_don't_know_if_it_is_blue___&pen=good;;;;;;;",
+			"ink", "pen"
+		);
+		REQUIRE(ink == "_I_don't_know_if_it_is_blue___");
+		REQUIRE(pen == "good");
+	}
 }
