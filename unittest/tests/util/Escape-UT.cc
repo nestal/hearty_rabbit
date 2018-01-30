@@ -62,21 +62,34 @@ TEST_CASE( "no value in www-form", "[normal]" )
 TEST_CASE( "split-front", "[normal]" )
 {
 	std::string_view in{"name=value"};
-	REQUIRE(split_front(in, "=&;") == "name");
+	REQUIRE(split_front(in, "=&;") == std::make_tuple("name", '='));
 	REQUIRE(in == "value");
-	REQUIRE(split_front(in, "&;")  == "value");
+	REQUIRE(split_front(in, "&;")  == std::make_tuple("value", '\0'));
 	REQUIRE(in.empty());
 
-	REQUIRE(split_front(in, "=&;") == "");
+	REQUIRE(split_front(in, "=&;") == std::make_tuple("", '\0'));
 	REQUIRE(in.empty());
 }
 
 TEST_CASE("get_fields_from_form_string", "[normal]")
 {
-	std::string_view in{"username=nestal&password=123&something=else"};
+	SECTION("3 fields")
+	{
+		std::string_view in{"username=nestal&password=123&something=else"};
 
-	auto [username, password, something] = find_fields(in, "username", "password", "something");
-	REQUIRE(username == "nestal");
-	REQUIRE(password == "123");
-	REQUIRE(something == "else");
+		auto [username, password, something] = find_fields(in, "username", "password", "something");
+		REQUIRE(username == "nestal");
+		REQUIRE(password == "123");
+		REQUIRE(something == "else");
+	}
+	SECTION("4 fields: 1st one has no value")
+	{
+		auto [user, name, password, something] = find_fields(
+			"user&name=nestal;password=123+++++%%&something=$$%%else",
+			"user", "name", "password", "something"
+		);
+		REQUIRE(user == "");
+		REQUIRE(password == "123+++++%%");
+		REQUIRE(something == "$$%%else");
+	}
 }
