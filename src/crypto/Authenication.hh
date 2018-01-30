@@ -20,7 +20,7 @@
 namespace hrb {
 
 namespace redis {
-class Database;
+class Connection;
 }
 
 class Password;
@@ -28,14 +28,14 @@ class Password;
 void add_user(
 	std::string_view username,
 	const Password& password,
-	redis::Database& db,
+	redis::Connection& db,
 	std::function<void(std::error_code)> completion
 );
 
 void verify_user(
 	std::string_view username,
 	Password&& password,
-	redis::Database& db,
+	redis::Connection& db,
 	std::function<void(std::error_code)> completion
 );
 

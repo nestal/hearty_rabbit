@@ -17,23 +17,9 @@ std::string url_encode(std::string_view in);
 
 std::string url_decode(std::string_view in);
 
-std::string_view split_front(std::string_view& in, std::string_view value);
+std::tuple<std::string_view, char> split_front(std::string_view& in, std::string_view value);
 
-template <typename Callback>
-void visit_form_string(std::string_view remain, Callback&& callback)
-{
-	while (!remain.empty())
-	{
-		// Don't remove the temporary variables because the order
-		// of execution in function parameters is undefined.
-		// i.e. don't need change to callback(split_front("=;&"), split_front(";&"))
-		auto name  = split_front(remain, "=;&");
-		auto value = split_front(remain, ";&");
-
-		if (!callback(name, value))
-			break;
-	}
-}
+namespace detail {
 
 template <typename Field, typename ResultTuple>
 void match_field(ResultTuple& result, std::string_view name, std::string_view value, Field field)
@@ -57,27 +43,28 @@ template<typename Dependent, std::size_t>
 using DependOn = Dependent;
 
 template<typename T, std::size_t N, typename Indices = std::make_index_sequence<N>>
-struct Repeat;
+struct RepeatingTuple;
 
 template<typename T, std::size_t N, std::size_t... Indices>
-struct Repeat<T, N, std::index_sequence<Indices...>>
+struct RepeatingTuple<T, N, std::index_sequence<Indices...>>
 {
     using type = std::tuple<DependOn<T, Indices>...>;
 };
+} // end of namespace
 
 template <typename... Fields>
 auto find_fields(std::string_view remain, Fields... fields)
 {
-	typename Repeat<std::string_view, sizeof...(fields)>::type result;
+	typename detail::RepeatingTuple<std::string_view, sizeof...(fields)>::type result;
 	while (!remain.empty())
 	{
 		// Don't remove the temporary variables because the order
 		// of execution in function parameters is undefined.
 		// i.e. don't need change to callback(split_front("=;&"), split_front(";&"))
-		auto name  = split_front(remain, "=;&");
-		auto value = split_front(remain, ";&");
+		auto [name, match]  = split_front(remain, "=;&");
+		auto value = (match == '=' ? std::get<0>(split_front(remain, ";&")) : std::string_view{});
 
-		match_field(result, name, value, fields...);
+		detail::match_field(result, name, value, fields...);
 	}
 	return result;
 }

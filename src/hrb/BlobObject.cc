@@ -85,7 +85,7 @@ ObjectID BlobObject::hash(std::string_view blob)
 	return result;
 }
 
-void BlobObject::save(redis::Database& db, Completion completion)
+void BlobObject::save(redis::Connection& db, Completion completion)
 {
 	db.command(
 		[callback=std::move(completion), this](redis::Reply, std::error_code&& ec)
@@ -100,7 +100,7 @@ void BlobObject::save(redis::Database& db, Completion completion)
 	);
 }
 
-void BlobObject::load(redis::Database& db, const ObjectID& id, Completion completion)
+void BlobObject::load(redis::Connection& db, const ObjectID& id, Completion completion)
 {
 	db.command([callback=std::move(completion), id](redis::Reply reply, std::error_code ec)
 	{
@@ -149,7 +149,7 @@ void BlobObject::load(redis::Database& db, const ObjectID& id, Completion comple
 }
 
 void BlobObject::load(
-	redis::Database& db,
+	redis::Connection& db,
 	const ObjectID& id,
 	const boost::filesystem::path& path,
 	BlobObject::Completion completion

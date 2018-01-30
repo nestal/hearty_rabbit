@@ -23,7 +23,7 @@ using namespace hrb::redis;
 TEST_CASE("redis server not started", "[normal]")
 {
 	boost::asio::io_context ioc;
-	Database redis{ioc, "localhost", 1}; // assume no one listen to this port
+	Connection redis{ioc, "localhost", 1}; // assume no one listen to this port
 
 	bool tested = false;
 
@@ -42,7 +42,7 @@ TEST_CASE("redis server not started", "[normal]")
 TEST_CASE("simple redis", "[normal]")
 {
 	boost::asio::io_context ioc;
-	Database redis{ioc, "localhost", 6379};
+	Connection redis{ioc, "localhost", 6379};
 
 	auto tested = 0;
 

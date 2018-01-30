@@ -23,7 +23,7 @@
 
 namespace hrb {
 namespace redis {
-class Database;
+class Connection;
 }
 
 // If use a typedef (or using), then the argument-dependent lookup (ADL) will not
@@ -50,15 +50,15 @@ public:
 	using Completion = std::function<void(BlobObject&, std::error_code ec)>;
 
 	// Load BlobObject from redis database
-	static void load(redis::Database& db, const ObjectID& id, Completion completion);
+	static void load(redis::Connection& db, const ObjectID& id, Completion completion);
 	static void load(
-		redis::Database& db,
+		redis::Connection& db,
 		const ObjectID& id,
 		const boost::filesystem::path& path,
 		Completion completion
 	);
 
-	void save(redis::Database& db, Completion completion);
+	void save(redis::Connection& db, Completion completion);
 	void open(const boost::filesystem::path& path, std::error_code& ec);
 	void assign(std::string_view blob, std::string_view name, std::error_code& ec);
 
