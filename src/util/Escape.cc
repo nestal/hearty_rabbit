@@ -53,7 +53,7 @@ std::string url_decode(std::string_view in)
 	return {};
 }
 
-std::string_view split_front(std::string_view& in, std::string_view value)
+std::tuple<std::string_view, char> split_front(std::string_view& in, std::string_view value)
 {
 	// substr() will not throw even if "in" is empty and location==npos
 	auto location = in.find_first_of(value);
@@ -62,10 +62,14 @@ std::string_view split_front(std::string_view& in, std::string_view value)
 	in.remove_prefix(result.size());
 
 	// Remove the matching character, if any
+	char match = '\0';
 	if (location != in.npos)
+	{
+		match = in.front();
 		in.remove_prefix(1);
+	}
 
-	return result;
+	return std::make_tuple(result, match);
 }
 
 } // end of hrb namespace
