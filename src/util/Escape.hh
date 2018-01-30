@@ -19,23 +19,8 @@ std::string url_decode(std::string_view in);
 
 std::tuple<std::string_view, char> split_front(std::string_view& in, std::string_view value);
 
-template <typename Callback>
-void visit_form_string(std::string_view remain, Callback&& callback)
-{
-	while (!remain.empty())
-	{
-		// Don't remove the temporary variables because the order
-		// of execution in function parameters is undefined.
-		// i.e. don't need change to callback(split_front("=;&"), split_front(";&"))
-		auto [name, match]  = split_front(remain, "=;&");
-		auto value = (match == '=' ? std::get<0>(split_front(remain, ";&")) : std::string_view{});
-
-		if (!callback(name, value))
-			break;
-	}
-}
-
 namespace detail {
+
 template <typename Field, typename ResultTuple>
 void match_field(ResultTuple& result, std::string_view name, std::string_view value, Field field)
 {
