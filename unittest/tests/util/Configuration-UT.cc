@@ -35,7 +35,7 @@ TEST_CASE( "--help command line parsing", "[normal]" )
 
 TEST_CASE( "Configuration without command line argument", "[error]" )
 {
-	REQUIRE_THROWS_AS(Configuration(0, nullptr, nullptr), Configuration::FileError);
+	REQUIRE_THROWS_AS(Configuration(0, nullptr, ""), Configuration::FileError);
 }
 
 TEST_CASE( "Load normal.json", "[normal]" )
@@ -82,4 +82,15 @@ TEST_CASE( "Web root is .", "[normal]" )
 	REQUIRE(subject.web_root() == current_src / ".");
 	REQUIRE(subject.redis_host() == "localhost");
 	REQUIRE(subject.redis_port() == 6379);
+}
+
+TEST_CASE( "Absolute path for certs", "[normal]" )
+{
+	auto dot_json = (current_src / "absolute_cert.json").string();
+
+	const char *argv[] = {"hearty_rabbit", "--cfg", dot_json.c_str()};
+	Configuration subject{sizeof(argv)/sizeof(argv[1]), argv, nullptr};
+	REQUIRE(subject.web_root() == current_src / ".");
+	REQUIRE(subject.cert_chain() == "/etc/certificate.pem");
+	REQUIRE(subject.private_key() == "/etc/key.pem");
 }
