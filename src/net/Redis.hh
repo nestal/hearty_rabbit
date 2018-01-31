@@ -13,6 +13,7 @@
 #pragma once
 
 #include "util/Exception.hh"
+#include "util/RepeatingTuple.hh"
 
 #include <boost/asio.hpp>
 #include <hiredis/hiredis.h>
@@ -66,9 +67,19 @@ public:
 
 	Reply as_array(std::size_t i) const noexcept;
 	Reply as_array(std::size_t i, std::error_code& ec) const noexcept;
+	Reply operator[](std::size_t i) const noexcept;
 	std::size_t array_size() const noexcept;
 
 	std::unordered_map<std::string_view, Reply> map_array() const;
+
+	template <typename... Field>
+	auto map_fields(Field... fields) const
+	{
+		typename RepeatingTuple<Reply, sizeof...(fields)>::type result;
+		for (auto i = 0U; i+1 < array_size() ; i += 2)
+			match_field(result, as_array(i).as_string(), as_array(i+1).as_string(), fields...);
+		return result;
+	}
 
 	template <std::size_t count>
 	auto as_tuple(std::error_code& ec) const
