@@ -201,6 +201,11 @@ Reply Reply::as_array(std::size_t i, std::error_code& ec) const noexcept
 	}
 }
 
+Reply Reply::operator[](std::size_t i) const noexcept
+{
+	return as_array(i);
+}
+
 std::size_t Reply::array_size() const noexcept
 {
 	return m_reply->type == REDIS_REPLY_ARRAY ? m_reply->elements : 0ULL;
