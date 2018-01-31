@@ -83,13 +83,26 @@ TEST_CASE("simple redis", "[normal]")
 			REQUIRE(!ec);
 			REQUIRE(tested++ == 1);
 
-			redis.command([&redis, &tested](auto reply, auto&& ec)
+			redis.command([&redis, &tested](Reply reply, auto&& ec)
 			{
 				REQUIRE(!ec);
 				REQUIRE(tested++ == 2);
-				auto map = reply.map_array();
-				REQUIRE(map["field1"].as_string() == "value1");
-				REQUIRE(map["field2"].as_string() == "value2");
+
+				SECTION("verify map_kv_pair()")
+				{
+					auto [v1, v2] = reply.map_kv_pair("field1", "field2");
+					REQUIRE(v1.as_string() == "value1");
+					REQUIRE(v2.as_string() == "value2");
+				}
+				SECTION("verify as_tuple()")
+				{
+					std::error_code ec2;
+					auto [n1, v1, n2, v2] = reply.as_tuple<4>(ec2);
+					REQUIRE(n1.as_string() == "field1");
+					REQUIRE(v1.as_string() == "value1");
+					REQUIRE(n2.as_string() == "field2");
+					REQUIRE(v2.as_string() == "value2");
+				}
 
 				redis.disconnect();
 			}, "HGETALL test_hash");
