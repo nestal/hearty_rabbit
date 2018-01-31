@@ -6,6 +6,8 @@
     distribution for more details.
 */
 
+#include "RepeatingTuple.hh"
+
 #include <string>
 #include <string_view>
 #include <tuple>
@@ -19,43 +21,10 @@ std::string url_decode(std::string_view in);
 
 std::tuple<std::string_view, char> split_front(std::string_view& in, std::string_view value);
 
-namespace detail {
-
-template <typename Field, typename ResultTuple>
-void match_field(ResultTuple& result, std::string_view name, std::string_view value, Field field)
-{
-	static_assert(std::tuple_size<ResultTuple>::value > 0);
-	if (name == field)
-		std::get<std::tuple_size<ResultTuple>::value-1>(result) = value;
-}
-
-template <typename... Fields, typename Field, typename ResultTuple>
-void match_field(ResultTuple& result, std::string_view name, std::string_view value, Field field, Fields... remain)
-{
-	static_assert(sizeof...(remain) < std::tuple_size<ResultTuple>::value);
-	if (name == field)
-		std::get<std::tuple_size<ResultTuple>::value - sizeof...(remain) - 1>(result) = value;
-	else
-		match_field(result, name, value, remain...);
-}
-
-template<typename Dependent, std::size_t>
-using DependOn = Dependent;
-
-template<typename T, std::size_t N, typename Indices = std::make_index_sequence<N>>
-struct RepeatingTuple;
-
-template<typename T, std::size_t N, std::size_t... Indices>
-struct RepeatingTuple<T, N, std::index_sequence<Indices...>>
-{
-    using type = std::tuple<DependOn<T, Indices>...>;
-};
-} // end of namespace
-
 template <typename... Fields>
 auto find_fields(std::string_view remain, Fields... fields)
 {
-	typename detail::RepeatingTuple<std::string_view, sizeof...(fields)>::type result;
+	typename RepeatingTuple<std::string_view, sizeof...(fields)>::type result;
 	while (!remain.empty())
 	{
 		// Don't remove the temporary variables because the order
@@ -64,7 +33,7 @@ auto find_fields(std::string_view remain, Fields... fields)
 		auto [name, match]  = split_front(remain, "=;&");
 		auto value = (match == '=' ? std::get<0>(split_front(remain, ";&")) : std::string_view{});
 
-		detail::match_field(result, name, value, fields...);
+		match_field(result, name, value, fields...);
 	}
 	return result;
 }

@@ -201,6 +201,11 @@ Reply Reply::as_array(std::size_t i, std::error_code& ec) const noexcept
 	}
 }
 
+Reply Reply::operator[](std::size_t i) const noexcept
+{
+	return as_array(i);
+}
+
 std::size_t Reply::array_size() const noexcept
 {
 	return m_reply->type == REDIS_REPLY_ARRAY ? m_reply->elements : 0ULL;
@@ -209,15 +214,6 @@ std::size_t Reply::array_size() const noexcept
 long Reply::as_int() const noexcept
 {
 	return m_reply->type == REDIS_REPLY_INTEGER ? m_reply->integer : 0;
-}
-
-std::unordered_map<std::string_view, Reply> Reply::map_array() const
-{
-	std::unordered_map<std::string_view, Reply> result;
-	for (auto i = 0ULL ; i+1 < array_size() ; i+=2)
-		result.emplace(as_array(i).as_string(), as_array(i+1));
-
-	return result;
 }
 
 Reply::operator bool() const noexcept
