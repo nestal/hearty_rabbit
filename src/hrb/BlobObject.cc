@@ -110,12 +110,9 @@ void BlobObject::load(redis::Connection& db, const ObjectID& id, Completion comp
 		if (!ec && reply.array_size() == 0)
 			ec = Error::object_not_exist;
 
-		auto map = reply.map_array();
-		if (auto it = map.find("blob"); it != map.end())
+		auto [blob_reply] = reply.map_kv_pair("blob");
+		if (auto blob = blob_reply.as_string(); !blob.empty())
 		{
-			// The blob should be in the next field of the reply array.
-			auto blob = it->second.as_string();
-
 			// Create an anonymous memory mapping to store the blob
 			auto new_mem = MMap::allocate(blob.size(), ec);
 			if (!ec)
@@ -125,18 +122,17 @@ void BlobObject::load(redis::Connection& db, const ObjectID& id, Completion comp
 				result.m_id = id;
 				result.m_blob = std::move(new_mem);
 
-				for (auto&& field : map)
+				reply.foreach_kv_pair([&result](auto&& field, auto&& value)
 				{
-					if (field.first != "blob")
-						result.assign_field(field.first, field.second.as_string());
-				}
+					if (field != "blob")
+						result.assign_field(field, value.as_string());
+				});
 
 				// deduce mime if it is not present in database
 				if (result.m_mime.empty())
 					result.m_mime = deduce_mime(result.blob());
 			}
 		}
-
 
 		// if redis return OK but we don't have blob, then the object is not valid
 		else

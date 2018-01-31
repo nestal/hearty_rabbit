@@ -26,20 +26,25 @@ struct RepeatingTuple<T, N, std::index_sequence<Indices...>>
     using type = std::tuple<DependOn<T, Indices>...>;
 };
 
-template <typename Field, typename ResultTuple>
-void match_field(ResultTuple& result, std::string_view name, std::string_view value, Field field)
+template <typename ResultTuple, std::size_t remain>
+constexpr std::size_t match_index()
 {
-	static_assert(std::tuple_size<ResultTuple>::value > 0);
-	if (name == field)
-		std::get<std::tuple_size<ResultTuple>::value-1>(result) = value;
+	static_assert(remain < std::tuple_size<ResultTuple>::value);
+	return std::tuple_size<ResultTuple>::value - remain - 1;
 }
 
-template <typename... Fields, typename Field, typename ResultTuple>
-void match_field(ResultTuple& result, std::string_view name, std::string_view value, Field field, Fields... remain)
+template <typename Field, typename Value, typename ResultTuple>
+void match_field(ResultTuple& result, std::string_view name, Value&& value, Field field)
 {
-	static_assert(sizeof...(remain) < std::tuple_size<ResultTuple>::value);
 	if (name == field)
-		std::get<std::tuple_size<ResultTuple>::value - sizeof...(remain) - 1>(result) = value;
+		std::get<match_index<ResultTuple, 0>()>(result) = std::forward<Value>(value);
+}
+
+template <typename... Fields, typename Field, typename Value, typename ResultTuple>
+void match_field(ResultTuple& result, std::string_view name, Value&& value, Field field, Fields... remain)
+{
+	if (name == field)
+		std::get<match_index<ResultTuple, sizeof...(remain)>()>(result) = std::forward<Value>(value);
 	else
 		match_field(result, name, value, remain...);
 }
