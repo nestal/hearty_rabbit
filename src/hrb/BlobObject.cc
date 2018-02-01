@@ -221,4 +221,34 @@ std::ostream& operator<<(std::ostream& os, const ObjectID& id)
 	return os;
 }
 
+ObjectRedisKey redis_key(const ObjectID& id)
+{
+	ObjectRedisKey key = {};
+	std::copy(object_redis_key_prefix.begin(), object_redis_key_prefix.end(), key.begin() );
+	std::copy(id.begin(), id.end(), key.begin() + object_redis_key_prefix.size());
+
+	return key;
+}
+
+std::string base64(const ObjectID& id)
+{
+	std::string result{'=', base64_object_id_size};
+	::EVP_EncodeBlock(reinterpret_cast<unsigned char*>(&result[0]), id.data(), id.size());
+	return result;
+}
+
+ObjectID base64_object_id(std::string_view base64)
+{
+	ObjectID result{};
+	if (base64.size() == base64_object_id_size)
+	{
+		::EVP_DecodeBlock(
+			&result[0],
+			reinterpret_cast<const unsigned char *>(base64.data()),
+			base64_object_id_size
+		);
+	}
+	return result;
+}
+
 } // end of namespace
