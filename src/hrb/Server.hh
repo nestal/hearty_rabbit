@@ -56,7 +56,7 @@ public:
 			return on_login(req, std::forward<Send>(send));
 
 		if (req.target().starts_with(url::blob))
-			return send(set_common_fields(req, get_blob(req)));
+			return get_blob(req, std::forward<Send>(send));
 
 		if (req.target().starts_with(url::dir))
 			return send(set_common_fields(req, get_dir(req)));
@@ -69,9 +69,6 @@ public:
 	http::response<http::string_body> not_found(const Request& req, boost::beast::string_view target);
 	http::response<http::string_body> server_error(const Request& req, boost::beast::string_view what);
 	http::response<http::empty_body> redirect(boost::beast::string_view where, unsigned version);
-
-	http::response<http::string_body> get_blob(const Request& req);
-	http::response<http::string_body> get_dir(const Request& req);
 
 	template<class Body, class Allocator>
 	static auto&& set_common_fields(
@@ -95,6 +92,9 @@ private:
 	static void drop_privileges();
 
 	void on_login(const Request& req, std::function<void(http::response<http::empty_body>&&)>&& send);
+	void get_blob(const Request& req, std::function<void(http::response<http::string_body>&&)>&& send);
+	http::response<http::string_body> get_dir(const Request& req);
+
 
 private:
 	const Configuration&    m_cfg;

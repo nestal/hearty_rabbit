@@ -42,6 +42,7 @@ TEST_CASE("Load BlobObject from file", "[normal]")
 
 		auto id = hex_to_object_id(hex);
 		REQUIRE(id == blob.ID());
+		std::cout << "new blob = " << hex << std::endl;
 	}
 
 	boost::asio::io_context ioc;

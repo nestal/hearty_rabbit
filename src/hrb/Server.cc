@@ -71,20 +71,31 @@ http::response<http::empty_body> Server::redirect(boost::beast::string_view wher
 	return res;
 }
 
-http::response<http::string_body> Server::get_blob(const Request& req)
+void Server::get_blob(const Request& req, std::function<void(http::response<http::string_body>&&)>&& send)
 {
 	auto blob_id = req.target().size() > url::login.size() ?
 		req.target().substr(url::login.size()) :
 		boost::string_view{};
 
-	http::response<http::string_body> res{http::status::not_found, req.version()};
-
 	auto object_id = hex_to_object_id(std::string_view{blob_id.data(), blob_id.size()});
-	if (object_id != ObjectID{})
+	if (object_id == ObjectID{})
+		send(set_common_fields(req, http::response<http::string_body>{http::status::not_found, req.version()}));
+	else
 	{
-		res.result(http::status::ok);
+		auto db = std::make_shared<redis::Connection>(m_ioc, m_cfg.redis_host(), m_cfg.redis_port());
+		BlobObject::load(
+			*db, object_id,
+			[db, this, send=std::move(send), version=req.version(), keep_alive=req.keep_alive()](BlobObject& blob, std::error_code ec)
+			{
+				http::response<http::string_body> res{!ec ? http::status::ok : http::status::not_found, version};
+				res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
+				res.keep_alive(keep_alive);
+				if (!ec)
+					res.body() = blob.blob();
+				send(std::move(res));
+			}
+		);
 	}
-	return res;
 }
 
 http::response<http::string_body> Server::get_dir(const Request& req)
