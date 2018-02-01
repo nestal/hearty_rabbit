@@ -12,6 +12,7 @@
 
 #include "Server.hh"
 #include "WebResources.hh"
+#include "BlobObject.hh"
 
 #include "crypto/Password.hh"
 #include "crypto/Authenication.hh"
@@ -20,7 +21,6 @@
 #include "util/Exception.hh"
 #include "util/Escape.hh"
 #include "util/Log.hh"
-
 
 #include <boost/exception/errinfo_api_function.hpp>
 #include <boost/exception/info.hpp>
@@ -73,10 +73,18 @@ http::response<http::empty_body> Server::redirect(boost::beast::string_view wher
 
 http::response<http::string_body> Server::get_blob(const Request& req)
 {
-	auto blob_id = req.target().substr(url::login.size());
-	Log(LOG_INFO, "requesting blob: %1%", blob_id);
+	auto blob_id = req.target().size() > url::login.size() ?
+		req.target().substr(url::login.size()) :
+		boost::string_view{};
 
-	return http::response<http::string_body>();
+	http::response<http::string_body> res{http::status::not_found, req.version()};
+
+	auto object_id = hex_to_object_id(std::string_view{blob_id.data(), blob_id.size()});
+	if (object_id != ObjectID{})
+	{
+		res.result(http::status::ok);
+	}
+	return res;
 }
 
 http::response<http::string_body> Server::get_dir(const Request& req)
