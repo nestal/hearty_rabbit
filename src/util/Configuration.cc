@@ -49,6 +49,7 @@ Configuration::Configuration(int argc, const char *const *argv, const char *env)
 	m_desc.add_options()
 		("help",      "produce help message")
 		("add-user",  po::value<std::string>()->value_name("username"), "add a new user given a user name")
+		("blob-id",   po::value<std::string>()->value_name("filename"), "calculate the blob object ID of a given file")
 		("cfg",       po::value<std::string>()->default_value(
 			env ? std::string{env} : std::string{hrb::constants::config_filename}
 		)->value_name("path"), "Configuration file. Use environment variable HEART_RABBIT_CONFIG to set default path.")
