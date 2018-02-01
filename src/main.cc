@@ -11,6 +11,7 @@
 #include "util/Exception.hh"
 #include "util/Log.hh"
 #include "hrb/Server.hh"
+#include "hrb/BlobObject.hh"
 
 #include <boost/exception/errinfo_api_function.hpp>
 #include <boost/exception/info.hpp>
@@ -33,6 +34,7 @@ int Main(int argc, const char* const* argv)
 		std::cout << "\n";
 		return EXIT_SUCCESS;
 	}
+
 	else if (cfg.add_user([&server](auto&& username)
 	{
 		std::cout << "Please input password of the new user " << username << ":\n";
@@ -44,14 +46,20 @@ int Main(int argc, const char* const* argv)
 				std::cout << "result = " << ec << " " << ec.message() << std::endl;
 			});
 		}
-	}))
+	})) {return EXIT_SUCCESS;}
+
+	else if (cfg.blob_id([&server](auto&& filename)
 	{
+		BlobObject blob{boost::filesystem::path{filename}};
+		std::cout << blob.ID() << std::endl;
+	})) { return EXIT_SUCCESS;}
+
+	else
+	{
+		Log(LOG_NOTICE, "hearty_rabbit starting");
+		server.run();
 		return EXIT_SUCCESS;
 	}
-
-	Log(LOG_NOTICE, "hearty_rabbit starting");
-	server.run();
-	return EXIT_SUCCESS;
 }
 
 } // end of namespace
