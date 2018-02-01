@@ -28,6 +28,13 @@
 
 namespace hrb {
 
+// URL prefices
+namespace url {
+const boost::string_view login{"/login"};
+const boost::string_view blob{"/blob"};
+const boost::string_view dir{"/dir"};
+}
+
 class Configuration;
 class Password;
 
@@ -45,13 +52,13 @@ public:
 	template<class Send>
 	void handle_https(Request&& req, Send&& send)
 	{
-		if (req.target() == "/login" && req.method() == http::verb::post)
+		if (req.target() == url::login && req.method() == http::verb::post)
 			return on_login(req, std::forward<Send>(send));
 
-		if (req.target().starts_with("/blob"))
-			return send(set_common_fields(req, get_blob(req)));
+		if (req.target().starts_with(url::blob))
+			return get_blob(req, std::forward<Send>(send));
 
-		if (req.target().starts_with("/dir"))
+		if (req.target().starts_with(url::dir))
 			return send(set_common_fields(req, get_dir(req)));
 
 		return send(file_request(req));
@@ -62,9 +69,6 @@ public:
 	http::response<http::string_body> not_found(const Request& req, boost::beast::string_view target);
 	http::response<http::string_body> server_error(const Request& req, boost::beast::string_view what);
 	http::response<http::empty_body> redirect(boost::beast::string_view where, unsigned version);
-
-	http::response<http::string_body> get_blob(const Request& req);
-	http::response<http::string_body> get_dir(const Request& req);
 
 	template<class Body, class Allocator>
 	static auto&& set_common_fields(
@@ -88,6 +92,9 @@ private:
 	static void drop_privileges();
 
 	void on_login(const Request& req, std::function<void(http::response<http::empty_body>&&)>&& send);
+	void get_blob(const Request& req, std::function<void(http::response<http::string_body>&&)>&& send);
+	http::response<http::string_body> get_dir(const Request& req);
+
 
 private:
 	const Configuration&    m_cfg;
