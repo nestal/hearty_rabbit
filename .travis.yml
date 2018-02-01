@@ -1,7 +1,7 @@
 sudo: required
 env:
   - OS_TYPE=centos OS_VERSION=7
-language: c++
+language: generic
 services:
   - docker
   - redis-server
