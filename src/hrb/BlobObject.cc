@@ -92,7 +92,8 @@ void BlobObject::save(redis::Connection& db, Completion completion)
 		{
 			callback(*this, std::move(ec));
 		},
-		"HSET %b blob %b name %b mime %b",
+		"HSET %b%b blob %b name %b mime %b",
+		object_redis_key_prefix.data(), object_redis_key_prefix.size(),
 		m_id.data(), m_id.size(),
 		m_blob.data(), m_blob.size(),
 		m_name.c_str(), m_name.size(),
@@ -102,46 +103,51 @@ void BlobObject::save(redis::Connection& db, Completion completion)
 
 void BlobObject::load(redis::Connection& db, const ObjectID& id, Completion completion)
 {
-	db.command([callback=std::move(completion), id](redis::Reply reply, std::error_code ec)
-	{
-		BlobObject result;
-
-		// Keep the redis error code if it is non-zero
-		if (!ec && reply.array_size() == 0)
-			ec = Error::object_not_exist;
-
-		auto [blob_reply] = reply.map_kv_pair("blob");
-		if (auto blob = blob_reply.as_string(); !blob.empty())
+	db.command(
+		[callback=std::move(completion), id](redis::Reply reply, std::error_code ec)
 		{
-			// Create an anonymous memory mapping to store the blob
-			auto new_mem = MMap::allocate(blob.size(), ec);
-			if (!ec)
+			BlobObject result;
+
+			// Keep the redis error code if it is non-zero
+			if (!ec && reply.array_size() == 0)
+				ec = Error::object_not_exist;
+
+			auto [blob_reply] = reply.map_kv_pair("blob");
+			if (auto blob = blob_reply.as_string(); !blob.empty())
 			{
-				// everything OK, now commit
-				std::memcpy(new_mem.data(), blob.data(), blob.size());
-				result.m_id = id;
-				result.m_blob = std::move(new_mem);
-
-				reply.foreach_kv_pair([&result](auto&& field, auto&& value)
+				// Create an anonymous memory mapping to store the blob
+				auto new_mem = MMap::allocate(blob.size(), ec);
+				if (!ec)
 				{
-					if (field != "blob")
-						result.assign_field(field, value.as_string());
-				});
+					// everything OK, now commit
+					std::memcpy(new_mem.data(), blob.data(), blob.size());
+					result.m_id = id;
+					result.m_blob = std::move(new_mem);
 
-				// deduce mime if it is not present in database
-				if (result.m_mime.empty())
-					result.m_mime = deduce_mime(result.blob());
+					reply.foreach_kv_pair([&result](auto&& field, auto&& value)
+					{
+						if (field != "blob")
+							result.assign_field(field, value.as_string());
+					});
+
+					// deduce mime if it is not present in database
+					if (result.m_mime.empty())
+						result.m_mime = deduce_mime(result.blob());
+				}
 			}
-		}
 
-		// if redis return OK but we don't have blob, then the object is not valid
-		else
-			ec = Error::invalid_object;
+			// if redis return OK but we don't have blob, then the object is not valid
+			else
+				ec = Error::invalid_object;
 
 
-		callback(result, ec);
+			callback(result, ec);
 
-	}, "HGETALL %b", id.data(), id.size());
+		},
+		"HGETALL %b%b",
+		object_redis_key_prefix.data(), object_redis_key_prefix.size(),
+		id.data(), id.size()
+	);
 }
 
 void BlobObject::load(
@@ -151,19 +157,23 @@ void BlobObject::load(
 	BlobObject::Completion completion
 )
 {
-	db.command([callback=std::move(completion), id, path](redis::Reply reply, std::error_code ec)
-	{
-		BlobObject result;
-		result.m_blob = MMap::open(path, ec);
+	db.command(
+		[callback=std::move(completion), id, path](redis::Reply reply, std::error_code ec)
+		{
+			BlobObject result;
+			result.m_blob = MMap::open(path, ec);
 
-		for (auto i = 0ULL ; i+1 < reply.array_size() && !ec ; i+=2)
-			result.assign_field(reply.as_array(i).as_string(), reply.as_array(i+1).as_string());
+			for (auto i = 0ULL ; i+1 < reply.array_size() && !ec ; i+=2)
+				result.assign_field(reply.as_array(i).as_string(), reply.as_array(i+1).as_string());
 
-		if (result.m_mime.empty())
-			result.m_mime = deduce_mime(result.blob());
+			if (result.m_mime.empty())
+				result.m_mime = deduce_mime(result.blob());
 
-		callback(result, ec);
-	}, "HGETALL %b", id.data(), id.size());
+			callback(result, ec);
+		}, "HGETALL %b%b",
+		object_redis_key_prefix.data(), object_redis_key_prefix.size(),
+		id.data(), id.size()
+	);
 }
 
 void BlobObject::assign(std::string_view blob, std::string_view name, std::error_code& ec)

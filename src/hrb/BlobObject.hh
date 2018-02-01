@@ -12,10 +12,12 @@
 
 #pragma once
 
+#include "RedisKeys.hh"
 #include "util/MMap.hh"
 
 #include <boost/filesystem/path.hpp>
 
+#include <array>
 #include <cstddef>
 #include <functional>
 #include <optional>
@@ -28,7 +30,7 @@ class Connection;
 
 // If use a typedef (or using), then the argument-dependent lookup (ADL) will not
 // work for operator<<
-struct ObjectID : std::array<unsigned char, 64> {using array::array;};
+struct ObjectID : std::array<unsigned char, object_id_size> {using array::array;};
 static_assert(std::is_standard_layout<ObjectID>::value);
 
 class BlobObject
@@ -65,6 +67,13 @@ public:
 	std::string_view blob() const;
 	const std::string& name() const {return m_name;}
 	const std::string& mime() const {return m_mime;}
+	ObjectRedisKey redis_key() const
+	{
+		ObjectRedisKey key = {};
+		std::copy(object_redis_key_prefix.begin(), object_redis_key_prefix.end(), key.begin() );
+		std::copy(m_id.begin(), m_id.end(), key.begin() + object_redis_key_prefix.size());
+		return key;
+	}
 
 private:
 	static ObjectID hash(std::string_view blob);
@@ -79,7 +88,7 @@ private:
 	void assign_field(std::string_view field, std::string_view value);
 
 private:
-	ObjectID    m_id;       //!< SHA1 hash of the blob
+	ObjectID    m_id;       //!< SHA512 hash of the blob
 	std::string m_name;     //!< Typically the file name of the blob
 	std::string m_mime;     //!< Mime-type of the blob, deduced by libmagic
 

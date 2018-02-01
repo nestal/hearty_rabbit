@@ -16,8 +16,11 @@
 #include "util/RepeatingTuple.hh"
 
 #include <boost/asio.hpp>
+#include <boost/iterator/iterator_adaptor.hpp>
+
 #include <hiredis/hiredis.h>
 #include <hiredis/async.h>
+
 
 #include <string>
 
@@ -45,13 +48,17 @@ const std::error_category& redis_error_category();
 class Reply
 {
 public:
-	explicit Reply(redisReply *r = nullptr) noexcept;
+	explicit Reply(const redisReply *r = nullptr) noexcept;
 	Reply(const Reply&) = default;
 	Reply(Reply&&) = default;
 	~Reply() = default;
 
 	Reply& operator=(const Reply&) = default;
 	Reply& operator=(Reply&&) = default;
+
+	class iterator;
+	iterator begin() const;
+	iterator end() const;
 
 	bool is_string() const {return m_reply->type == REDIS_REPLY_STRING;}
 
@@ -101,6 +108,23 @@ private:
 
 private:
 	const ::redisReply *m_reply;
+};
+
+class Reply::iterator : public boost::iterator_adaptor<
+	iterator,
+	const ::redisReply* const*,
+	const Reply,
+	boost::use_default,
+	boost::use_default,
+	const Reply
+>
+{
+public:
+	explicit iterator(const ::redisReply * const*elements = nullptr) : iterator_adaptor{elements} {}
+
+ private:
+	friend class boost::iterator_core_access;
+	Reply dereference() const { return Reply(*base()); }
 };
 
 // Copied from: https://github.com/ryangraham/hiredis-boostasio-adapter/blob/master/boostasio.cpp
