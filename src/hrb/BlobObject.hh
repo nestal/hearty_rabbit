@@ -38,9 +38,8 @@ static_assert(sizeof(ObjectID) == object_id_size);
 
 ObjectRedisKey redis_key(const ObjectID& id);
 
-constexpr auto base64_object_id_size = (object_id_size / 3 + (object_id_size % 3 == 0 ? 0 : 1)) * 4;
-std::string base64(const ObjectID& id);
-ObjectID base64_object_id(std::string_view base64);
+std::string to_hex(const ObjectID& id);
+ObjectID hex_to_object_id(std::string_view base64);
 
 class BlobObject
 {
