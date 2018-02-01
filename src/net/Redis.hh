@@ -115,8 +115,8 @@ class Reply::iterator : public boost::iterator_adaptor<
 	const ::redisReply* const*,
 	const Reply,
 	boost::use_default,
-	boost::use_default,
-	const Reply
+	const Reply,
+	boost::use_default
 >
 {
 public:
