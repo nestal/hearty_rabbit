@@ -18,6 +18,7 @@
 
 #include <bitset>
 #include <chrono>
+#include <iostream>
 
 using namespace hrb;
 using namespace hrb::redis;
@@ -34,6 +35,16 @@ TEST_CASE("Load BlobObject from file", "[normal]")
 
 	REQUIRE(blob.ID() != zero);
 
+	SECTION("test hex and unhex ID")
+	{
+		auto hex = to_hex(blob.ID());
+		REQUIRE(hex.size() == blob.ID().size()*2);
+
+		auto id = hex_to_object_id(hex);
+		REQUIRE(id == blob.ID());
+		std::cout << "new blob = " << hex << std::endl;
+	}
+
 	boost::asio::io_context ioc;
 	Connection db{ioc, "localhost", 6379};
 
@@ -44,7 +55,8 @@ TEST_CASE("Load BlobObject from file", "[normal]")
 		REQUIRE(!ec);
 		REQUIRE(!src.empty());
 
-		db.command([](auto, auto){}, "HDEL %b mime", src.ID().data(), src.ID().size());
+		auto key = src.redis_key();
+		db.command([](auto, auto){}, "HDEL %b mime", key.data(), key.size());
 
 		// read it back
 		BlobObject::load(db, src.ID(), [&db, &src, &tested](auto& loaded, auto ec)

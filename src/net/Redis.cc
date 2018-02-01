@@ -149,7 +149,7 @@ void Connection::disconnect()
 	m_ctx = nullptr;
 }
 
-Reply::Reply(redisReply *r) noexcept :
+Reply::Reply(const redisReply *r) noexcept :
 	m_reply{r}
 {
 	static const redisReply empty{};
@@ -199,6 +199,16 @@ Reply Reply::as_array(std::size_t i, std::error_code& ec) const noexcept
 		ec = Error::field_not_found;
 		return Reply{};
 	}
+}
+
+Reply::iterator Reply::begin() const
+{
+	return iterator{&m_reply->element[0]};
+}
+
+Reply::iterator Reply::end() const
+{
+	return iterator{&m_reply->element[m_reply->elements]};
 }
 
 Reply Reply::operator[](std::size_t i) const noexcept

@@ -103,6 +103,17 @@ TEST_CASE("simple redis", "[normal]")
 					REQUIRE(n2.as_string() == "field2");
 					REQUIRE(v2.as_string() == "value2");
 				}
+				SECTION("verify begin/end")
+				{
+					std::vector<std::string> result;
+					for (auto&& v : reply)
+						result.push_back(std::string{v.as_string()});
+
+					REQUIRE(result[0] == "field1");
+					REQUIRE(result[1] == "value1");
+					REQUIRE(result[2] == "field2");
+					REQUIRE(result[3] == "value2");
+				}
 
 				redis.disconnect();
 			}, "HGETALL test_hash");
