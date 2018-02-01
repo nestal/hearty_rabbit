@@ -1,45 +1,9 @@
 div.login {
-    margin: auto;
-    width: 90vmin;
     border: 3px solid green;
     padding: 20px;
-}
 
-div.login h1 {
-    font-family: sans-serif;
-}
-
-div.login input[type=text], input[type=password] {
-    width: 100%;
-    padding: 12px 20px;
-    margin: 8px 0;
-    display: inline-block;
-    border: 1px solid #ccc;
-    box-sizing: border-box;
-}
-
-div.login button {
-    background-color: #4CAF50;
-    color: white;
-    padding: 14px 20px;
-    margin: 8px 0;
-    border: none;
-    cursor: pointer;
-    width: 100%;
-}
-
-div.login button:hover {
-    opacity: 0.8;
-}
-
-div.login div.logo {
-    text-align: center;
-}
-
-div.login div.logo img {
-    width: 60vmin;
-}
-
-div.login div.login-form {
-    padding: 20px;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translateX(-50%) translateY(-50%);
 }

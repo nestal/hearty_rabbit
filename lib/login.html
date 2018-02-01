@@ -2,29 +2,49 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <link rel="stylesheet" type="text/css" href="hearty_rabbit.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <title>Hearty Rabbit</title>
+
+    <link rel="stylesheet" type="text/css" href="hearty_rabbit.css">
+    <link rel="stylesheet" href="https://unpkg.com/purecss@1.0.0/build/pure-min.css" integrity="sha384-" crossorigin="anonymous">
+
+    <!--[if lte IE 8]>
+        <link rel="stylesheet" href="https://unpkg.com/purecss@1.0.0/build/grids-responsive-old-ie-min.css">
+    <![endif]-->
+    <!--[if gt IE 8]><!-->
+        <link rel="stylesheet" href="https://unpkg.com/purecss@1.0.0/build/grids-responsive-min.css">
+    <!--<![endif]-->
 </head>
 <body>
 
 <div>
-<div class="login">
-
+    <div class="login">
     <h1>Welcome to HeartyRabbit!</h1>
 
     <div class="logo">
         <img src="logo.svg">
     </div>
 
-    <div class="login-form">
-        <form action="/login" method="post">
-            <label>Username</label><input type="text" name="username" placeholder="Enter username">
-            <label>Password</label><input type="password" name="password" placeholder="Enter password">
+    <form class="pure-form-aligned" action="/login" method="post">
+        <fieldset>
+            <legend>Login:</legend>
+            <div class="pure-control-group">
+                <label for="username">Username</label>
+                <input id="username" type="text" placeholder="Username">
+                <span class="pure-form-message-inline">This is a required field.</span>
+            </div>
+            <div class="pure-control-group">
+                <label for="password">Password</label>
+                <input id="password" type="text" placeholder="Password">
+            </div>
 
-            <button type="submit">Login</button>
-        </form>
+            <div class="pure-controls">
+                <button type="submit" class="pure-button pure-button-primary">Login</button>
+            </div>
+        </fieldset>
+    </form>
     </div>
-</div>
 </div>
 
 </body>
