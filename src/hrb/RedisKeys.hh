@@ -14,7 +14,7 @@
 namespace hrb {
 
 static const std::size_t object_id_size  = 64;
-static const std::array<unsigned char, 5> object_redis_key_prefix = {'b','l','o','b', ':'};
+static constexpr std::string_view object_redis_key_prefix{"blob:"};
 using ObjectRedisKey = std::array<unsigned char, object_id_size + object_redis_key_prefix.size()>;
 
 } // end of namespace

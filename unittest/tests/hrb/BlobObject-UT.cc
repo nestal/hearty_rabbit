@@ -18,6 +18,7 @@
 
 #include <bitset>
 #include <chrono>
+#include <iostream>
 
 using namespace hrb;
 using namespace hrb::redis;
@@ -33,6 +34,8 @@ TEST_CASE("Load BlobObject from file", "[normal]")
 	ObjectID zero{};
 
 	REQUIRE(blob.ID() != zero);
+
+	std::cout << "base64 = " << base64(blob.ID()) << std::endl;
 
 	boost::asio::io_context ioc;
 	Connection db{ioc, "localhost", 6379};

@@ -30,8 +30,17 @@ class Connection;
 
 // If use a typedef (or using), then the argument-dependent lookup (ADL) will not
 // work for operator<<
-struct ObjectID : std::array<unsigned char, object_id_size> {using array::array;};
+struct ObjectID : std::array<unsigned char, object_id_size>{ using array::array; };
+
 static_assert(std::is_standard_layout<ObjectID>::value);
+static_assert(sizeof(ObjectID) == object_id_size);
+
+
+ObjectRedisKey redis_key(const ObjectID& id);
+
+constexpr auto base64_object_id_size = (object_id_size / 3 + (object_id_size % 3 == 0 ? 0 : 1)) * 4;
+std::string base64(const ObjectID& id);
+ObjectID base64_object_id(std::string_view base64);
 
 class BlobObject
 {
