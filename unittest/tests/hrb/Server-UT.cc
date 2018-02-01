@@ -183,9 +183,15 @@ TEST_CASE("GET static resource", "[normal]")
 		REQUIRE(checker.tested());
 	}
 
-	SECTION("requesting blob")
+	SECTION("requesting invalid blob")
 	{
 		req.target("/blob/abc");
-		subject.handle_https(std::move(req), [](auto&&){});
+		subject.handle_https(std::move(req), [](auto&& res){REQUIRE(res.result() == http::status::not_found);});
+	}
+
+	SECTION("requesting empty blob ID")
+	{
+		req.target("/blob");
+		subject.handle_https(std::move(req), [](auto&& res){REQUIRE(res.result() == http::status::not_found);});
 	}
 }

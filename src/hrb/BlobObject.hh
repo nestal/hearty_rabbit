@@ -41,6 +41,9 @@ ObjectRedisKey redis_key(const ObjectID& id);
 std::string to_hex(const ObjectID& id);
 ObjectID hex_to_object_id(std::string_view base64);
 
+bool operator==(const ObjectID& id1, const ObjectID& id2);
+bool operator!=(const ObjectID& id1, const ObjectID& id2);
+
 class BlobObject
 {
 public:
