@@ -182,4 +182,10 @@ TEST_CASE("GET static resource", "[normal]")
 		subject.handle_https(std::move(req), std::ref(checker));
 		REQUIRE(checker.tested());
 	}
+
+	SECTION("requesting blob")
+	{
+		req.target("/blob/abc");
+		subject.handle_https(std::move(req), [](auto&&){});
+	}
 }

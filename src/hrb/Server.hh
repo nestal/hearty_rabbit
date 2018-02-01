@@ -28,6 +28,13 @@
 
 namespace hrb {
 
+// URL prefices
+namespace url {
+const boost::string_view login{"/login"};
+const boost::string_view blob{"/blob"};
+const boost::string_view dir{"/dir"};
+}
+
 class Configuration;
 class Password;
 
@@ -45,13 +52,13 @@ public:
 	template<class Send>
 	void handle_https(Request&& req, Send&& send)
 	{
-		if (req.target() == "/login" && req.method() == http::verb::post)
+		if (req.target() == url::login && req.method() == http::verb::post)
 			return on_login(req, std::forward<Send>(send));
 
-		if (req.target().starts_with("/blob"))
+		if (req.target().starts_with(url::blob))
 			return send(set_common_fields(req, get_blob(req)));
 
-		if (req.target().starts_with("/dir"))
+		if (req.target().starts_with(url::dir))
 			return send(set_common_fields(req, get_dir(req)));
 
 		return send(file_request(req));
