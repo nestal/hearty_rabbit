@@ -73,6 +73,9 @@ http::response<http::empty_body> Server::redirect(boost::beast::string_view wher
 
 http::response<http::string_body> Server::get_blob(const Request& req)
 {
+	auto blob_id = req.target().substr(url::login.size());
+	Log(LOG_INFO, "requesting blob: %1%", blob_id);
+
 	return http::response<http::string_body>();
 }
 
