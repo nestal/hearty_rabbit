@@ -131,31 +131,34 @@ void Session::on_read(boost::system::error_code ec, std::size_t)
 
 	if (ec)
 		Log(LOG_WARNING, "read error: %1%", ec);
-
-	// Send the response
-	auto sender = [this, self=shared_from_this()](auto&& msg)
-	{
-		// The lifetime of the message has to extend
-		// for the duration of the async operation so
-		// we use a shared_ptr to manage it.
-		auto sp = std::make_shared<std::remove_reference_t<decltype(msg)>>(std::move(msg));
-
-		auto&& callback = boost::asio::bind_executor(
-			m_strand,
-			[self, sp](auto&& ec, auto bytes) {self->on_write(ec, bytes, sp->need_eof());}
-		);
-
-		// Write the response
-		if (m_stream)
-			async_write(*m_stream, *sp, std::move(callback));
-		else
-			async_write(m_socket, *sp, std::move(callback));
-	};
-
-	if (m_stream)
-		handle_https(std::move(m_req), std::move(sender));
 	else
-		sender(m_server.redirect_http(m_req));
+	{
+		// Send the response
+		auto sender = [this, self = shared_from_this()](auto&& msg)
+		{
+			// The lifetime of the message has to extend
+			// for the duration of the async operation so
+			// we use a shared_ptr to manage it.
+			auto sp = std::make_shared<std::remove_reference_t<decltype(msg)>>(std::move(msg));
+
+			auto&& callback = boost::asio::bind_executor(
+				m_strand,
+				[self, sp](auto&& ec, auto bytes)
+				{ self->on_write(ec, bytes, sp->need_eof()); }
+			);
+
+			// Write the response
+			if (m_stream)
+				async_write(*m_stream, *sp, std::move(callback));
+			else
+				async_write(m_socket, *sp, std::move(callback));
+		};
+
+		if (m_stream)
+			handle_https(std::move(m_req), std::move(sender));
+		else
+			sender(m_server.redirect_http(m_req));
+	}
 	m_nth_transaction++;
 }
 
@@ -175,7 +178,8 @@ void Session::on_write(
 	}
 
 	// Read another request
-	do_read();
+	if (!ec)
+		do_read();
 }
 
 void Session::do_close()
