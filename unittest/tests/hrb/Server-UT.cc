@@ -129,11 +129,11 @@ TEST_CASE("GET static resource", "[normal]")
 	REQUIRE(cfg.web_root() == (current_src/"../../../lib").lexically_normal());
 	Request req;
 
-	SECTION("requesting index.html")
+	SECTION("requesting something not exist")
 	{
 		FileResponseChecker checker{http::status::ok, "login.html", cfg.web_root()};
 
-		req.target("/index.html");
+		req.target("/something_not_exist.html");
 		subject.handle_https(std::move(req), std::ref(checker));
 		REQUIRE(checker.tested());
 	}
