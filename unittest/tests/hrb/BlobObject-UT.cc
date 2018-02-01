@@ -35,7 +35,14 @@ TEST_CASE("Load BlobObject from file", "[normal]")
 
 	REQUIRE(blob.ID() != zero);
 
-	std::cout << "base64 = " << base64(blob.ID()) << std::endl;
+	SECTION("test hex and unhex ID")
+	{
+		auto hex = to_hex(blob.ID());
+		REQUIRE(hex.size() == blob.ID().size()*2);
+
+		auto id = hex_to_object_id(hex);
+		REQUIRE(id == blob.ID());
+	}
 
 	boost::asio::io_context ioc;
 	Connection db{ioc, "localhost", 6379};

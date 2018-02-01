@@ -17,6 +17,8 @@
 #include "util/Error.hh"
 #include "util/Magic.hh"
 
+#include <boost/algorithm/hex.hpp>
+
 #include <openssl/evp.h>
 
 #include <cassert>
@@ -230,24 +232,18 @@ ObjectRedisKey redis_key(const ObjectID& id)
 	return key;
 }
 
-std::string base64(const ObjectID& id)
+std::string to_hex(const ObjectID& id)
 {
-	std::string result{'=', base64_object_id_size};
-	::EVP_EncodeBlock(reinterpret_cast<unsigned char*>(&result[0]), id.data(), id.size());
+	std::string result(id.size()*2, '\0');
+	boost::algorithm::hex(id.begin(), id.end(), result.begin());
 	return result;
 }
 
-ObjectID base64_object_id(std::string_view base64)
+ObjectID hex_to_object_id(std::string_view hex)
 {
 	ObjectID result{};
-	if (base64.size() == base64_object_id_size)
-	{
-		::EVP_DecodeBlock(
-			&result[0],
-			reinterpret_cast<const unsigned char *>(base64.data()),
-			base64_object_id_size
-		);
-	}
+	if (hex.size() == result.size()*2)
+		boost::algorithm::unhex(hex.begin(), hex.end(), result.begin());
 	return result;
 }
 
