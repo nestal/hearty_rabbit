@@ -11,6 +11,7 @@
 //
 
 #include "DatabasePool.hh"
+#include "util/Log.hh"
 
 namespace hrb {
 
@@ -27,6 +28,9 @@ std::shared_ptr<redis::Connection> DatabasePool::alloc()
 
 	if (m_pool.empty())
 		return std::make_shared<redis::Connection>(m_ioc, m_host, m_port);
+
+	// TODO: release the mutex before logging
+	Log(LOG_INFO, "reusing database connection (%1% left)", m_pool.size());
 
 	auto conn{std::move(m_pool.back())};
 	m_pool.pop_back();
