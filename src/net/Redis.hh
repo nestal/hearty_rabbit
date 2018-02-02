@@ -21,7 +21,7 @@
 #include <hiredis/hiredis.h>
 #include <hiredis/async.h>
 
-
+#include <memory>
 #include <string>
 
 namespace hrb {
@@ -128,7 +128,7 @@ public:
 };
 
 // Copied from: https://github.com/ryangraham/hiredis-boostasio-adapter/blob/master/boostasio.cpp
-class Connection
+class Connection : std::enable_shared_from_this<Connection>
 {
 public:
 	explicit Connection(
@@ -136,7 +136,6 @@ public:
 		const std::string& host = "localhost",
 		unsigned short port = 6379
 	);
-
 	~Connection();
 
 	template <typename Callback, typename... Args>
