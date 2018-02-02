@@ -12,13 +12,16 @@
 
 #include <catch.hpp>
 
-#include "util/Configuration.hh"
-#include "crypto/Random.hh"
 #include "hrb/Server.hh"
+#include "hrb/BlobObject.hh"
+
+#include "crypto/Random.hh"
+#include "util/Configuration.hh"
 
 #include <iostream>
 #include <fstream>
 #include <boost/beast/core/flat_buffer.hpp>
+#include <boost/beast/core/buffers_to_string.hpp>
 
 using namespace hrb;
 
@@ -36,7 +39,7 @@ auto flatten_content(http::response<Body, http::basic_fields<Allocator>>&& res)
 	boost::beast::flat_buffer fbuf;
 
 	// Spend a lot of time to get this line to compile...
-	typename http::request<Body, http::basic_fields<Allocator>>::body_type::writer writer{res};
+	typename http::response<Body, http::basic_fields<Allocator>>::body_type::writer writer{res};
 	while (auto buf = writer.get(ec))
 	{
 		if (!ec)
@@ -45,6 +48,8 @@ auto flatten_content(http::response<Body, http::basic_fields<Allocator>>&& res)
 			buffer_copy(fbuf.prepare(size), buf->first);
 			fbuf.commit(size);
 		}
+		if (ec || !buf->second)
+			break;
 	}
 	return fbuf;
 }
@@ -90,8 +95,8 @@ private:
 class FileResponseChecker
 {
 public:
-	FileResponseChecker(http::status status, std::string_view filename, boost::filesystem::path web_root) :
-		m_status{status}, m_filename{filename}, m_web_root{web_root}
+	FileResponseChecker(http::status status, boost::filesystem::path file) :
+		m_status{status}, m_file{file}
 	{
 	}
 
@@ -100,7 +105,7 @@ public:
 	{
 		REQUIRE(res.result() == http::status::ok);
 		auto content = flatten_content(std::move(res));
-		REQUIRE(check_file_content(m_web_root / m_filename, content.data()));
+		REQUIRE(check_file_content(m_file, content.data()));
 
 		m_tested = true;
 	}
@@ -109,8 +114,7 @@ public:
 
 private:
 	http::status m_status;
-	std::string  m_filename;
-	boost::filesystem::path m_web_root;
+	boost::filesystem::path m_file;
 
 	mutable bool m_tested{false};
 };
@@ -131,7 +135,7 @@ TEST_CASE("GET static resource", "[normal]")
 
 	SECTION("requesting something not exist")
 	{
-		FileResponseChecker checker{http::status::ok, "login.html", cfg.web_root()};
+		FileResponseChecker checker{http::status::ok, cfg.web_root()/"login.html"};
 
 		req.target("/something_not_exist.html");
 		subject.handle_https(std::move(req), std::ref(checker));
@@ -140,7 +144,7 @@ TEST_CASE("GET static resource", "[normal]")
 
 	SECTION("Only allow login with POST: redirect GET request to login.html")
 	{
-		FileResponseChecker checker{http::status::ok, "login.html", cfg.web_root()};
+		FileResponseChecker checker{http::status::ok, cfg.web_root()/"login.html"};
 
 		req.target("/login");
 		subject.handle_https(std::move(req), std::ref(checker));
@@ -176,7 +180,7 @@ TEST_CASE("GET static resource", "[normal]")
 
 	SECTION("requesting other resources")
 	{
-		FileResponseChecker checker{http::status::ok, "login.html", cfg.web_root()};
+		FileResponseChecker checker{http::status::ok, cfg.web_root()/"login.html"};
 
 		req.target("/");
 		subject.handle_https(std::move(req), std::ref(checker));
@@ -193,5 +197,22 @@ TEST_CASE("GET static resource", "[normal]")
 	{
 		req.target("/blob");
 		subject.handle_https(std::move(req), [](auto&& res){REQUIRE(res.result() == http::status::not_found);});
+	}
+
+	SECTION("requesting good blob ID")
+	{
+		FileResponseChecker checker{http::status::ok, __FILE__};
+
+		BlobObject blob{__FILE__};
+		redis::Connection db{subject.get_io_context(), cfg.redis_host(), cfg.redis_port()};
+
+		blob.save(db, [&subject, &db, &req, &checker](auto&& blob, std::error_code ec)
+		{
+			db.disconnect();
+
+			req.target("/blob/" + to_hex(blob.ID()));
+			subject.handle_https(std::move(req), std::ref(checker));
+		});
+		subject.get_io_context().run();
 	}
 }
