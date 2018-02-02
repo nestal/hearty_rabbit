@@ -30,7 +30,11 @@ class Connection;
 
 // If use a typedef (or using), then the argument-dependent lookup (ADL) will not
 // work for operator<<
-struct ObjectID : std::array<unsigned char, object_id_size>{ using array::array; };
+struct ObjectID : std::array<unsigned char, object_id_size>
+{
+	using array::array;
+	explicit ObjectID(const array& ar) : array{ar} {}
+};
 
 static_assert(std::is_standard_layout<ObjectID>::value);
 static_assert(sizeof(ObjectID) == object_id_size);

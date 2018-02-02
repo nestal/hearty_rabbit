@@ -12,7 +12,7 @@
 
 #include "BlobObject.hh"
 
-#include "crypto/EVPWrapper.hh"
+#include "crypto/SHA3.hh"
 #include "net/Redis.hh"
 #include "util/Error.hh"
 #include "util/Magic.hh"
@@ -63,28 +63,13 @@ void BlobObject::open(const boost::filesystem::path& path, const ObjectID* id, s
 
 ObjectID BlobObject::hash(std::string_view blob)
 {
-	auto ctx = NewHashCTX();
-	::EVP_DigestInit_ex(ctx.get(), ::EVP_sha512(), nullptr);
+	evp::SHA3 sha3;
 
 	std::uint64_t size = blob.size();
-	::EVP_DigestUpdate(ctx.get(), &size, sizeof(size));
-	::EVP_DigestUpdate(ctx.get(), blob.data(), blob.size());
+	sha3.update(&size, sizeof(size));
+	sha3.update(blob.data(), blob.size());
 
-	unsigned out_size = 0;
-
-	ObjectID result{};
-	if constexpr (result.size() == EVP_MAX_MD_SIZE)
-	{
-		::EVP_DigestFinal_ex(ctx.get(), &result[0], &out_size);
-	}
-	else
-	{
-		std::array<unsigned char, EVP_MAX_MD_SIZE> hash{};
-		::EVP_DigestFinal_ex(ctx.get(), &hash[0], &out_size);
-		assert(out_size == result.size());
-		::memcpy(&result[0], hash.data(), out_size);
-	}
-	return result;
+	return ObjectID{sha3.finalize()};
 }
 
 void BlobObject::save(redis::Connection& db, Completion completion)
