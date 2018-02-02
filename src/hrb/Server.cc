@@ -31,7 +31,8 @@ namespace hrb {
 
 Server::Server(const Configuration& cfg) :
 	m_cfg{cfg},
-	m_ioc{static_cast<int>(std::max(1UL, cfg.thread_count()))}
+	m_ioc{static_cast<int>(std::max(1UL, cfg.thread_count()))},
+	m_db{m_ioc, m_cfg.redis_host(), m_cfg.redis_port()}
 {
 	OpenSSL_add_all_digests();
 }
@@ -43,15 +44,16 @@ void Server::on_login(const Request& req, std::function<void(http::response<http
 	{
 		auto [username, password] = find_fields({body}, "username", "password");
 
-		auto db = std::make_shared<redis::Connection>(m_ioc, m_cfg.redis_host(), m_cfg.redis_port());
+		auto db = m_db.alloc();
 		verify_user(
 			username,
 			Password{password},
 			*db,
-			[db, version=req.version(), send=std::move(send), this, keep_alive=req.keep_alive()](std::error_code ec)
+			[db, version=req.version(), send=std::move(send), this, keep_alive=req.keep_alive()](std::error_code ec) mutable
 			{
 				Log(LOG_INFO, "login result: %1% %2%", ec, ec.message());
-				db->disconnect();
+				m_db.release(std::move(db));
+				m_db.release_all();
 
 				auto&& res = redirect(ec ? "/login_incorrect.html" : "/login_correct.html", version);
 				res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
@@ -82,11 +84,14 @@ void Server::get_blob(const Request& req, std::function<void(http::response<http
 		send(set_common_fields(req, http::response<http::string_body>{http::status::not_found, req.version()}));
 	else
 	{
-		auto db = std::make_shared<redis::Connection>(m_ioc, m_cfg.redis_host(), m_cfg.redis_port());
+		auto db = m_db.alloc();
 		BlobObject::load(
 			*db, object_id,
-			[db, this, send=std::move(send), version=req.version(), keep_alive=req.keep_alive()](BlobObject& blob, std::error_code ec)
+			[db, this, send=std::move(send), version=req.version(), keep_alive=req.keep_alive()](BlobObject& blob, std::error_code ec) mutable
 			{
+				m_db.release(std::move(db));
+				m_db.release_all();
+
 				http::response<http::string_body> res{!ec ? http::status::ok : http::status::not_found, version};
 				res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
 				res.keep_alive(keep_alive);
@@ -255,6 +260,11 @@ void Server::add_user(std::string_view username, Password&& password, std::funct
 boost::asio::io_context& Server::get_io_context()
 {
 	return m_ioc;
+}
+
+void Server::disconnect_db()
+{
+	m_db.release_all();
 }
 
 } // end of namespace
