@@ -160,7 +160,11 @@ TEST_CASE("GET static resource", "[normal]")
 		req.insert(http::field::content_type, "application/x-www-form-urlencoded");
 		req.body() = "username=user&password=123";
 
-		subject.handle_https(std::move(req), std::ref(checker));
+		subject.handle_https(std::move(req), [&checker, &subject](auto&& res) mutable
+		{
+			checker(std::move(res));
+			subject.disconnect_db();
+		});
 		subject.get_io_context().run();
 
 		REQUIRE(checker.tested());
@@ -211,7 +215,11 @@ TEST_CASE("GET static resource", "[normal]")
 			db.disconnect();
 
 			req.target("/blob/" + to_hex(blob.ID()));
-			subject.handle_https(std::move(req), std::ref(checker));
+			subject.handle_https(std::move(req), [&checker, &subject](auto&& res) mutable
+			{
+				checker(std::move(res));
+				subject.disconnect_db();
+			});
 		});
 		subject.get_io_context().run();
 	}
