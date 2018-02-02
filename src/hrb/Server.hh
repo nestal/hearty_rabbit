@@ -13,7 +13,7 @@
 #pragma once
 
 #include "Request.hh"
-#include "net/Redis.hh"
+#include "DatabasePool.hh"
 
 #include <boost/filesystem/path.hpp>
 #include <boost/beast/http/fields.hpp>
@@ -81,6 +81,7 @@ public:
 		return std::move(res);
 	}
 
+	void disconnect_db();
 	void run();
 	boost::asio::io_context& get_io_context();
 
@@ -100,8 +101,7 @@ private:
 	const Configuration&    m_cfg;
 	boost::asio::io_context m_ioc;
 
-	std::mutex m_redis_mx;
-	std::list<redis::Connection> m_redis_pool;
+	DatabasePool    m_db;
 };
 
 } // end of namespace
