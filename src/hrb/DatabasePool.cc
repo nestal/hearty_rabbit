@@ -42,10 +42,19 @@ void DatabasePool::release(std::shared_ptr<redis::Connection>&& conn)
 void DatabasePool::release_all()
 {
 	std::unique_lock<std::mutex> lock{m_mx};
+	// disconnect() will post callbacks to the io_context. Do not delete the
+	// Connection objects before these callbacks have been run.
 	for (auto&& db : m_pool)
 		db->disconnect();
+	auto pool = std::move(m_pool);
+	lock.unlock();
 
-	m_ioc.post([this]{m_pool.clear();});
+	// The io_context will execute m_pool.clear() after all the disconnect
+	// callbacks have been finished.
+	m_ioc.post([pool=std::move(pool)]() mutable
+	{
+		pool.clear();
+	});
 }
 
 } // end of namespace hrb
