@@ -53,7 +53,6 @@ void Server::on_login(const Request& req, std::function<void(http::response<http
 			{
 				Log(LOG_INFO, "login result: %1% %2%", ec, ec.message());
 				m_db.release(std::move(db));
-				m_db.release_all();
 
 				auto&& res = redirect(ec ? "/login_incorrect.html" : "/login_correct.html", version);
 				res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
@@ -90,7 +89,6 @@ void Server::get_blob(const Request& req, std::function<void(http::response<http
 			[db, this, send=std::move(send), version=req.version(), keep_alive=req.keep_alive()](BlobObject& blob, std::error_code ec) mutable
 			{
 				m_db.release(std::move(db));
-				m_db.release_all();
 
 				http::response<http::string_body> res{!ec ? http::status::ok : http::status::not_found, version};
 				res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
