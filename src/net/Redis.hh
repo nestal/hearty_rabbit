@@ -216,6 +216,12 @@ public:
 	{
 		m_socket.connect(remote);
 	}
+	Connection2(Connection2&&) = delete;
+	Connection2(const Connection2&) = delete;
+	~Connection2();
+
+	Connection2& operator=(Connection2&&) = delete;
+	Connection2& operator=(const Connection2&) = delete;
 
 	template <typename Completion, typename... Args>
 	void command(Completion&& completion, Args... args)
