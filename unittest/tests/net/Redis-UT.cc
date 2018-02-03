@@ -136,7 +136,7 @@ public:
 	Connection2(boost::asio::io_context& ioc, const boost::asio::ip::tcp::endpoint& remote) :
 		m_ioc{ioc}, m_socket{m_ioc}
 	{
-		m_socket.async_connect(remote, [](boost::system::error_code ec){});
+		m_socket.connect(remote);
 	}
 
 	template <typename Completion, typename... Args>
@@ -149,18 +149,22 @@ public:
 		async_write(m_socket, boost::asio::buffer(cmd, len), [this, cmd](auto ec, std::size_t bytes)
 		{
 			::redisFreeCommand(cmd);
+
 			if (!ec)
-				async_read(
-					m_socket,
+			{
+				std::cout << "async reading " << ec << std::endl;
+				m_socket.async_read_some(
 					boost::asio::buffer(m_read_buf),
-					[this](auto ec, auto read){on_read(ec, read);}
+					[this](auto ec, auto read){ on_read(ec, read); }
 				);
+			}
 		});
 	}
 
 private:
 	void on_read(boost::system::error_code ec, std::size_t bytes)
 	{
+		std::cout << "read " << bytes << " bytes: " << std::string_view{m_read_buf, bytes} << std::endl;
 		if (!ec)
 		{
 			::redisReaderFeed(m_reader, m_read_buf, bytes);
@@ -174,8 +178,7 @@ private:
 				m_callbacks.pop_front();
 			}
 			else if (result == REDIS_OK)
-				async_read(
-					m_socket,
+				m_socket.async_read_some(
 					boost::asio::buffer(m_read_buf),
 					[this](auto ec, auto read){on_read(ec, read);}
 				);
@@ -196,34 +199,11 @@ TEST_CASE("custom redis", "[normal]")
 {
 	using namespace boost::asio;
 	boost::asio::io_context ioc;
-	boost::asio::ip::tcp::socket conn{ioc};
-	conn.connect({ip::make_address("127.0.0.1"), 6379});
+	Connection2 conn{ioc, {ip::make_address("127.0.0.1"), 6379}};
 
-	auto reader = ::redisReaderCreate();
-
-	char *cmd;
-	auto len = ::redisFormatCommand(&cmd, "SET key 1001");
-	conn.send(buffer(cmd, len));
-
-	char read_buf[1024];
-	const std::size_t buf_size = sizeof(read_buf);
-	boost::system::error_code ec;
-	auto count = conn.read_some(buffer(read_buf), ec);
-	if (count > 0)
+	conn.command([](hrb::redis::Reply reply)
 	{
-		std::cout << "count = " << count << std::endl;
-		::redisReply *reply{};
-
-		::redisReaderFeed(reader, read_buf, count);
-		auto result = ::redisReaderGetReply(reader, (void**)&reply);
-		std::cout << "result = " << result << std::endl;
-
-		if (result == REDIS_OK && reply)
-		{
-			hrb::redis::Reply hreply{reply};
-			std::cout << hreply.as_status() << std::endl;
-		}
-	}
-
-//	ioc.run();
+		std::cout << "reply = " << reply.as_status() << std::endl;
+	}, "SET key 1001");
+	ioc.run();
 }
