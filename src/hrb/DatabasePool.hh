@@ -13,6 +13,8 @@
 #pragma once
 
 #include "net/Redis.hh"
+
+#include <boost/asio/ip/tcp.hpp>
 #include <vector>
 #include <mutex>
 
@@ -21,7 +23,7 @@ namespace hrb {
 class DatabasePool
 {
 public:
-	DatabasePool(std::string_view host, unsigned short port);
+	DatabasePool(const boost::asio::ip::tcp::endpoint& remote);
 
 	std::shared_ptr<redis::Connection> alloc(boost::asio::io_context& ioc);
 	void release(std::shared_ptr<redis::Connection>&& conn);
@@ -29,8 +31,7 @@ public:
 	void release_all();
 
 private:
-	std::string m_host;
-	unsigned short m_port;
+	boost::asio::ip::tcp::endpoint m_remote;
 
 	std::vector<std::shared_ptr<redis::Connection>> m_pool;
 	std::mutex  m_mx;

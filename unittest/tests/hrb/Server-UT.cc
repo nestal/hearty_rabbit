@@ -208,7 +208,7 @@ TEST_CASE("GET static resource", "[normal]")
 		FileResponseChecker checker{http::status::ok, __FILE__};
 
 		BlobObject blob{__FILE__};
-		auto db = redis::connect(subject.get_io_context(), cfg.redis_host(), cfg.redis_port());
+		auto db = redis::connect(subject.get_io_context(), cfg.redis());
 
 		blob.save(*db, [&subject, db, &req, &checker](auto&& blob, std::error_code ec)
 		{

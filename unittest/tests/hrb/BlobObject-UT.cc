@@ -46,7 +46,7 @@ TEST_CASE("Load BlobObject from file", "[normal]")
 	}
 
 	boost::asio::io_context ioc;
-	auto db = connect(ioc, "localhost", 6379);
+	auto db = connect(ioc);
 
 	std::bitset<2> tested{};
 
@@ -113,7 +113,7 @@ TEST_CASE("Load BlobObject from file", "[normal]")
 TEST_CASE("Load non-exist BlobObject from redis", "[error]")
 {
 	boost::asio::io_context ioc;
-	auto db = connect(ioc, "localhost", 6379);
+	auto db = connect(ioc);
 
 	bool tested = false;
 

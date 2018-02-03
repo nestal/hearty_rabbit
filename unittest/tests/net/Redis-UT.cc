@@ -26,7 +26,7 @@ using namespace hrb::redis;
 TEST_CASE("redis server not started", "[normal]")
 {
 	boost::asio::io_context ioc;
-	auto redis = connect(ioc, "localhost", 1); // assume no one listen to this port
+	auto redis = connect(ioc, {boost::asio::ip::make_address("127.0.0.1"), 1}); // assume no one listen to this port
 
 	bool tested = false;
 
@@ -45,7 +45,7 @@ TEST_CASE("redis server not started", "[normal]")
 TEST_CASE("simple redis", "[normal]")
 {
 	boost::asio::io_context ioc;
-	auto redis = connect(ioc, "localhost", 6379);
+	auto redis = connect(ioc);
 
 	auto tested = 0;
 
@@ -79,7 +79,7 @@ TEST_CASE("simple redis", "[normal]")
 		REQUIRE(ioc.run_for(10s) > 0);
 		REQUIRE(tested == 3);
 	}
-	SECTION("test array as map")
+/*	SECTION("test array as map")
 	{
 		redis->command([redis, &tested](auto reply, auto&& ec)
 		{
@@ -126,18 +126,5 @@ TEST_CASE("simple redis", "[normal]")
 		using namespace std::chrono_literals;
 		REQUIRE(ioc.run_for(10s) > 0);
 		REQUIRE(tested == 3);
-	}
-}
-
-TEST_CASE("custom redis", "[normal]")
-{
-	using namespace boost::asio;
-	boost::asio::io_context ioc;
-	Connection2 conn{ioc, {ip::make_address("127.0.0.1"), 6379}};
-
-	conn.command([](hrb::redis::Reply reply, std::error_code ec)
-	{
-		std::cout << "reply = " << reply.as_status() << std::endl;
-	}, "SET key 1001");
-	ioc.run();
+	}*/
 }
