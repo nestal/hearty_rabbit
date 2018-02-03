@@ -76,7 +76,11 @@ private:
 	boost::program_options::options_description m_desc{"Allowed options"};
 	boost::program_options::variables_map       m_args;
 
-	boost::asio::ip::tcp::endpoint m_listen_http, m_listen_https, m_redis;
+	boost::asio::ip::tcp::endpoint m_listen_http, m_listen_https;
+	boost::asio::ip::tcp::endpoint m_redis{
+		boost::asio::ip::make_address("127.0.0.1"),
+		6379
+	};
 
 	boost::filesystem::path m_cert_chain, m_private_key;
 	boost::filesystem::path m_root;
