@@ -15,50 +15,56 @@
 
 namespace hrb {
 
-DatabasePool::DatabasePool(boost::asio::io_context& ioc, std::string_view host, unsigned short port) :
-	m_ioc{ioc},
+DatabasePool::DatabasePool(std::string_view host, unsigned short port) :
 	m_host{host},
 	m_port{port}
 {
 }
 
-std::shared_ptr<redis::Connection> DatabasePool::alloc()
+std::shared_ptr<redis::Connection> DatabasePool::alloc(boost::asio::io_context& ioc)
 {
 	std::unique_lock<std::mutex> lock{m_mx};
 
 	if (m_pool.empty())
-		return std::make_shared<redis::Connection>(m_ioc, m_host, m_port);
+		return std::make_shared<redis::Connection>(ioc, m_host, m_port);
 
 	// TODO: release the mutex before logging
 	Log(LOG_INFO, "reusing database connection (%1% left)", m_pool.size());
 
 	auto conn{std::move(m_pool.back())};
 	m_pool.pop_back();
+	assert(&conn->get_io_context() == &ioc);
 	return conn;
 }
 
 void DatabasePool::release(std::shared_ptr<redis::Connection>&& conn)
 {
 	std::unique_lock<std::mutex> lock{m_mx};
+	assert(m_pool.empty() || &m_pool.front()->get_io_context() == &conn->get_io_context());
 	m_pool.push_back(std::move(conn));
 }
 
 void DatabasePool::release_all()
 {
-	std::unique_lock<std::mutex> lock{m_mx};
 	// disconnect() will post callbacks to the io_context. Do not delete the
 	// Connection objects before these callbacks have been run.
-	for (auto&& db : m_pool)
-		db->disconnect();
+	std::unique_lock<std::mutex> lock{m_mx};
 	auto pool = std::move(m_pool);
 	lock.unlock();
 
 	// The io_context will execute m_pool.clear() after all the disconnect
 	// callbacks have been finished.
-	m_ioc.post([pool=std::move(pool)]() mutable
+	if (!pool.empty())
 	{
-		pool.clear();
-	});
+		for (auto&& db : m_pool)
+			db->disconnect();
+
+		auto&& ioc = pool.front()->get_io_context();
+		ioc.post([pool=std::move(pool)]() mutable
+		{
+			pool.clear();
+		});
+	}
 }
 
 } // end of namespace hrb

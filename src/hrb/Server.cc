@@ -32,7 +32,7 @@ namespace hrb {
 Server::Server(const Configuration& cfg) :
 	m_cfg{cfg},
 	m_ioc{static_cast<int>(std::max(1UL, cfg.thread_count()))},
-	m_db{m_ioc, m_cfg.redis_host(), m_cfg.redis_port()}
+	m_db{m_cfg.redis_host(), m_cfg.redis_port()}
 {
 	OpenSSL_add_all_digests();
 }
@@ -44,7 +44,7 @@ void Server::on_login(const Request& req, std::function<void(http::response<http
 	{
 		auto [username, password] = find_fields({body}, "username", "password");
 
-		auto db = m_db.alloc();
+		auto db = m_db.alloc(m_ioc);
 		verify_user(
 			username,
 			Password{password},
@@ -83,7 +83,7 @@ void Server::get_blob(const Request& req, std::function<void(http::response<http
 		send(set_common_fields(req, http::response<http::string_body>{http::status::not_found, req.version()}));
 	else
 	{
-		auto db = m_db.alloc();
+		auto db = m_db.alloc(m_ioc);
 		BlobObject::load(
 			*db, object_id,
 			[db, this, send=std::move(send), version=req.version(), keep_alive=req.keep_alive()](BlobObject& blob, std::error_code ec) mutable
@@ -246,11 +246,23 @@ void Server::drop_privileges()
 
 void Server::add_user(std::string_view username, Password&& password, std::function<void(std::error_code)> complete)
 {
-	redis::Connection db{m_ioc, m_cfg.redis_host(), m_cfg.redis_port()};
-	hrb::add_user(username, std::move(password), db, [&db, &complete](std::error_code&& ec)
+	auto db = m_db.alloc(m_ioc);
+	hrb::add_user(username, std::move(password), *db, [db, &complete](std::error_code&& ec)
 	{
 		complete(std::move(ec));
-		db.disconnect();
+		db->disconnect();
+	});
+	m_ioc.run();
+}
+
+void Server::add_blob(const boost::filesystem::path& path, std::function<void(BlobObject&, std::error_code)> complete)
+{
+	auto db = m_db.alloc(m_ioc);
+	BlobObject blob{path};
+	blob.save(*db, [db, complete=std::move(complete)](BlobObject& blob, std::error_code&& ec)
+	{
+		complete(blob, ec);
+		db->disconnect();
 	});
 	m_ioc.run();
 }

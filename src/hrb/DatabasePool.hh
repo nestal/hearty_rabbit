@@ -21,15 +21,14 @@ namespace hrb {
 class DatabasePool
 {
 public:
-	DatabasePool(boost::asio::io_context& ioc, std::string_view host, unsigned short port);
+	DatabasePool(std::string_view host, unsigned short port);
 
-	std::shared_ptr<redis::Connection> alloc();
+	std::shared_ptr<redis::Connection> alloc(boost::asio::io_context& ioc);
 	void release(std::shared_ptr<redis::Connection>&& conn);
 
 	void release_all();
 
 private:
-	boost::asio::io_context& m_ioc;
 	std::string m_host;
 	unsigned short m_port;
 
