@@ -180,7 +180,7 @@ public:
 			callback_ptr.release();
 	}
 
-	void disconnect();
+	std::future<int> disconnect();
 
 	boost::asio::io_context& get_io_context() { return m_ioc; }
 
