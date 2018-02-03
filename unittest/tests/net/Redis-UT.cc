@@ -20,7 +20,6 @@
 #include <cassert>
 #include <chrono>
 #include <iostream>
-#include <deque>
 
 using namespace hrb::redis;
 
@@ -130,78 +129,13 @@ TEST_CASE("simple redis", "[normal]")
 	}
 }
 
-class Connection2
-{
-public:
-	Connection2(boost::asio::io_context& ioc, const boost::asio::ip::tcp::endpoint& remote) :
-		m_ioc{ioc}, m_socket{m_ioc}
-	{
-		m_socket.connect(remote);
-	}
-
-	template <typename Completion, typename... Args>
-	void command(Completion&& completion, Args... args)
-	{
-		char *cmd{};
-		auto len = ::redisFormatCommand(&cmd, args...);
-		m_callbacks.push_back(std::forward<Completion>(completion));
-
-		async_write(m_socket, boost::asio::buffer(cmd, len), [this, cmd](auto ec, std::size_t bytes)
-		{
-			::redisFreeCommand(cmd);
-
-			if (!ec)
-			{
-				std::cout << "async reading " << ec << std::endl;
-				m_socket.async_read_some(
-					boost::asio::buffer(m_read_buf),
-					[this](auto ec, auto read){ on_read(ec, read); }
-				);
-			}
-		});
-	}
-
-private:
-	void on_read(boost::system::error_code ec, std::size_t bytes)
-	{
-		std::cout << "read " << bytes << " bytes: " << std::string_view{m_read_buf, bytes} << std::endl;
-		if (!ec)
-		{
-			::redisReaderFeed(m_reader, m_read_buf, bytes);
-
-			::redisReply *reply{};
-			auto result = ::redisReaderGetReply(m_reader, (void**)&reply);
-
-			if (result == REDIS_OK && reply)
-			{
-				m_callbacks.front()(hrb::redis::Reply{reply});
-				m_callbacks.pop_front();
-			}
-			else if (result == REDIS_OK)
-				m_socket.async_read_some(
-					boost::asio::buffer(m_read_buf),
-					[this](auto ec, auto read){on_read(ec, read);}
-				);
-		}
-	}
-
-private:
-	boost::asio::io_context& m_ioc;
-	boost::asio::ip::tcp::socket m_socket;
-
-	char m_read_buf[4096];
-	::redisReader *m_reader{::redisReaderCreate()};
-
-	std::deque<std::function<void(hrb::redis::Reply)>> m_callbacks;
-};
-
 TEST_CASE("custom redis", "[normal]")
 {
 	using namespace boost::asio;
 	boost::asio::io_context ioc;
 	Connection2 conn{ioc, {ip::make_address("127.0.0.1"), 6379}};
 
-	conn.command([](hrb::redis::Reply reply)
+	conn.command([](hrb::redis::Reply reply, std::error_code ec)
 	{
 		std::cout << "reply = " << reply.as_status() << std::endl;
 	}, "SET key 1001");

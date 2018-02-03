@@ -295,4 +295,54 @@ std::error_code make_error_code(Error err)
 	return std::error_code(static_cast<int>(err), redis_error_category());
 }
 
+void Connection2::do_write(char *cmd, std::size_t len, Completion&& completion)
+{
+	async_write(
+		m_socket,
+		boost::asio::buffer(cmd, len),
+		[this, cmd, completion=std::forward<Completion>(completion)](auto ec, std::size_t bytes) mutable
+	{
+		::redisFreeCommand(cmd);
+
+		if (!ec)
+		{
+			m_callbacks.push_back(std::forward<Completion>(completion));
+			do_read();
+		}
+		else
+			completion(Reply{}, std::error_code{ec.value(), ec.category()});
+	});
+}
+
+void Connection2::do_read()
+{
+	m_socket.async_read_some(
+		boost::asio::buffer(m_read_buf),
+		[this](auto ec, auto read){ on_read(ec, read); }
+	);
+}
+void Connection2::on_read(boost::system::error_code ec, std::size_t bytes)
+{
+	if (!ec)
+	{
+		::redisReaderFeed(m_reader, m_read_buf, bytes);
+
+		::redisReply *reply{};
+		auto result = ::redisReaderGetReply(m_reader, (void**)&reply);
+
+		if (result == REDIS_OK && reply)
+		{
+			m_callbacks.front()(Reply{reply}, std::error_code{ec.value(), ec.category()});
+			m_callbacks.pop_front();
+		}
+
+		// Keep reading until all outstanding commands are finished
+		if (!m_callbacks.empty())
+			m_socket.async_read_some(
+				boost::asio::buffer(m_read_buf),
+				[this](auto ec, auto read){on_read(ec, read);}
+			);
+	}
+}
+
 }} // end of namespace

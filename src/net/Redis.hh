@@ -21,6 +21,7 @@
 #include <hiredis/hiredis.h>
 #include <hiredis/async.h>
 
+#include <deque>
 #include <memory>
 #include <string>
 
@@ -205,6 +206,44 @@ private:
 	int     m_errno{0};
 
 	std::promise<int> m_disconnected;
+};
+
+class Connection2
+{
+public:
+	Connection2(boost::asio::io_context& ioc, const boost::asio::ip::tcp::endpoint& remote) :
+		m_ioc{ioc}, m_socket{m_ioc}
+	{
+		m_socket.connect(remote);
+	}
+
+	template <typename Completion, typename... Args>
+	void command(Completion&& completion, Args... args)
+	{
+		char *cmd{};
+		auto len = ::redisFormatCommand(&cmd, args...);
+
+		if (len > 0)
+			do_write(cmd, static_cast<std::size_t>(len), std::forward<Completion>(completion));
+		else
+			completion(Reply{}, Error::protocol);
+	}
+
+private:
+	using Completion = std::function<void(hrb::redis::Reply, std::error_code)>;
+
+	void do_write(char *cmd, std::size_t len, Completion&& completion);
+	void do_read();
+	void on_read(boost::system::error_code ec, std::size_t bytes);
+
+private:
+	boost::asio::io_context& m_ioc;
+	boost::asio::ip::tcp::socket m_socket;
+
+	char m_read_buf[4096];
+	::redisReader *m_reader{::redisReaderCreate()};
+
+	std::deque<Completion> m_callbacks;
 };
 
 }} // end of namespace
