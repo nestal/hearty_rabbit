@@ -15,6 +15,7 @@
 
 #include "util/Backtrace.hh"
 #include "util/Error.hh"
+#include "util/Log.hh"
 
 #include <boost/exception/info.hpp>
 #include <boost/exception/errinfo_api_function.hpp>
@@ -51,20 +52,11 @@ void Connection::do_write(CommandString&& cmd, Completion&& completion)
 		buffer,
 		[this, cmd=std::move(cmd), completion=std::move(completion)](auto ec, std::size_t bytes) mutable
 	{
-		std::cout << ec.message() << ": command sent" << std::endl;
-
 		if (!ec)
 		{
 			m_callbacks.push_back(std::move(completion));
 			if (m_callbacks.size() == 1)
-			{
-				std::cout << "proceed to read: " << std::endl;
 				do_read();
-			}
-			else
-			{
-				std::cout << "already have " << m_callbacks.size() << " commands pending. no need to read." << std::endl;
-			}
 		}
 		else
 			completion(Reply{}, std::error_code{ec.value(), ec.category()});
@@ -88,9 +80,9 @@ void Connection::on_read(boost::system::error_code ec, std::size_t bytes)
 		::redisReply *reply{};
 		auto result = ::redisReaderGetReply(m_reader, (void**)&reply);
 
+		// Extract all replies from the
 		while (!m_callbacks.empty() && result == REDIS_OK && reply)
 		{
-			std::cout << "reply received!" << std::endl;
 			m_callbacks.front()(Reply{reply}, std::error_code{ec.value(), ec.category()});
 			m_callbacks.pop_front();
 
@@ -99,18 +91,11 @@ void Connection::on_read(boost::system::error_code ec, std::size_t bytes)
 
 		// Keep reading until all outstanding commands are finished
 		if (!m_callbacks.empty())
-		{
-			std::cout << "have " << m_callbacks.size() << " commands pending. proceed to read more." << std::endl;
 			do_read();
-		}
-		else
-		{
-			std::cout << "no more commands pending. no need to read." << std::endl;
-		}
 	}
 	else
 	{
-		std::cout << "oops! " << ec << " " << ec.message() << std::endl;
+		Log(LOG_WARNING, "redis read error: %1% (%2%)", ec, ec.message());
 	}
 }
 
