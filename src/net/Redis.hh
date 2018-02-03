@@ -187,6 +187,9 @@ private:
 
 	Error   m_conn_error{Error::ok};
 	int     m_errno{0};
+
+	std::promise<void> m_disconnected_promise;
+	std::future<void>  m_disconnected_future{m_disconnected_promise.get_future()};
 };
 
 }} // end of namespace

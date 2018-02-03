@@ -69,15 +69,23 @@ Connection::Connection(boost::asio::io_context& bic, const std::string& host, un
 		m_ctx, [](const redisAsyncContext *ctx, int status)
 		{
 			if (status == REDIS_ERR)
+			{
+				std::cout << "connect callback error: " << (void*)ctx->ev.data << " " <<  status << std::endl;
 				static_cast<Connection *>(ctx->ev.data)->on_connect_error(ctx);
+			}
 		}
 	);
 	::redisAsyncSetDisconnectCallback(
 		m_ctx, [](const redisAsyncContext *ctx, int status)
 		{
+			auto pthis = static_cast<Connection *>(ctx->ev.data);
+			std::cout << "inside disconnect callback: " << (void*)pthis << std::endl;
+
+			pthis->m_disconnected_promise.set_value();
+
 			// The caller will free the context anyway, so set our own context to nullptr
 			// to avoid double free
-			static_cast<Connection *>(ctx->ev.data)->m_ctx = nullptr;
+			pthis->m_ctx = nullptr;
 		}
 	);
 }
@@ -89,14 +97,22 @@ void Connection::on_connect_error(const redisAsyncContext *ctx)
 	if (m_conn_error == Error::io)
 		m_errno = errno;
 
+	m_disconnected_promise.set_value();
 	m_ctx = nullptr;
 }
 
 
 Connection::~Connection()
 {
+	std::cout << "dtor: " << (void*)this << " " << m_ctx << std::endl;
+
 	if (m_ctx)
+	{
+		std::cout << "dtor: " << (void*)this << " err = " << m_ctx->err << std::endl;
 		::redisAsyncDisconnect(m_ctx);
+	}
+	m_disconnected_future.get();
+	std::cout << "disconnected in dtor: " << (void*)this << " " << m_ctx << std::endl;
 }
 
 void Connection::run()
