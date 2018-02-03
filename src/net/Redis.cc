@@ -26,7 +26,16 @@
 namespace hrb {
 namespace redis {
 
-Connection::Connection(boost::asio::io_context& bic, const std::string& host, unsigned short port) :
+std::shared_ptr<Connection> connect(
+	boost::asio::io_context& bic,
+	const std::string& host,
+	unsigned short port
+)
+{
+	return std::make_shared<Connection>(Connection::Token{}, bic, host, port);
+}
+
+Connection::Connection(Token, boost::asio::io_context& bic, const std::string& host, unsigned short port) :
 	m_ioc{bic},
 	m_socket{m_ioc},
 	m_strand{m_socket.get_executor()},
@@ -81,26 +90,27 @@ Connection::Connection(boost::asio::io_context& bic, const std::string& host, un
 			auto pthis = static_cast<Connection *>(ctx->ev.data);
 			std::cout << "inside disconnect callback: " << (void*)pthis << std::endl;
 
-			pthis->m_disconnected_promise.set_value();
-
 			// The caller will free the context anyway, so set our own context to nullptr
 			// to avoid double free
 			pthis->m_ctx = nullptr;
+
+			pthis->m_disconnected.set_value(status);
 		}
 	);
 }
 
 void Connection::on_connect_error(const redisAsyncContext *ctx)
 {
-	// save the error enum and errno so that the next command() will return it
+	// Save the error enum and errno so that the next command() will return it
 	m_conn_error = static_cast<Error>(ctx->c.err);
 	if (m_conn_error == Error::io)
 		m_errno = errno;
-
-	m_disconnected_promise.set_value();
 	m_ctx = nullptr;
-}
 
+	// If connect failed, the disconnect callback will not be called. Therefore
+	// must set the promise so that the destructor will not block.
+	m_disconnected.set_value(ctx->c.err);
+}
 
 Connection::~Connection()
 {
@@ -111,7 +121,7 @@ Connection::~Connection()
 		std::cout << "dtor: " << (void*)this << " err = " << m_ctx->err << std::endl;
 		::redisAsyncDisconnect(m_ctx);
 	}
-	m_disconnected_future.get();
+	m_disconnected.get_future().get();
 	std::cout << "disconnected in dtor: " << (void*)this << " " << m_ctx << std::endl;
 }
 

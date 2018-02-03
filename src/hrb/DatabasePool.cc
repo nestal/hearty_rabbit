@@ -26,7 +26,7 @@ std::shared_ptr<redis::Connection> DatabasePool::alloc(boost::asio::io_context& 
 	std::unique_lock<std::mutex> lock{m_mx};
 
 	if (m_pool.empty())
-		return std::make_shared<redis::Connection>(ioc, m_host, m_port);
+		return redis::connect(ioc, m_host, m_port);
 
 	// TODO: release the mutex before logging
 	Log(LOG_INFO, "reusing database connection (%1% left)", m_pool.size());
