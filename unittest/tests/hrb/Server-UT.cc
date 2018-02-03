@@ -217,6 +217,7 @@ TEST_CASE("GET static resource", "[normal]")
 			req.target("/blob/" + to_hex(blob.ID()));
 			subject.handle_https(std::move(req), [&checker, &subject](auto&& res) mutable
 			{
+				REQUIRE(res.at(http::field::content_type) == "text/x-c++");
 				checker(std::move(res));
 				subject.disconnect_db();
 			});

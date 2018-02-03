@@ -92,6 +92,7 @@ void Server::get_blob(const Request& req, std::function<void(http::response<http
 
 				http::response<http::string_body> res{!ec ? http::status::ok : http::status::not_found, version};
 				res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
+				res.set(http::field::content_type, blob.mime());
 				res.keep_alive(keep_alive);
 				if (!ec)
 					res.body() = blob.blob();
