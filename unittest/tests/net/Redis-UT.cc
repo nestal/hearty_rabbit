@@ -23,12 +23,12 @@ using namespace hrb::redis;
 TEST_CASE("redis server not started", "[normal]")
 {
 	boost::asio::io_context ioc;
-	Connection redis{ioc, "localhost", 1}; // assume no one listen to this port
+	auto redis = connect(ioc, "localhost", 1); // assume no one listen to this port
 
 	bool tested = false;
 
 	// need to write something otherwise hiredis does not detect error
-	redis.command([&tested](auto, auto&& ec)
+	redis->command([&tested](auto, auto&& ec)
 	{
 		REQUIRE(ec == Error::io);
 		tested = true;
@@ -42,16 +42,16 @@ TEST_CASE("redis server not started", "[normal]")
 TEST_CASE("simple redis", "[normal]")
 {
 	boost::asio::io_context ioc;
-	Connection redis{ioc, "localhost", 6379};
+	auto redis = connect(ioc, "localhost", 6379);
 
 	auto tested = 0;
 
-	redis.command([&tested](auto, auto) {tested++;}, "SET key %d", 100);
+	redis->command([&tested](auto, auto) {tested++;}, "SET key %d", 100);
 
 	SECTION("test sequencial")
 	{
-		redis.command(
-			[&redis, &tested](auto reply, auto&& ec)
+		redis->command(
+			[redis, &tested](auto reply, auto&& ec)
 			{
 				REQUIRE(!ec);
 
@@ -60,13 +60,13 @@ TEST_CASE("simple redis", "[normal]")
 
 				REQUIRE(reply.as_string() == "100");
 
-				redis.command(
-					[&redis, &tested](auto reply, auto)
+				redis->command(
+					[redis, &tested](auto reply, auto)
 					{
 						REQUIRE(tested++ == 2);
 						REQUIRE(reply.as_int() == 1);
 
-						redis.disconnect();
+						redis->disconnect();
 					}, "DEL key"
 				);
 			}, "GET key"
@@ -78,12 +78,12 @@ TEST_CASE("simple redis", "[normal]")
 	}
 	SECTION("test array as map")
 	{
-		redis.command([&redis, &tested](auto reply, auto&& ec)
+		redis->command([redis, &tested](auto reply, auto&& ec)
 		{
 			REQUIRE(!ec);
 			REQUIRE(tested++ == 1);
 
-			redis.command([&redis, &tested](Reply reply, auto&& ec)
+			redis->command([redis, &tested](Reply reply, auto&& ec)
 			{
 				REQUIRE(!ec);
 				REQUIRE(tested++ == 2);
@@ -115,7 +115,7 @@ TEST_CASE("simple redis", "[normal]")
 					REQUIRE(result[3] == "value2");
 				}
 
-				redis.disconnect();
+				redis->disconnect();
 			}, "HGETALL test_hash");
 
 		}, "HSET test_hash field1 value1 field2 value2");

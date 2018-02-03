@@ -127,11 +127,27 @@ public:
 	Reply dereference() const { return Reply(*base()); }
 };
 
+class Connection;
+std::shared_ptr<Connection> connect(
+	boost::asio::io_context& bic,
+	const std::string& host = "localhost",
+	unsigned short port = 6379
+);
+
 // Copied from: https://github.com/ryangraham/hiredis-boostasio-adapter/blob/master/boostasio.cpp
 class Connection : std::enable_shared_from_this<Connection>
 {
+private:
+	struct Token {};
+
 public:
+	friend std::shared_ptr<Connection> connect(
+		boost::asio::io_context& bic,
+		const std::string& host,
+		unsigned short port
+	);
 	explicit Connection(
+		Token,
 		boost::asio::io_context& bic,
 		const std::string& host = "localhost",
 		unsigned short port = 6379
@@ -188,8 +204,7 @@ private:
 	Error   m_conn_error{Error::ok};
 	int     m_errno{0};
 
-	std::promise<void> m_disconnected_promise;
-	std::future<void>  m_disconnected_future{m_disconnected_promise.get_future()};
+	std::promise<int> m_disconnected;
 };
 
 }} // end of namespace

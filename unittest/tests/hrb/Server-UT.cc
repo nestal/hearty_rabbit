@@ -208,11 +208,11 @@ TEST_CASE("GET static resource", "[normal]")
 		FileResponseChecker checker{http::status::ok, __FILE__};
 
 		BlobObject blob{__FILE__};
-		redis::Connection db{subject.get_io_context(), cfg.redis_host(), cfg.redis_port()};
+		auto db = redis::connect(subject.get_io_context(), cfg.redis_host(), cfg.redis_port());
 
-		blob.save(db, [&subject, &db, &req, &checker](auto&& blob, std::error_code ec)
+		blob.save(*db, [&subject, db, &req, &checker](auto&& blob, std::error_code ec)
 		{
-			db.disconnect();
+			db->disconnect();
 
 			req.target("/blob/" + to_hex(blob.ID()));
 			subject.handle_https(std::move(req), [&checker, &subject](auto&& res) mutable
