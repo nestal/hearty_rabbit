@@ -129,7 +129,6 @@ void BlobObject::load(redis::Connection& db, const ObjectID& id, Completion comp
 
 
 			callback(result, ec);
-
 		},
 		"HGETALL %b%b",
 		object_redis_key_prefix.data(), object_redis_key_prefix.size(),

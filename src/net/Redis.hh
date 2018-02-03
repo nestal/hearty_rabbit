@@ -12,7 +12,6 @@
 
 #pragma once
 
-#include "util/Exception.hh"
 #include "util/RepeatingTuple.hh"
 
 #include <boost/asio.hpp>
@@ -21,6 +20,7 @@
 #include <hiredis/hiredis.h>
 #include <hiredis/async.h>
 
+#include <deque>
 #include <memory>
 #include <string>
 
@@ -127,66 +127,102 @@ public:
 	Reply dereference() const { return Reply(*base()); }
 };
 
-// Copied from: https://github.com/ryangraham/hiredis-boostasio-adapter/blob/master/boostasio.cpp
-class Connection : std::enable_shared_from_this<Connection>
+class CommandString
 {
 public:
-	explicit Connection(
-		boost::asio::io_context& bic,
-		const std::string& host = "localhost",
-		unsigned short port = 6379
-	);
-	~Connection();
-
-	template <typename Callback, typename... Args>
-	void command(Callback&& callback, const char *fmt, Args... args)
+	template <typename... Args>
+	CommandString(Args... args) : m_length{::redisFormatCommand(&m_cmd, args...)}
 	{
-		using CallbackType = std::remove_reference_t<Callback>;
-
-		auto callback_ptr = std::make_unique<CallbackType>(std::forward<Callback>(callback));
-		auto r = m_ctx ? ::redisAsyncCommand(
-			m_ctx, [](redisAsyncContext *ctx, void *pv_reply, void *pv_callback)
-			{
-				std::error_code ec{static_cast<Error>(ctx->err)};
-
-				Reply reply{static_cast<redisReply *>(pv_reply)};
-				if (!reply && !ec)
-					ec = Error::command_error;
-
-				std::unique_ptr<CallbackType> callback{static_cast<CallbackType *>(pv_callback)};
-				(*callback)(reply, std::move(ec));
-			}, callback_ptr.get(), fmt, args...
-		) : REDIS_ERR;
-
-		if (r == REDIS_ERR)
-			callback(Reply{}, std::error_code{m_ctx ? static_cast<Error>(m_ctx->err) : m_conn_error});
-		else
-			callback_ptr.release();
+		if (m_length < 0)
+			throw std::logic_error("invalid command string");
 	}
+	CommandString(CommandString&& other);
+	CommandString(const CommandString&) = delete;
+	~CommandString();
+	CommandString& operator=(CommandString&& other);
+	CommandString& operator=(const CommandString&) = delete;
 
-	void disconnect();
+	void swap(CommandString& other);
 
-	boost::asio::io_context& get_io_context() { return m_ioc; }
+	char* get() const {return m_cmd;}
+	std::size_t length() const {return static_cast<std::size_t>(m_length);}
+	auto buffer() const {return boost::asio::buffer(m_cmd, length());}
 
 private:
-	static redisAsyncContext *connect(const std::string& host, unsigned short port);
+	char    *m_cmd{};
+	int     m_length{};
+};
 
-	void run();
-	void on_connect_error(const redisAsyncContext *ctx);
+class Connection;
+std::shared_ptr<Connection> connect(
+	boost::asio::io_context& bic,
+	const boost::asio::ip::tcp::endpoint& remote = boost::asio::ip::tcp::endpoint{
+		boost::asio::ip::make_address("127.0.0.1"),
+		6379
+	}
+);
+
+class Connection : std::enable_shared_from_this<Connection>
+{
+private:
+	struct Token {};
+
+public:
+	friend std::shared_ptr<Connection> connect(
+		boost::asio::io_context& bic,
+		const boost::asio::ip::tcp::endpoint& remote
+	);
+
+	explicit Connection(
+		Token,
+		boost::asio::io_context& ioc,
+		const boost::asio::ip::tcp::endpoint& remote
+	);
+
+	Connection(Connection&&) = delete;
+	Connection(const Connection&) = delete;
+	~Connection();
+
+	Connection& operator=(Connection&&) = delete;
+	Connection& operator=(const Connection&) = delete;
+
+	template <typename Callback, typename... Args>
+	void command(Callback&& callback, Args... args)
+	{
+		try
+		{
+			do_write(
+				CommandString{args...},
+				[cb=std::make_shared<Callback>(std::forward<Callback>(callback))](auto r, auto ec)
+				{
+					(*cb)(r, std::move(ec));
+				}
+			);
+		}
+		catch (std::logic_error&)
+		{
+			callback(Reply{}, std::error_code{Error::protocol});
+		}
+	}
+
+	boost::asio::io_context& get_io_context() {return m_ioc;}
+	void disconnect() ;
+
+private:
+	using Completion = std::function<void(Reply, std::error_code)>;
+
+	void do_write(CommandString&& cmd, Completion&& completion);
+	void do_read();
+	void on_read(boost::system::error_code ec, std::size_t bytes);
 
 private:
 	boost::asio::io_context& m_ioc;
 	boost::asio::ip::tcp::socket m_socket;
 
-	boost::asio::strand<boost::asio::io_context::executor_type> m_strand;
+	char m_read_buf[4096];
+	::redisReader *m_reader{::redisReaderCreate()};
 
-	redisAsyncContext *m_ctx{};
-
-	bool m_reading{false}, m_writing{false};
-	bool m_request_read{false}, m_request_write{false};
-
-	Error   m_conn_error{Error::ok};
-	int     m_errno{0};
+	std::deque<Completion> m_callbacks;
 };
 
 }} // end of namespace

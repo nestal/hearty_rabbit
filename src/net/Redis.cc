@@ -15,6 +15,7 @@
 
 #include "util/Backtrace.hh"
 #include "util/Error.hh"
+#include "util/Log.hh"
 
 #include <boost/exception/info.hpp>
 #include <boost/exception/errinfo_api_function.hpp>
@@ -26,127 +27,86 @@
 namespace hrb {
 namespace redis {
 
-Connection::Connection(boost::asio::io_context& bic, const std::string& host, unsigned short port) :
-	m_ioc{bic},
-	m_socket{m_ioc},
-	m_strand{m_socket.get_executor()},
-	m_ctx{connect(host, port)}
+std::shared_ptr<Connection> connect(
+	boost::asio::io_context& bic,
+	const boost::asio::ip::tcp::endpoint& remote
+)
 {
-	assert(m_ctx);
-
-	m_socket.assign(boost::asio::ip::tcp::v4(), m_ctx->c.fd);
-
-	m_ctx->ev.data = this;
-	m_ctx->ev.addRead = [](void *pvthis)
-	{
-		assert(pvthis);
-		auto pthis = static_cast<Connection *>(pvthis);
-		pthis->m_request_read = true;
-		pthis->run();
-	};
-	m_ctx->ev.delRead = [](void *pvthis)
-	{
-		static_cast<Connection *>(pvthis)->m_request_read = false;
-	};
-	m_ctx->ev.addWrite = [](void *pvthis)
-	{
-		assert(pvthis);
-		auto pthis = static_cast<Connection *>(pvthis);
-		pthis->m_request_write = true;
-		pthis->run();
-	};
-	m_ctx->ev.delWrite = [](void *pvthis)
-	{
-		static_cast<Connection *>(pvthis)->m_request_write = false;
-	};
-	m_ctx->ev.cleanup = [](void *pvthis)
-	{
-		auto pthis = static_cast<Connection *>(pvthis);
-		if (pthis->m_socket.is_open())
-			pthis->m_socket.release();
-	};
-	::redisAsyncSetConnectCallback(
-		m_ctx, [](const redisAsyncContext *ctx, int status)
-		{
-			if (status == REDIS_ERR)
-				static_cast<Connection *>(ctx->ev.data)->on_connect_error(ctx);
-		}
-	);
-	::redisAsyncSetDisconnectCallback(
-		m_ctx, [](const redisAsyncContext *ctx, int status)
-		{
-			// The caller will free the context anyway, so set our own context to nullptr
-			// to avoid double free
-			static_cast<Connection *>(ctx->ev.data)->m_ctx = nullptr;
-		}
-	);
+	return std::make_shared<Connection>(Connection::Token{}, bic, remote);
 }
 
-void Connection::on_connect_error(const redisAsyncContext *ctx)
+Connection::Connection(
+	Token,
+	boost::asio::io_context& ioc,
+	const boost::asio::ip::tcp::endpoint& remote
+) : m_ioc{ioc}, m_socket{m_ioc}
 {
-	// save the error enum and errno so that the next command() will return it
-	m_conn_error = static_cast<Error>(ctx->c.err);
-	if (m_conn_error == Error::io)
-		m_errno = errno;
-
-	m_ctx = nullptr;
+	m_socket.connect(remote);
 }
 
+void Connection::do_write(CommandString&& cmd, Completion&& completion)
+{
+	auto buffer = cmd.buffer();
+	async_write(
+		m_socket,
+		buffer,
+		[this, cmd=std::move(cmd), completion=std::move(completion)](auto ec, std::size_t bytes) mutable
+	{
+		if (!ec)
+		{
+			m_callbacks.push_back(std::move(completion));
+			if (m_callbacks.size() == 1)
+				do_read();
+		}
+		else
+			completion(Reply{}, std::error_code{ec.value(), ec.category()});
+	});
+}
+
+void Connection::do_read()
+{
+	m_socket.async_read_some(
+		boost::asio::buffer(m_read_buf),
+		[this](auto ec, auto read){ on_read(ec, read); }
+	);
+}
+void Connection::on_read(boost::system::error_code ec, std::size_t bytes)
+{
+	assert(!m_callbacks.empty());
+	if (!ec)
+	{
+		::redisReaderFeed(m_reader, m_read_buf, bytes);
+
+		::redisReply *reply{};
+		auto result = ::redisReaderGetReply(m_reader, (void**)&reply);
+
+		// Extract all replies from the
+		while (!m_callbacks.empty() && result == REDIS_OK && reply)
+		{
+			m_callbacks.front()(Reply{reply}, std::error_code{ec.value(), ec.category()});
+			m_callbacks.pop_front();
+
+			result = ::redisReaderGetReply(m_reader, (void**)&reply);
+		}
+
+		// Keep reading until all outstanding commands are finished
+		if (!m_callbacks.empty())
+			do_read();
+	}
+	else
+	{
+		Log(LOG_WARNING, "redis read error: %1% (%2%)", ec, ec.message());
+	}
+}
 
 Connection::~Connection()
 {
-	if (m_ctx)
-		::redisAsyncDisconnect(m_ctx);
-}
-
-void Connection::run()
-{
-	if (m_request_read && !m_reading && m_ctx)
-	{
-		m_reading = true;
-		m_socket.async_wait(
-			boost::asio::socket_base::wait_read, boost::asio::bind_executor(m_strand, [this](auto&& ec)
-			{
-				m_reading = false;
-				if (!ec && m_ctx)
-					::redisAsyncHandleRead(m_ctx);
-				if (!ec || ec == boost::system::errc::operation_would_block)
-					run();
-			})
-		);
-	}
-	if (m_request_write && !m_writing && m_ctx)
-	{
-		m_writing = true;
-		m_socket.async_wait(
-			boost::asio::socket_base::wait_write, boost::asio::bind_executor(m_strand, [this](auto&& ec)
-			{
-				m_writing = false;
-				if (!ec && m_ctx)
-					::redisAsyncHandleWrite(m_ctx);
-				if (!ec || ec == boost::system::errc::operation_would_block)
-					run();
-			})
-		);
-	}
-}
-
-redisAsyncContext *Connection::connect(const std::string& host, unsigned short port)
-{
-	auto ctx = ::redisAsyncConnect(host.c_str(), port);
-	if (ctx->err)
-	{
-		std::cout << "connect error: " << ctx->errstr << std::endl;
-		BOOST_THROW_EXCEPTION(std::runtime_error("cannot connect"));
-	}
-	return ctx;
+	::redisReaderFree(m_reader);
 }
 
 void Connection::disconnect()
 {
-	if (m_ctx)
-		::redisAsyncDisconnect(m_ctx);
-	m_ctx = nullptr;
+	m_socket.close();
 }
 
 Reply::Reply(const redisReply *r) noexcept :
@@ -267,6 +227,29 @@ const std::error_category& redis_error_category()
 std::error_code make_error_code(Error err)
 {
 	return std::error_code(static_cast<int>(err), redis_error_category());
+}
+
+CommandString::CommandString(CommandString&& other)
+{
+	swap(other);
+}
+
+CommandString::~CommandString()
+{
+	::redisFreeCommand(m_cmd);
+}
+
+CommandString& CommandString::operator=(CommandString&& other)
+{
+	CommandString tmp{std::move(other)};
+	swap(tmp);
+	return *this;
+}
+
+void CommandString::swap(CommandString& other)
+{
+	std::swap(m_cmd, other.m_cmd);
+	std::swap(m_length, other.m_length);
 }
 
 }} // end of namespace
