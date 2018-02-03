@@ -43,15 +43,15 @@ Connection::Connection(
 	m_socket.connect(remote);
 }
 
-void Connection::do_write(char *cmd, std::size_t len, Completion&& completion)
+void Connection::do_write(CommandString&& cmd, Completion&& completion)
 {
+	auto buffer = cmd.buffer();
 	async_write(
 		m_socket,
-		boost::asio::buffer(cmd, len),
-		[this, cmd, completion=std::move(completion)](auto ec, std::size_t bytes) mutable
+		buffer,
+		[this, cmd=std::move(cmd), completion=std::move(completion)](auto ec, std::size_t bytes) mutable
 	{
 		std::cout << ec.message() << ": command sent" << std::endl;
-		::redisFreeCommand(cmd);
 
 		if (!ec)
 		{
@@ -242,6 +242,29 @@ const std::error_category& redis_error_category()
 std::error_code make_error_code(Error err)
 {
 	return std::error_code(static_cast<int>(err), redis_error_category());
+}
+
+CommandString::CommandString(CommandString&& other)
+{
+	swap(other);
+}
+
+CommandString::~CommandString()
+{
+	::redisFreeCommand(m_cmd);
+}
+
+CommandString& CommandString::operator=(CommandString&& other)
+{
+	CommandString tmp{std::move(other)};
+	swap(tmp);
+	return *this;
+}
+
+void CommandString::swap(CommandString& other)
+{
+	std::swap(m_cmd, other.m_cmd);
+	std::swap(m_length, other.m_length);
 }
 
 }} // end of namespace

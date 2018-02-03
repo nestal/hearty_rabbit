@@ -12,7 +12,6 @@
 
 #pragma once
 
-#include "util/Exception.hh"
 #include "util/RepeatingTuple.hh"
 
 #include <boost/asio.hpp>
@@ -128,6 +127,32 @@ public:
 	Reply dereference() const { return Reply(*base()); }
 };
 
+class CommandString
+{
+public:
+	template <typename... Args>
+	CommandString(Args... args) : m_length{::redisFormatCommand(&m_cmd, args...)}
+	{
+		if (m_length < 0)
+			throw std::logic_error("invalid command string");
+	}
+	CommandString(CommandString&& other);
+	CommandString(const CommandString&) = delete;
+	~CommandString();
+	CommandString& operator=(CommandString&& other);
+	CommandString& operator=(const CommandString&) = delete;
+
+	void swap(CommandString& other);
+
+	char* get() const {return m_cmd;}
+	std::size_t length() const {return static_cast<std::size_t>(m_length);}
+	auto buffer() const {return boost::asio::buffer(m_cmd, length());}
+
+private:
+	char    *m_cmd{};
+	int     m_length{};
+};
+
 class Connection;
 std::shared_ptr<Connection> connect(
 	boost::asio::io_context& bic,
@@ -147,11 +172,13 @@ public:
 		boost::asio::io_context& bic,
 		const boost::asio::ip::tcp::endpoint& remote
 	);
+
 	explicit Connection(
 		Token,
 		boost::asio::io_context& ioc,
 		const boost::asio::ip::tcp::endpoint& remote
 	);
+
 	Connection(Connection&&) = delete;
 	Connection(const Connection&) = delete;
 	~Connection();
@@ -160,21 +187,22 @@ public:
 	Connection& operator=(const Connection&) = delete;
 
 	template <typename Callback, typename... Args>
-	void command(Callback&& completion, Args... args)
+	void command(Callback&& callback, Args... args)
 	{
-		char *cmd{};
-		auto len = ::redisFormatCommand(&cmd, args...);
-
-		if (len > 0)
+		try
+		{
 			do_write(
-				cmd, static_cast<std::size_t>(len),
-				[callback=std::make_shared<Callback>(std::forward<Callback>(completion))](Reply r, std::error_code ec)
+				CommandString{args...},
+				[cb=std::make_shared<Callback>(std::forward<Callback>(callback))](auto r, auto ec)
 				{
-					(*callback)(r, std::move(ec));
+					(*cb)(r, std::move(ec));
 				}
 			);
-		else
-			completion(Reply{}, std::error_code{Error::protocol});
+		}
+		catch (std::logic_error&)
+		{
+			callback(Reply{}, std::error_code{Error::protocol});
+		}
 	}
 
 	boost::asio::io_context& get_io_context() {return m_ioc;}
@@ -183,7 +211,7 @@ public:
 private:
 	using Completion = std::function<void(Reply, std::error_code)>;
 
-	void do_write(char *cmd, std::size_t len, Completion&& completion);
+	void do_write(CommandString&& cmd, Completion&& completion);
 	void do_read();
 	void on_read(boost::system::error_code ec, std::size_t bytes);
 
