@@ -32,7 +32,8 @@ std::shared_ptr<Connection> connect(
 	unsigned short port
 )
 {
-	return std::make_shared<Connection>(Connection::Token{}, bic, host, port);
+	auto conn = std::make_shared<Connection>(Connection::Token{}, bic, host, port);
+	return conn;
 }
 
 Connection::Connection(Token, boost::asio::io_context& bic, const std::string& host, unsigned short port) :
@@ -78,17 +79,13 @@ Connection::Connection(Token, boost::asio::io_context& bic, const std::string& h
 		m_ctx, [](const redisAsyncContext *ctx, int status)
 		{
 			if (status == REDIS_ERR)
-			{
-				std::cout << "connect callback error: " << (void*)ctx->ev.data << " " <<  status << std::endl;
 				static_cast<Connection *>(ctx->ev.data)->on_connect_error(ctx);
-			}
 		}
 	);
 	::redisAsyncSetDisconnectCallback(
 		m_ctx, [](const redisAsyncContext *ctx, int status)
 		{
 			auto pthis = static_cast<Connection *>(ctx->ev.data);
-			std::cout << "inside disconnect callback: " << (void*)pthis << std::endl;
 
 			// The caller will free the context anyway, so set our own context to nullptr
 			// to avoid double free
@@ -119,9 +116,8 @@ Connection::~Connection()
 	if (m_ctx)
 	{
 		std::cout << "dtor: " << (void*)this << " err = " << m_ctx->err << std::endl;
-		::redisAsyncDisconnect(m_ctx);
+		disconnect().get();
 	}
-	m_disconnected.get_future().get();
 	std::cout << "disconnected in dtor: " << (void*)this << " " << m_ctx << std::endl;
 }
 
@@ -131,7 +127,8 @@ void Connection::run()
 	{
 		m_reading = true;
 		m_socket.async_wait(
-			boost::asio::socket_base::wait_read, boost::asio::bind_executor(m_strand, [this](auto&& ec)
+			boost::asio::socket_base::wait_read,
+			boost::asio::bind_executor(m_strand, [this](auto&& ec)
 			{
 				m_reading = false;
 				if (!ec && m_ctx)
@@ -145,7 +142,8 @@ void Connection::run()
 	{
 		m_writing = true;
 		m_socket.async_wait(
-			boost::asio::socket_base::wait_write, boost::asio::bind_executor(m_strand, [this](auto&& ec)
+			boost::asio::socket_base::wait_write,
+			boost::asio::bind_executor(m_strand, [this](auto&& ec)
 			{
 				m_writing = false;
 				if (!ec && m_ctx)
@@ -162,17 +160,19 @@ redisAsyncContext *Connection::connect(const std::string& host, unsigned short p
 	auto ctx = ::redisAsyncConnect(host.c_str(), port);
 	if (ctx->err)
 	{
-		std::cout << "connect error: " << ctx->errstr << std::endl;
-		BOOST_THROW_EXCEPTION(std::runtime_error("cannot connect"));
+		using namespace std::literals;
+		BOOST_THROW_EXCEPTION(std::runtime_error("cannot connect: "s + ctx->errstr));
 	}
 	return ctx;
 }
 
-void Connection::disconnect()
+std::future<int> Connection::disconnect()
 {
 	if (m_ctx)
 		::redisAsyncDisconnect(m_ctx);
 	m_ctx = nullptr;
+
+	return m_disconnected.get_future();
 }
 
 Reply::Reply(const redisReply *r) noexcept :
