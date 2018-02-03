@@ -32,7 +32,7 @@ namespace hrb {
 Server::Server(const Configuration& cfg) :
 	m_cfg{cfg},
 	m_ioc{static_cast<int>(std::max(1UL, cfg.thread_count()))},
-	m_db{m_cfg.redis_host(), m_cfg.redis_port()}
+	m_db{cfg.redis()}
 {
 	OpenSSL_add_all_digests();
 }

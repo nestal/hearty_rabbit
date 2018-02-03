@@ -15,9 +15,8 @@
 
 namespace hrb {
 
-DatabasePool::DatabasePool(std::string_view host, unsigned short port) :
-	m_host{host},
-	m_port{port}
+DatabasePool::DatabasePool(const boost::asio::ip::tcp::endpoint& remote) :
+	m_remote{remote}
 {
 }
 
@@ -26,7 +25,7 @@ std::shared_ptr<redis::Connection> DatabasePool::alloc(boost::asio::io_context& 
 	std::unique_lock<std::mutex> lock{m_mx};
 
 	if (m_pool.empty())
-		return redis::connect(ioc, m_host, m_port);
+		return redis::connect(ioc, m_remote);
 
 	// TODO: release the mutex before logging
 	Log(LOG_INFO, "reusing database connection (%1% left)", m_pool.size());

@@ -104,9 +104,7 @@ void Configuration::load_config(const boost::filesystem::path& path)
 
 		m_listen_http   = parse_endpoint(required(json, "/http"));
 		m_listen_https  = parse_endpoint(required(json, "/https"));
-
-		m_redis_host    = string(GetValueByPointerWithDefault(json, "/redis/host", m_redis_host));
-		m_redis_port    = GetValueByPointerWithDefault(json, "/redis/port", m_redis_port).GetUint();
+		m_redis         = parse_endpoint(required(json, "/redis"));
 	}
 	catch (Exception& e)
 	{

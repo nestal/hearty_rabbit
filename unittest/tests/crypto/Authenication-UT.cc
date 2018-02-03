@@ -50,7 +50,7 @@ TEST_CASE("Test password init", "[normal]")
 TEST_CASE("Test normal user login", "[normal]")
 {
 	boost::asio::io_context ioc;
-	auto redis = redis::connect(ioc, "localhost", 6379);
+	auto redis = redis::connect(ioc);
 
 	bool tested = false;
 

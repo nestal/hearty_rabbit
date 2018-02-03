@@ -12,7 +12,7 @@
     "port": 4433
   },
   "redis": {
-    "host": "redis.nestal.net",
+    "address": "192.168.1.1",
     "port": 9181
   }
 }

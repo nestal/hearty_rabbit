@@ -28,151 +28,100 @@ namespace redis {
 
 std::shared_ptr<Connection> connect(
 	boost::asio::io_context& bic,
-	const std::string& host,
-	unsigned short port
+	const boost::asio::ip::tcp::endpoint& remote
 )
 {
-	auto conn = std::make_shared<Connection>(Connection::Token{}, bic, host, port);
-	return conn;
+	return std::make_shared<Connection>(Connection::Token{}, bic, remote);
 }
 
-Connection::Connection(Token, boost::asio::io_context& bic, const std::string& host, unsigned short port) :
-	m_ioc{bic},
-	m_socket{m_ioc},
-	m_strand{m_socket.get_executor()},
-	m_ctx{connect(host, port)}
+Connection::Connection(
+	Token,
+	boost::asio::io_context& ioc,
+	const boost::asio::ip::tcp::endpoint& remote
+) : m_ioc{ioc}, m_socket{m_ioc}
 {
-	assert(m_ctx);
-
-	m_socket.assign(boost::asio::ip::tcp::v4(), m_ctx->c.fd);
-
-	m_ctx->ev.data = this;
-	m_ctx->ev.addRead = [](void *pvthis)
-	{
-		assert(pvthis);
-		auto pthis = static_cast<Connection *>(pvthis);
-		pthis->m_request_read = true;
-		pthis->run();
-	};
-	m_ctx->ev.delRead = [](void *pvthis)
-	{
-		static_cast<Connection *>(pvthis)->m_request_read = false;
-	};
-	m_ctx->ev.addWrite = [](void *pvthis)
-	{
-		assert(pvthis);
-		auto pthis = static_cast<Connection *>(pvthis);
-		pthis->m_request_write = true;
-		pthis->run();
-	};
-	m_ctx->ev.delWrite = [](void *pvthis)
-	{
-		static_cast<Connection *>(pvthis)->m_request_write = false;
-	};
-	m_ctx->ev.cleanup = [](void *pvthis)
-	{
-		auto pthis = static_cast<Connection *>(pvthis);
-		if (pthis->m_socket.is_open())
-			pthis->m_socket.release();
-	};
-	::redisAsyncSetConnectCallback(
-		m_ctx, [](const redisAsyncContext *ctx, int status)
-		{
-			if (status == REDIS_ERR)
-				static_cast<Connection *>(ctx->ev.data)->on_connect_error(ctx);
-		}
-	);
-	::redisAsyncSetDisconnectCallback(
-		m_ctx, [](const redisAsyncContext *ctx, int status)
-		{
-			auto pthis = static_cast<Connection *>(ctx->ev.data);
-
-			// The caller will free the context anyway, so set our own context to nullptr
-			// to avoid double free
-			pthis->m_ctx = nullptr;
-
-			pthis->m_disconnected.set_value(status);
-		}
-	);
+	m_socket.connect(remote);
 }
 
-void Connection::on_connect_error(const redisAsyncContext *ctx)
+void Connection::do_write(char *cmd, std::size_t len, Completion&& completion)
 {
-	// Save the error enum and errno so that the next command() will return it
-	m_conn_error = static_cast<Error>(ctx->c.err);
-	if (m_conn_error == Error::io)
-		m_errno = errno;
-	m_ctx = nullptr;
+	async_write(
+		m_socket,
+		boost::asio::buffer(cmd, len),
+		[this, cmd, completion=std::move(completion)](auto ec, std::size_t bytes) mutable
+	{
+		std::cout << ec.message() << ": command sent" << std::endl;
+		::redisFreeCommand(cmd);
 
-	// If connect failed, the disconnect callback will not be called. Therefore
-	// must set the promise so that the destructor will not block.
-	m_disconnected.set_value(ctx->c.err);
+		if (!ec)
+		{
+			m_callbacks.push_back(std::move(completion));
+			if (m_callbacks.size() == 1)
+			{
+				std::cout << "proceed to read: " << std::endl;
+				do_read();
+			}
+			else
+			{
+				std::cout << "already have " << m_callbacks.size() << " commands pending. no need to read." << std::endl;
+			}
+		}
+		else
+			completion(Reply{}, std::error_code{ec.value(), ec.category()});
+	});
+}
+
+void Connection::do_read()
+{
+	m_socket.async_read_some(
+		boost::asio::buffer(m_read_buf),
+		[this](auto ec, auto read){ on_read(ec, read); }
+	);
+}
+void Connection::on_read(boost::system::error_code ec, std::size_t bytes)
+{
+	assert(!m_callbacks.empty());
+	if (!ec)
+	{
+		::redisReaderFeed(m_reader, m_read_buf, bytes);
+
+		::redisReply *reply{};
+		auto result = ::redisReaderGetReply(m_reader, (void**)&reply);
+
+		while (!m_callbacks.empty() && result == REDIS_OK && reply)
+		{
+			std::cout << "reply received!" << std::endl;
+			m_callbacks.front()(Reply{reply}, std::error_code{ec.value(), ec.category()});
+			m_callbacks.pop_front();
+
+			result = ::redisReaderGetReply(m_reader, (void**)&reply);
+		}
+
+		// Keep reading until all outstanding commands are finished
+		if (!m_callbacks.empty())
+		{
+			std::cout << "have " << m_callbacks.size() << " commands pending. proceed to read more." << std::endl;
+			do_read();
+		}
+		else
+		{
+			std::cout << "no more commands pending. no need to read." << std::endl;
+		}
+	}
+	else
+	{
+		std::cout << "oops! " << ec << " " << ec.message() << std::endl;
+	}
 }
 
 Connection::~Connection()
 {
-	std::cout << "dtor: " << (void*)this << " " << m_ctx << std::endl;
-
-	if (m_ctx)
-	{
-		std::cout << "dtor: " << (void*)this << " err = " << m_ctx->err << std::endl;
-		disconnect().get();
-	}
-	std::cout << "disconnected in dtor: " << (void*)this << " " << m_ctx << std::endl;
+	::redisReaderFree(m_reader);
 }
 
-void Connection::run()
+void Connection::disconnect()
 {
-	if (m_request_read && !m_reading && m_ctx)
-	{
-		m_reading = true;
-		m_socket.async_wait(
-			boost::asio::socket_base::wait_read,
-			boost::asio::bind_executor(m_strand, [this](auto&& ec)
-			{
-				m_reading = false;
-				if (!ec && m_ctx)
-					::redisAsyncHandleRead(m_ctx);
-				if (!ec || ec == boost::system::errc::operation_would_block)
-					run();
-			})
-		);
-	}
-	if (m_request_write && !m_writing && m_ctx)
-	{
-		m_writing = true;
-		m_socket.async_wait(
-			boost::asio::socket_base::wait_write,
-			boost::asio::bind_executor(m_strand, [this](auto&& ec)
-			{
-				m_writing = false;
-				if (!ec && m_ctx)
-					::redisAsyncHandleWrite(m_ctx);
-				if (!ec || ec == boost::system::errc::operation_would_block)
-					run();
-			})
-		);
-	}
-}
-
-redisAsyncContext *Connection::connect(const std::string& host, unsigned short port)
-{
-	auto ctx = ::redisAsyncConnect(host.c_str(), port);
-	if (ctx->err)
-	{
-		using namespace std::literals;
-		BOOST_THROW_EXCEPTION(std::runtime_error("cannot connect: "s + ctx->errstr));
-	}
-	return ctx;
-}
-
-std::future<int> Connection::disconnect()
-{
-	if (m_ctx)
-		::redisAsyncDisconnect(m_ctx);
-	m_ctx = nullptr;
-
-	return m_disconnected.get_future();
+	m_socket.close();
 }
 
 Reply::Reply(const redisReply *r) noexcept :
@@ -293,61 +242,6 @@ const std::error_category& redis_error_category()
 std::error_code make_error_code(Error err)
 {
 	return std::error_code(static_cast<int>(err), redis_error_category());
-}
-
-void Connection2::do_write(char *cmd, std::size_t len, Completion&& completion)
-{
-	async_write(
-		m_socket,
-		boost::asio::buffer(cmd, len),
-		[this, cmd, completion=std::forward<Completion>(completion)](auto ec, std::size_t bytes) mutable
-	{
-		::redisFreeCommand(cmd);
-
-		if (!ec)
-		{
-			m_callbacks.push_back(std::forward<Completion>(completion));
-			do_read();
-		}
-		else
-			completion(Reply{}, std::error_code{ec.value(), ec.category()});
-	});
-}
-
-void Connection2::do_read()
-{
-	m_socket.async_read_some(
-		boost::asio::buffer(m_read_buf),
-		[this](auto ec, auto read){ on_read(ec, read); }
-	);
-}
-void Connection2::on_read(boost::system::error_code ec, std::size_t bytes)
-{
-	if (!ec)
-	{
-		::redisReaderFeed(m_reader, m_read_buf, bytes);
-
-		::redisReply *reply{};
-		auto result = ::redisReaderGetReply(m_reader, (void**)&reply);
-
-		if (result == REDIS_OK && reply)
-		{
-			m_callbacks.front()(Reply{reply}, std::error_code{ec.value(), ec.category()});
-			m_callbacks.pop_front();
-		}
-
-		// Keep reading until all outstanding commands are finished
-		if (!m_callbacks.empty())
-			m_socket.async_read_some(
-				boost::asio::buffer(m_read_buf),
-				[this](auto ec, auto read){on_read(ec, read);}
-			);
-	}
-}
-
-Connection2::~Connection2()
-{
-	::redisReaderFree(m_reader);
 }
 
 }} // end of namespace
