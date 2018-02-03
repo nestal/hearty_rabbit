@@ -345,4 +345,9 @@ void Connection2::on_read(boost::system::error_code ec, std::size_t bytes)
 	}
 }
 
+Connection2::~Connection2()
+{
+	::redisReaderFree(m_reader);
+}
+
 }} // end of namespace
