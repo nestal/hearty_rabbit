@@ -185,7 +185,7 @@ std::shared_ptr<Connection> connect(
 	}
 );
 
-class Connection : std::enable_shared_from_this<Connection>
+class Connection : public std::enable_shared_from_this<Connection>
 {
 private:
 	struct Token {};

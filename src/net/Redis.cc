@@ -56,16 +56,21 @@ void Connection::do_write(CommandString&& cmd, Completion&& completion)
 		buffer,
 		boost::asio::bind_executor(
 			m_strand,
-			[this, cmd=std::move(cmd), completion=std::move(completion)](auto ec, std::size_t bytes) mutable
+			[
+				this,
+				cmd=std::move(cmd),
+				comp=std::move(completion),
+				self=shared_from_this()
+			](auto ec, std::size_t bytes)
 			{
 				if (!ec)
 				{
-					m_callbacks.push_back(std::move(completion));
+					m_callbacks.push_back(std::move(comp));
 					if (m_callbacks.size() == 1)
 						do_read();
 				}
 				else
-					completion(Reply{}, std::error_code{ec.value(), ec.category()});
+					comp(Reply{}, std::error_code{ec.value(), ec.category()});
 			}
 		)
 	);
@@ -77,7 +82,7 @@ void Connection::do_read()
 		boost::asio::buffer(m_read_buf),
 		boost::asio::bind_executor(
 			m_strand,
-			[this](auto ec, auto read){ on_read(ec, read); }
+			[this, self=shared_from_this()](auto ec, auto read){ on_read(ec, read); }
 		)
 	);
 }
@@ -93,22 +98,39 @@ void Connection::on_read(boost::system::error_code ec, std::size_t bytes)
 		// Extract all replies from the
 		while (!m_callbacks.empty() && result == ReplyReader::Result::ok)
 		{
-			assert(reply);
 			m_callbacks.front()(std::move(reply), std::error_code{ec.value(), ec.category()});
 			m_callbacks.pop_front();
 
 			std::tie(reply, result) = m_reader.get();
 		}
 
-//		(result == ReplyReader::Result::error)
+		if (result == ReplyReader::Result::ok)
+		{
+			assert(m_callbacks.empty());
+			Log(LOG_WARNING, "Redis sends more replies than requested. Ignoring reply.");
+		}
+
+		// Report parse error as protocol errors in the callbacks
+		while (result == ReplyReader::Result::error && !m_callbacks.empty())
+		{
+			m_callbacks.front()(Reply{}, std::error_code{Error::protocol});
+			m_callbacks.pop_front();
+		}
+
+		if (result == ReplyReader::Result::error)
+		{
+			Log(LOG_WARNING, "Redis reply parse error. Disconnecting.");
+			disconnect();
+		}
 
 		// Keep reading until all outstanding commands are finished
-		if (!m_callbacks.empty())
+		else if (!m_callbacks.empty())
 			do_read();
 	}
 	else
 	{
-		Log(LOG_WARNING, "redis read error: %1% (%2%)", ec, ec.message());
+		Log(LOG_WARNING, "Redis read error: %1% (%2%). Disconnecting.", ec, ec.message());
+		disconnect();
 	}
 }
 

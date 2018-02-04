@@ -116,7 +116,7 @@ TEST_CASE("simple redis", "[normal]")
 	}
 }
 
-TEST_CASE("redis reply reader test", "[normal]")
+TEST_CASE("redis reply reader simple normal cases", "[normal]")
 {
 	ReplyReader subject;
 
@@ -159,6 +159,52 @@ TEST_CASE("redis reply reader test", "[normal]")
 		REQUIRE(reply.as_string() == "0123456789");
 
 		std::tie(reply, result) = subject.get();
+		REQUIRE(result == ReplyReader::Result::not_ready);
+		REQUIRE(!reply);
+		REQUIRE(reply.as_string().empty());
+	}
+	SECTION("two reples in two passes, interleaves")
+	{
+		using namespace std::literals;
+
+		// string_view(const char*) can't be used to initialize a string with
+		// null character. Need to pass sizeof() whole buffer as string length.
+		char raw_str[] = "$10\r\n0123\0__789\r\n$15\r\nabcde0\r\n3456789\r\n";
+		std::string_view str{raw_str, sizeof(raw_str)-1};
+
+		REQUIRE(str.size() > 7);
+
+		subject.feed(str.data(), 7);
+		str.remove_prefix(7);
+
+		auto[reply, result] = subject.get();
+		REQUIRE(result == ReplyReader::Result::not_ready);
+		REQUIRE(!reply);
+
+		REQUIRE(str.size() >= 10);
+		subject.feed(str.data(), 10);
+		str.remove_prefix(10);
+
+		std::tie(reply, result) = subject.get();
+		REQUIRE(result == ReplyReader::Result::ok);
+		REQUIRE(reply.as_string() == "0123\0__789"sv);
+
+		subject.feed(str.data(), str.size());
+
+		std::tie(reply, result) = subject.get();
+		REQUIRE(result == ReplyReader::Result::ok);
+		REQUIRE(reply.as_string() == "abcde0\r\n3456789"sv);
+	}
+}
+
+TEST_CASE("redis reply reader simple error cases", "[normal]")
+{
+	ReplyReader subject;
+
+	SECTION("empty string")
+	{
+		subject.feed("", 0);
+		auto[reply, result] = subject.get();
 		REQUIRE(result == ReplyReader::Result::not_ready);
 		REQUIRE(!reply);
 		REQUIRE(reply.as_string().empty());
