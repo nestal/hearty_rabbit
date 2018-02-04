@@ -12,7 +12,7 @@
 
 #include "BlobObject.hh"
 
-#include "crypto/SHA3.hh"
+#include "crypto/SHA2.hh"
 #include "net/Redis.hh"
 #include "util/Error.hh"
 #include "util/Magic.hh"
@@ -63,7 +63,7 @@ void BlobObject::open(const boost::filesystem::path& path, const ObjectID* id, s
 
 ObjectID BlobObject::hash(std::string_view blob)
 {
-	evp::SHA3 sha3;
+	evp::SHA2 sha3;
 
 	std::uint64_t size = blob.size();
 	sha3.update(&size, sizeof(size));

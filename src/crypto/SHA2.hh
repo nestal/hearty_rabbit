@@ -19,29 +19,15 @@
 namespace hrb {
 namespace evp {
 
-class SHA3
+class SHA2
 {
 public:
-	SHA3();
-	~SHA3() = default;
+	SHA2();
+	~SHA2() = default;
 
-	static const std::size_t size = SHA512_DIGEST_LENGTH;
+	static const std::size_t size = SHA256_DIGEST_LENGTH;
 
 	void update(const void *data, std::size_t size);
-
-	template <std::size_t N>
-	std::size_t finalize(unsigned char (&out)[N])
-	{
-		unsigned out_size{N};
-		if constexpr (N >= EVP_MAX_MD_SIZE)
-		{
-			::EVP_DigestFinal_ex(m_ctx.get(), &out[0], &out_size);
-			return out_size;
-		}
-		else
-			return finalize(out, N);
-	}
-
 	std::array<unsigned char, size> finalize();
 	std::size_t finalize(unsigned char *out, std::size_t size);
 

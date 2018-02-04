@@ -10,7 +10,7 @@
 // Created by nestal on 1/28/18.
 //
 
-#include "SHA3.hh"
+#include "SHA2.hh"
 
 #include <cstring>
 #include <cassert>
@@ -33,23 +33,23 @@ EVP_MD_CTX* EVP_MD_CTX_new()
 }
 #endif
 
-void SHA3::Deleter::operator()(EVP_MD_CTX *ctx) const
+void SHA2::Deleter::operator()(EVP_MD_CTX *ctx) const
 {
 	// This is a macro, so we can't take its address and put it to unique_ptr.
 	::EVP_MD_CTX_destroy(ctx);
 }
 
-SHA3::SHA3() : m_ctx{EVP_MD_CTX_new(), Deleter{}}
+SHA2::SHA2() : m_ctx{EVP_MD_CTX_new(), Deleter{}}
 {
-	::EVP_DigestInit_ex(m_ctx.get(), ::EVP_sha512(), nullptr);
+	::EVP_DigestInit_ex(m_ctx.get(), ::EVP_sha256(), nullptr);
 }
 
-void SHA3::update(const void *data, std::size_t size)
+void SHA2::update(const void *data, std::size_t size)
 {
 	::EVP_DigestUpdate(m_ctx.get(), data, size);
 }
 
-std::size_t SHA3::finalize(unsigned char *out, std::size_t size)
+std::size_t SHA2::finalize(unsigned char *out, std::size_t size)
 {
 	unsigned out_size{};
 	std::array<unsigned char, EVP_MAX_MD_SIZE> hash{};
@@ -61,9 +61,9 @@ std::size_t SHA3::finalize(unsigned char *out, std::size_t size)
 	return count;
 }
 
-std::array<unsigned char, SHA3::size> SHA3::finalize()
+std::array<unsigned char, SHA2::size> SHA2::finalize()
 {
-	std::array<unsigned char, 64> result{};
+	std::array<unsigned char, SHA2::size> result{};
 	::EVP_DigestFinal_ex(m_ctx.get(), &result[0], nullptr);
 	return result;
 }
