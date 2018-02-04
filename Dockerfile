@@ -16,8 +16,8 @@ RUN mkdir /build/docker-build \
 # Copy products to runtime docker image
 FROM scratch
 COPY --from=builder /opt/hearty_rabbit/ /
-#COPY --from=builder /bin/sh /bin/bash /bin/ls /bin/cat /bin/
 
+# Libraries required for running hearty_rabbit
 COPY --from=builder \
 	/lib64/libmagic.so.1 \
 	/lib64/libhiredis.so.0.12  \
@@ -40,8 +40,10 @@ COPY --from=builder \
 	/lib64/libresolv.so.2  \
 	/lib64/libselinux.so.1  \
 	/lib64/libpcre.so.1  \
-	/lib64/libunwind.so.8  \
 	/lib64/libtinfo.so.5  /lib64/
+
+# Not yet avaiable
+#	/lib64/libunwind.so.8  \
 
 # Use environment to specify config file location.
 # It works even when we run --add-user
