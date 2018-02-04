@@ -47,6 +47,12 @@ void verify_session(
 	std::function<void(std::error_code, std::string_view user)> completion
 );
 
+void destroy_session(
+	const SessionID& id,
+	redis::Connection& db,
+	std::function<void(std::error_code)> completion
+);
+
 std::string set_cookie(const SessionID& id);
 std::optional<SessionID> parse_cookie(std::string_view cookie);
 

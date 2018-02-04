@@ -99,7 +99,7 @@ void add_user(
 			if (!reply)
 				ec = Error::redis_command_error;
 
-			completion(ec);
+			completion(std::move(ec));
 		},
 		"HMSET user:%b salt %b key %b iteration %d hash_algorithm %b",
 		username.data(), username.size(),
@@ -134,7 +134,7 @@ void verify_user(
 				generate_session_id(std::move(completion), username, *db);
 
 			else
-				completion(ec, {});
+				completion(std::move(ec), {});
 		},
 		"HMGET user:%b salt key iteration hash_algorithm",
 		username.data(), username.size()
@@ -150,9 +150,24 @@ void verify_session(
 	db.command(
 		[comp=std::move(completion)](redis::Reply reply, auto&& ec)
 		{
-			comp(ec, reply.as_string());
+			comp(std::move(ec), reply.as_string());
 		},
 		"GET session:%b", id.data(), id.size()
+	);
+}
+
+void destroy_session(
+	const SessionID& id,
+	redis::Connection& db,
+	std::function<void(std::error_code)> completion
+)
+{
+	db.command(
+		[comp=std::move(completion)](redis::Reply, auto&& ec)
+		{
+			comp(std::move(ec));
+		},
+		"DEL session:%b", id.data(), id.size()
 	);
 }
 

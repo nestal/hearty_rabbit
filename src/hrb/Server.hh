@@ -79,9 +79,12 @@ public:
 					this,
 					db,
 					req=std::move(req),
-					send=std::forward<Send>(send)
+					send=std::forward<Send>(send),
+					session=*session
 				](std::error_code ec, std::string_view user) mutable
 				{
+					m_db.release(std::move(db));
+
 					if (ec)
 						return send(set_common_fields(req, redirect("/login.html", req.version())));
 
@@ -92,7 +95,7 @@ public:
 						return send(set_common_fields(req, get_dir(req)));
 
 					if (req.target().starts_with(url::logout))
-						return on_logout(req, std::forward<Send>(send));
+						return on_logout(req, session, std::forward<Send>(send));
 
 					auto opt_res = file_request(req);
 					if (opt_res)
@@ -145,7 +148,7 @@ private:
 	static void drop_privileges();
 
 	void on_login(const Request& req, std::function<void(http::response<http::empty_body>&&)>&& send);
-	void on_logout(const Request& req, std::function<void(http::response<http::empty_body>&&)>&& send);
+	void on_logout(const Request& req, const SessionID& id, std::function<void(http::response<http::empty_body>&&)>&& send);
 	void get_blob(const Request& req, std::function<void(http::response<http::string_body>&&)>&& send);
 	http::response<http::string_body> get_dir(const Request& req);
 	static bool allow_anonymous(boost::string_view target);

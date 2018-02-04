@@ -75,11 +75,17 @@ void Server::on_login(const Request& req, std::function<void(http::response<http
 		send(set_common_fields(req, redirect("/login.html", req.version())));
 }
 
-void Server::on_logout(const Request& req, std::function<void(http::response<http::empty_body>&&)>&& send)
+void Server::on_logout(const Request& req, const SessionID& id, std::function<void(http::response<http::empty_body>&&)>&& send)
 {
-	auto&& res = redirect("/login.html", req.version());
-	res.insert(http::field::set_cookie, "id=; ");
-	send(set_common_fields(req, std::move(res)));
+	auto db = m_db.alloc(m_ioc);
+	destroy_session(id, *db, [this, db, send=std::move(send), version=req.version(), keep_alive=req.keep_alive()](auto&& ec) mutable
+	{
+		m_db.release(std::move(db));
+
+		auto&& res = redirect("/login.html", version);
+		res.insert(http::field::set_cookie, "id=; ");
+		send(set_common_fields(keep_alive, std::move(res)));
+	});
 }
 
 http::response<http::empty_body> Server::redirect(boost::beast::string_view where, unsigned version)
