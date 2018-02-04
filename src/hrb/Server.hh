@@ -15,6 +15,8 @@
 #include "Request.hh"
 #include "DatabasePool.hh"
 
+#include "crypto/Authenication.hh"
+
 #include <boost/filesystem/path.hpp>
 #include <boost/beast/http/fields.hpp>
 #include <boost/beast/http/message.hpp>
@@ -55,15 +57,40 @@ public:
 		if (req.target() == url::login && req.method() == http::verb::post)
 			return on_login(req, std::forward<Send>(send));
 
-		verify_session(req[http::field::cookie]);
+		// no need to valid session for login.html
+		if (req.target() == "/login.html")
+			return send(file_request(req));
 
-		if (req.target().starts_with(url::blob))
-			return get_blob(req, std::forward<Send>(send));
+		auto cookie = req[http::field::cookie];
+		auto session = parse_cookie({cookie.data(), cookie.size()});
+		if (session)
+		{
+			auto db = m_db.alloc(m_ioc);
+			verify_session(
+				*session,
+				*db,
+				[
+					this,
+					db,
+					req=std::move(req),
+					send=std::forward<Send>(send)
+				](std::error_code ec, std::string_view user) mutable
+				{
+					if (ec)
+						return send(set_common_fields(req, redirect("/login.html", req.version())));
 
-		if (req.target().starts_with(url::dir))
-			return send(set_common_fields(req, get_dir(req)));
+					if (req.target().starts_with(url::blob))
+						return get_blob(req, std::forward<decltype(send)>(send));
 
-		return send(file_request(req));
+					if (req.target().starts_with(url::dir))
+						return send(set_common_fields(req, get_dir(req)));
+
+					return send(file_request(req));
+				}
+			);
+		}
+		else
+			send(set_common_fields(req, redirect("/login.html", req.version())));
 	}
 
 	http::response<http::file_body>   file_request(const Request& req);
@@ -78,8 +105,17 @@ public:
 		http::response<Body, http::basic_fields<Allocator>>&& res
 	)
 	{
+		return set_common_fields(req.keep_alive(), std::move(res));
+	}
+
+	template<class Body, class Allocator>
+	static auto&& set_common_fields(
+		bool keep_alive,
+		http::response<Body, http::basic_fields<Allocator>>&& res
+	)
+	{
 		res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
-		res.keep_alive(req.keep_alive());
+		res.keep_alive(keep_alive);
 		return std::move(res);
 	}
 
@@ -94,8 +130,6 @@ public:
 private:
 	static std::string_view resource_mime(const std::string& ext);
 	static void drop_privileges();
-
-	std::string verify_session(boost::string_view cookie);
 
 	void on_login(const Request& req, std::function<void(http::response<http::empty_body>&&)>&& send);
 	void get_blob(const Request& req, std::function<void(http::response<http::string_body>&&)>&& send);

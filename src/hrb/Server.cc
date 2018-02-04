@@ -288,10 +288,4 @@ void Server::disconnect_db()
 	m_db.release_all();
 }
 
-std::string Server::verify_session(boost::string_view cookie)
-{
-	Log(LOG_INFO, "cookie = %1%", cookie);
-	return {};
-}
-
 } // end of namespace

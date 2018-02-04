@@ -16,6 +16,7 @@
 #include "hrb/BlobObject.hh"
 
 #include "crypto/Random.hh"
+#include "crypto/Password.hh"
 #include "util/Configuration.hh"
 
 #include <iostream>
@@ -119,6 +120,28 @@ private:
 	mutable bool m_tested{false};
 };
 
+SessionID create_session(std::string_view username, std::string_view password, const Configuration& cfg)
+{
+	boost::asio::io_context ioc;
+	auto db = redis::connect(ioc, cfg.redis());
+
+	std::promise<SessionID> result;
+
+	add_user(username, Password{password}, *db, [&result, db, username, password](std::error_code ec)
+	{
+		REQUIRE(!ec);
+
+		verify_user(username, Password{password}, *db, [&result, db](std::error_code ec, const SessionID& id)
+		{
+			REQUIRE(!ec);
+			result.set_value(id);
+			db->disconnect();
+		});
+	});
+	ioc.run();
+	return result.get_future().get();
+}
+
 }
 
 TEST_CASE("GET static resource", "[normal]")
@@ -128,15 +151,16 @@ TEST_CASE("GET static resource", "[normal]")
 	const char *argv[] = {"hearty_rabbit", "--cfg", local_json.c_str()};
 	Configuration cfg{sizeof(argv)/sizeof(argv[1]), argv, nullptr};
 
+	auto session = create_session("testuser", "password", cfg);
+
 	Server subject{cfg};
-	
 
 	REQUIRE(cfg.web_root() == (current_src/"../../../lib").lexically_normal());
 	Request req;
 
 	SECTION("requesting something not exist")
 	{
-		FileResponseChecker checker{http::status::ok, cfg.web_root()/"login.html"};
+		MovedResponseChecker checker{"/login.html"};
 
 		req.target("/something_not_exist.html");
 		subject.handle_https(std::move(req), std::ref(checker));
@@ -145,7 +169,7 @@ TEST_CASE("GET static resource", "[normal]")
 
 	SECTION("Only allow login with POST: redirect GET request to login.html")
 	{
-		FileResponseChecker checker{http::status::ok, cfg.web_root()/"login.html"};
+		MovedResponseChecker checker{"/login.html"};
 
 		req.target("/login");
 		subject.handle_https(std::move(req), std::ref(checker));
@@ -185,7 +209,7 @@ TEST_CASE("GET static resource", "[normal]")
 
 	SECTION("requesting other resources")
 	{
-		FileResponseChecker checker{http::status::ok, cfg.web_root()/"login.html"};
+		MovedResponseChecker checker{"/login.html"};
 
 		req.target("/");
 		subject.handle_https(std::move(req), std::ref(checker));
@@ -195,12 +219,14 @@ TEST_CASE("GET static resource", "[normal]")
 	SECTION("requesting invalid blob")
 	{
 		req.target("/blob/abc");
+		req.insert(boost::beast::http::field::cookie, set_cookie(session));
 		subject.handle_https(std::move(req), [](auto&& res){REQUIRE(res.result() == http::status::not_found);});
 	}
 
 	SECTION("requesting empty blob ID")
 	{
 		req.target("/blob");
+		req.insert(boost::beast::http::field::cookie, set_cookie(session));
 		subject.handle_https(std::move(req), [](auto&& res){REQUIRE(res.result() == http::status::not_found);});
 	}
 
@@ -211,11 +237,12 @@ TEST_CASE("GET static resource", "[normal]")
 		BlobObject blob{__FILE__};
 		auto db = redis::connect(subject.get_io_context(), cfg.redis());
 
-		blob.save(*db, [&subject, db, &req, &checker](auto&& blob, std::error_code ec)
+		blob.save(*db, [&subject, db, &req, &checker, session](auto&& blob, std::error_code ec)
 		{
 			db->disconnect();
 
 			req.target("/blob/" + to_hex(blob.ID()));
+			req.insert(boost::beast::http::field::cookie, set_cookie(session));
 			subject.handle_https(std::move(req), [&checker, &subject](auto&& res) mutable
 			{
 				REQUIRE(res.at(http::field::content_type) == "text/x-c++");
