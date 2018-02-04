@@ -57,8 +57,8 @@ public:
 		if (req.target() == url::login && req.method() == http::verb::post)
 			return on_login(req, std::forward<Send>(send));
 
-		// no need to valid session for login.html
-		if (req.target() == "/login.html")
+		// Only index.html require login
+		if (allow_anonymous(req.target()))
 			return send(file_request(req));
 
 		auto cookie = req[http::field::cookie];
@@ -90,7 +90,7 @@ public:
 			);
 		}
 		else
-			send(set_common_fields(req, redirect("/login.html", req.version())));
+			return send(set_common_fields(req, redirect("/login.html", req.version())));
 	}
 
 	http::response<http::file_body>   file_request(const Request& req);
@@ -134,6 +134,7 @@ private:
 	void on_login(const Request& req, std::function<void(http::response<http::empty_body>&&)>&& send);
 	void get_blob(const Request& req, std::function<void(http::response<http::string_body>&&)>&& send);
 	http::response<http::string_body> get_dir(const Request& req);
+	static bool allow_anonymous(boost::string_view target);
 
 private:
 	const Configuration&    m_cfg;

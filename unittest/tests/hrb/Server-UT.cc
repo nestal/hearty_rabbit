@@ -158,6 +158,48 @@ TEST_CASE("GET static resource", "[normal]")
 	REQUIRE(cfg.web_root() == (current_src/"../../../lib").lexically_normal());
 	Request req;
 
+	SECTION("Request login.html success without login")
+	{
+		FileResponseChecker checker{http::status::ok, cfg.web_root()/"login.html"};
+
+		req.target("/login.html");
+		subject.handle_https(std::move(req), std::ref(checker));
+		REQUIRE(checker.tested());
+	}
+
+	SECTION("Request logo.svg success without login")
+	{
+		FileResponseChecker checker{http::status::ok, cfg.web_root()/"logo.svg"};
+
+		req.target("/logo.svg");
+		subject.handle_https(std::move(req), std::ref(checker));
+		REQUIRE(checker.tested());
+	}
+
+	SECTION("Request index.html failed without login")
+	{
+		MovedResponseChecker checker{"/login.html"};
+
+		req.target("/index.html");
+		subject.handle_https(std::move(req), std::ref(checker));
+		REQUIRE(checker.tested());
+	}
+
+	SECTION("Request index.html success with login")
+	{
+		FileResponseChecker checker{http::status::ok, cfg.web_root()/"index.html"};
+
+		req.target("/index.html");
+		req.insert(boost::beast::http::field::cookie, set_cookie(session));
+		subject.handle_https(std::move(req), [&checker, &subject](auto&& res) mutable
+		{
+			checker(std::move(res));
+			subject.disconnect_db();
+		});
+		subject.get_io_context().run();
+		REQUIRE(checker.tested());
+	}
+
 	SECTION("requesting something not exist")
 	{
 		MovedResponseChecker checker{"/login.html"};

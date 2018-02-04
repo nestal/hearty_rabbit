@@ -60,7 +60,7 @@ void Server::on_login(const Request& req, std::function<void(http::response<http
 				Log(LOG_INFO, "login result: %1% %2%", ec, ec.message());
 				m_db.release(std::move(db));
 
-				auto&& res = redirect(ec ? "/login_incorrect.html" : "/login_correct.html", version);
+				auto&& res = redirect(ec ? "/login_incorrect.html" : "/index.html", version);
 				res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
 				res.keep_alive(keep_alive);
 
@@ -286,6 +286,15 @@ boost::asio::io_context& Server::get_io_context()
 void Server::disconnect_db()
 {
 	m_db.release_all();
+}
+
+bool Server::allow_anonymous(boost::string_view target)
+{
+	assert(!target.empty());
+	assert(target.front() == '/');
+	target.remove_prefix(1);
+
+	return target != "index.html" && web_resources.find(target.to_string()) != web_resources.end();
 }
 
 } // end of namespace
