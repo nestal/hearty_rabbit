@@ -46,20 +46,20 @@ TEST_CASE("Load BlobObject from file", "[normal]")
 	}
 
 	boost::asio::io_context ioc;
-	Connection db{ioc, "localhost", 6379};
+	auto db = connect(ioc);
 
 	std::bitset<2> tested{};
 
-	blob.save(db, [&db, &tested](auto& src, auto ec)
+	blob.save(*db, [db, &tested](auto& src, auto ec)
 	{
 		REQUIRE(!ec);
 		REQUIRE(!src.empty());
 
 		auto key = src.redis_key();
-		db.command([](auto, auto){}, "HDEL %b mime", key.data(), key.size());
+		db->command([](auto, auto){}, "HDEL %b mime", key.data(), key.size());
 
 		// read it back
-		BlobObject::load(db, src.ID(), [&db, &src, &tested](auto& loaded, auto ec)
+		BlobObject::load(*db, src.ID(), [db, &src, &tested](auto& loaded, auto ec)
 		{
 			REQUIRE(!ec);
 			REQUIRE(!loaded.empty());
@@ -86,11 +86,11 @@ TEST_CASE("Load BlobObject from file", "[normal]")
 
 			tested.set(0);
 			if (tested.all())
-				db.disconnect();
+				db->disconnect();
 		});
 
 		// read again without loading the blob out
-		BlobObject::load(db, src.ID(), __FILE__, [&db, &src, &tested](auto& loaded, auto ec)
+		BlobObject::load(*db, src.ID(), __FILE__, [db, &src, &tested](auto& loaded, auto ec)
 		{
 			REQUIRE(!ec);
 			REQUIRE(!loaded.empty());
@@ -101,7 +101,7 @@ TEST_CASE("Load BlobObject from file", "[normal]")
 
 			tested.set(1);
 			if (tested.all())
-				db.disconnect();
+				db->disconnect();
 		});
 	});
 
@@ -113,19 +113,19 @@ TEST_CASE("Load BlobObject from file", "[normal]")
 TEST_CASE("Load non-exist BlobObject from redis", "[error]")
 {
 	boost::asio::io_context ioc;
-	Connection db{ioc, "localhost", 6379};
+	auto db = connect(ioc);
 
 	bool tested = false;
 
 	BlobObject blob;
 	REQUIRE(blob.empty());
 
-	BlobObject::load(db, ObjectID{}, [&db, &tested](auto& blob, auto ec)
+	BlobObject::load(*db, ObjectID{}, [db, &tested](auto& blob, auto ec)
 	{
 		REQUIRE(ec);
 		REQUIRE(blob.empty());
 		tested = true;
-		db.disconnect();
+		db->disconnect();
 	});
 
 	using namespace std::chrono_literals;

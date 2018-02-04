@@ -50,33 +50,33 @@ TEST_CASE("Test password init", "[normal]")
 TEST_CASE("Test normal user login", "[normal]")
 {
 	boost::asio::io_context ioc;
-	redis::Connection redis{ioc, "localhost", 6379};
+	auto redis = redis::connect(ioc);
 
 	bool tested = false;
 
-	add_user("sumsum", Password{"bearbear"}, redis, [&redis, &tested](std::error_code ec)
+	add_user("sumsum", Password{"bearbear"}, *redis, [redis, &tested](std::error_code ec)
 	{
 		REQUIRE(!ec);
 
 		SECTION("correct user")
 		{
 			verify_user(
-				"sumsum", Password{"bearbear"}, redis, [&redis, &tested](std::error_code ec)
+				"sumsum", Password{"bearbear"}, *redis, [redis, &tested](std::error_code ec)
 				{
 					REQUIRE(!ec);
 					tested = true;
-					redis.disconnect();
+					redis->disconnect();
 				}
 			);
 		}
 		SECTION("incorrect user")
 		{
 			verify_user(
-				"siuyung", Password{"rabbit"}, redis, [&redis, &tested](std::error_code ec)
+				"siuyung", Password{"rabbit"}, *redis, [redis, &tested](std::error_code ec)
 				{
 					REQUIRE(ec == Error::login_incorrect);
 					tested = true;
-					redis.disconnect();
+					redis->disconnect();
 				}
 			);
 		}

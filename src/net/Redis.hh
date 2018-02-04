@@ -12,7 +12,6 @@
 
 #pragma once
 
-#include "util/Exception.hh"
 #include "util/RepeatingTuple.hh"
 
 #include <boost/asio.hpp>
@@ -21,7 +20,8 @@
 #include <hiredis/hiredis.h>
 #include <hiredis/async.h>
 
-
+#include <deque>
+#include <memory>
 #include <string>
 
 namespace hrb {
@@ -48,13 +48,14 @@ const std::error_category& redis_error_category();
 class Reply
 {
 public:
-	explicit Reply(const redisReply *r = nullptr) noexcept;
-	Reply(const Reply&) = default;
-	Reply(Reply&&) = default;
+	explicit Reply(redisReply *r = nullptr) noexcept;
+	Reply(const Reply&) = delete;
+	Reply(Reply&& other) = default ;
 	~Reply() = default;
 
-	Reply& operator=(const Reply&) = default;
-	Reply& operator=(Reply&&) = default;
+	Reply& operator=(const Reply&) = delete;
+	Reply& operator=(Reply&& other) = default ;
+	void swap(Reply& other) noexcept ;
 
 	class iterator;
 	iterator begin() const;
@@ -107,12 +108,13 @@ private:
 	}
 
 private:
-	const ::redisReply *m_reply;
+	struct Deleter {void operator()(::redisReply*) const noexcept; };
+	std::unique_ptr<::redisReply, Deleter> m_reply{};
 };
 
 class Reply::iterator : public boost::iterator_adaptor<
 	iterator,
-	const ::redisReply* const*,
+	::redisReply* const*,
 	const Reply,
 	boost::use_default,
 	const Reply,
@@ -120,74 +122,134 @@ class Reply::iterator : public boost::iterator_adaptor<
 >
 {
 public:
-	explicit iterator(const ::redisReply * const*elements = nullptr) : iterator_adaptor{elements} {}
+	explicit iterator(::redisReply * const*elements = nullptr) : iterator_adaptor{elements} {}
 
  private:
 	friend class boost::iterator_core_access;
-	Reply dereference() const { return Reply(*base()); }
+	Reply dereference() const { return Reply(base() ? *base() : nullptr); }
 };
 
-// Copied from: https://github.com/ryangraham/hiredis-boostasio-adapter/blob/master/boostasio.cpp
-class Connection
+class ReplyReader
 {
 public:
-	explicit Connection(
-		boost::asio::io_context& bic,
-		const std::string& host = "localhost",
-		unsigned short port = 6379
-	);
+	enum class Result {ok, error, not_ready};
 
-	~Connection();
+public:
+	ReplyReader() = default;
+	ReplyReader(ReplyReader&&) = default;
+	ReplyReader(const ReplyReader&) = delete;
+	~ReplyReader() = default;
+	ReplyReader& operator=(ReplyReader&&) = default;
+	ReplyReader& operator=(const ReplyReader&) = delete;
 
-	template <typename Callback, typename... Args>
-	void command(Callback&& callback, const char *fmt, Args... args)
-	{
-		using CallbackType = std::remove_reference_t<Callback>;
-
-		auto callback_ptr = std::make_unique<CallbackType>(std::forward<Callback>(callback));
-		auto r = m_ctx ? ::redisAsyncCommand(
-			m_ctx, [](redisAsyncContext *ctx, void *pv_reply, void *pv_callback)
-			{
-				std::error_code ec{static_cast<Error>(ctx->err)};
-
-				Reply reply{static_cast<redisReply *>(pv_reply)};
-				if (!reply && !ec)
-					ec = Error::command_error;
-
-				std::unique_ptr<CallbackType> callback{static_cast<CallbackType *>(pv_callback)};
-				(*callback)(reply, std::move(ec));
-			}, callback_ptr.get(), fmt, args...
-		) : REDIS_ERR;
-
-		if (r == REDIS_ERR)
-			callback(Reply{}, std::error_code{m_ctx ? static_cast<Error>(m_ctx->err) : m_conn_error});
-		else
-			callback_ptr.release();
-	}
-
-	void disconnect();
-
-	boost::asio::io_context& get_io_context() { return m_ioc; }
+	void feed(const char *data, std::size_t size);
+	std::tuple<Reply, Result> get();
 
 private:
-	static redisAsyncContext *connect(const std::string& host, unsigned short port);
+	struct Deleter {void operator()(::redisReader*) const noexcept; };
+	std::unique_ptr<::redisReader, Deleter> m_reader{::redisReaderCreate()};
+};
 
-	void run();
-	void on_connect_error(const redisAsyncContext *ctx);
+class CommandString
+{
+public:
+	template <typename... Args>
+	CommandString(Args... args) : m_length{::redisFormatCommand(&m_cmd, args...)}
+	{
+		if (m_length < 0)
+			throw std::logic_error("invalid command string");
+	}
+	CommandString(CommandString&& other) noexcept ;
+	CommandString(const CommandString&) = delete;
+	~CommandString();
+	CommandString& operator=(CommandString&& other) noexcept ;
+	CommandString& operator=(const CommandString&) = delete;
+
+	void swap(CommandString& other) noexcept ;
+
+	char* get() const {return m_cmd;}
+	std::size_t length() const {return static_cast<std::size_t>(m_length);}
+	auto buffer() const {return boost::asio::buffer(m_cmd, length());}
+
+private:
+	char    *m_cmd{};
+	int     m_length{};
+};
+
+class Connection;
+std::shared_ptr<Connection> connect(
+	boost::asio::io_context& bic,
+	const boost::asio::ip::tcp::endpoint& remote = boost::asio::ip::tcp::endpoint{
+		boost::asio::ip::make_address("127.0.0.1"),
+		6379
+	}
+);
+
+class Connection : public std::enable_shared_from_this<Connection>
+{
+private:
+	struct Token {};
+
+public:
+	friend std::shared_ptr<Connection> connect(
+		boost::asio::io_context& bic,
+		const boost::asio::ip::tcp::endpoint& remote
+	);
+
+	explicit Connection(
+		Token,
+		boost::asio::io_context& ioc,
+		const boost::asio::ip::tcp::endpoint& remote
+	);
+
+	Connection(Connection&&) = delete;
+	Connection(const Connection&) = delete;
+	~Connection() = default;
+
+	Connection& operator=(Connection&&) = delete;
+	Connection& operator=(const Connection&) = delete;
+
+	template <typename Callback, typename... Args>
+	void command(Callback&& callback, Args... args)
+	{
+		try
+		{
+			do_write(
+				CommandString{args...},
+				[cb=std::make_shared<Callback>(std::forward<Callback>(callback))](auto&& r, auto ec)
+				{
+					(*cb)(std::move(r), std::move(ec));
+				}
+			);
+		}
+		catch (std::logic_error&)
+		{
+			callback(Reply{}, std::error_code{Error::protocol});
+		}
+	}
+
+	boost::asio::io_context& get_io_context() {return m_ioc;}
+	void disconnect() ;
+
+private:
+	using Completion = std::function<void(Reply, std::error_code)>;
+
+	void do_write(CommandString&& cmd, Completion&& completion);
+	void do_read();
+	void on_read(boost::system::error_code ec, std::size_t bytes);
 
 private:
 	boost::asio::io_context& m_ioc;
 	boost::asio::ip::tcp::socket m_socket;
-
 	boost::asio::strand<boost::asio::io_context::executor_type> m_strand;
 
-	redisAsyncContext *m_ctx{};
+	// Since we store blobs in redis, we need a large read buffer.
+	// Large enough to allocate in heap dynamically.
+	std::vector<char> m_read_buf;
 
-	bool m_reading{false}, m_writing{false};
-	bool m_request_read{false}, m_request_write{false};
+	std::deque<Completion> m_callbacks;
 
-	Error   m_conn_error{Error::ok};
-	int     m_errno{0};
+	ReplyReader m_reader;
 };
 
 }} // end of namespace

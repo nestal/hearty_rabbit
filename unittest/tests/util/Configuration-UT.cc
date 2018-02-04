@@ -53,8 +53,8 @@ TEST_CASE( "Load normal.json", "[normal]" )
 	REQUIRE(cfg.listen_http().address() == boost::asio::ip::make_address("0.0.0.0"));
 	REQUIRE(cfg.listen_https().port() == 4433);
 	REQUIRE(cfg.listen_http().port() == 8080);
-	REQUIRE(cfg.redis_host() == "redis.nestal.net");
-	REQUIRE(cfg.redis_port() == 9181);
+	REQUIRE(cfg.redis().address() == boost::asio::ip::make_address("192.168.1.1"));
+	REQUIRE(cfg.redis().port() == 9181);
 }
 
 TEST_CASE( "Missing server name", "[error]" )
@@ -79,9 +79,9 @@ TEST_CASE( "Web root is .", "[normal]" )
 
 	const char *argv[] = {"hearty_rabbit", "--cfg", dot_json.c_str()};
 	Configuration subject{sizeof(argv)/sizeof(argv[1]), argv, nullptr};
-	REQUIRE(subject.web_root() == current_src / ".");
-	REQUIRE(subject.redis_host() == "localhost");
-	REQUIRE(subject.redis_port() == 6379);
+	REQUIRE(subject.web_root() == current_src);
+	REQUIRE(subject.redis().address() == boost::asio::ip::make_address("127.0.0.1"));
+	REQUIRE(subject.redis().port() == 6379);
 }
 
 TEST_CASE( "Absolute path for certs", "[normal]" )
@@ -90,7 +90,7 @@ TEST_CASE( "Absolute path for certs", "[normal]" )
 
 	const char *argv[] = {"hearty_rabbit", "--cfg", dot_json.c_str()};
 	Configuration subject{sizeof(argv)/sizeof(argv[1]), argv, nullptr};
-	REQUIRE(subject.web_root() == current_src / ".");
+	REQUIRE(subject.web_root() == current_src);
 	REQUIRE(subject.cert_chain() == "/etc/certificate.pem");
 	REQUIRE(subject.private_key() == "/etc/key.pem");
 }

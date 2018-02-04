@@ -13,7 +13,7 @@
 #pragma once
 
 #include "Request.hh"
-#include "net/Redis.hh"
+#include "DatabasePool.hh"
 
 #include <boost/filesystem/path.hpp>
 #include <boost/beast/http/fields.hpp>
@@ -23,12 +23,11 @@
 #include <boost/beast/version.hpp>
 #include <boost/asio/io_context.hpp>
 
-#include <mutex>
-#include <list>
+#include <system_error>
 
 namespace hrb {
 
-// URL prefices
+// URL prefixes
 namespace url {
 const boost::string_view login{"/login"};
 const boost::string_view blob{"/blob"};
@@ -37,6 +36,7 @@ const boost::string_view dir{"/dir"};
 
 class Configuration;
 class Password;
+class BlobObject;
 
 class Server
 {
@@ -81,11 +81,13 @@ public:
 		return std::move(res);
 	}
 
+	void disconnect_db();
 	void run();
 	boost::asio::io_context& get_io_context();
 
 	// Administrative commands
 	void add_user(std::string_view username, Password&& password, std::function<void(std::error_code)> complete);
+	void add_blob(const boost::filesystem::path& path, std::function<void(BlobObject&, std::error_code)> complete);
 
 private:
 	static std::string_view resource_mime(const std::string& ext);
@@ -95,13 +97,11 @@ private:
 	void get_blob(const Request& req, std::function<void(http::response<http::string_body>&&)>&& send);
 	http::response<http::string_body> get_dir(const Request& req);
 
-
 private:
 	const Configuration&    m_cfg;
 	boost::asio::io_context m_ioc;
 
-	std::mutex m_redis_mx;
-	std::list<redis::Connection> m_redis_pool;
+	DatabasePool    m_db;
 };
 
 } // end of namespace
