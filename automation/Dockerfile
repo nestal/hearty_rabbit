@@ -8,6 +8,7 @@ RUN yum install -y centos-release-scl epel-release \
 	&& rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-EPEL-7 \
 	&& yum install -y devtoolset-7 openssl-devel git rapidjson-devel \
 		hiredis-devel file-devel libicu-devel zlib-devel bzip2-devel xz-devel \
+		libunwind-devel \
 	&& source scl_source enable devtoolset-7 \
 	&& mkdir /build
 
@@ -33,4 +34,4 @@ RUN tar zxf cmake-3.10.2.tar.gz \
 
 # build libb2
 RUN git clone https://github.com/BLAKE2/libb2.git
-RUN cd libb2 && ./configure --prefix=/opt/libb2 && make install
+#RUN cd libb2 && ./configure --prefix=/opt/libb2 && make install
