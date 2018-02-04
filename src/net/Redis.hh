@@ -69,6 +69,7 @@ public:
 	std::string_view as_any_string() const noexcept;
 
 	explicit operator bool() const noexcept ;
+	bool null() const noexcept {return m_reply == nullptr;}
 
 	long as_int() const noexcept;
 	long to_int() const noexcept;
@@ -127,6 +128,24 @@ public:
  private:
 	friend class boost::iterator_core_access;
 	Reply dereference() const { return Reply(base() ? *base() : nullptr); }
+};
+
+class ReplyReader
+{
+public:
+	ReplyReader() = default;
+	ReplyReader(ReplyReader&&) = default;
+	ReplyReader(const ReplyReader&) = delete;
+	~ReplyReader() = default;
+	ReplyReader& operator=(ReplyReader&&) = default;
+	ReplyReader& operator=(const ReplyReader&) = delete;
+
+	void feed(const char *data, std::size_t size);
+	std::tuple<Reply, int> get();
+
+private:
+	struct Deleter {void operator()(::redisReader*) const noexcept; };
+	std::unique_ptr<::redisReader, Deleter> m_reader{::redisReaderCreate()};
 };
 
 class CommandString
@@ -226,8 +245,7 @@ private:
 
 	std::deque<Completion> m_callbacks;
 
-	struct Deleter {void operator()(::redisReader*) const noexcept; };
-	std::unique_ptr<::redisReader, Deleter> m_reader{::redisReaderCreate()};
+	ReplyReader m_reader;
 };
 
 }} // end of namespace

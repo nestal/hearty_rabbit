@@ -85,18 +85,17 @@ void Connection::on_read(boost::system::error_code ec, std::size_t bytes)
 	assert(!m_callbacks.empty());
 	if (!ec)
 	{
-		::redisReaderFeed(m_reader.get(), m_read_buf, bytes);
+		m_reader.feed(m_read_buf, bytes);
 
-		::redisReply *reply{};
-		auto result = ::redisReaderGetReply(m_reader.get(), (void**)&reply);
+		auto [reply, result] = m_reader.get();
 
 		// Extract all replies from the
-		while (!m_callbacks.empty() && result == REDIS_OK && reply)
+		while (!m_callbacks.empty() && result == REDIS_OK && !reply.null())
 		{
-			m_callbacks.front()(Reply{reply}, std::error_code{ec.value(), ec.category()});
+			m_callbacks.front()(std::move(reply), std::error_code{ec.value(), ec.category()});
 			m_callbacks.pop_front();
 
-			result = ::redisReaderGetReply(m_reader.get(), (void**)&reply);
+			std::tie(reply, result) = m_reader.get();
 		}
 
 		// Keep reading until all outstanding commands are finished
@@ -107,11 +106,6 @@ void Connection::on_read(boost::system::error_code ec, std::size_t bytes)
 	{
 		Log(LOG_WARNING, "redis read error: %1% (%2%)", ec, ec.message());
 	}
-}
-
-void Connection::Deleter::operator()(::redisReader *reader) const noexcept
-{
-	::redisReaderFree(reader);
 }
 
 void Connection::disconnect()
@@ -271,6 +265,23 @@ void CommandString::swap(CommandString& other) noexcept
 {
 	std::swap(m_cmd, other.m_cmd);
 	std::swap(m_length, other.m_length);
+}
+
+void ReplyReader::feed(const char *data, std::size_t size)
+{
+	::redisReaderFeed(m_reader.get(), data, size);
+}
+
+std::tuple<Reply, int> ReplyReader::get()
+{
+	::redisReply *reply{};
+	auto result = ::redisReaderGetReply(m_reader.get(), (void**)&reply);
+	return std::make_tuple(Reply{reply}, result);
+}
+
+void ReplyReader::Deleter::operator()(::redisReader *reader) const noexcept
+{
+	::redisReaderFree(reader);
 }
 
 }} // end of namespace
