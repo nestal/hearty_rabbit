@@ -49,7 +49,7 @@ void Server::on_login(const Request& req, std::function<void(http::response<http
 			username,
 			Password{password},
 			*db,
-			[db, version=req.version(), send=std::move(send), this, keep_alive=req.keep_alive()](std::error_code ec) mutable
+			[db, version=req.version(), send=std::move(send), this, keep_alive=req.keep_alive()](std::error_code ec, auto) mutable
 			{
 				Log(LOG_INFO, "login result: %1% %2%", ec, ec.message());
 				m_db.release(std::move(db));

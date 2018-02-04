@@ -61,9 +61,10 @@ TEST_CASE("Test normal user login", "[normal]")
 		SECTION("correct user")
 		{
 			verify_user(
-				"sumsum", Password{"bearbear"}, *redis, [redis, &tested](std::error_code ec)
+				"sumsum", Password{"bearbear"}, *redis, [redis, &tested](std::error_code ec, auto&& session)
 				{
 					REQUIRE(!ec);
+					REQUIRE(session != SessionID{});
 					tested = true;
 					redis->disconnect();
 				}
@@ -72,9 +73,10 @@ TEST_CASE("Test normal user login", "[normal]")
 		SECTION("incorrect user")
 		{
 			verify_user(
-				"siuyung", Password{"rabbit"}, *redis, [redis, &tested](std::error_code ec)
+				"siuyung", Password{"rabbit"}, *redis, [redis, &tested](std::error_code ec, auto&& session)
 				{
 					REQUIRE(ec == Error::login_incorrect);
+					REQUIRE(session == SessionID{});
 					tested = true;
 					redis->disconnect();
 				}

@@ -77,11 +77,16 @@ void verify_user(
 	std::string_view username,
 	Password&& password,
 	redis::Connection& db,
-	std::function<void(std::error_code)> completion
+	std::function<void(std::error_code, const SessionID&)> completion
 )
 {
 	db.command(
-		[password=std::move(password), completion=std::move(completion)](redis::Reply reply, auto&& ec)
+		[
+			db=db.shared_from_this(),
+			username=std::string{username},
+			password=std::move(password),
+			completion=std::move(completion)
+		](redis::Reply reply, auto&& ec)
 		{
 			if (!ec)
 			{
@@ -107,7 +112,19 @@ void verify_user(
 				else if (!ec)
 					ec = Error::login_incorrect;
 			}
-			completion(ec);
+
+			// Generate session ID and store it in database
+			SessionID id{};
+			if (!ec)
+			{
+				id = secure_random<decltype(id)>();
+				db->command([completion = std::move(completion), id](redis::Reply, std::error_code ec)
+				{
+					completion(ec, id);
+				}, "SETEX session:%b 3600 %b", id.data(), id.size(), username.data(), username.size());
+			}
+			else
+				completion(ec, id);
 		},
 		"HMGET user:%b salt key iteration hash_algorithm",
 		username.data(), username.size()
