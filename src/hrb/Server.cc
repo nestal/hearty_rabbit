@@ -49,7 +49,13 @@ void Server::on_login(const Request& req, std::function<void(http::response<http
 			username,
 			Password{password},
 			*db,
-			[db, version=req.version(), send=std::move(send), this, keep_alive=req.keep_alive()](std::error_code ec, auto) mutable
+			[
+				db,
+				version=req.version(),
+				send=std::move(send),
+				this,
+				keep_alive=req.keep_alive()
+			](std::error_code ec, auto&& session) mutable
 			{
 				Log(LOG_INFO, "login result: %1% %2%", ec, ec.message());
 				m_db.release(std::move(db));
@@ -57,6 +63,7 @@ void Server::on_login(const Request& req, std::function<void(http::response<http
 				auto&& res = redirect(ec ? "/login_incorrect.html" : "/login_correct.html", version);
 				res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
 				res.keep_alive(keep_alive);
+				res.insert(http::field::set_cookie, set_cookie(session));
 				send(std::move(res));
 			}
 		);

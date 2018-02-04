@@ -46,4 +46,6 @@ void verify_session(
 	std::function<void(std::error_code, std::string_view user)> completion
 );
 
+std::string set_cookie(const SessionID& id);
+
 } // end of namespace

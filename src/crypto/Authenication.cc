@@ -17,8 +17,7 @@
 #include "net/Redis.hh"
 #include "util/Error.hh"
 
-#include <openssl/evp.h>
-#include <openssl/sha.h>
+#include <boost/algorithm/hex.hpp>
 
 #include <random>
 
@@ -44,7 +43,7 @@ Salt random_salt()
 const int min_iteration = 5000;
 const std::string default_hash_algorithm = "sha512";
 
-void verify_user(std::error_code& ec, const Password& password, const redis::Reply& reply)
+void verify_password(std::error_code& ec, const Password& password, const redis::Reply& reply)
 {
 	auto [salt, key, iter, hash_algorithm] = reply.as_tuple<4>(ec);
 	if (!ec && salt.is_string() && key.is_string() && iter.is_string() && iter.to_int() > 0)
@@ -125,8 +124,9 @@ void verify_user(
 			completion=std::move(completion)
 		](redis::Reply reply, auto&& ec)
 		{
+			// Verify password with the key in database
 			if (!ec)
-				verify_user(ec, password, reply);
+				verify_password(ec, password, reply);
 
 			// Generate session ID and store it in database
 			if (!ec)
@@ -153,6 +153,14 @@ void verify_session(
 		},
 		"GET session:%b", id.data(), id.size()
 	);
+}
+
+std::string set_cookie(const SessionID& id)
+{
+	std::string result = "id=";
+	boost::algorithm::hex_lower(id.begin(), id.end(), std::back_inserter(result));
+	result.append("; Secure; HttpOnly; SameSite=Strict; Max-Age=3600");
+	return result;
 }
 
 } // end of namespace hrb
