@@ -65,8 +65,14 @@ TEST_CASE("Test normal user login", "[normal]")
 				{
 					REQUIRE(!ec);
 					REQUIRE(session != SessionID{});
-					tested = true;
-					redis->disconnect();
+
+					verify_session(session, *redis, [redis, &tested](std::error_code ec, auto&& user)
+					{
+						REQUIRE(!ec);
+						REQUIRE(user == "sumsum");
+						redis->disconnect();
+						tested = true;
+					});
 				}
 			);
 		}

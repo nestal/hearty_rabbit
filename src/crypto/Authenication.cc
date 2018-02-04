@@ -140,4 +140,19 @@ void verify_user(
 	);
 }
 
+void verify_session(
+	const SessionID& id,
+	redis::Connection& db,
+	std::function<void(std::error_code, std::string_view)> completion
+)
+{
+	db.command(
+		[comp=std::move(completion)](redis::Reply reply, auto&& ec)
+		{
+			comp(ec, reply.as_string());
+		},
+		"GET session:%b", id.data(), id.size()
+	);
+}
+
 } // end of namespace hrb

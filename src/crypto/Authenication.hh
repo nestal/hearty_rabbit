@@ -40,4 +40,10 @@ void verify_user(
 	std::function<void(std::error_code, const SessionID&)> completion
 );
 
+void verify_session(
+	const SessionID& id,
+	redis::Connection& db,
+	std::function<void(std::error_code, std::string_view user)> completion
+);
+
 } // end of namespace
