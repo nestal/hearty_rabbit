@@ -39,7 +39,10 @@ Connection::Connection(
 	Token,
 	boost::asio::io_context& ioc,
 	const boost::asio::ip::tcp::endpoint& remote
-) : m_ioc{ioc}, m_socket{m_ioc}
+) :
+	m_ioc{ioc},
+	m_socket{m_ioc},
+	m_strand{m_socket.get_executor()}
 {
 	m_socket.connect(remote);
 }
@@ -50,24 +53,31 @@ void Connection::do_write(CommandString&& cmd, Completion&& completion)
 	async_write(
 		m_socket,
 		buffer,
-		[this, cmd=std::move(cmd), completion=std::move(completion)](auto ec, std::size_t bytes) mutable
-	{
-		if (!ec)
-		{
-			m_callbacks.push_back(std::move(completion));
-			if (m_callbacks.size() == 1)
-				do_read();
-		}
-		else
-			completion(Reply{}, std::error_code{ec.value(), ec.category()});
-	});
+		boost::asio::bind_executor(
+			m_strand,
+			[this, cmd=std::move(cmd), completion=std::move(completion)](auto ec, std::size_t bytes) mutable
+			{
+				if (!ec)
+				{
+					m_callbacks.push_back(std::move(completion));
+					if (m_callbacks.size() == 1)
+						do_read();
+				}
+				else
+					completion(Reply{}, std::error_code{ec.value(), ec.category()});
+			}
+		)
+	);
 }
 
 void Connection::do_read()
 {
 	m_socket.async_read_some(
 		boost::asio::buffer(m_read_buf),
-		[this](auto ec, auto read){ on_read(ec, read); }
+		boost::asio::bind_executor(
+			m_strand,
+			[this](auto ec, auto read){ on_read(ec, read); }
+		)
 	);
 }
 void Connection::on_read(boost::system::error_code ec, std::size_t bytes)

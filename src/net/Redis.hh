@@ -218,11 +218,14 @@ private:
 private:
 	boost::asio::io_context& m_ioc;
 	boost::asio::ip::tcp::socket m_socket;
+	boost::asio::strand<boost::asio::io_context::executor_type> m_strand;
 
 	char m_read_buf[4096];
-	::redisReader *m_reader{::redisReaderCreate()};
 
 	std::deque<Completion> m_callbacks;
+
+	// This is not exception safe so put it in the last.
+	::redisReader *m_reader{::redisReaderCreate()};
 };
 
 }} // end of namespace
