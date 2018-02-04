@@ -42,27 +42,50 @@ void Server::on_login(const Request& req, std::function<void(http::response<http
 	auto&& body = req.body();
 	if (req[http::field::content_type] == "application/x-www-form-urlencoded")
 	{
-		auto [username, password] = find_fields({body}, "username", "password");
+		auto [username, password] = find_fields(body, "username", "password");
 
 		auto db = m_db.alloc(m_ioc);
 		verify_user(
 			username,
 			Password{password},
 			*db,
-			[db, version=req.version(), send=std::move(send), this, keep_alive=req.keep_alive()](std::error_code ec) mutable
+			[
+				db,
+				version=req.version(),
+				send=std::move(send),
+				this,
+				keep_alive=req.keep_alive()
+			](std::error_code ec, auto&& session) mutable
 			{
 				Log(LOG_INFO, "login result: %1% %2%", ec, ec.message());
 				m_db.release(std::move(db));
 
-				auto&& res = redirect(ec ? "/login_incorrect.html" : "/login_correct.html", version);
+				auto&& res = redirect(ec ? "/login_incorrect.html" : "/index.html", version);
 				res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
 				res.keep_alive(keep_alive);
+
+				if (!ec)
+					res.insert(http::field::set_cookie, set_cookie(session));
+
 				send(std::move(res));
 			}
 		);
 	}
 	else
 		send(set_common_fields(req, redirect("/login.html", req.version())));
+}
+
+void Server::on_logout(const Request& req, const SessionID& id, std::function<void(http::response<http::empty_body>&&)>&& send)
+{
+	auto db = m_db.alloc(m_ioc);
+	destroy_session(id, *db, [this, db, send=std::move(send), version=req.version(), keep_alive=req.keep_alive()](auto&& ec) mutable
+	{
+		m_db.release(std::move(db));
+
+		auto&& res = redirect("/login.html", version);
+		res.insert(http::field::set_cookie, "id=; ");
+		send(set_common_fields(keep_alive, std::move(res)));
+	});
 }
 
 http::response<http::empty_body> Server::redirect(boost::beast::string_view where, unsigned version)
@@ -135,7 +158,7 @@ http::response<http::string_body> Server::server_error(const Request& req, boost
 	return set_common_fields(req, std::move(res));
 }
 
-http::response<http::file_body> Server::file_request(const Request& req)
+std::optional<http::response<http::file_body>> Server::file_request(const Request& req)
 {
 	Log(LOG_NOTICE, "requesting path %1%", req.target());
 
@@ -144,7 +167,7 @@ http::response<http::file_body> Server::file_request(const Request& req)
 
 	// TODO: use redirect instead
 	if (web_resources.find(filepath.to_string()) == web_resources.end())
-		filepath = "login.html";
+		return std::nullopt;
 
 	auto path = m_cfg.web_root() / filepath.to_string();
 	Log(LOG_NOTICE, "reading from %1%", path);
@@ -276,6 +299,15 @@ boost::asio::io_context& Server::get_io_context()
 void Server::disconnect_db()
 {
 	m_db.release_all();
+}
+
+bool Server::allow_anonymous(boost::string_view target)
+{
+	assert(!target.empty());
+	assert(target.front() == '/');
+	target.remove_prefix(1);
+
+	return target != "index.html" && web_resources.find(target.to_string()) != web_resources.end();
 }
 
 } // end of namespace

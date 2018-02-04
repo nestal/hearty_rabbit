@@ -56,25 +56,36 @@ TEST_CASE("Test normal user login", "[normal]")
 
 	add_user("sumsum", Password{"bearbear"}, *redis, [redis, &tested](std::error_code ec)
 	{
+		INFO("add_user() result = " << ec.message());
 		REQUIRE(!ec);
 
 		SECTION("correct user")
 		{
 			verify_user(
-				"sumsum", Password{"bearbear"}, *redis, [redis, &tested](std::error_code ec)
+				"sumsum", Password{"bearbear"}, *redis, [redis, &tested](std::error_code ec, auto&& session)
 				{
+					INFO("verify_user(correct) result = " << ec.message());
 					REQUIRE(!ec);
-					tested = true;
-					redis->disconnect();
+					REQUIRE(session != SessionID{});
+
+					verify_session(session, *redis, [redis, &tested](std::error_code ec, auto&& user)
+					{
+						REQUIRE(!ec);
+						REQUIRE(user == "sumsum");
+						redis->disconnect();
+						tested = true;
+					});
 				}
 			);
 		}
 		SECTION("incorrect user")
 		{
 			verify_user(
-				"siuyung", Password{"rabbit"}, *redis, [redis, &tested](std::error_code ec)
+				"siuyung", Password{"rabbit"}, *redis, [redis, &tested](std::error_code ec, auto&& session)
 				{
+					INFO("verify_user(incorrect) result = " << ec.message());
 					REQUIRE(ec == Error::login_incorrect);
+					REQUIRE(session == SessionID{});
 					tested = true;
 					redis->disconnect();
 				}
@@ -85,4 +96,15 @@ TEST_CASE("Test normal user login", "[normal]")
 	using namespace std::chrono_literals;
 	REQUIRE(ioc.run_for(10s) > 0);
 	REQUIRE(tested);
+}
+
+TEST_CASE("Parsing cookie", "[normal]")
+{
+	auto session = parse_cookie("id=0123456789ABCDEF0123456789ABCDEF; somethingelse; ");
+	REQUIRE(session.has_value());
+	REQUIRE(*session == SessionID{0x01,0x23,0x45, 0x67, 0x89,0xAB,0xCD,0xEF,0x01,0x23,0x45,0x67,0x89,0xAB,0xCD,0xEF});
+
+	session = parse_cookie("name=value; id=0123456789ABCDEF0123456789ABCDEF; ");
+	REQUIRE(session.has_value());
+	REQUIRE(*session == SessionID{0x01,0x23,0x45, 0x67, 0x89,0xAB,0xCD,0xEF,0x01,0x23,0x45,0x67,0x89,0xAB,0xCD,0xEF});
 }

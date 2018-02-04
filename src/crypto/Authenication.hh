@@ -14,6 +14,7 @@
 
 #include <array>
 #include <functional>
+#include <optional>
 #include <string_view>
 #include <system_error>
 
@@ -24,6 +25,7 @@ class Connection;
 }
 
 class Password;
+using SessionID = std::array<unsigned char, 16>;
 
 void add_user(
 	std::string_view username,
@@ -36,7 +38,22 @@ void verify_user(
 	std::string_view username,
 	Password&& password,
 	redis::Connection& db,
+	std::function<void(std::error_code, const SessionID&)> completion
+);
+
+void verify_session(
+	const SessionID& id,
+	redis::Connection& db,
+	std::function<void(std::error_code, std::string_view user)> completion
+);
+
+void destroy_session(
+	const SessionID& id,
+	redis::Connection& db,
 	std::function<void(std::error_code)> completion
 );
+
+std::string set_cookie(const SessionID& id);
+std::optional<SessionID> parse_cookie(std::string_view cookie);
 
 } // end of namespace

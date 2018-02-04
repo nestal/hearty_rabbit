@@ -219,7 +219,7 @@ ObjectRedisKey redis_key(const ObjectID& id)
 std::string to_hex(const ObjectID& id)
 {
 	std::string result(id.size()*2, '\0');
-	boost::algorithm::hex(id.begin(), id.end(), result.begin());
+	boost::algorithm::hex_lower(id.begin(), id.end(), result.begin());
 	return result;
 }
 
