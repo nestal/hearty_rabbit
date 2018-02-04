@@ -32,6 +32,7 @@ namespace hrb {
 // URL prefixes
 namespace url {
 const boost::string_view login{"/login"};
+const boost::string_view logout{"/logout"};
 const boost::string_view blob{"/blob"};
 const boost::string_view dir{"/dir"};
 }
@@ -54,12 +55,17 @@ public:
 	template<class Send>
 	void handle_https(Request&& req, Send&& send)
 	{
+		// Obviously "/login" always allow anonymous access, otherwise no one can login.
 		if (req.target() == url::login && req.method() == http::verb::post)
 			return on_login(req, std::forward<Send>(send));
 
 		// Only index.html require login
 		if (allow_anonymous(req.target()))
-			return send(file_request(req));
+		{
+			auto opt_res = file_request(req);
+			if (opt_res)
+				return send(std::move(*opt_res));
+		}
 
 		auto cookie = req[http::field::cookie];
 		auto session = parse_cookie({cookie.data(), cookie.size()});
@@ -85,7 +91,14 @@ public:
 					if (req.target().starts_with(url::dir))
 						return send(set_common_fields(req, get_dir(req)));
 
-					return send(file_request(req));
+					if (req.target().starts_with(url::logout))
+						return on_logout(req, std::forward<Send>(send));
+
+					auto opt_res = file_request(req);
+					if (opt_res)
+						return send(std::move(*opt_res));
+
+					return send(set_common_fields(req, redirect("/login.html", req.version())));
 				}
 			);
 		}
@@ -93,7 +106,7 @@ public:
 			return send(set_common_fields(req, redirect("/login.html", req.version())));
 	}
 
-	http::response<http::file_body>   file_request(const Request& req);
+	std::optional<http::response<http::file_body>> file_request(const Request& req);
 	http::response<http::string_body> bad_request(const Request& req, boost::beast::string_view why);
 	http::response<http::string_body> not_found(const Request& req, boost::beast::string_view target);
 	http::response<http::string_body> server_error(const Request& req, boost::beast::string_view what);
@@ -132,6 +145,7 @@ private:
 	static void drop_privileges();
 
 	void on_login(const Request& req, std::function<void(http::response<http::empty_body>&&)>&& send);
+	void on_logout(const Request& req, std::function<void(http::response<http::empty_body>&&)>&& send);
 	void get_blob(const Request& req, std::function<void(http::response<http::string_body>&&)>&& send);
 	http::response<http::string_body> get_dir(const Request& req);
 	static bool allow_anonymous(boost::string_view target);

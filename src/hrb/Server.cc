@@ -75,6 +75,13 @@ void Server::on_login(const Request& req, std::function<void(http::response<http
 		send(set_common_fields(req, redirect("/login.html", req.version())));
 }
 
+void Server::on_logout(const Request& req, std::function<void(http::response<http::empty_body>&&)>&& send)
+{
+	auto&& res = redirect("/login.html", req.version());
+	res.insert(http::field::set_cookie, "id=; ");
+	send(set_common_fields(req, std::move(res)));
+}
+
 http::response<http::empty_body> Server::redirect(boost::beast::string_view where, unsigned version)
 {
 	http::response<http::empty_body> res{http::status::moved_permanently, version};
@@ -145,7 +152,7 @@ http::response<http::string_body> Server::server_error(const Request& req, boost
 	return set_common_fields(req, std::move(res));
 }
 
-http::response<http::file_body> Server::file_request(const Request& req)
+std::optional<http::response<http::file_body>> Server::file_request(const Request& req)
 {
 	Log(LOG_NOTICE, "requesting path %1%", req.target());
 
@@ -154,7 +161,7 @@ http::response<http::file_body> Server::file_request(const Request& req)
 
 	// TODO: use redirect instead
 	if (web_resources.find(filepath.to_string()) == web_resources.end())
-		filepath = "login.html";
+		return std::nullopt;
 
 	auto path = m_cfg.web_root() / filepath.to_string();
 	Log(LOG_NOTICE, "reading from %1%", path);
