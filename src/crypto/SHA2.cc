@@ -33,7 +33,7 @@ EVP_MD_CTX* EVP_MD_CTX_new()
 }
 #endif
 
-void SHA2::Deleter::operator()(EVP_MD_CTX *ctx) const
+void SHA2::Deleter::operator()(EVP_MD_CTX *ctx) const noexcept
 {
 	// This is a macro, so we can't take its address and put it to unique_ptr.
 	::EVP_MD_CTX_destroy(ctx);
@@ -41,7 +41,7 @@ void SHA2::Deleter::operator()(EVP_MD_CTX *ctx) const
 
 SHA2::SHA2() : m_ctx{EVP_MD_CTX_new(), Deleter{}}
 {
-	::EVP_DigestInit_ex(m_ctx.get(), ::EVP_sha256(), nullptr);
+	::EVP_DigestInit_ex(m_ctx.get(), ::EVP_sha224(), nullptr);
 }
 
 void SHA2::update(const void *data, std::size_t size)

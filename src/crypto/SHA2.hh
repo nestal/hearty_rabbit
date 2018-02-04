@@ -23,9 +23,14 @@ class SHA2
 {
 public:
 	SHA2();
+	SHA2(SHA2&&) = default;
+	SHA2(const SHA2&) = delete;
 	~SHA2() = default;
 
-	static const std::size_t size = SHA256_DIGEST_LENGTH;
+	SHA2& operator=(SHA2&&) = default;
+	SHA2& operator=(const SHA2&) = delete;
+
+	static const std::size_t size = SHA224_DIGEST_LENGTH;
 
 	void update(const void *data, std::size_t size);
 	std::array<unsigned char, size> finalize();
@@ -34,7 +39,7 @@ public:
 private:
 	struct Deleter
 	{
-		void operator()(EVP_MD_CTX *ctx) const;
+		void operator()(EVP_MD_CTX *ctx) const noexcept ;
 	};
 
 	std::unique_ptr<EVP_MD_CTX, Deleter> m_ctx;
