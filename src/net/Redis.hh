@@ -183,7 +183,7 @@ public:
 
 	Connection(Connection&&) = delete;
 	Connection(const Connection&) = delete;
-	~Connection();
+	~Connection() = default;
 
 	Connection& operator=(Connection&&) = delete;
 	Connection& operator=(const Connection&) = delete;
@@ -226,8 +226,8 @@ private:
 
 	std::deque<Completion> m_callbacks;
 
-	// This is not exception safe so put it in the last.
-	::redisReader *m_reader{::redisReaderCreate()};
+	struct Deleter {void operator()(::redisReader*) const noexcept; };
+	std::unique_ptr<::redisReader, Deleter> m_reader{::redisReaderCreate()};
 };
 
 }} // end of namespace

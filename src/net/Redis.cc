@@ -85,10 +85,10 @@ void Connection::on_read(boost::system::error_code ec, std::size_t bytes)
 	assert(!m_callbacks.empty());
 	if (!ec)
 	{
-		::redisReaderFeed(m_reader, m_read_buf, bytes);
+		::redisReaderFeed(m_reader.get(), m_read_buf, bytes);
 
 		::redisReply *reply{};
-		auto result = ::redisReaderGetReply(m_reader, (void**)&reply);
+		auto result = ::redisReaderGetReply(m_reader.get(), (void**)&reply);
 
 		// Extract all replies from the
 		while (!m_callbacks.empty() && result == REDIS_OK && reply)
@@ -96,7 +96,7 @@ void Connection::on_read(boost::system::error_code ec, std::size_t bytes)
 			m_callbacks.front()(Reply{reply}, std::error_code{ec.value(), ec.category()});
 			m_callbacks.pop_front();
 
-			result = ::redisReaderGetReply(m_reader, (void**)&reply);
+			result = ::redisReaderGetReply(m_reader.get(), (void**)&reply);
 		}
 
 		// Keep reading until all outstanding commands are finished
@@ -109,9 +109,9 @@ void Connection::on_read(boost::system::error_code ec, std::size_t bytes)
 	}
 }
 
-Connection::~Connection()
+void Connection::Deleter::operator()(::redisReader *reader) const noexcept
 {
-	::redisReaderFree(m_reader);
+	::redisReaderFree(reader);
 }
 
 void Connection::disconnect()
