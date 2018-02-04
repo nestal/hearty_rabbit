@@ -90,13 +90,16 @@ void Connection::on_read(boost::system::error_code ec, std::size_t bytes)
 		auto [reply, result] = m_reader.get();
 
 		// Extract all replies from the
-		while (!m_callbacks.empty() && result == REDIS_OK && !reply.null())
+		while (!m_callbacks.empty() && result == ReplyReader::Result::ok)
 		{
+			assert(reply);
 			m_callbacks.front()(std::move(reply), std::error_code{ec.value(), ec.category()});
 			m_callbacks.pop_front();
 
 			std::tie(reply, result) = m_reader.get();
 		}
+
+//		(result == ReplyReader::Result::error)
 
 		// Keep reading until all outstanding commands are finished
 		if (!m_callbacks.empty())
@@ -272,11 +275,14 @@ void ReplyReader::feed(const char *data, std::size_t size)
 	::redisReaderFeed(m_reader.get(), data, size);
 }
 
-std::tuple<Reply, int> ReplyReader::get()
+std::tuple<Reply, ReplyReader::Result> ReplyReader::get()
 {
 	::redisReply *reply{};
 	auto result = ::redisReaderGetReply(m_reader.get(), (void**)&reply);
-	return std::make_tuple(Reply{reply}, result);
+	return std::make_tuple(
+		Reply{reply},
+		result == REDIS_OK ? (reply ? Result::ok : Result::not_ready) : Result::error
+	);
 }
 
 void ReplyReader::Deleter::operator()(::redisReader *reader) const noexcept

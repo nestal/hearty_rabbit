@@ -69,7 +69,6 @@ public:
 	std::string_view as_any_string() const noexcept;
 
 	explicit operator bool() const noexcept ;
-	bool null() const noexcept {return m_reply == nullptr;}
 
 	long as_int() const noexcept;
 	long to_int() const noexcept;
@@ -133,6 +132,9 @@ public:
 class ReplyReader
 {
 public:
+	enum class Result {ok, error, not_ready};
+
+public:
 	ReplyReader() = default;
 	ReplyReader(ReplyReader&&) = default;
 	ReplyReader(const ReplyReader&) = delete;
@@ -141,7 +143,7 @@ public:
 	ReplyReader& operator=(const ReplyReader&) = delete;
 
 	void feed(const char *data, std::size_t size);
-	std::tuple<Reply, int> get();
+	std::tuple<Reply, Result> get();
 
 private:
 	struct Deleter {void operator()(::redisReader*) const noexcept; };

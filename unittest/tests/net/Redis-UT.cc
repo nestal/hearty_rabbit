@@ -66,7 +66,7 @@ TEST_CASE("simple redis", "[normal]")
 		REQUIRE(ioc.run_for(10s) > 0);
 		REQUIRE(tested == 3);
 	}
-/*	SECTION("test array as map")
+	SECTION("test array as map")
 	{
 		redis->command([redis, &tested](auto reply, auto&& ec)
 		{
@@ -113,5 +113,5 @@ TEST_CASE("simple redis", "[normal]")
 		using namespace std::chrono_literals;
 		REQUIRE(ioc.run_for(10s) > 0);
 		REQUIRE(tested == 3);
-	}*/
+	}
 }
