@@ -129,6 +129,7 @@ TEST_CASE("GET static resource", "[normal]")
 	Configuration cfg{sizeof(argv)/sizeof(argv[1]), argv, nullptr};
 
 	Server subject{cfg};
+	
 
 	REQUIRE(cfg.web_root() == (current_src/"../../../lib").lexically_normal());
 	Request req;

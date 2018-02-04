@@ -72,4 +72,20 @@ std::tuple<std::string_view, char> split_front(std::string_view& in, std::string
 	return std::make_tuple(result, match);
 }
 
+std::string_view split_front_substring(std::string_view& in, std::string_view substring)
+{
+	// substr() will not throw even if "in" is empty and location==npos
+	auto location = in.find(substring);
+	auto result   = in.substr(0, location);
+
+	in.remove_prefix(result.size());
+
+	// Remove the matching substring, if any
+	if (location != in.npos)
+		in.remove_prefix(substring.size());
+
+	return result;
+
+}
+
 } // end of hrb namespace

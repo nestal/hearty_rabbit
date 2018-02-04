@@ -55,6 +55,8 @@ public:
 		if (req.target() == url::login && req.method() == http::verb::post)
 			return on_login(req, std::forward<Send>(send));
 
+		verify_session(req[http::field::cookie]);
+
 		if (req.target().starts_with(url::blob))
 			return get_blob(req, std::forward<Send>(send));
 
@@ -92,6 +94,8 @@ public:
 private:
 	static std::string_view resource_mime(const std::string& ext);
 	static void drop_privileges();
+
+	std::string verify_session(boost::string_view cookie);
 
 	void on_login(const Request& req, std::function<void(http::response<http::empty_body>&&)>&& send);
 	void get_blob(const Request& req, std::function<void(http::response<http::string_body>&&)>&& send);

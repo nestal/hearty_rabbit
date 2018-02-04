@@ -16,6 +16,7 @@
 #include "crypto/Random.hh"
 #include "net/Redis.hh"
 #include "util/Error.hh"
+#include "util/Escape.hh"
 
 #include <boost/algorithm/hex.hpp>
 
@@ -105,7 +106,7 @@ void add_user(
 		salt.data(), salt.size(),
 		key.data(), key.size(),
 		min_iteration,
-		default_hash_algorithm.c_str(), default_hash_algorithm.size()
+		default_hash_algorithm.data(), default_hash_algorithm.size()
 	);
 }
 
@@ -161,6 +162,25 @@ std::string set_cookie(const SessionID& id)
 	boost::algorithm::hex_lower(id.begin(), id.end(), std::back_inserter(result));
 	result.append("; Secure; HttpOnly; SameSite=Strict; Max-Age=3600");
 	return result;
+}
+
+std::optional<SessionID> parse_cookie(std::string_view cookie)
+{
+	while (!cookie.empty())
+	{
+		auto [name, match] = split_front(cookie, "=");
+		auto value = (match == '=' ? std::get<0>(split_front(cookie, ";")) : std::string_view{});
+
+		if (SessionID result{}; name == "id" && value.size() == result.size() * 2)
+		{
+			boost::algorithm::unhex(value.begin(), value.end(), result.begin());
+			return result;
+		}
+
+		while (!cookie.empty() && cookie.front() == ' ')
+			cookie.remove_prefix(1);
+	}
+	return std::nullopt;
 }
 
 } // end of namespace hrb

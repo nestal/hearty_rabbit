@@ -14,6 +14,7 @@
 
 #include <array>
 #include <functional>
+#include <optional>
 #include <string_view>
 #include <system_error>
 
@@ -47,5 +48,6 @@ void verify_session(
 );
 
 std::string set_cookie(const SessionID& id);
+std::optional<SessionID> parse_cookie(std::string_view cookie);
 
 } // end of namespace

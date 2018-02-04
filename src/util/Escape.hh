@@ -20,6 +20,7 @@ std::string url_encode(std::string_view in);
 std::string url_decode(std::string_view in);
 
 std::tuple<std::string_view, char> split_front(std::string_view& in, std::string_view value);
+std::string_view split_front_substring(std::string_view& in, std::string_view substring);
 
 template <typename... Fields>
 auto find_fields(std::string_view remain, Fields... fields)

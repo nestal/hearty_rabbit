@@ -42,7 +42,7 @@ void Server::on_login(const Request& req, std::function<void(http::response<http
 	auto&& body = req.body();
 	if (req[http::field::content_type] == "application/x-www-form-urlencoded")
 	{
-		auto [username, password] = find_fields({body}, "username", "password");
+		auto [username, password] = find_fields(body, "username", "password");
 
 		auto db = m_db.alloc(m_ioc);
 		verify_user(
@@ -63,7 +63,10 @@ void Server::on_login(const Request& req, std::function<void(http::response<http
 				auto&& res = redirect(ec ? "/login_incorrect.html" : "/login_correct.html", version);
 				res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
 				res.keep_alive(keep_alive);
-				res.insert(http::field::set_cookie, set_cookie(session));
+
+				if (!ec)
+					res.insert(http::field::set_cookie, set_cookie(session));
+
 				send(std::move(res));
 			}
 		);
@@ -283,6 +286,12 @@ boost::asio::io_context& Server::get_io_context()
 void Server::disconnect_db()
 {
 	m_db.release_all();
+}
+
+std::string Server::verify_session(boost::string_view cookie)
+{
+	Log(LOG_INFO, "cookie = %1%", cookie);
+	return {};
 }
 
 } // end of namespace
