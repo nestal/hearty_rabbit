@@ -50,12 +50,12 @@ class Reply
 public:
 	explicit Reply(redisReply *r = nullptr) noexcept;
 	Reply(const Reply&) = delete;
-	Reply(Reply&& other);
-	~Reply();
+	Reply(Reply&& other) = default ;
+	~Reply() = default;
 
 	Reply& operator=(const Reply&) = delete;
-	Reply& operator=(Reply&& other);
-	void swap(Reply& other);
+	Reply& operator=(Reply&& other) = default ;
+	void swap(Reply& other) noexcept ;
 
 	class iterator;
 	iterator begin() const;
@@ -108,7 +108,8 @@ private:
 	}
 
 private:
-	::redisReply *m_reply{};
+	struct Deleter {void operator()(::redisReply*) const noexcept; };
+	std::unique_ptr<::redisReply, Deleter> m_reply{};
 };
 
 class Reply::iterator : public boost::iterator_adaptor<
@@ -137,13 +138,13 @@ public:
 		if (m_length < 0)
 			throw std::logic_error("invalid command string");
 	}
-	CommandString(CommandString&& other);
+	CommandString(CommandString&& other) noexcept ;
 	CommandString(const CommandString&) = delete;
 	~CommandString();
-	CommandString& operator=(CommandString&& other);
+	CommandString& operator=(CommandString&& other) noexcept ;
 	CommandString& operator=(const CommandString&) = delete;
 
-	void swap(CommandString& other);
+	void swap(CommandString& other) noexcept ;
 
 	char* get() const {return m_cmd;}
 	std::size_t length() const {return static_cast<std::size_t>(m_length);}

@@ -124,26 +124,15 @@ Reply::Reply(redisReply *r) noexcept :
 {
 }
 
-Reply::Reply(Reply&& other)
+void Reply::Deleter::operator()(::redisReply *reply) const noexcept
 {
-	swap(other);
+	if (!reply)
+		::freeReplyObject(reply);
 }
 
-Reply::~Reply()
+void Reply::swap(Reply& other) noexcept
 {
-	if (!m_reply)
-		::freeReplyObject(m_reply);
-}
-
-Reply& Reply::operator=(Reply&& other)
-{
-	Reply tmp{std::move(other)};
-	swap(tmp);
-	return *this;
-}
-void Reply::swap(Reply& other)
-{
-	std::swap(m_reply, other.m_reply);
+	m_reply.swap(other.m_reply);
 }
 
 std::string_view Reply::as_string() const noexcept
@@ -261,7 +250,7 @@ std::error_code make_error_code(Error err)
 	return std::error_code(static_cast<int>(err), redis_error_category());
 }
 
-CommandString::CommandString(CommandString&& other)
+CommandString::CommandString(CommandString&& other) noexcept
 {
 	swap(other);
 }
@@ -271,14 +260,14 @@ CommandString::~CommandString()
 	::redisFreeCommand(m_cmd);
 }
 
-CommandString& CommandString::operator=(CommandString&& other)
+CommandString& CommandString::operator=(CommandString&& other) noexcept
 {
 	CommandString tmp{std::move(other)};
 	swap(tmp);
 	return *this;
 }
 
-void CommandString::swap(CommandString& other)
+void CommandString::swap(CommandString& other) noexcept
 {
 	std::swap(m_cmd, other.m_cmd);
 	std::swap(m_length, other.m_length);
