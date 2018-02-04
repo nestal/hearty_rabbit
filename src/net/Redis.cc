@@ -42,7 +42,8 @@ Connection::Connection(
 ) :
 	m_ioc{ioc},
 	m_socket{m_ioc},
-	m_strand{m_socket.get_executor()}
+	m_strand{m_socket.get_executor()},
+	m_read_buf(1024*1024)
 {
 	m_socket.connect(remote);
 }
@@ -85,7 +86,7 @@ void Connection::on_read(boost::system::error_code ec, std::size_t bytes)
 	assert(!m_callbacks.empty());
 	if (!ec)
 	{
-		m_reader.feed(m_read_buf, bytes);
+		m_reader.feed(&m_read_buf[0], bytes);
 
 		auto [reply, result] = m_reader.get();
 

@@ -243,7 +243,9 @@ private:
 	boost::asio::ip::tcp::socket m_socket;
 	boost::asio::strand<boost::asio::io_context::executor_type> m_strand;
 
-	char m_read_buf[4096];
+	// Since we store blobs in redis, we need a large read buffer.
+	// Large enough to allocate in heap dynamically.
+	std::vector<char> m_read_buf;
 
 	std::deque<Completion> m_callbacks;
 

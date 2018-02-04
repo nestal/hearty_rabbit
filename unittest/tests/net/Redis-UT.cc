@@ -115,3 +115,52 @@ TEST_CASE("simple redis", "[normal]")
 		REQUIRE(tested == 3);
 	}
 }
+
+TEST_CASE("redis reply reader test", "[normal]")
+{
+	ReplyReader subject;
+
+	SECTION("normal one pass")
+	{
+		std::string_view str{"+OK\r\n"};
+		subject.feed(str.data(), str.size());
+		auto[reply, result] = subject.get();
+		REQUIRE(result == ReplyReader::Result::ok);
+		REQUIRE(reply.as_status() == "OK");
+	}
+	SECTION("two replies in one pass")
+	{
+		// See https://redis.io/topics/protocol for detail string format
+		std::string_view str{"$3\r\nfoo\r\n$3\r\nbar\r\n"};
+		subject.feed(str.data(), str.size());
+
+		auto[reply, result] = subject.get();
+		REQUIRE(result == ReplyReader::Result::ok);
+		REQUIRE(reply.as_string() == "foo");
+
+		std::tie(reply, result) = subject.get();
+		REQUIRE(result == ReplyReader::Result::ok);
+		REQUIRE(reply.as_string() == "bar");
+	}
+	SECTION("one reply in two passes")
+	{
+		std::string_view str{"$10\r\n0123456789\r\n"};
+		REQUIRE(str.size() > 5);
+
+		subject.feed(str.data(),   5);
+		auto[reply, result] = subject.get();
+		REQUIRE(result == ReplyReader::Result::not_ready);
+		REQUIRE(!reply);
+		REQUIRE(reply.as_string().empty());
+
+		subject.feed(str.data()+5, str.size()-5);
+		std::tie(reply, result) = subject.get();
+		REQUIRE(result == ReplyReader::Result::ok);
+		REQUIRE(reply.as_string() == "0123456789");
+
+		std::tie(reply, result) = subject.get();
+		REQUIRE(result == ReplyReader::Result::not_ready);
+		REQUIRE(!reply);
+		REQUIRE(reply.as_string().empty());
+	}
+}
