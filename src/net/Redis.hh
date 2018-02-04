@@ -48,13 +48,14 @@ const std::error_category& redis_error_category();
 class Reply
 {
 public:
-	explicit Reply(const redisReply *r = nullptr) noexcept;
-	Reply(const Reply&) = default;
-	Reply(Reply&&) = default;
-	~Reply() = default;
+	explicit Reply(redisReply *r = nullptr) noexcept;
+	Reply(const Reply&) = delete;
+	Reply(Reply&& other);
+	~Reply();
 
-	Reply& operator=(const Reply&) = default;
-	Reply& operator=(Reply&&) = default;
+	Reply& operator=(const Reply&) = delete;
+	Reply& operator=(Reply&& other);
+	void swap(Reply& other);
 
 	class iterator;
 	iterator begin() const;
@@ -107,12 +108,12 @@ private:
 	}
 
 private:
-	const ::redisReply *m_reply;
+	::redisReply *m_reply{};
 };
 
 class Reply::iterator : public boost::iterator_adaptor<
 	iterator,
-	const ::redisReply* const*,
+	::redisReply* const*,
 	const Reply,
 	boost::use_default,
 	const Reply,
@@ -120,11 +121,11 @@ class Reply::iterator : public boost::iterator_adaptor<
 >
 {
 public:
-	explicit iterator(const ::redisReply * const*elements = nullptr) : iterator_adaptor{elements} {}
+	explicit iterator(::redisReply * const*elements = nullptr) : iterator_adaptor{elements} {}
 
  private:
 	friend class boost::iterator_core_access;
-	Reply dereference() const { return Reply(*base()); }
+	Reply dereference() const { return Reply(base() ? *base() : nullptr); }
 };
 
 class CommandString
@@ -193,9 +194,9 @@ public:
 		{
 			do_write(
 				CommandString{args...},
-				[cb=std::make_shared<Callback>(std::forward<Callback>(callback))](auto r, auto ec)
+				[cb=std::make_shared<Callback>(std::forward<Callback>(callback))](auto&& r, auto ec)
 				{
-					(*cb)(r, std::move(ec));
+					(*cb)(std::move(r), std::move(ec));
 				}
 			);
 		}
