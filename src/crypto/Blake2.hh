@@ -17,18 +17,17 @@
 #include <memory>
 
 namespace hrb {
-namespace evp {
 
-class SHA2
+class Blake2
 {
 public:
-	SHA2();
-	SHA2(SHA2&&) = default;
-	SHA2(const SHA2&) = delete;
-	~SHA2() = default;
+	Blake2();
+	Blake2(Blake2&&) = default;
+	Blake2(const Blake2&) = delete;
+	~Blake2() = default;
 
-	SHA2& operator=(SHA2&&) = default;
-	SHA2& operator=(const SHA2&) = delete;
+	Blake2& operator=(Blake2&&) = default;
+	Blake2& operator=(const Blake2&) = delete;
 
 	// 20 byte hash space should be large enough to avoid collision.
 	// Hash values will be used as keys for database, so if they are
@@ -43,4 +42,4 @@ private:
 	::blake2b_state m_ctx{};
 };
 
-}} // end of namespace hrb::evp
+} // end of namespace hrb::evp

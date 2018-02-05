@@ -12,7 +12,7 @@
 
 #pragma once
 
-#include "crypto/SHA2.hh"
+#include "crypto/Blake2.hh"
 #include "util/MMap.hh"
 
 #include <boost/filesystem/path.hpp>
@@ -30,7 +30,7 @@ class Connection;
 
 // If use a typedef (or using), then the argument-dependent lookup (ADL) will not
 // work for operator<<
-struct ObjectID : std::array<unsigned char, evp::SHA2::size>
+struct ObjectID : std::array<unsigned char, Blake2::size>
 {
 	using array::array;
 	explicit ObjectID(const array& ar) : array{ar} {}

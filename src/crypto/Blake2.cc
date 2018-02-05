@@ -10,35 +10,34 @@
 // Created by nestal on 1/28/18.
 //
 
-#include "SHA2.hh"
+#include "Blake2.hh"
 
 #include <cstring>
 #include <cassert>
 
 namespace hrb {
-namespace evp {
 
-SHA2::SHA2()
+Blake2::Blake2()
 {
 	::blake2b_init(&m_ctx, size);
 }
 
-void SHA2::update(const void *data, std::size_t len)
+void Blake2::update(const void *data, std::size_t len)
 {
 	::blake2b_update(&m_ctx, static_cast<const std::uint8_t*>(data), len);
 }
 
-std::size_t SHA2::finalize(unsigned char *out, std::size_t len)
+std::size_t Blake2::finalize(unsigned char *out, std::size_t len)
 {
 	::blake2b_final(&m_ctx, out, len);
 	return len;
 }
 
-std::array<unsigned char, SHA2::size> SHA2::finalize()
+std::array<unsigned char, Blake2::size> Blake2::finalize()
 {
-	std::array<unsigned char, SHA2::size> result{};
+	std::array<unsigned char, Blake2::size> result{};
 	finalize(&result[0], result.size());
 	return result;
 }
 
-}} // end of namespace hrb
+} // end of namespace hrb

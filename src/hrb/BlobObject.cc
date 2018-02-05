@@ -12,7 +12,7 @@
 
 #include "BlobObject.hh"
 
-#include "crypto/SHA2.hh"
+#include "crypto/Blake2.hh"
 #include "net/Redis.hh"
 #include "util/Error.hh"
 #include "util/Magic.hh"
@@ -30,7 +30,7 @@ namespace hrb {
 namespace {
 
 static constexpr std::array<unsigned char, 5> key_prefix = {'b','l','o','b', ':'};
-using ObjectRedisKey = std::array<unsigned char, evp::SHA2::size + key_prefix.size()>;
+using ObjectRedisKey = std::array<unsigned char, Blake2::size + key_prefix.size()>;
 
 ObjectRedisKey redis_key(const ObjectID& id)
 {
@@ -78,7 +78,7 @@ void BlobObject::open(const boost::filesystem::path& path, const ObjectID* id, s
 
 ObjectID BlobObject::hash(std::string_view blob)
 {
-	evp::SHA2 sha3;
+	Blake2 sha3;
 
 	std::uint64_t size = blob.size();
 	sha3.update(&size, sizeof(size));
