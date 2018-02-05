@@ -27,6 +27,21 @@
 
 namespace hrb {
 
+namespace {
+
+static constexpr std::array<unsigned char, 5> key_prefix = {'b','l','o','b', ':'};
+using ObjectRedisKey = std::array<unsigned char, evp::SHA2::size + key_prefix.size()>;
+
+ObjectRedisKey redis_key(const ObjectID& id)
+{
+	ObjectRedisKey key = {};
+	std::copy(key_prefix.begin(), key_prefix.end(), key.begin() );
+	std::copy(id.begin(), id.end(), key.begin() + key_prefix.size());
+	return key;
+}
+
+} // end of local namespace
+
 BlobObject::BlobObject(const boost::filesystem::path &path)
 {
 	std::error_code ec;
@@ -72,6 +87,19 @@ ObjectID BlobObject::hash(std::string_view blob)
 	return ObjectID{sha3.finalize()};
 }
 
+void BlobObject::erase(redis::Connection& db, BlobObject::Completion completion)
+{
+	db.command(
+		[callback=std::move(completion), this](redis::Reply, std::error_code&& ec)
+		{
+			callback(*this, std::move(ec));
+		},
+		"DEL %b%b",
+		key_prefix.data(), key_prefix.size(),
+		m_id.data(), m_id.size()
+	);
+}
+
 void BlobObject::save(redis::Connection& db, Completion completion)
 {
 	db.command(
@@ -80,7 +108,7 @@ void BlobObject::save(redis::Connection& db, Completion completion)
 			callback(*this, std::move(ec));
 		},
 		"HSET %b%b blob %b name %b mime %b",
-		object_redis_key_prefix.data(), object_redis_key_prefix.size(),
+		key_prefix.data(), key_prefix.size(),
 		m_id.data(), m_id.size(),
 		m_blob.data(), m_blob.size(),
 		m_name.c_str(), m_name.size(),
@@ -131,7 +159,7 @@ void BlobObject::load(redis::Connection& db, const ObjectID& id, Completion comp
 			callback(result, ec);
 		},
 		"HGETALL %b%b",
-		object_redis_key_prefix.data(), object_redis_key_prefix.size(),
+		key_prefix.data(), key_prefix.size(),
 		id.data(), id.size()
 	);
 }
@@ -157,7 +185,7 @@ void BlobObject::load(
 
 			callback(result, ec);
 		}, "HGETALL %b%b",
-		object_redis_key_prefix.data(), object_redis_key_prefix.size(),
+		key_prefix.data(), key_prefix.size(),
 		id.data(), id.size()
 	);
 }
@@ -196,14 +224,6 @@ void BlobObject::assign_field(std::string_view field, std::string_view value)
 	// mime is also optional
 	else if (field == "mime")
 		m_mime = value;
-}
-
-ObjectRedisKey BlobObject::redis_key() const
-{
-	ObjectRedisKey key = {};
-	std::copy(object_redis_key_prefix.begin(), object_redis_key_prefix.end(), key.begin() );
-	std::copy(m_id.begin(), m_id.end(), key.begin() + object_redis_key_prefix.size());
-	return key;
 }
 
 std::ostream& operator<<(std::ostream& os, const ObjectID& id)

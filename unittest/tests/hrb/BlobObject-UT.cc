@@ -55,8 +55,9 @@ TEST_CASE("Load BlobObject from file", "[normal]")
 		REQUIRE(!ec);
 		REQUIRE(!src.empty());
 
-		auto key = src.redis_key();
-		db->command([](auto, auto){}, "HDEL %b mime", key.data(), key.size());
+		// Delete the mime type in redis so
+		auto key = src.ID();
+		db->command([](auto, auto){}, "HDEL blob:%b mime", key.data(), key.size());
 
 		// read it back
 		BlobObject::load(*db, src.ID(), [db, &src, &tested](auto& loaded, auto ec)

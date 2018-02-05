@@ -28,22 +28,15 @@ namespace redis {
 class Connection;
 }
 
-static const std::size_t object_id_size  = evp::SHA2::size;
-static constexpr std::array<unsigned char, 5> object_redis_key_prefix = {'b','l','o','b', ':'};
-using ObjectRedisKey = std::array<unsigned char, object_id_size + object_redis_key_prefix.size()>;
-
 // If use a typedef (or using), then the argument-dependent lookup (ADL) will not
 // work for operator<<
-struct ObjectID : std::array<unsigned char, object_id_size>
+struct ObjectID : std::array<unsigned char, evp::SHA2::size>
 {
 	using array::array;
 	explicit ObjectID(const array& ar) : array{ar} {}
 };
 
 static_assert(std::is_standard_layout<ObjectID>::value);
-static_assert(sizeof(ObjectID) == object_id_size);
-
-ObjectRedisKey redis_key(const ObjectID& id);
 
 std::string to_hex(const ObjectID& id);
 ObjectID hex_to_object_id(std::string_view base64);
@@ -79,15 +72,13 @@ public:
 	);
 
 	void save(redis::Connection& db, Completion completion);
+	void erase(redis::Connection& db, Completion completion);
 	void open(const boost::filesystem::path& path, std::error_code& ec);
 	void assign(std::string_view blob, std::string_view name, std::error_code& ec);
 
 	std::string_view blob() const;
 	const std::string& name() const {return m_name;}
 	const std::string& mime() const {return m_mime;}
-
-	// If not for UT we should make it private
-	ObjectRedisKey redis_key() const;
 
 private:
 	static ObjectID hash(std::string_view blob);
@@ -102,7 +93,7 @@ private:
 	void assign_field(std::string_view field, std::string_view value);
 
 private:
-	ObjectID    m_id;       //!< SHA512 hash of the blob
+	ObjectID    m_id{};     //!< SHA512 hash of the blob
 	std::string m_name;     //!< Typically the file name of the blob
 	std::string m_mime;     //!< Mime-type of the blob, deduced by libmagic
 
