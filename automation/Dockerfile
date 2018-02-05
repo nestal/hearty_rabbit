@@ -33,5 +33,10 @@ RUN tar zxf cmake-3.10.2.tar.gz \
 	&& make -j8 install
 
 # build libb2
+# Don't enable native CPU optimization because the build machine may be different from
+# the current one.
 RUN git clone https://github.com/BLAKE2/libb2.git
-RUN cd libb2 && ./autogen.sh && ./configure --prefix=/opt/libb2 && make install
+RUN cd libb2 \
+	&& ./autogen.sh \
+	&& ./configure --prefix=/opt/libb2 --enable-native=no \
+	&& make install
