@@ -86,7 +86,15 @@ public:
 					m_db.release(std::move(db));
 
 					if (ec)
-						return send(set_common_fields(req, redirect("/login.html", req.version())));
+					{
+						// Introduce a small delay when responsing to requests with invalid session ID.
+						// This is to slow down bruce-force attacks on the session ID.
+						boost::asio::deadline_timer t{m_ioc, boost::posix_time::milliseconds{500}};
+						return t.async_wait([version=req.version(), send=std::forward<decltype(send)>(send)](auto ec)
+						{
+							send(redirect("/login.html", version));
+						});
+					}
 
 					if (req.target().starts_with(url::blob))
 						return get_blob(req, std::forward<decltype(send)>(send));
@@ -110,10 +118,10 @@ public:
 	}
 
 	std::optional<http::response<http::file_body>> file_request(const Request& req);
-	http::response<http::string_body> bad_request(const Request& req, boost::beast::string_view why);
-	http::response<http::string_body> not_found(const Request& req, boost::beast::string_view target);
-	http::response<http::string_body> server_error(const Request& req, boost::beast::string_view what);
-	http::response<http::empty_body> redirect(boost::beast::string_view where, unsigned version);
+	static http::response<http::string_body> bad_request(const Request& req, boost::beast::string_view why);
+	static http::response<http::string_body> not_found(const Request& req, boost::beast::string_view target);
+	static http::response<http::string_body> server_error(const Request& req, boost::beast::string_view what);
+	static http::response<http::empty_body> redirect(boost::beast::string_view where, unsigned version);
 
 	template<class Body, class Allocator>
 	static auto&& set_common_fields(

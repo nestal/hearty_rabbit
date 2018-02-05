@@ -191,7 +191,7 @@ TEST_CASE("GET static resource", "[normal]")
 
 		req.target("/index.html");
 		req.insert(boost::beast::http::field::cookie, set_cookie(session));
-		subject.handle_https(std::move(req), [&checker, &subject](auto&& res) mutable
+		subject.handle_https(std::move(req), [&checker, &subject](auto&& res)
 		{
 			checker(std::move(res));
 			subject.disconnect_db();
@@ -227,7 +227,7 @@ TEST_CASE("GET static resource", "[normal]")
 		req.insert(http::field::content_type, "application/x-www-form-urlencoded");
 		req.body() = "username=user&password=123";
 
-		subject.handle_https(std::move(req), [&checker, &subject](auto&& res) mutable
+		subject.handle_https(std::move(req), [&checker, &subject](auto&& res)
 		{
 			checker(std::move(res));
 			subject.disconnect_db();
@@ -285,7 +285,7 @@ TEST_CASE("GET static resource", "[normal]")
 
 			req.target("/blob/" + to_hex(blob.ID()));
 			req.insert(boost::beast::http::field::cookie, set_cookie(session));
-			subject.handle_https(std::move(req), [&checker, &subject](auto&& res) mutable
+			subject.handle_https(std::move(req), [&checker, &subject](auto&& res)
 			{
 				REQUIRE(res.at(http::field::content_type) == "text/x-c++");
 				checker(std::move(res));

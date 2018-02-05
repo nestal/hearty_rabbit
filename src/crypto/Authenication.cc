@@ -20,6 +20,8 @@
 
 #include <boost/algorithm/hex.hpp>
 
+#include <openssl/crypto.h>
+
 #include <random>
 
 namespace hrb {
@@ -55,12 +57,7 @@ void verify_password(std::error_code& ec, const Password& password, const redis:
 
 		auto pkey = password.derive_key(salt.as_string(), iter.to_int(), hash_algorithm_to_use);
 		auto skey = key.as_string();
-		if (!std::equal(
-			pkey.begin(), pkey.end(),
-			skey.begin(), skey.end(),
-			[](unsigned char p, char k)
-			{ return p == static_cast<unsigned char>(k); }
-		))
+		if (pkey.size() != skey.size() || ::CRYPTO_memcmp(&pkey[0], &skey[0], pkey.size()) != 0)
 		{
 			ec = Error::login_incorrect;
 		}
