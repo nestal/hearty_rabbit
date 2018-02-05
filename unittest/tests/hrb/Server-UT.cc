@@ -25,6 +25,7 @@
 #include <boost/beast/core/buffers_to_string.hpp>
 
 using namespace hrb;
+using namespace std::chrono_literals;
 
 namespace {
 
@@ -182,6 +183,7 @@ TEST_CASE("GET static resource", "[normal]")
 
 		req.target("/index.html");
 		subject.handle_https(std::move(req), std::ref(checker));
+		REQUIRE(subject.get_io_context().run_for(10s) > 0);
 		REQUIRE(checker.tested());
 	}
 
@@ -196,7 +198,8 @@ TEST_CASE("GET static resource", "[normal]")
 			checker(std::move(res));
 			subject.disconnect_db();
 		});
-		subject.get_io_context().run();
+
+		REQUIRE(subject.get_io_context().run_for(10s) > 0);
 		REQUIRE(checker.tested());
 	}
 
@@ -206,6 +209,7 @@ TEST_CASE("GET static resource", "[normal]")
 
 		req.target("/something_not_exist.html");
 		subject.handle_https(std::move(req), std::ref(checker));
+		REQUIRE(subject.get_io_context().run_for(10s) > 0);
 		REQUIRE(checker.tested());
 	}
 
@@ -215,6 +219,7 @@ TEST_CASE("GET static resource", "[normal]")
 
 		req.target("/login");
 		subject.handle_https(std::move(req), std::ref(checker));
+		REQUIRE(subject.get_io_context().run_for(10s) > 0);
 		REQUIRE(checker.tested());
 	}
 
@@ -232,8 +237,7 @@ TEST_CASE("GET static resource", "[normal]")
 			checker(std::move(res));
 			subject.disconnect_db();
 		});
-		subject.get_io_context().run();
-
+		REQUIRE(subject.get_io_context().run_for(10s) > 0);
 		REQUIRE(checker.tested());
 	}
 	SECTION("Login incorrect without content-type")
@@ -255,6 +259,7 @@ TEST_CASE("GET static resource", "[normal]")
 
 		req.target("/");
 		subject.handle_https(std::move(req), std::ref(checker));
+		REQUIRE(subject.get_io_context().run_for(10s) > 0);
 		REQUIRE(checker.tested());
 	}
 
@@ -292,6 +297,7 @@ TEST_CASE("GET static resource", "[normal]")
 				subject.disconnect_db();
 			});
 		});
-		subject.get_io_context().run();
+		REQUIRE(subject.get_io_context().run_for(10s) > 0);
+		REQUIRE(checker.tested());
 	}
 }

@@ -125,6 +125,17 @@ void Server::get_blob(const Request& req, std::function<void(http::response<http
 	}
 }
 
+void Server::on_invalid_session(const Request& req, std::function<void(http::response<http::empty_body>&&)>&& send)
+{
+	// Introduce a small delay when responsing to requests with invalid session ID.
+	// This is to slow down bruce-force attacks on the session ID.
+	boost::asio::deadline_timer t{m_ioc, boost::posix_time::milliseconds{500}};
+	return t.async_wait([version=req.version(), send=std::move(send)](auto ec)
+	{
+		send(redirect("/login.html", version));
+	});
+}
+
 http::response<http::string_body> Server::get_dir(const Request& req)
 {
 	return http::response<http::string_body>();

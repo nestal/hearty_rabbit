@@ -48,6 +48,49 @@ public:
 
 	http::response<http::empty_body> redirect_http(const Request& req);
 
+	template <class Send>
+	void on_valid_session(Request&& req, Send&& send, const SessionID& session)
+	{
+		if (req.target().starts_with(url::blob))
+			return get_blob(req, std::forward<decltype(send)>(send));
+
+		if (req.target().starts_with(url::dir))
+			return send(set_common_fields(req, get_dir(req)));
+
+		if (req.target().starts_with(url::logout))
+			return on_logout(req, session, std::forward<Send>(send));
+
+		auto opt_res = file_request(req);
+		if (opt_res)
+			return send(std::move(*opt_res));
+
+		return send(set_common_fields(req, redirect("/login.html", req.version())));
+	}
+
+	template <class Send>
+	void on_session(Request&& req, Send&& send, const SessionID& session)
+	{
+		auto db = m_db.alloc(m_ioc);
+		verify_session(
+			session,
+			*db,
+			[
+				this,
+				db,
+				req=std::move(req),
+				send=std::forward<Send>(send),
+				session
+			](std::error_code ec, std::string_view user) mutable
+			{
+				m_db.release(std::move(db));
+
+				return ec ?
+					on_invalid_session(std::move(req), std::forward<decltype(send)>(send)) :
+					on_valid_session(std::move(req), std::forward<decltype(send)>(send), session);
+			}
+		);
+
+	}
 	// This function produces an HTTP response for the given
 	// request. The type of the response object depends on the
 	// contents of the request, so the interface requires the
@@ -67,54 +110,12 @@ public:
 				return send(std::move(*opt_res));
 		}
 
+		// Everything else require a valid session.
 		auto cookie = req[http::field::cookie];
 		auto session = parse_cookie({cookie.data(), cookie.size()});
-		if (session)
-		{
-			auto db = m_db.alloc(m_ioc);
-			verify_session(
-				*session,
-				*db,
-				[
-					this,
-					db,
-					req=std::move(req),
-					send=std::forward<Send>(send),
-					session=*session
-				](std::error_code ec, std::string_view user) mutable
-				{
-					m_db.release(std::move(db));
-
-					if (ec)
-					{
-						// Introduce a small delay when responsing to requests with invalid session ID.
-						// This is to slow down bruce-force attacks on the session ID.
-						boost::asio::deadline_timer t{m_ioc, boost::posix_time::milliseconds{500}};
-						return t.async_wait([version=req.version(), send=std::forward<decltype(send)>(send)](auto ec)
-						{
-							send(redirect("/login.html", version));
-						});
-					}
-
-					if (req.target().starts_with(url::blob))
-						return get_blob(req, std::forward<decltype(send)>(send));
-
-					if (req.target().starts_with(url::dir))
-						return send(set_common_fields(req, get_dir(req)));
-
-					if (req.target().starts_with(url::logout))
-						return on_logout(req, session, std::forward<Send>(send));
-
-					auto opt_res = file_request(req);
-					if (opt_res)
-						return send(std::move(*opt_res));
-
-					return send(set_common_fields(req, redirect("/login.html", req.version())));
-				}
-			);
-		}
-		else
-			return send(set_common_fields(req, redirect("/login.html", req.version())));
+		return session ?
+			on_session(std::move(req), std::forward<Send>(send), *session) :
+			on_invalid_session(std::move(req), std::forward<Send>(send));
 	}
 
 	std::optional<http::response<http::file_body>> file_request(const Request& req);
@@ -157,6 +158,7 @@ private:
 
 	void on_login(const Request& req, std::function<void(http::response<http::empty_body>&&)>&& send);
 	void on_logout(const Request& req, const SessionID& id, std::function<void(http::response<http::empty_body>&&)>&& send);
+	void on_invalid_session(const Request& req, std::function<void(http::response<http::empty_body>&&)>&& send);
 	void get_blob(const Request& req, std::function<void(http::response<http::string_body>&&)>&& send);
 	http::response<http::string_body> get_dir(const Request& req);
 	static bool allow_anonymous(boost::string_view target);
