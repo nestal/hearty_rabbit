@@ -9,8 +9,12 @@ ENV PATH $PATH:/opt/rh/devtoolset-7/root/usr/bin:/build/cmake-3.10.2/bin
 COPY . /build/hearty_rabbit
 RUN mkdir /build/docker-build \
 	&& cd docker-build \
-	&& cmake -DBOOST_ROOT=/build/boost_1_66_0 -DCMAKE_BUILD_TYPE=Release \
-		-DCMAKE_INSTALL_PREFIX=/opt/hearty_rabbit ../hearty_rabbit \
+	&& cmake \
+		-DBOOST_ROOT=/build/boost_1_66_0 \
+		-DCMAKE_PREFIX_PATH=/opt/libb2 \
+		-DCMAKE_BUILD_TYPE=Release \
+		-DCMAKE_INSTALL_PREFIX=/opt/hearty_rabbit \
+			../hearty_rabbit \
 	&& make -j8 install
 
 # Copy products to runtime docker image
@@ -40,7 +44,8 @@ COPY --from=builder \
 	/lib64/libresolv.so.2  \
 	/lib64/libselinux.so.1  \
 	/lib64/libpcre.so.1  \
-	/lib64/libtinfo.so.5  /lib64/
+	/lib64/libtinfo.so.5  \
+		/lib64/
 
 # Not yet avaiable
 #	/lib64/libunwind.so.8  \

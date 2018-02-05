@@ -22,6 +22,7 @@
 #include <boost/algorithm/string.hpp>
 
 #include <openssl/crypto.h>
+#include <blake2.h>
 
 #include <random>
 
