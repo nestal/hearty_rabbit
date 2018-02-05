@@ -12,11 +12,16 @@
 
 #include "SHA2.hh"
 
+#include <openssl/evp.h>
+#include <openssl/sha.h>
+
 #include <cstring>
 #include <cassert>
 
 namespace hrb {
 namespace evp {
+
+static_assert(SHA224_DIGEST_LENGTH == SHA2::size);
 
 #if OPENSSL_VERSION_NUMBER < 0x1010000fL
 // Ployfill
@@ -33,27 +38,27 @@ EVP_MD_CTX* EVP_MD_CTX_new()
 }
 #endif
 
-void SHA2::Deleter::operator()(EVP_MD_CTX *ctx) const noexcept
+void SHA2::Deleter::operator()(void *ctx) const noexcept
 {
 	// This is a macro, so we can't take its address and put it to unique_ptr.
-	::EVP_MD_CTX_destroy(ctx);
+	::EVP_MD_CTX_destroy(reinterpret_cast<EVP_MD_CTX*>(ctx));
 }
 
 SHA2::SHA2() : m_ctx{EVP_MD_CTX_new(), Deleter{}}
 {
-	::EVP_DigestInit_ex(m_ctx.get(), ::EVP_sha224(), nullptr);
+	::EVP_DigestInit_ex(reinterpret_cast<EVP_MD_CTX*>(m_ctx.get()), ::EVP_sha224(), nullptr);
 }
 
 void SHA2::update(const void *data, std::size_t size)
 {
-	::EVP_DigestUpdate(m_ctx.get(), data, size);
+	::EVP_DigestUpdate(reinterpret_cast<EVP_MD_CTX*>(m_ctx.get()), data, size);
 }
 
 std::size_t SHA2::finalize(unsigned char *out, std::size_t size)
 {
 	unsigned out_size{};
 	std::array<unsigned char, EVP_MAX_MD_SIZE> hash{};
-	::EVP_DigestFinal_ex(m_ctx.get(), &hash[0], &out_size);
+	::EVP_DigestFinal_ex(reinterpret_cast<EVP_MD_CTX*>(m_ctx.get()), &hash[0], &out_size);
 	assert(out_size <= EVP_MAX_MD_SIZE);
 
 	auto count = std::min(size, static_cast<std::size_t>(out_size));
@@ -64,7 +69,7 @@ std::size_t SHA2::finalize(unsigned char *out, std::size_t size)
 std::array<unsigned char, SHA2::size> SHA2::finalize()
 {
 	std::array<unsigned char, SHA2::size> result{};
-	::EVP_DigestFinal_ex(m_ctx.get(), &result[0], nullptr);
+	::EVP_DigestFinal_ex(reinterpret_cast<EVP_MD_CTX*>(m_ctx.get()), &result[0], nullptr);
 	return result;
 }
 

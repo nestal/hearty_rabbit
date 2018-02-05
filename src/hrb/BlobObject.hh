@@ -12,7 +12,7 @@
 
 #pragma once
 
-#include "RedisKeys.hh"
+#include "crypto/SHA2.hh"
 #include "util/MMap.hh"
 
 #include <boost/filesystem/path.hpp>
@@ -28,6 +28,10 @@ namespace redis {
 class Connection;
 }
 
+static const std::size_t object_id_size  = evp::SHA2::size;
+static constexpr std::array<unsigned char, 5> object_redis_key_prefix = {'b','l','o','b', ':'};
+using ObjectRedisKey = std::array<unsigned char, object_id_size + object_redis_key_prefix.size()>;
+
 // If use a typedef (or using), then the argument-dependent lookup (ADL) will not
 // work for operator<<
 struct ObjectID : std::array<unsigned char, object_id_size>
@@ -38,7 +42,6 @@ struct ObjectID : std::array<unsigned char, object_id_size>
 
 static_assert(std::is_standard_layout<ObjectID>::value);
 static_assert(sizeof(ObjectID) == object_id_size);
-
 
 ObjectRedisKey redis_key(const ObjectID& id);
 
@@ -82,13 +85,9 @@ public:
 	std::string_view blob() const;
 	const std::string& name() const {return m_name;}
 	const std::string& mime() const {return m_mime;}
-	ObjectRedisKey redis_key() const
-	{
-		ObjectRedisKey key = {};
-		std::copy(object_redis_key_prefix.begin(), object_redis_key_prefix.end(), key.begin() );
-		std::copy(m_id.begin(), m_id.end(), key.begin() + object_redis_key_prefix.size());
-		return key;
-	}
+
+	// If not for UT we should make it private
+	ObjectRedisKey redis_key() const;
 
 private:
 	static ObjectID hash(std::string_view blob);

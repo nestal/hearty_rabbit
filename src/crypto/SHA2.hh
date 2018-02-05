@@ -12,8 +12,6 @@
 
 #pragma once
 
-#include <openssl/evp.h>
-#include <openssl/sha.h>
 #include <memory>
 
 namespace hrb {
@@ -30,7 +28,7 @@ public:
 	SHA2& operator=(SHA2&&) = default;
 	SHA2& operator=(const SHA2&) = delete;
 
-	static const std::size_t size = SHA224_DIGEST_LENGTH;
+	static const std::size_t size = 28;
 
 	void update(const void *data, std::size_t size);
 	std::array<unsigned char, size> finalize();
@@ -39,10 +37,10 @@ public:
 private:
 	struct Deleter
 	{
-		void operator()(EVP_MD_CTX *ctx) const noexcept ;
+		void operator()(void *ctx) const noexcept ;
 	};
 
-	std::unique_ptr<EVP_MD_CTX, Deleter> m_ctx;
+	std::unique_ptr<void, Deleter> m_ctx;
 };
 
 }} // end of namespace hrb::evp

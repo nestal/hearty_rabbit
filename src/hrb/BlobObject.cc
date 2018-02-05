@@ -198,6 +198,14 @@ void BlobObject::assign_field(std::string_view field, std::string_view value)
 		m_mime = value;
 }
 
+ObjectRedisKey BlobObject::redis_key() const
+{
+	ObjectRedisKey key = {};
+	std::copy(object_redis_key_prefix.begin(), object_redis_key_prefix.end(), key.begin() );
+	std::copy(m_id.begin(), m_id.end(), key.begin() + object_redis_key_prefix.size());
+	return key;
+}
+
 std::ostream& operator<<(std::ostream& os, const ObjectID& id)
 {
 	for (auto ch : id)
@@ -205,15 +213,6 @@ std::ostream& operator<<(std::ostream& os, const ObjectID& id)
 		os << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(ch);
 	}
 	return os;
-}
-
-ObjectRedisKey redis_key(const ObjectID& id)
-{
-	ObjectRedisKey key = {};
-	std::copy(object_redis_key_prefix.begin(), object_redis_key_prefix.end(), key.begin() );
-	std::copy(id.begin(), id.end(), key.begin() + object_redis_key_prefix.size());
-
-	return key;
 }
 
 std::string to_hex(const ObjectID& id)
