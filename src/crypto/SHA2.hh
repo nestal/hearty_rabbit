@@ -12,6 +12,8 @@
 
 #pragma once
 
+#include <blake2.h>
+
 #include <memory>
 
 namespace hrb {
@@ -28,19 +30,17 @@ public:
 	SHA2& operator=(SHA2&&) = default;
 	SHA2& operator=(const SHA2&) = delete;
 
-	static const std::size_t size = 28;
+	// 20 byte hash space should be large enough to avoid collision.
+	// Hash values will be used as keys for database, so if they are
+	// too long, searching the database will be too slow.
+	static const std::size_t size = 20;
 
-	void update(const void *data, std::size_t size);
+	void update(const void *data, std::size_t len);
 	std::array<unsigned char, size> finalize();
-	std::size_t finalize(unsigned char *out, std::size_t size);
+	std::size_t finalize(unsigned char *out, std::size_t len);
 
 private:
-	struct Deleter
-	{
-		void operator()(void *ctx) const noexcept ;
-	};
-
-	std::unique_ptr<void, Deleter> m_ctx;
+	::blake2b_state m_ctx{};
 };
 
 }} // end of namespace hrb::evp
