@@ -19,6 +19,9 @@
 #include "crypto/Password.hh"
 
 #include <boost/asio/io_context.hpp>
+#include <boost/algorithm/hex.hpp>
+
+#include <random>
 
 using namespace hrb;
 
@@ -61,8 +64,10 @@ TEST_CASE("Test normal user login", "[normal]")
 
 		SECTION("correct user")
 		{
+			// Verify user with a username in a different case.
+			// Since username is case-insensitive, it should still work.
 			verify_user(
-				"sumsum", Password{"bearbear"}, *redis, [redis, &tested](std::error_code ec, auto&& session)
+				"suMSum", Password{"bearbear"}, *redis, [redis, &tested](std::error_code ec, auto&& session)
 				{
 					INFO("verify_user(correct) result = " << ec.message());
 					REQUIRE(!ec);
@@ -70,6 +75,7 @@ TEST_CASE("Test normal user login", "[normal]")
 
 					verify_session(session, *redis, [redis, &tested](std::error_code ec, auto&& user)
 					{
+						// Username returned is always lower case.
 						REQUIRE(!ec);
 						REQUIRE(user == "sumsum");
 						redis->disconnect();
@@ -107,4 +113,19 @@ TEST_CASE("Parsing cookie", "[normal]")
 	session = parse_cookie("name=value; id=0123456789ABCDEF0123456789ABCDEF; ");
 	REQUIRE(session.has_value());
 	REQUIRE(*session == SessionID{0x01,0x23,0x45, 0x67, 0x89,0xAB,0xCD,0xEF,0x01,0x23,0x45,0x67,0x89,0xAB,0xCD,0xEF});
+
+	// some lower case characters
+	session = parse_cookie("name=value; id=0123456789abcDEF0123456789ABCdef; ");
+	REQUIRE(session.has_value());
+	REQUIRE(*session == SessionID{0x01,0x23,0x45, 0x67, 0x89,0xAB,0xCD,0xEF,0x01,0x23,0x45,0x67,0x89,0xAB,0xCD,0xEF});
+
+	// Random round-trip
+	std::mt19937_64 salt_generator{secure_random<std::uint64_t>()};
+	SessionID rand{};
+	std::generate(rand.begin(), rand.end(), std::ref(salt_generator));
+	auto cookie = set_cookie(rand);
+	INFO("cookie for random session ID is " << cookie);
+	session = parse_cookie(cookie);
+	REQUIRE(session.has_value());
+	REQUIRE(*session == rand);
 }

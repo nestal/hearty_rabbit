@@ -19,6 +19,7 @@
 #include "util/Escape.hh"
 
 #include <boost/algorithm/hex.hpp>
+#include <boost/algorithm/string.hpp>
 
 #include <openssl/crypto.h>
 
@@ -81,7 +82,7 @@ void generate_session_id(Completion&& completion, std::string_view username, red
 } // end of anonymous namespace
 
 void add_user(
-	std::string_view username,
+	std::string_view username_mixed_case,
 	const Password& password,
 	redis::Connection& db,
 	std::function<void(std::error_code)> completion
@@ -89,6 +90,10 @@ void add_user(
 {
 	auto salt = random_salt();
 	auto key = password.derive_key({salt.data(), salt.size()}, min_iteration, default_hash_algorithm);
+
+	// Convert username to lower case to ensure case-insensitive comparison.
+	std::string username{username_mixed_case};
+	boost::algorithm::to_lower(username);
 
 	db.command(
 		[completion=std::move(completion)](auto reply, auto&& ec)
@@ -108,16 +113,20 @@ void add_user(
 }
 
 void verify_user(
-	std::string_view username,
+	std::string_view username_mixed_case,
 	Password&& password,
 	redis::Connection& db,
 	std::function<void(std::error_code, const SessionID&)> completion
 )
 {
+	// Convert username to lower case to ensure case-insensitive comparison.
+	std::string username{username_mixed_case};
+	boost::algorithm::to_lower(username);
+
 	db.command(
 		[
 			db=db.shared_from_this(),
-			username=std::string{username},
+			username,
 			password=std::move(password),
 			completion=std::move(completion)
 		](redis::Reply reply, auto&& ec)
