@@ -22,6 +22,7 @@
 #include <boost/algorithm/hex.hpp>
 
 #include <random>
+#include <iostream>
 
 using namespace hrb;
 
@@ -29,6 +30,21 @@ TEST_CASE("Test random number", "[normal]")
 {
 	auto rand = secure_random_array<std::uint64_t, 2>();
 	REQUIRE_NOTHROW(rand[0] > 0 && rand[1] > 0);
+}
+
+TEST_CASE("Test blake2x random number", "[normal]")
+{
+	Blake2x g;
+	std::cout << g() << std::endl;
+	std::cout << g() << std::endl;
+	std::cout << g() << std::endl;
+	std::cout << g() << std::endl;
+	std::cout << g() << std::endl;
+	std::cout << g() << std::endl;
+	std::cout << g() << std::endl;
+	std::cout << g() << std::endl;
+	std::cout << g() << std::endl;
+	std::cout << g() << std::endl;
 }
 
 TEST_CASE("Test password init", "[normal]")
