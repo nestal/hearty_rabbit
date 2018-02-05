@@ -22,7 +22,6 @@
 #include <boost/algorithm/hex.hpp>
 
 #include <random>
-#include <iostream>
 
 using namespace hrb;
 
@@ -32,19 +31,48 @@ TEST_CASE("Test random number", "[normal]")
 	REQUIRE_NOTHROW(rand[0] > 0 && rand[1] > 0);
 }
 
-TEST_CASE("Test blake2x random number", "[normal]")
+TEST_CASE("Blake2x is faster than urandom", "[normal]")
 {
 	Blake2x g;
-	std::cout << g() << std::endl;
-	std::cout << g() << std::endl;
-	std::cout << g() << std::endl;
-	std::cout << g() << std::endl;
-	std::cout << g() << std::endl;
-	std::cout << g() << std::endl;
-	std::cout << g() << std::endl;
-	std::cout << g() << std::endl;
-	std::cout << g() << std::endl;
-	std::cout << g() << std::endl;
+
+	const auto trial = 100000;
+	using namespace std::chrono;
+
+	auto blake_start = system_clock::now();
+	for (auto i = 0 ; i < trial; i++)
+		g();
+	auto blake_elapse = system_clock::now() - blake_start;
+
+	auto urand_start = system_clock::now();
+	for (auto i = 0 ; i < trial; i++)
+		secure_random<Blake2x::result_type>();
+	auto urand_elapse = system_clock::now() - urand_start;
+
+	INFO("blake2x x " << trial << ": " << duration_cast<milliseconds>(blake_elapse).count() << "ms");
+	INFO("urandom x " << trial << ": " << duration_cast<milliseconds>(urand_elapse).count() << "ms");
+	REQUIRE(blake_elapse < urand_elapse);
+
+	std::mt19937_64 mt{g()};
+	auto mt_start = system_clock::now();
+	for (auto i = 0 ; i < trial; i++)
+		mt();
+	auto mt_elapse = system_clock::now() - mt_start;
+
+	INFO("mt19937 x " << trial << ": " << duration_cast<milliseconds>(mt_elapse).count() << "ms");
+	INFO("blake2x x " << trial << ": " << duration_cast<milliseconds>(blake_elapse).count() << "ms");
+	INFO("urandom x " << trial << ": " << duration_cast<milliseconds>(urand_elapse).count() << "ms");
+	REQUIRE(mt_elapse < blake_elapse);
+}
+
+TEST_CASE("Blake2x generates random numbers", "[normal]")
+{
+	// Very easy....
+	Blake2x g;
+	REQUIRE(g() != g());
+	REQUIRE(g() != g());
+	REQUIRE(g() != g());
+	REQUIRE(g() != g());
+	REQUIRE(g() != g());
 }
 
 TEST_CASE("Test password init", "[normal]")

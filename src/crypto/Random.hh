@@ -47,9 +47,11 @@ public:
 
 	result_type operator()();
 
+	void reseed();
+
 private:
 	::blake2b_param m_param{};
-	std::uint64_t m_h0{secure_random<decltype(m_h0)>()};
+	std::uint64_t m_h0{};
 };
 
 } // end of namespace hrb

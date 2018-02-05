@@ -48,36 +48,44 @@ void secure_random(void *buf, std::size_t size)
 Blake2x::Blake2x()
 {
 	m_param.digest_length = 8;
-	m_param.key_length    = 0;
-	m_param.fanout        = 0;
-	m_param.depth         = 0;
-	m_param.leaf_length   = 64;
-	m_param.node_depth    = 0;
-	m_param.inner_length  = 64;
-	m_param.node_offset   = boost::endian::native_to_little(UINT64_C(0xffffffff00000000));
-
+	m_param.key_length = 0;
+	m_param.fanout = 0;
+	m_param.depth = 0;
+	m_param.leaf_length = 64;
+	m_param.node_depth = 0;
+	m_param.inner_length = 64;
+	m_param.node_offset = boost::endian::native_to_little(UINT64_C(0xffffffff00000000));
 	// leave reserved as zero
-	secure_random(m_param.salt, sizeof(m_param.salt));
 	// leave personalization as zero
+
+	reseed();
+}
+
+void Blake2x::reseed()
+{
+	secure_random(m_param.salt, sizeof(m_param.salt));
+	m_h0 = secure_random<decltype(m_h0)>();
 }
 
 Blake2x::result_type Blake2x::operator()()
 {
 	::blake2b_state ctx{};
-	if (::blake2b_init_param(&ctx, &m_param) < 0)
-		throw std::runtime_error("blake2b init error");
-	if (::blake2b_update(&ctx, reinterpret_cast<std::uint8_t*>(&m_h0), sizeof(m_h0)) < 0)
-		throw std::runtime_error("blake2b update error");
+	::blake2b_init_param(&ctx, &m_param);
+	::blake2b_update(&ctx, reinterpret_cast<std::uint8_t*>(&m_h0), sizeof(m_h0));
 
 	result_type hash{};
-	if (::blake2b_final(&ctx, reinterpret_cast<std::uint8_t*>(&hash), sizeof(hash)) < 0)
-		throw std::runtime_error("blake2b final error");
+	::blake2b_final(&ctx, reinterpret_cast<std::uint8_t*>(&hash), sizeof(hash));
 
 	// Update generator state
 	auto native_offset = boost::endian::little_to_native(m_param.node_offset);
 	assert(native_offset >> 32 == 0xffffffff);
 	native_offset++;
 	m_param.node_offset = boost::endian::native_to_little(native_offset);
+
+	// Technically we can go up to 2^32 blocks before reseeding,
+	// but reseeding more often is safer.
+	if ((native_offset & 0xffffffff) % 0x7ffff == 0)
+		reseed();
 
 	return hash;
 }
