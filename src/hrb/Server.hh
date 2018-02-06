@@ -56,7 +56,7 @@ public:
 			return get_blob(req, std::forward<decltype(send)>(send));
 
 		if (req.target().starts_with(url::dir))
-			return send(set_common_fields(req, get_dir(req)));
+			return send(get_dir(req));
 
 		if (req.target().starts_with(url::logout))
 			return on_logout(req, session, std::forward<Send>(send));
@@ -68,7 +68,7 @@ public:
 		if (opt_res)
 			return send(std::move(*opt_res));
 
-		return send(set_common_fields(req, redirect("/login.html", req.version())));
+		return send(redirect("/login.html", req.version()));
 	}
 
 	template <class Send>
@@ -127,26 +127,6 @@ public:
 	static http::response<http::string_body> not_found(const Request& req, boost::beast::string_view target);
 	static http::response<http::string_body> server_error(const Request& req, boost::beast::string_view what);
 	static http::response<http::empty_body> redirect(boost::beast::string_view where, unsigned version);
-
-	template<class Body, class Allocator>
-	static auto&& set_common_fields(
-		const Request& req,
-		http::response<Body, http::basic_fields<Allocator>>&& res
-	)
-	{
-		return set_common_fields(req.keep_alive(), std::move(res));
-	}
-
-	template<class Body, class Allocator>
-	static auto&& set_common_fields(
-		bool keep_alive,
-		http::response<Body, http::basic_fields<Allocator>>&& res
-	)
-	{
-		res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
-		res.keep_alive(keep_alive);
-		return std::move(res);
-	}
 
 	void disconnect_db();
 	void run();

@@ -53,17 +53,13 @@ void Server::on_login(const Request& req, EmptyResponseSender&& send)
 				db,
 				version=req.version(),
 				send=std::move(send),
-				this,
-				keep_alive=req.keep_alive()
+				this
 			](std::error_code ec, auto&& session) mutable
 			{
 				Log(LOG_INFO, "login result: %1% %2%", ec, ec.message());
 				m_db.release(std::move(db));
 
 				auto&& res = redirect(ec ? "/login_incorrect.html" : "/index.html", version);
-				res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
-				res.keep_alive(keep_alive);
-
 				if (!ec)
 					res.insert(http::field::set_cookie, set_cookie(session));
 
@@ -72,19 +68,20 @@ void Server::on_login(const Request& req, EmptyResponseSender&& send)
 		);
 	}
 	else
-		send(set_common_fields(req, redirect("/login.html", req.version())));
+		send(redirect("/login.html", req.version()));
 }
 
 void Server::on_logout(const Request& req, const SessionID& id, EmptyResponseSender&& send)
 {
 	auto db = m_db.alloc(m_ioc);
-	destroy_session(id, *db, [this, db, send=std::move(send), version=req.version(), keep_alive=req.keep_alive()](auto&& ec) mutable
+	destroy_session(id, *db, [this, db, send=std::move(send), version=req.version()](auto&& ec) mutable
 	{
 		m_db.release(std::move(db));
 
 		auto&& res = redirect("/login.html", version);
 		res.insert(http::field::set_cookie, "id=; ");
-		send(set_common_fields(keep_alive, std::move(res)));
+		res.keep_alive(false);
+		send(std::move(res));
 	});
 }
 
@@ -103,20 +100,18 @@ void Server::get_blob(const Request& req, StringResponseSender&& send)
 
 	auto object_id = hex_to_object_id(std::string_view{blob_id.data(), blob_id.size()});
 	if (object_id == ObjectID{})
-		send(set_common_fields(req, not_found(req, to_hex(object_id))));
+		send(not_found(req, to_hex(object_id)));
 	else
 	{
 		auto db = m_db.alloc(m_ioc);
 		BlobObject::load(
 			*db, object_id,
-			[db, this, send=std::move(send), version=req.version(), keep_alive=req.keep_alive()](BlobObject& blob, std::error_code ec) mutable
+			[db, this, send=std::move(send), version=req.version()](BlobObject& blob, std::error_code ec) mutable
 			{
 				m_db.release(std::move(db));
 
 				http::response<http::string_body> res{!ec ? http::status::ok : http::status::not_found, version};
-				res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
 				res.set(http::field::content_type, blob.mime());
-				res.keep_alive(keep_alive);
 				if (!ec)
 					res.body() = blob.blob();
 				send(std::move(res));
@@ -136,7 +131,7 @@ void Server::on_upload(const Request& req, StringResponseSender&& send)
 	http::response<http::string_body> res{http::status::ok, req.version()};
 	res.body() = "OK";
 	res.insert(http::field::content_type, "text/plain");
-	send(set_common_fields(req, std::move(res)));
+	send(std::move(res));
 }
 
 void Server::on_invalid_session(const Request& req, std::function<void(http::response<http::empty_body>&&)>&& send)
@@ -161,7 +156,7 @@ http::response<http::string_body> Server::bad_request(const Request& req, boost:
 	res.set(http::field::content_type, "text/html");
 	res.body() = why.to_string();
 	res.prepare_payload();
-	return set_common_fields(req, std::move(res));
+	return res;
 }
 
 // Returns a not found response
@@ -171,7 +166,7 @@ http::response<http::string_body> Server::not_found(const Request& req, boost::b
 	res.set(http::field::content_type, "text/html");
 	res.body() = "The resource '" + target.to_string() + "' was not found.";
 	res.prepare_payload();
-	return set_common_fields(req, std::move(res));
+	return res;
 }
 
 http::response<http::string_body> Server::server_error(const Request& req, boost::beast::string_view what)
@@ -180,7 +175,7 @@ http::response<http::string_body> Server::server_error(const Request& req, boost
 	res.set(http::field::content_type, "text/html");
 	res.body() = "An error occurred: '" + what.to_string() + "'";
 	res.prepare_payload();
-	return set_common_fields(req, std::move(res));
+	return res;
 }
 
 std::optional<http::response<http::file_body>> Server::file_request(const Request& req)
@@ -215,7 +210,7 @@ std::optional<http::response<http::file_body>> Server::file_request(const Reques
 	};
 	res.set(http::field::content_type, resource_mime(path.extension().string()));
 	res.content_length(file_size);
-	return set_common_fields(req, std::move(res));
+	return {std::move(res)};
 }
 
 http::response<http::empty_body> Server::redirect_http(const Request &req)
@@ -227,7 +222,7 @@ http::response<http::empty_body> Server::redirect_http(const Request &req)
 	auto&& dest = https_host + req.target().to_string();
 	Log(LOG_INFO, "redirecting HTTP request %1% to host %2%", req.target(), dest);
 
-	return set_common_fields(req, redirect(dest, req.version()));
+	return redirect(dest, req.version());
 }
 
 std::string_view Server::resource_mime(const std::string& ext)

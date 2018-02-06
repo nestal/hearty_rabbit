@@ -149,6 +149,8 @@ void Session::on_read(boost::system::error_code ec, std::size_t)
 			// for the duration of the async operation so
 			// we use a shared_ptr to manage it.
 			auto sp = std::make_shared<std::remove_reference_t<decltype(msg)>>(std::move(msg));
+			sp->set(http::field::server, BOOST_BEAST_VERSION_STRING);
+			sp->keep_alive(m_req.keep_alive());
 
 			auto&& callback = boost::asio::bind_executor(
 				m_strand,
