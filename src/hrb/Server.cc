@@ -61,7 +61,7 @@ void Server::on_login(const Request& req, EmptyResponseSender&& send)
 
 				auto&& res = redirect(ec ? "/login_incorrect.html" : "/index.html", version);
 				if (!ec)
-					res.insert(http::field::set_cookie, set_cookie(session));
+					res.set(http::field::set_cookie, set_cookie(session));
 
 				send(std::move(res));
 			}
@@ -79,7 +79,7 @@ void Server::on_logout(const Request& req, const SessionID& id, EmptyResponseSen
 		m_db.release(std::move(db));
 
 		auto&& res = redirect("/login.html", version);
-		res.insert(http::field::set_cookie, "id=; ");
+		res.set(http::field::set_cookie, "id=; ");
 		res.keep_alive(false);
 		send(std::move(res));
 	});
@@ -110,10 +110,13 @@ void Server::get_blob(const Request& req, StringResponseSender&& send)
 			{
 				m_db.release(std::move(db));
 
-				http::response<http::string_body> res{!ec ? http::status::ok : http::status::not_found, version};
+				http::response<http::string_body> res{
+					std::piecewise_construct,
+					std::make_tuple(ec ? std::string_view{} : blob.blob()),
+					std::make_tuple(ec ? http::status::not_found : http::status::ok, version)
+				};
 				res.set(http::field::content_type, blob.mime());
-				if (!ec)
-					res.body() = blob.blob();
+				res.prepare_payload();
 				send(std::move(res));
 			}
 		);
@@ -128,9 +131,13 @@ void Server::on_upload(const Request& req, StringResponseSender&& send)
 	for (auto&& field : req)
 		std::cout << field.name() << " " << field.value() << std::endl;
 
-	http::response<http::string_body> res{http::status::ok, req.version()};
-	res.body() = "OK";
+	http::response<http::string_body> res{
+		std::piecewise_construct,
+		std::make_tuple("OK"),
+		std::make_tuple(http::status::not_found, req.version())
+	};
 	res.insert(http::field::content_type, "text/plain");
+	res.prepare_payload();
 	send(std::move(res));
 }
 
@@ -152,9 +159,12 @@ http::response<http::string_body> Server::get_dir(const Request& req)
 
 http::response<http::string_body> Server::bad_request(const Request& req, boost::beast::string_view why)
 {
-	http::response<http::string_body> res{http::status::bad_request, req.version()};
+	http::response<http::string_body> res{
+		std::piecewise_construct,
+		std::make_tuple(why),
+		std::make_tuple(http::status::bad_request, req.version())
+	};
 	res.set(http::field::content_type, "text/html");
-	res.body() = why.to_string();
 	res.prepare_payload();
 	return res;
 }
@@ -162,9 +172,12 @@ http::response<http::string_body> Server::bad_request(const Request& req, boost:
 // Returns a not found response
 http::response<http::string_body> Server::not_found(const Request& req, boost::beast::string_view target)
 {
-	http::response<http::string_body> res{http::status::not_found, req.version()};
+	http::response<http::string_body> res{
+		std::piecewise_construct,
+		std::make_tuple("The resource '" + target.to_string() + "' was not found."),
+		std::make_tuple(http::status::not_found, req.version())
+	};
 	res.set(http::field::content_type, "text/html");
-	res.body() = "The resource '" + target.to_string() + "' was not found.";
 	res.prepare_payload();
 	return res;
 }

@@ -96,6 +96,7 @@ public:
 	{
 		REQUIRE(res.result() == http::status::moved_permanently);
 		REQUIRE(res.at(http::field::location) == m_redirect);
+		REQUIRE(res.version() == 11);
 		set_tested();
 	}
 
@@ -112,6 +113,7 @@ public:
 	void operator()(Response&& res) const
 	{
 		REQUIRE(res.result() == m_status);
+		REQUIRE(res.version() == 11);
 		set_tested();
 	}
 
@@ -133,6 +135,7 @@ public:
 		REQUIRE(res.result() == http::status::ok);
 		auto content = flatten_content(std::move(res));
 		REQUIRE(check_file_content(m_file, content.data()));
+		REQUIRE(res.version() == 11);
 
 		set_tested();
 	}
@@ -179,6 +182,7 @@ TEST_CASE("GET static resource", "[normal]")
 
 	REQUIRE(cfg.web_root() == (current_src/"../../../lib").lexically_normal());
 	Request req;
+	req.version(11);
 
 	SECTION("Request login.html success without login")
 	{
@@ -259,6 +263,7 @@ TEST_CASE("GET static resource", "[normal]")
 			req.insert(http::field::content_type, "application/x-www-form-urlencoded");
 			subject.handle_https(std::move(req), [&login_incorrect, &subject](auto&& res)
 			{
+				REQUIRE(res[http::field::cookie] == "");
 				login_incorrect(std::move(res));
 				subject.disconnect_db();
 			});
