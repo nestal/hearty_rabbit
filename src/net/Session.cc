@@ -93,7 +93,15 @@ void Session::handle_https(Request&& req, Send&& send)
 		if (ec)
 			Log(LOG_WARNING, "remote_endpoint() error: %1% %2%", ec, ec.message());
 
-		Log(LOG_INFO, "%1%:%2% request %3% from %4%", m_nth_session, m_nth_transaction, req.target(), m_socket.remote_endpoint(ec));
+		Log(
+			LOG_INFO,
+			"%1%:%2% request %3% from %4% (version %5%)",
+			m_nth_session,
+			m_nth_transaction,
+			req.target(),
+			m_socket.remote_endpoint(ec),
+			req.version()
+		);
 
 		// Make sure we can handle the method
 		if (req.method() != http::verb::get  &&

@@ -37,7 +37,7 @@ Server::Server(const Configuration& cfg) :
 	OpenSSL_add_all_digests();
 }
 
-void Server::on_login(const Request& req, std::function<void(http::response<http::empty_body>&&)>&& send)
+void Server::on_login(const Request& req, EmptyResponseSender&& send)
 {
 	auto&& body = req.body();
 	if (req[http::field::content_type] == "application/x-www-form-urlencoded")
@@ -75,7 +75,7 @@ void Server::on_login(const Request& req, std::function<void(http::response<http
 		send(set_common_fields(req, redirect("/login.html", req.version())));
 }
 
-void Server::on_logout(const Request& req, const SessionID& id, std::function<void(http::response<http::empty_body>&&)>&& send)
+void Server::on_logout(const Request& req, const SessionID& id, EmptyResponseSender&& send)
 {
 	auto db = m_db.alloc(m_ioc);
 	destroy_session(id, *db, [this, db, send=std::move(send), version=req.version(), keep_alive=req.keep_alive()](auto&& ec) mutable
@@ -95,7 +95,7 @@ http::response<http::empty_body> Server::redirect(boost::beast::string_view wher
 	return res;
 }
 
-void Server::get_blob(const Request& req, std::function<void(http::response<http::string_body>&&)>&& send)
+void Server::get_blob(const Request& req, StringResponseSender&& send)
 {
 	auto blob_id = req.target().size() > url::login.size() ?
 		req.target().substr(url::login.size()) :
@@ -103,7 +103,7 @@ void Server::get_blob(const Request& req, std::function<void(http::response<http
 
 	auto object_id = hex_to_object_id(std::string_view{blob_id.data(), blob_id.size()});
 	if (object_id == ObjectID{})
-		send(set_common_fields(req, http::response<http::string_body>{http::status::not_found, req.version()}));
+		send(set_common_fields(req, not_found(req, to_hex(object_id))));
 	else
 	{
 		auto db = m_db.alloc(m_ioc);
@@ -123,6 +123,20 @@ void Server::get_blob(const Request& req, std::function<void(http::response<http
 			}
 		);
 	}
+}
+
+void Server::on_upload(const Request& req, StringResponseSender&& send)
+{
+	std::cout << "method = " << req.method() << " size = " << req.at(http::field::content_length) << std::endl;
+//	std::cout << "content = \n" << req.body() << std::endl;
+
+	for (auto&& field : req)
+		std::cout << field.name() << " " << field.value() << std::endl;
+
+	http::response<http::string_body> res{http::status::ok, req.version()};
+	res.body() = "OK";
+	res.insert(http::field::content_type, "text/plain");
+	send(set_common_fields(req, std::move(res)));
 }
 
 void Server::on_invalid_session(const Request& req, std::function<void(http::response<http::empty_body>&&)>&& send)
@@ -319,17 +333,6 @@ bool Server::allow_anonymous(boost::string_view target)
 	target.remove_prefix(1);
 
 	return target != "index.html" && web_resources.find(target.to_string()) != web_resources.end();
-}
-
-void Server::on_upload(const Request& req, Server::EmptyResponseSender&& send)
-{
-	std::cout << "method = " << req.method() << " size = " << req.at(http::field::content_length) << std::endl;
-//	std::cout << "content = \n" << req.body() << std::endl;
-
-	for (auto&& field : req)
-		std::cout << field.name() << " " << field.value() << std::endl;
-
-	send(set_common_fields(req, redirect("/index.html", req.version())));
 }
 
 } // end of namespace

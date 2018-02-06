@@ -161,12 +161,13 @@ private:
 	static void drop_privileges();
 
 	using EmptyResponseSender = std::function<void(http::response<http::empty_body>&&)>;
+	using StringResponseSender = std::function<void(http::response<http::string_body>&&)>;
 
 	void on_login(const Request& req, EmptyResponseSender&& send);
 	void on_logout(const Request& req, const SessionID& id, EmptyResponseSender&& send);
 	void on_invalid_session(const Request& req, EmptyResponseSender&& send);
-	void on_upload(const Request& req, EmptyResponseSender&& send);
-	void get_blob(const Request& req, std::function<void(http::response<http::string_body>&&)>&& send);
+	void on_upload(const Request& req, StringResponseSender&& send);
+	void get_blob(const Request& req, StringResponseSender&& send);
 	http::response<http::string_body> get_dir(const Request& req);
 	static bool allow_anonymous(boost::string_view target);
 
