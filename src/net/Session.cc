@@ -98,6 +98,7 @@ void Session::handle_https(Request&& req, Send&& send)
 		// Make sure we can handle the method
 		if (req.method() != http::verb::get  &&
 		    req.method() != http::verb::post &&
+		    req.method() != http::verb::put &&
 			req.method() != http::verb::head)
 			return send(m_server.bad_request(req, "Unknown HTTP-method"));
 

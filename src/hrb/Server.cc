@@ -321,4 +321,15 @@ bool Server::allow_anonymous(boost::string_view target)
 	return target != "index.html" && web_resources.find(target.to_string()) != web_resources.end();
 }
 
+void Server::on_upload(const Request& req, Server::EmptyResponseSender&& send)
+{
+	std::cout << "method = " << req.method() << " size = " << req.at(http::field::content_length) << std::endl;
+//	std::cout << "content = \n" << req.body() << std::endl;
+
+	for (auto&& field : req)
+		std::cout << field.name() << " " << field.value() << std::endl;
+
+	send(set_common_fields(req, redirect("/index.html", req.version())));
+}
+
 } // end of namespace

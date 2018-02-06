@@ -35,6 +35,7 @@ const boost::string_view login{"/login"};
 const boost::string_view logout{"/logout"};
 const boost::string_view blob{"/blob"};
 const boost::string_view dir{"/dir"};
+const boost::string_view upload{"/upload"};
 }
 
 class Configuration;
@@ -59,6 +60,9 @@ public:
 
 		if (req.target().starts_with(url::logout))
 			return on_logout(req, session, std::forward<Send>(send));
+
+		if (req.target().starts_with(url::upload))
+			return on_upload(req, std::forward<Send>(send));
 
 		auto opt_res = file_request(req);
 		if (opt_res)
@@ -156,9 +160,12 @@ private:
 	static std::string_view resource_mime(const std::string& ext);
 	static void drop_privileges();
 
-	void on_login(const Request& req, std::function<void(http::response<http::empty_body>&&)>&& send);
-	void on_logout(const Request& req, const SessionID& id, std::function<void(http::response<http::empty_body>&&)>&& send);
-	void on_invalid_session(const Request& req, std::function<void(http::response<http::empty_body>&&)>&& send);
+	using EmptyResponseSender = std::function<void(http::response<http::empty_body>&&)>;
+
+	void on_login(const Request& req, EmptyResponseSender&& send);
+	void on_logout(const Request& req, const SessionID& id, EmptyResponseSender&& send);
+	void on_invalid_session(const Request& req, EmptyResponseSender&& send);
+	void on_upload(const Request& req, EmptyResponseSender&& send);
 	void get_blob(const Request& req, std::function<void(http::response<http::string_body>&&)>&& send);
 	http::response<http::string_body> get_dir(const Request& req);
 	static bool allow_anonymous(boost::string_view target);
