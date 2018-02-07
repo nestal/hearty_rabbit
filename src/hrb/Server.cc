@@ -205,7 +205,6 @@ std::optional<http::response<http::file_body>> Server::file_request(const Reques
 	auto filepath = req.target();
 	filepath.remove_prefix(1);
 
-	// TODO: use redirect instead
 	if (web_resources.find(filepath.to_string()) == web_resources.end())
 		return std::nullopt;
 

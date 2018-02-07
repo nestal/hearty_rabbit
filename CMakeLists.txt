@@ -35,7 +35,6 @@ include_directories(
 )
 
 # Post-processing
-configure_file(systemd/hearty_rabbit.service.in hearty_rabbit.service)
 configure_file(config.hh.in config.hh)
 
 # Static files served by HTTP
@@ -98,8 +97,6 @@ add_custom_command(
 
 # Installation
 install(TARGETS hearty_rabbit DESTINATION bin)
-#install(FILES ${CMAKE_BINARY_DIR}/hearty_rabbit.service DESTINATION etc/systemd/system)
-#install(FILES etc/${CONFIG_FILENAME} DESTINATION etc)
 install(DIRECTORY lib/ DESTINATION lib)
 
 set(CPACK_PACKAGE_VERSION ${VERSION})

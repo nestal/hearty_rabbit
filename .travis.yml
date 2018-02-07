@@ -13,9 +13,7 @@ before_install:
 # TODO: need to add automated tests here
 script:
   - docker build -t nestal/hearty_rabbit --network="host" .
-  - docker run -t --detach --rm -v $(pwd)/etc:/etc -v $(pwd)/lib:/lib --network=host --name hb_test nestal/hearty_rabbit
-  - curl -k https://localhost:4433/login.html
-  - docker stop hb_test
+  - ./automation/test.sh
 
 after_success:
   - if [ "$TRAVIS_BRANCH" == "master" ]; then
