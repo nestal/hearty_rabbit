@@ -1,8 +1,9 @@
 {
-  "cert_chain": "fullchain.pem",
-  "private_key": "privkey.pem",
-  "web_root": ".",
-  "server_name" : "example.com",
+  "cert_chain": "certificate.pem",
+  "private_key": "key.pem",
+  "web_root": "../lib",
+  "server_name" : "localhost",
+  "thread_count": 8,
   "http": {
     "address": "0.0.0.0",
     "port": 8080
@@ -10,5 +11,9 @@
   "https": {
     "address": "0.0.0.0",
     "port": 4433
+  },
+  "redis" : {
+    "address": "127.0.0.1",
+    "port": 6379
   }
 }
