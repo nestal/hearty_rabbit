@@ -32,13 +32,7 @@ namespace hrb {
 Server::Server(const Configuration& cfg) :
 	m_cfg{cfg},
 	m_ioc{static_cast<int>(std::max(1UL, cfg.thread_count()))},
-	m_db{cfg.redis()},
-	m_string_map{
-		{"blob",        http::verb::get,  not_found_handler},
-//		{"login",       http::verb::post, [this](auto&& req, auto&& send){on_login(req, std::move(send));}},
-//		{"logout",      http::verb::get,  [this](auto&& req, auto&& send){on_logout(req, std::move(send));}},
-//		{"index.html",  http::verb::get,  forbidden}
-	}
+	m_db{cfg.redis()}
 {
 	OpenSSL_add_all_digests();
 }
@@ -353,24 +347,6 @@ bool Server::allow_anonymous(boost::string_view target)
 	target.remove_prefix(1);
 
 	return target != "index.html" && web_resources.find(target.to_string()) != web_resources.end();
-}
-
-void Server::not_found_handler(Request&& req, ResponseSender<http::string_body>&& send)
-{
-	using namespace std::literals;
-	http::response<http::string_body> res{
-		std::piecewise_construct,
-		std::make_tuple("The resource '"s + req.target().to_string() + "' was not found."),
-		std::make_tuple(http::status::not_found, req.version())
-	};
-	res.set(http::field::content_type, "text/plain");
-	res.prepare_payload();
-	return send(std::move(res));
-}
-
-void Server::forbidden(Request&& req, ResponseSender<http::string_body>&& send)
-{
-	send(http::response<http::string_body>{http::status::forbidden, req.version()});
 }
 
 std::string_view Server::extract_prefix(const Request& req)

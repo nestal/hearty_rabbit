@@ -163,45 +163,6 @@ private:
 	static bool allow_anonymous(boost::string_view target);
 
 private:
-	template <typename Body>
-	using ResponseSender  = std::function<void(http::response<Body>&&)>;
-
-	template <typename Body>
-	using RequestHandler  = std::function<void(Request&&, ResponseSender<Body>&&)>;
-
-	template <typename Body>
-	struct SiteEntry
-	{
-		std::string_view        url_prefix;
-		http::verb              method;
-		RequestHandler<Body>    handler;
-	};
-
-	// Generic handler
-	static void not_found_handler(Request&& req, ResponseSender<http::string_body>&& send);
-	static void forbidden(Request&& req, ResponseSender<http::string_body>&& send);
-
-	// Speicific handlers
-	void login_handler(Request&& req, ResponseSender<http::string_body>&& send);
-	void logout_handler(Request&& req, ResponseSender<http::string_body>&& send);
-
-	template <typename Body>
-	using SiteMap = boost::multi_index_container<
-		SiteEntry<Body>,
-		boost::multi_index::indexed_by<
-			boost::multi_index::hashed_unique<
-				boost::multi_index::member<
-					SiteEntry<Body>,
-					std::string_view,
-					&SiteEntry<Body>::url_prefix
-				>,
-				std::hash<std::string_view>
-			>
-		>
-	>;
-	const SiteMap<http::string_body> m_string_map;
-
-private:
 	const Configuration&    m_cfg;
 	boost::asio::io_context m_ioc;
 
