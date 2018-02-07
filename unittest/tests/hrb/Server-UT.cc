@@ -364,3 +364,23 @@ TEST_CASE("GET static resource", "[normal]")
 		REQUIRE(checker.tested());
 	}
 }
+
+TEST_CASE("Extract prefix from URL until '/'", "[normal]")
+{
+	Request req;
+	SECTION("No suffix")
+	{
+		req.target("/target");
+		REQUIRE(Server::extract_prefix(req) == "target");
+	}
+	SECTION("2 levels")
+	{
+		req.target("/level1/level2");
+		REQUIRE(Server::extract_prefix(req) == "level1");
+	}
+	SECTION("1 levels with ?")
+	{
+		req.target("/blob?q=s");
+		REQUIRE(Server::extract_prefix(req) == "blob");
+	}
+}

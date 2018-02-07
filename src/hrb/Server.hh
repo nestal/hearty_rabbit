@@ -25,6 +25,10 @@
 #include <boost/beast/version.hpp>
 #include <boost/asio/io_context.hpp>
 
+#include <boost/multi_index_container.hpp>
+#include <boost/multi_index/hashed_index.hpp>
+#include <boost/multi_index/member.hpp>
+
 #include <system_error>
 
 namespace hrb {
@@ -48,6 +52,8 @@ public:
 	explicit Server(const Configuration& cfg);
 
 	http::response<http::empty_body> redirect_http(const Request& req);
+
+	static std::string_view extract_prefix(const Request& req);
 
 	template <class Send>
 	void on_valid_session(Request&& req, Send&& send, const SessionID& session)
@@ -165,7 +171,7 @@ private:
 	template <typename Body>
 	struct SiteEntry
 	{
-		boost::string_view      url_prefix;
+		std::string_view        url_prefix;
 		http::verb              method;
 		SessionState            session;
 		std::function<void (Request&&, ResponseSender<Body>&&)> handler;
@@ -174,7 +180,21 @@ private:
 	// Generic handler
 	static void not_found_handler(Request&& req, ResponseSender<http::string_body>&& send);
 
-	static const SiteEntry<http::string_body> m_string_map[];
+	template <typename Body>
+	using SiteMap = boost::multi_index_container<
+		SiteEntry<Body>,
+		boost::multi_index::indexed_by<
+			boost::multi_index::hashed_unique<
+				boost::multi_index::member<
+					SiteEntry<Body>,
+					std::string_view,
+					&SiteEntry<Body>::url_prefix
+				>,
+				std::hash<std::string_view>
+			>
+		>
+	>;
+	const SiteMap<http::string_body> m_string_map;
 
 private:
 	const Configuration&    m_cfg;

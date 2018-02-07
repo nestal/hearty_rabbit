@@ -32,7 +32,10 @@ namespace hrb {
 Server::Server(const Configuration& cfg) :
 	m_cfg{cfg},
 	m_ioc{static_cast<int>(std::max(1UL, cfg.thread_count()))},
-	m_db{cfg.redis()}
+	m_db{cfg.redis()},
+	m_string_map{
+		{"/blob", http::verb::get, SessionState::anonymous, not_found_handler}
+	}
 {
 	OpenSSL_add_all_digests();
 }
@@ -349,10 +352,6 @@ bool Server::allow_anonymous(boost::string_view target)
 	return target != "index.html" && web_resources.find(target.to_string()) != web_resources.end();
 }
 
-const Server::SiteEntry<http::string_body> Server::m_string_map[] = {
-	{"/blob", http::verb::get, SessionState::anonymous, not_found_handler}
-};
-
 void Server::not_found_handler(Request&& req, ResponseSender<http::string_body>&& send)
 {
 	using namespace std::literals;
@@ -364,6 +363,16 @@ void Server::not_found_handler(Request&& req, ResponseSender<http::string_body>&
 	res.set(http::field::content_type, "text/plain");
 	res.prepare_payload();
 	return send(std::move(res));
+}
+
+std::string_view Server::extract_prefix(const Request& req)
+{
+	auto target = req.target();
+	auto sv = std::string_view{target.data(), target.size()};
+	if (!sv.empty() && sv.front() == '/')
+		sv.remove_prefix(1);
+
+	return std::get<0>(split_front(sv, "/?$"));
 }
 
 } // end of namespace
