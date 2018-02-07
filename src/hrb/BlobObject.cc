@@ -13,7 +13,6 @@
 #include "BlobObject.hh"
 
 #include "crypto/Blake2.hh"
-#include "net/Redis.hh"
 #include "util/Error.hh"
 #include "util/Magic.hh"
 
@@ -131,31 +130,23 @@ void BlobObject::load(redis::Connection& db, const ObjectID& id, Completion comp
 			auto [blob_reply] = reply.map_kv_pair("blob");
 			if (auto blob = blob_reply.as_string(); !blob.empty())
 			{
-				// Create an anonymous memory mapping to store the blob
-				auto new_mem = MMap::allocate(blob.size(), ec);
-				if (!ec)
+				result.m_id = id;
+				result.m_blob = Vec(blob.begin(), blob.end());
+
+				reply.foreach_kv_pair([&result](auto&& field, auto&& value)
 				{
-					// everything OK, now commit
-					std::memcpy(new_mem.data(), blob.data(), blob.size());
-					result.m_id = id;
-					result.m_blob = std::move(new_mem);
+					if (field != "blob")
+						result.assign_field(field, value.as_string());
+				});
 
-					reply.foreach_kv_pair([&result](auto&& field, auto&& value)
-					{
-						if (field != "blob")
-							result.assign_field(field, value.as_string());
-					});
-
-					// deduce mime if it is not present in database
-					if (result.m_mime.empty())
-						result.m_mime = deduce_mime(result.blob());
-				}
+				// deduce mime if it is not present in database
+				if (result.m_mime.empty())
+					result.m_mime = deduce_mime(result.blob());
 			}
 
 			// if redis return OK but we don't have blob, then the object is not valid
 			else
 				ec = Error::invalid_object;
-
 
 			callback(result, ec);
 		},
@@ -225,6 +216,10 @@ bool BlobObject::empty() const
 	{
 		bool operator()(const MMap& mmap) const noexcept {return !mmap.is_opened();}
 		bool operator()(const Vec& vec) const noexcept {return vec.empty();}
+		bool operator()(const redis::Reply& reply) const noexcept
+		{
+			return reply.as_string().size() > 0;
+		}
 	};
 	return std::visit(IsEmpty(), m_blob);
 }
@@ -240,6 +235,11 @@ boost::asio::const_buffer BlobObject::blob() const
 		boost::asio::const_buffer operator()(const Vec& mmap) const noexcept
 		{
 			return {&mmap[0], mmap.size()};
+		}
+		boost::asio::const_buffer operator()(const redis::Reply& reply) const noexcept
+		{
+			auto s = reply.as_string();
+			return {s.data(), s.size()};
 		}
 	};
 	return std::visit(GetBuffer(), m_blob);

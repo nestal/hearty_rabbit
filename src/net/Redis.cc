@@ -139,15 +139,15 @@ void Connection::disconnect()
 	m_socket.close();
 }
 
-Reply::Reply(redisReply *r) noexcept :
+Reply::Reply(redisReply *r, bool owned) noexcept :
 	m_reply{r}
 {
 }
 
 void Reply::Deleter::operator()(::redisReply *reply) const noexcept
 {
-	if (!reply)
-		::freeReplyObject(reply);
+//	if (!reply)
+//		::freeReplyObject(reply);
 }
 
 void Reply::swap(Reply& other) noexcept
@@ -183,7 +183,7 @@ std::string_view Reply::as_any_string() const noexcept
 Reply Reply::as_array(std::size_t i) const noexcept
 {
 	return m_reply && m_reply->type == REDIS_REPLY_ARRAY && i < m_reply->elements ?
-		Reply{m_reply->element[i]} : Reply{};
+		Reply{m_reply->element[i], false} : Reply{};
 }
 
 Reply Reply::as_array(std::size_t i, std::error_code& ec) const noexcept
@@ -194,7 +194,7 @@ Reply Reply::as_array(std::size_t i, std::error_code& ec) const noexcept
 
 	if (m_reply->type == REDIS_REPLY_ARRAY && i < m_reply->elements)
 	{
-		return Reply{m_reply->element[i]};
+		return Reply{m_reply->element[i], false};
 	}
 	else
 	{
@@ -303,7 +303,7 @@ std::tuple<Reply, ReplyReader::Result> ReplyReader::get()
 	::redisReply *reply{};
 	auto result = ::redisReaderGetReply(m_reader.get(), (void**)&reply);
 	return std::make_tuple(
-		Reply{reply},
+		Reply{reply, true},
 		result == REDIS_OK ? (reply ? Result::ok : Result::not_ready) : Result::error
 	);
 }

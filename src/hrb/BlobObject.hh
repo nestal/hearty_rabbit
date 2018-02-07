@@ -14,6 +14,7 @@
 
 #include "crypto/Blake2.hh"
 #include "util/MMap.hh"
+#include "net/Redis.hh"
 
 #include <boost/filesystem/path.hpp>
 #include <boost/asio/buffer.hpp>
