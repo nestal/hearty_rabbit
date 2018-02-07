@@ -58,6 +58,9 @@ public:
 	template <class Send>
 	void on_valid_session(Request&& req, Send&& send, const SessionID& session)
 	{
+		if (req.target() == "/")
+			return send(serve_home(req.version()));
+
 		if (req.target().starts_with(url::blob))
 			return get_blob(req, std::forward<decltype(send)>(send));
 
@@ -69,10 +72,6 @@ public:
 
 		if (req.target().starts_with(url::upload))
 			return on_upload(req, std::forward<Send>(send));
-
-		auto opt_res = file_request(req);
-		if (opt_res)
-			return send(std::move(*opt_res));
 
 		return send(not_found(req));
 	}
@@ -117,13 +116,8 @@ public:
 				return send(http::response<http::empty_body>{http::status::bad_request, req.version()});
 		}
 
-		// Only index.html require login
 		if (allow_anonymous(req.target()))
-		{
-			auto opt_res = file_request(req);
-			if (opt_res)
-				return send(std::move(*opt_res));
-		}
+			return send(static_file_request(req));
 
 		// Everything else require a valid session.
 		auto cookie = req[http::field::cookie];
@@ -133,7 +127,9 @@ public:
 			on_invalid_session(std::move(req), std::forward<Send>(send));
 	}
 
-	std::optional<http::response<http::file_body>> file_request(const Request& req);
+	http::response<http::file_body> static_file_request(const Request& req);
+	http::response<http::file_body> file_request(const boost::filesystem::path& path, unsigned version);
+	http::response<http::file_body> serve_home(unsigned version);
 	static http::response<http::string_body> bad_request(const Request& req, boost::beast::string_view why);
 	static http::response<http::string_body> not_found(const Request& req);
 	static http::response<http::string_body> server_error(const Request& req, boost::beast::string_view what);

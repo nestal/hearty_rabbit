@@ -24,6 +24,7 @@
 
 #include <boost/exception/errinfo_api_function.hpp>
 #include <boost/exception/info.hpp>
+#include <boost/filesystem.hpp>
 
 #include <iostream>
 
@@ -59,7 +60,7 @@ void Server::on_login(const Request& req, EmptyResponseSender&& send)
 				Log(LOG_INFO, "login result: %1% %2%", ec, ec.message());
 				m_db.release(std::move(db));
 
-				auto&& res = redirect(ec ? "/login_incorrect.html" : "/index.html", version);
+				auto&& res = redirect(ec ? "/login_incorrect.html" : "/", version);
 				if (!ec)
 					res.set(http::field::set_cookie, set_cookie(session));
 
@@ -143,15 +144,23 @@ void Server::on_upload(const Request& req, StringResponseSender&& send)
 
 void Server::on_invalid_session(const Request& req, EmptyResponseSender&& send)
 {
+	bool target_home = (req.target() == "/");
+
 	// Introduce a small delay when responsing to requests with invalid session ID.
 	// This is to slow down bruce-force attacks on the session ID.
 	boost::asio::deadline_timer t{m_ioc, boost::posix_time::milliseconds{500}};
-	return t.async_wait([version=req.version(), send=std::move(send)](auto ec)
+	return t.async_wait([version=req.version(), target_home, send=std::move(send)](auto ec)
 	{
 		if (!ec)
 			Log(LOG_WARNING, "timer error %1% (%2%)", ec, ec.message());
 
-		send(http::response<http::empty_body>{http::status::forbidden, version});
+		// If the target is home (i.e. "/"), redirect to login page.
+		// Because it may be because the user's session just exprired.
+		send(
+			target_home ?
+				redirect("/login.html", version) :
+				http::response<http::empty_body>{http::status::forbidden, version}
+		);
 	});
 }
 
@@ -198,17 +207,24 @@ http::response<http::string_body> Server::server_error(const Request& req, boost
 	return res;
 }
 
-std::optional<http::response<http::file_body>> Server::file_request(const Request& req)
+http::response<http::file_body> Server::serve_home(unsigned version)
+{
+	return file_request(m_cfg.web_root() / "dynamic" / "index.html", version);
+}
+
+http::response<http::file_body> Server::static_file_request(const Request& req)
 {
 	Log(LOG_NOTICE, "requesting path %1%", req.target());
 
 	auto filepath = req.target();
 	filepath.remove_prefix(1);
 
-	if (web_resources.find(filepath.to_string()) == web_resources.end())
-		return std::nullopt;
+	return file_request(boost::filesystem::path{"static"} / filepath.to_string(), req.version());
+}
 
-	auto path = m_cfg.web_root() / filepath.to_string();
+http::response<http::file_body> Server::file_request(const boost::filesystem::path& req_path, unsigned version)
+{
+	auto path = canonical(req_path, m_cfg.web_root());
 	Log(LOG_NOTICE, "reading from %1%", path);
 
 	// Attempt to open the file
@@ -218,18 +234,26 @@ std::optional<http::response<http::file_body>> Server::file_request(const Reques
 
 	// Handle the case where the file doesn't exist
 	if (ec)
-		throw std::system_error(ec);
+	{
+		file.open(
+			(m_cfg.web_root() / "dynamic" / "not_found.html").string().c_str(),
+			boost::beast::file_mode::scan,
+			ec
+		);
+		if (ec)
+			throw std::system_error(ec);
+	}
 
 	auto file_size = file.size();
 
 	http::response<http::file_body> res{
 		std::piecewise_construct,
 		std::make_tuple(std::move(file)),
-		std::make_tuple(http::status::ok, req.version())
+		std::make_tuple(http::status::ok, version)
 	};
 	res.set(http::field::content_type, resource_mime(path.extension().string()));
 	res.content_length(file_size);
-	return {std::move(res)};
+	return std::move(res);
 }
 
 http::response<http::empty_body> Server::redirect_http(const Request &req)
@@ -346,7 +370,7 @@ bool Server::allow_anonymous(boost::string_view target)
 	assert(target.front() == '/');
 	target.remove_prefix(1);
 
-	return target != "index.html" && web_resources.find(target.to_string()) != web_resources.end();
+	return web_resources.find(target.to_string()) != web_resources.end();
 }
 
 std::string_view Server::extract_prefix(const Request& req)

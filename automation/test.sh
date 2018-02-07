@@ -13,5 +13,5 @@ docker run -t --detach --rm \
   --network=host --name hb_test \
     nestal/hearty_rabbit
 
-curl -k https://localhost:4433/login.html
+curl -k https://localhost:4433/
 docker stop hb_test

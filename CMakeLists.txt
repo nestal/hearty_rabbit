@@ -38,7 +38,7 @@ include_directories(
 configure_file(config.hh.in config.hh)
 
 # Static files served by HTTP
-file(GLOB STATIC_RESOURCES lib/*)
+file(GLOB STATIC_RESOURCES lib/static/*)
 message(STATUS ${STATIC_RESOURCES})
 
 # Generate a list of static files

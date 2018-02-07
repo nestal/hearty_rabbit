@@ -186,7 +186,7 @@ TEST_CASE("GET static resource", "[normal]")
 
 	SECTION("Request login.html success without login")
 	{
-		FileResponseChecker checker{http::status::ok, cfg.web_root()/"login.html"};
+		FileResponseChecker checker{http::status::ok, cfg.web_root()/"static/login.html"};
 
 		req.target("/login.html");
 		subject.handle_https(std::move(req), std::ref(checker));
@@ -195,7 +195,7 @@ TEST_CASE("GET static resource", "[normal]")
 
 	SECTION("Request logo.svg success without login")
 	{
-		FileResponseChecker checker{http::status::ok, cfg.web_root()/"logo.svg"};
+		FileResponseChecker checker{http::status::ok, cfg.web_root()/"static/logo.svg"};
 
 		req.target("/logo.svg");
 		subject.handle_https(std::move(req), std::ref(checker));
@@ -214,9 +214,9 @@ TEST_CASE("GET static resource", "[normal]")
 
 	SECTION("Request index.html success with login")
 	{
-		FileResponseChecker checker{http::status::ok, cfg.web_root()/"index.html"};
+		FileResponseChecker checker{http::status::ok, cfg.web_root()/"dynamic/index.html"};
 
-		req.target("/index.html");
+		req.target("/");
 		req.insert(boost::beast::http::field::cookie, set_cookie(session));
 		subject.handle_https(std::move(req), [&checker, &subject](auto&& res)
 		{
@@ -288,15 +288,27 @@ TEST_CASE("GET static resource", "[normal]")
 		REQUIRE(expect->tested());
 	}
 
-	SECTION("requesting other resources")
+	SECTION("requesting other resources without a session")
 	{
-//		MovedResponseChecker checker{"/login.html"};
-		GenericStatusChecker checker{http::status::forbidden};
+		MovedResponseChecker redirect_login{"/login.html"};
+		GenericStatusChecker forbidden{http::status::forbidden};
+		Checker *expected{nullptr};
 
-		req.target("/");
-		subject.handle_https(std::move(req), std::ref(checker));
+		SECTION("requests for / will get redirected to login page")
+		{
+			req.target("/");
+			subject.handle_https(std::move(req), std::ref(redirect_login));
+			expected = &redirect_login;
+		}
+		SECTION("requests to others will get 403 forbidden")
+		{
+			req.target("/something");
+			subject.handle_https(std::move(req), std::ref(forbidden));
+			expected = &forbidden;
+		}
 		REQUIRE(subject.get_io_context().run_for(10s) > 0);
-		REQUIRE(checker.tested());
+		REQUIRE(expected != nullptr);
+		REQUIRE(expected->tested());
 	}
 
 	SECTION("requesting invalid blob")
