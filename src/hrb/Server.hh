@@ -157,6 +157,26 @@ private:
 	static bool allow_anonymous(boost::string_view target);
 
 private:
+	template <typename Body>
+	using ResponseSender  = std::function<void(http::response<Body>&&)>;
+
+	enum class SessionState {anonymous, user};
+
+	template <typename Body>
+	struct SiteEntry
+	{
+		boost::string_view      url_prefix;
+		http::verb              method;
+		SessionState            session;
+		std::function<void (Request&&, ResponseSender<Body>&&)> handler;
+	};
+
+	// Generic handler
+	static void not_found_handler(Request&& req, ResponseSender<http::string_body>&& send);
+
+	static const SiteEntry<http::string_body> m_string_map[];
+
+private:
 	const Configuration&    m_cfg;
 	boost::asio::io_context m_ioc;
 

@@ -349,4 +349,21 @@ bool Server::allow_anonymous(boost::string_view target)
 	return target != "index.html" && web_resources.find(target.to_string()) != web_resources.end();
 }
 
+const Server::SiteEntry<http::string_body> Server::m_string_map[] = {
+	{"/blob", http::verb::get, SessionState::anonymous, not_found_handler}
+};
+
+void Server::not_found_handler(Request&& req, ResponseSender<http::string_body>&& send)
+{
+	using namespace std::literals;
+	http::response<http::string_body> res{
+		std::piecewise_construct,
+		std::make_tuple("The resource '"s + req.target().to_string() + "' was not found."),
+		std::make_tuple(http::status::not_found, req.version())
+	};
+	res.set(http::field::content_type, "text/plain");
+	res.prepare_payload();
+	return send(std::move(res));
+}
+
 } // end of namespace
