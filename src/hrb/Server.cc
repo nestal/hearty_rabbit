@@ -140,8 +140,12 @@ void Server::on_upload(const Request& req, EmptyResponseSender&& send)
 	blob.save(*db, [this, db, send=std::move(send), version=req.version()](BlobObject& blob, auto ec) mutable
 	{
 		m_db.release(std::move(db));
+		auto loc = "/blob/" + to_hex(blob.ID());
 
-		send(redirect("/blob/" + to_hex(blob.ID()), version));
+		http::response<http::empty_body> res{http::status::ok, version};
+		res.set(http::field::location, loc);
+		res.set(http::field::content_type, "text/plain");
+		return send(std::move(res));
 	});
 }
 
