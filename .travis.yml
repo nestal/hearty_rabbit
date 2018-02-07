@@ -10,8 +10,10 @@ before_install:
   - docker pull nestal/hearty_rabbit_dev
   - git submodule update --init --recursive
 
+# TODO: need to add automated tests here
 script:
   - docker build -t nestal/hearty_rabbit --network="host" .
+  - ./automation/test.sh
 
 after_success:
   - if [ "$TRAVIS_BRANCH" == "master" ]; then

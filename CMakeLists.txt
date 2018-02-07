@@ -7,6 +7,11 @@ find_package(Threads REQUIRED)
 find_package(PkgConfig REQUIRED)
 find_package(OpenSSL REQUIRED)
 
+# Find libb2
+find_library(LIBB2_LIBRARY libb2.a b2 PATHS lib)
+find_path(LIBB2_INCLUDE blake2.h PATHS include)
+message(STATUS "found libb2 at ${LIBB2_LIBRARY} ${LIBB2_INCLUDE}")
+
 # Need to remove libsystemd as it pulls a lot of dependencies
 #pkg_check_modules(SYSTEMD libsystemd)
 pkg_check_modules(RapidJSON REQUIRED RapidJSON)
@@ -24,16 +29,16 @@ include_directories(
 	${SYSTEMD_INCLUDE_DIRS}
 	${HIREDIS_INCLUDE_DIRS}
 	${LIBUNWIND_INCLUDE_DIRS}
+	${LIBB2_INCLUDE}
 	${CMAKE_BINARY_DIR}
 	${PROJECT_SOURCE_DIR}/src
 )
 
 # Post-processing
-configure_file(systemd/hearty_rabbit.service.in hearty_rabbit.service)
 configure_file(config.hh.in config.hh)
 
 # Static files served by HTTP
-file(GLOB STATIC_RESOURCES lib/*)
+file(GLOB STATIC_RESOURCES lib/static/*)
 message(STATUS ${STATIC_RESOURCES})
 
 # Generate a list of static files
@@ -57,6 +62,7 @@ target_link_libraries(
 	OpenSSL::SSL
 	OpenSSL::Crypto
 	${LIBUNWIND_LIBRARIES}
+	${LIBB2_LIBRARY}
 	${SYSTEMD_LIBRARIES}
 	${CMAKE_THREAD_LIBS_INIT}
 )
@@ -91,8 +97,6 @@ add_custom_command(
 
 # Installation
 install(TARGETS hearty_rabbit DESTINATION bin)
-#install(FILES ${CMAKE_BINARY_DIR}/hearty_rabbit.service DESTINATION etc/systemd/system)
-#install(FILES etc/${CONFIG_FILENAME} DESTINATION etc)
 install(DIRECTORY lib/ DESTINATION lib)
 
 set(CPACK_PACKAGE_VERSION ${VERSION})

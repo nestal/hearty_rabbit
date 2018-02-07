@@ -24,6 +24,7 @@
 
 #include <boost/exception/errinfo_api_function.hpp>
 #include <boost/exception/info.hpp>
+#include <boost/filesystem.hpp>
 
 #include <iostream>
 
@@ -37,7 +38,7 @@ Server::Server(const Configuration& cfg) :
 	OpenSSL_add_all_digests();
 }
 
-void Server::on_login(const Request& req, std::function<void(http::response<http::empty_body>&&)>&& send)
+void Server::on_login(const Request& req, EmptyResponseSender&& send)
 {
 	auto&& body = req.body();
 	if (req[http::field::content_type] == "application/x-www-form-urlencoded")
@@ -53,38 +54,35 @@ void Server::on_login(const Request& req, std::function<void(http::response<http
 				db,
 				version=req.version(),
 				send=std::move(send),
-				this,
-				keep_alive=req.keep_alive()
+				this
 			](std::error_code ec, auto&& session) mutable
 			{
 				Log(LOG_INFO, "login result: %1% %2%", ec, ec.message());
 				m_db.release(std::move(db));
 
-				auto&& res = redirect(ec ? "/login_incorrect.html" : "/index.html", version);
-				res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
-				res.keep_alive(keep_alive);
-
+				auto&& res = redirect(ec ? "/login_incorrect.html" : "/", version);
 				if (!ec)
-					res.insert(http::field::set_cookie, set_cookie(session));
+					res.set(http::field::set_cookie, set_cookie(session));
 
 				send(std::move(res));
 			}
 		);
 	}
 	else
-		send(set_common_fields(req, redirect("/login.html", req.version())));
+		send(redirect("/login.html", req.version()));
 }
 
-void Server::on_logout(const Request& req, const SessionID& id, std::function<void(http::response<http::empty_body>&&)>&& send)
+void Server::on_logout(const Request& req, const SessionID& id, EmptyResponseSender&& send)
 {
 	auto db = m_db.alloc(m_ioc);
-	destroy_session(id, *db, [this, db, send=std::move(send), version=req.version(), keep_alive=req.keep_alive()](auto&& ec) mutable
+	destroy_session(id, *db, [this, db, send=std::move(send), version=req.version()](auto&& ec) mutable
 	{
 		m_db.release(std::move(db));
 
 		auto&& res = redirect("/login.html", version);
-		res.insert(http::field::set_cookie, "id=; ");
-		send(set_common_fields(keep_alive, std::move(res)));
+		res.set(http::field::set_cookie, "id=; ");
+		res.keep_alive(false);
+		send(std::move(res));
 	});
 }
 
@@ -95,7 +93,7 @@ http::response<http::empty_body> Server::redirect(boost::beast::string_view wher
 	return res;
 }
 
-void Server::get_blob(const Request& req, std::function<void(http::response<http::string_body>&&)>&& send)
+void Server::get_blob(const Request& req, StringResponseSender&& send)
 {
 	auto blob_id = req.target().size() > url::login.size() ?
 		req.target().substr(url::login.size()) :
@@ -103,26 +101,67 @@ void Server::get_blob(const Request& req, std::function<void(http::response<http
 
 	auto object_id = hex_to_object_id(std::string_view{blob_id.data(), blob_id.size()});
 	if (object_id == ObjectID{})
-		send(set_common_fields(req, http::response<http::string_body>{http::status::not_found, req.version()}));
+		send(not_found(req));
 	else
 	{
 		auto db = m_db.alloc(m_ioc);
 		BlobObject::load(
 			*db, object_id,
-			[db, this, send=std::move(send), version=req.version(), keep_alive=req.keep_alive()](BlobObject& blob, std::error_code ec) mutable
+			[db, this, send=std::move(send), version=req.version()](BlobObject& blob, std::error_code ec) mutable
 			{
 				m_db.release(std::move(db));
 
-				http::response<http::string_body> res{!ec ? http::status::ok : http::status::not_found, version};
-				res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
+				http::response<http::string_body> res{
+					std::piecewise_construct,
+					std::make_tuple(ec ? std::string_view{} : blob.blob()),
+					std::make_tuple(ec ? http::status::not_found : http::status::ok, version)
+				};
 				res.set(http::field::content_type, blob.mime());
-				res.keep_alive(keep_alive);
-				if (!ec)
-					res.body() = blob.blob();
+				res.prepare_payload();
 				send(std::move(res));
 			}
 		);
 	}
+}
+
+void Server::on_upload(const Request& req, StringResponseSender&& send)
+{
+	std::cout << "method = " << req.method() << " size = " << req.at(http::field::content_length) << std::endl;
+//	std::cout << "content = \n" << req.body() << std::endl;
+
+	for (auto&& field : req)
+		std::cout << field.name() << " " << field.value() << std::endl;
+
+	http::response<http::string_body> res{
+		std::piecewise_construct,
+		std::make_tuple("OK"),
+		std::make_tuple(http::status::not_found, req.version())
+	};
+	res.insert(http::field::content_type, "text/plain");
+	res.prepare_payload();
+	send(std::move(res));
+}
+
+void Server::on_invalid_session(const Request& req, EmptyResponseSender&& send)
+{
+	bool target_home = (req.target() == "/");
+
+	// Introduce a small delay when responsing to requests with invalid session ID.
+	// This is to slow down bruce-force attacks on the session ID.
+	boost::asio::deadline_timer t{m_ioc, boost::posix_time::milliseconds{500}};
+	return t.async_wait([version=req.version(), target_home, send=std::move(send)](auto ec)
+	{
+		if (!ec)
+			Log(LOG_WARNING, "timer error %1% (%2%)", ec, ec.message());
+
+		// If the target is home (i.e. "/"), redirect to login page.
+		// Because it may be because the user's session just exprired.
+		send(
+			target_home ?
+				redirect("/login.html", version) :
+				http::response<http::empty_body>{http::status::forbidden, version}
+		);
+	});
 }
 
 http::response<http::string_body> Server::get_dir(const Request& req)
@@ -132,44 +171,60 @@ http::response<http::string_body> Server::get_dir(const Request& req)
 
 http::response<http::string_body> Server::bad_request(const Request& req, boost::beast::string_view why)
 {
-	http::response<http::string_body> res{http::status::bad_request, req.version()};
+	http::response<http::string_body> res{
+		std::piecewise_construct,
+		std::make_tuple(why),
+		std::make_tuple(http::status::bad_request, req.version())
+	};
 	res.set(http::field::content_type, "text/html");
-	res.body() = why.to_string();
 	res.prepare_payload();
-	return set_common_fields(req, std::move(res));
+	return res;
 }
 
 // Returns a not found response
-http::response<http::string_body> Server::not_found(const Request& req, boost::beast::string_view target)
+http::response<http::string_body> Server::not_found(const Request& req)
 {
-	http::response<http::string_body> res{http::status::not_found, req.version()};
-	res.set(http::field::content_type, "text/html");
-	res.body() = "The resource '" + target.to_string() + "' was not found.";
+	using namespace std::literals;
+	http::response<http::string_body> res{
+		std::piecewise_construct,
+		std::make_tuple("The resource '"s + req.target().to_string() + "' was not found."),
+		std::make_tuple(http::status::not_found, req.version())
+	};
+	res.set(http::field::content_type, "text/plain");
 	res.prepare_payload();
-	return set_common_fields(req, std::move(res));
+	return res;
 }
 
 http::response<http::string_body> Server::server_error(const Request& req, boost::beast::string_view what)
 {
-	http::response<http::string_body> res{http::status::internal_server_error, req.version()};
-	res.set(http::field::content_type, "text/html");
-	res.body() = "An error occurred: '" + what.to_string() + "'";
+	http::response<http::string_body> res{
+		std::piecewise_construct,
+		std::make_tuple("An error occurred: '" + what.to_string() + "'"),
+		std::make_tuple(http::status::internal_server_error, req.version())
+	};
+	res.set(http::field::content_type, "text/plain");
 	res.prepare_payload();
-	return set_common_fields(req, std::move(res));
+	return res;
 }
 
-std::optional<http::response<http::file_body>> Server::file_request(const Request& req)
+http::response<http::file_body> Server::serve_home(unsigned version)
+{
+	return file_request(m_cfg.web_root() / "dynamic" / "index.html", version);
+}
+
+http::response<http::file_body> Server::static_file_request(const Request& req)
 {
 	Log(LOG_NOTICE, "requesting path %1%", req.target());
 
 	auto filepath = req.target();
 	filepath.remove_prefix(1);
 
-	// TODO: use redirect instead
-	if (web_resources.find(filepath.to_string()) == web_resources.end())
-		return std::nullopt;
+	return file_request(boost::filesystem::path{"static"} / filepath.to_string(), req.version());
+}
 
-	auto path = m_cfg.web_root() / filepath.to_string();
+http::response<http::file_body> Server::file_request(const boost::filesystem::path& req_path, unsigned version)
+{
+	auto path = canonical(req_path, m_cfg.web_root());
 	Log(LOG_NOTICE, "reading from %1%", path);
 
 	// Attempt to open the file
@@ -179,18 +234,26 @@ std::optional<http::response<http::file_body>> Server::file_request(const Reques
 
 	// Handle the case where the file doesn't exist
 	if (ec)
-		throw std::system_error(ec);
+	{
+		file.open(
+			(m_cfg.web_root() / "dynamic" / "not_found.html").string().c_str(),
+			boost::beast::file_mode::scan,
+			ec
+		);
+		if (ec)
+			throw std::system_error(ec);
+	}
 
 	auto file_size = file.size();
 
 	http::response<http::file_body> res{
 		std::piecewise_construct,
 		std::make_tuple(std::move(file)),
-		std::make_tuple(http::status::ok, req.version())
+		std::make_tuple(http::status::ok, version)
 	};
 	res.set(http::field::content_type, resource_mime(path.extension().string()));
 	res.content_length(file_size);
-	return set_common_fields(req, std::move(res));
+	return std::move(res);
 }
 
 http::response<http::empty_body> Server::redirect_http(const Request &req)
@@ -202,7 +265,7 @@ http::response<http::empty_body> Server::redirect_http(const Request &req)
 	auto&& dest = https_host + req.target().to_string();
 	Log(LOG_INFO, "redirecting HTTP request %1% to host %2%", req.target(), dest);
 
-	return set_common_fields(req, redirect(dest, req.version()));
+	return redirect(dest, req.version());
 }
 
 std::string_view Server::resource_mime(const std::string& ext)
@@ -307,7 +370,17 @@ bool Server::allow_anonymous(boost::string_view target)
 	assert(target.front() == '/');
 	target.remove_prefix(1);
 
-	return target != "index.html" && web_resources.find(target.to_string()) != web_resources.end();
+	return web_resources.find(target.to_string()) != web_resources.end();
+}
+
+std::string_view Server::extract_prefix(const Request& req)
+{
+	auto target = req.target();
+	auto sv = std::string_view{target.data(), target.size()};
+	if (!sv.empty() && sv.front() == '/')
+		sv.remove_prefix(1);
+
+	return std::get<0>(split_front(sv, "/?$"));
 }
 
 } // end of namespace

@@ -31,27 +31,31 @@ from official CentOS repository to build HeartyRabbit:
 
 - RapidJSON
 - openssl-devel
-- postgresql-libs
 - hiredis
+- libunwind
+- libmagic (file-devel)
 
-In addition, HeartyRabbit also requires [Boost libraries](http://boost.org) and
-[CMake](https://cmake.org) to build. However, the official packages from
-CentOS 7.4 is too old to build HeartyRabbit. These two packages are built
-from source.
+In addition, HeartyRabbit also requires [Boost libraries](http://boost.org),
+[CMake](https://cmake.org) and [libb2](https://github.com/BLAKE2/libb2) to
+build. However, the official packages of Boost and CMake from CentOS 7.4 is
+too old to build HeartyRabbit, and there's no official packages for libb2.
+These three packages are built from source.
 
 # Building Hearty Rabbit
 
 Run
 
-	docker build -t hearty_rabbit .
+	docker build -t hearty_rabbit --network=host .
 	
 in the source directory to build Hearty Rabbit. The resultant image is a
 complete installation of Hearty Rabbit encapsulated in a docker container.
-
+The `--network=host` option is required because the unit tests need to
+connect to the redis server in the host.
 
 # Travis Automation
 
-The [`.travis.yaml`](.travis.yml) script basically calls `make -f automation/Makefile` so the
+The [`.travis.yaml`](.travis.yml) script basically calls
+`docker build -t hearty_rabbit --network=host .` so the
 travis build is basically the same as local builds.
 
 # Notes/Reminder
@@ -59,3 +63,6 @@ travis build is basically the same as local builds.
 Need a "ROOT" search index base on the date of the images taken
 
 year -> month -> day level of containers
+
+Host quota for invalid session IDs and incorrect logins to prevent brute-force
+attacks.

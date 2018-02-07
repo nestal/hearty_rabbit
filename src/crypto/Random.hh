@@ -12,6 +12,8 @@
 
 #pragma once
 
+#include <blake2.h>
+
 #include <array>
 #include <type_traits>
 
@@ -32,5 +34,24 @@ std::enable_if_t<std::is_standard_layout<T>::value, std::array<T, size>> secure_
 {
 	return secure_random<std::array<T, size>>();
 }
+
+// Blake2x random number generator: https://blake2.net/blake2x.pdf
+class Blake2x
+{
+public:
+	Blake2x();
+
+	using result_type = std::uint64_t;
+	static constexpr result_type min() {return std::numeric_limits<result_type>::min();}
+	static constexpr result_type max() {return std::numeric_limits<result_type>::max();}
+
+	result_type operator()();
+
+	void reseed();
+
+private:
+	::blake2b_param m_param{};
+	std::uint64_t m_h0{};
+};
 
 } // end of namespace hrb

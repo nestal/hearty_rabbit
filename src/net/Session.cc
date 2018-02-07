@@ -93,11 +93,20 @@ void Session::handle_https(Request&& req, Send&& send)
 		if (ec)
 			Log(LOG_WARNING, "remote_endpoint() error: %1% %2%", ec, ec.message());
 
-		Log(LOG_INFO, "%1%:%2% request %3% from %4%", m_nth_session, m_nth_transaction, req.target(), m_socket.remote_endpoint(ec));
+		Log(
+			LOG_INFO,
+			"%1%:%2% request %3% from %4% (version %5%)",
+			m_nth_session,
+			m_nth_transaction,
+			req.target(),
+			m_socket.remote_endpoint(ec),
+			req.version()
+		);
 
 		// Make sure we can handle the method
 		if (req.method() != http::verb::get  &&
 		    req.method() != http::verb::post &&
+		    req.method() != http::verb::put &&
 			req.method() != http::verb::head)
 			return send(m_server.bad_request(req, "Unknown HTTP-method"));
 
@@ -114,7 +123,7 @@ void Session::handle_https(Request&& req, Send&& send)
 		auto ec = e.code();
 		// Handle the case where the file doesn't exist
 		if( ec == std::errc::no_such_file_or_directory)
-			return send(m_server.not_found(req, req.target()));
+			return send(m_server.not_found(req));
 
 		// Handle an unknown error
 		if(ec)
@@ -140,6 +149,8 @@ void Session::on_read(boost::system::error_code ec, std::size_t)
 			// for the duration of the async operation so
 			// we use a shared_ptr to manage it.
 			auto sp = std::make_shared<std::remove_reference_t<decltype(msg)>>(std::move(msg));
+			sp->set(http::field::server, BOOST_BEAST_VERSION_STRING);
+			sp->keep_alive(m_req.keep_alive());
 
 			auto&& callback = boost::asio::bind_executor(
 				m_strand,

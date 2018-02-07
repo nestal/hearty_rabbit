@@ -1,0 +1,11 @@
+version: '3'
+services:
+  web:
+    image: nestal/hearty_rabbit
+    ports:
+    - "80:80"
+    - "443:443"
+    volumes:
+    - /etc/letsencrypt:/etc/letsencrypt
+    - /etc/hearty_rabbit:/etc/hearty_rabbit
+    network_mode: "host"

@@ -28,14 +28,14 @@ class Password;
 using SessionID = std::array<unsigned char, 16>;
 
 void add_user(
-	std::string_view username,
+	std::string_view username_mixed_case,
 	const Password& password,
 	redis::Connection& db,
 	std::function<void(std::error_code)> completion
 );
 
 void verify_user(
-	std::string_view username,
+	std::string_view username_mixed_case,
 	Password&& password,
 	redis::Connection& db,
 	std::function<void(std::error_code, const SessionID&)> completion

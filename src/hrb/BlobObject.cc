@@ -12,7 +12,7 @@
 
 #include "BlobObject.hh"
 
-#include "crypto/SHA2.hh"
+#include "crypto/Blake2.hh"
 #include "net/Redis.hh"
 #include "util/Error.hh"
 #include "util/Magic.hh"
@@ -26,6 +26,21 @@
 #include <iomanip>
 
 namespace hrb {
+
+namespace {
+
+static constexpr std::array<unsigned char, 5> key_prefix = {'b','l','o','b', ':'};
+using ObjectRedisKey = std::array<unsigned char, Blake2::size + key_prefix.size()>;
+
+ObjectRedisKey redis_key(const ObjectID& id)
+{
+	ObjectRedisKey key = {};
+	std::copy(key_prefix.begin(), key_prefix.end(), key.begin() );
+	std::copy(id.begin(), id.end(), key.begin() + key_prefix.size());
+	return key;
+}
+
+} // end of local namespace
 
 BlobObject::BlobObject(const boost::filesystem::path &path)
 {
@@ -63,13 +78,26 @@ void BlobObject::open(const boost::filesystem::path& path, const ObjectID* id, s
 
 ObjectID BlobObject::hash(std::string_view blob)
 {
-	evp::SHA2 sha3;
+	Blake2 sha3;
 
 	std::uint64_t size = blob.size();
 	sha3.update(&size, sizeof(size));
 	sha3.update(blob.data(), blob.size());
 
 	return ObjectID{sha3.finalize()};
+}
+
+void BlobObject::erase(redis::Connection& db, BlobObject::Completion completion)
+{
+	db.command(
+		[callback=std::move(completion), this](redis::Reply, std::error_code&& ec)
+		{
+			callback(*this, std::move(ec));
+		},
+		"DEL %b%b",
+		key_prefix.data(), key_prefix.size(),
+		m_id.data(), m_id.size()
+	);
 }
 
 void BlobObject::save(redis::Connection& db, Completion completion)
@@ -80,7 +108,7 @@ void BlobObject::save(redis::Connection& db, Completion completion)
 			callback(*this, std::move(ec));
 		},
 		"HSET %b%b blob %b name %b mime %b",
-		object_redis_key_prefix.data(), object_redis_key_prefix.size(),
+		key_prefix.data(), key_prefix.size(),
 		m_id.data(), m_id.size(),
 		m_blob.data(), m_blob.size(),
 		m_name.c_str(), m_name.size(),
@@ -131,7 +159,7 @@ void BlobObject::load(redis::Connection& db, const ObjectID& id, Completion comp
 			callback(result, ec);
 		},
 		"HGETALL %b%b",
-		object_redis_key_prefix.data(), object_redis_key_prefix.size(),
+		key_prefix.data(), key_prefix.size(),
 		id.data(), id.size()
 	);
 }
@@ -157,7 +185,7 @@ void BlobObject::load(
 
 			callback(result, ec);
 		}, "HGETALL %b%b",
-		object_redis_key_prefix.data(), object_redis_key_prefix.size(),
+		key_prefix.data(), key_prefix.size(),
 		id.data(), id.size()
 	);
 }
@@ -205,15 +233,6 @@ std::ostream& operator<<(std::ostream& os, const ObjectID& id)
 		os << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(ch);
 	}
 	return os;
-}
-
-ObjectRedisKey redis_key(const ObjectID& id)
-{
-	ObjectRedisKey key = {};
-	std::copy(object_redis_key_prefix.begin(), object_redis_key_prefix.end(), key.begin() );
-	std::copy(id.begin(), id.end(), key.begin() + object_redis_key_prefix.size());
-
-	return key;
 }
 
 std::string to_hex(const ObjectID& id)

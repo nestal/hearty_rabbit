@@ -19,6 +19,9 @@
 #include "crypto/Password.hh"
 
 #include <boost/asio/io_context.hpp>
+#include <boost/algorithm/hex.hpp>
+
+#include <random>
 
 using namespace hrb;
 
@@ -26,6 +29,50 @@ TEST_CASE("Test random number", "[normal]")
 {
 	auto rand = secure_random_array<std::uint64_t, 2>();
 	REQUIRE_NOTHROW(rand[0] > 0 && rand[1] > 0);
+}
+
+TEST_CASE("Blake2x is faster than urandom", "[normal]")
+{
+	Blake2x g;
+
+	const auto trial = 100000;
+	using namespace std::chrono;
+
+	auto blake_start = system_clock::now();
+	for (auto i = 0 ; i < trial; i++)
+		g();
+	auto blake_elapse = system_clock::now() - blake_start;
+
+	auto urand_start = system_clock::now();
+	for (auto i = 0 ; i < trial; i++)
+		secure_random<Blake2x::result_type>();
+	auto urand_elapse = system_clock::now() - urand_start;
+
+	INFO("blake2x x " << trial << ": " << duration_cast<milliseconds>(blake_elapse).count() << "ms");
+	INFO("urandom x " << trial << ": " << duration_cast<milliseconds>(urand_elapse).count() << "ms");
+	REQUIRE(blake_elapse < urand_elapse);
+
+	std::mt19937_64 mt{g()};
+	auto mt_start = system_clock::now();
+	for (auto i = 0 ; i < trial; i++)
+		mt();
+	auto mt_elapse = system_clock::now() - mt_start;
+
+	INFO("mt19937 x " << trial << ": " << duration_cast<milliseconds>(mt_elapse).count() << "ms");
+	INFO("blake2x x " << trial << ": " << duration_cast<milliseconds>(blake_elapse).count() << "ms");
+	INFO("urandom x " << trial << ": " << duration_cast<milliseconds>(urand_elapse).count() << "ms");
+	REQUIRE(mt_elapse < blake_elapse);
+}
+
+TEST_CASE("Blake2x generates random numbers", "[normal]")
+{
+	// Very easy....
+	Blake2x g;
+	REQUIRE(g() != g());
+	REQUIRE(g() != g());
+	REQUIRE(g() != g());
+	REQUIRE(g() != g());
+	REQUIRE(g() != g());
 }
 
 TEST_CASE("Test password init", "[normal]")
@@ -61,8 +108,10 @@ TEST_CASE("Test normal user login", "[normal]")
 
 		SECTION("correct user")
 		{
+			// Verify user with a username in a different case.
+			// Since username is case-insensitive, it should still work.
 			verify_user(
-				"sumsum", Password{"bearbear"}, *redis, [redis, &tested](std::error_code ec, auto&& session)
+				"suMSum", Password{"bearbear"}, *redis, [redis, &tested](std::error_code ec, auto&& session)
 				{
 					INFO("verify_user(correct) result = " << ec.message());
 					REQUIRE(!ec);
@@ -70,6 +119,7 @@ TEST_CASE("Test normal user login", "[normal]")
 
 					verify_session(session, *redis, [redis, &tested](std::error_code ec, auto&& user)
 					{
+						// Username returned is always lower case.
 						REQUIRE(!ec);
 						REQUIRE(user == "sumsum");
 						redis->disconnect();
@@ -107,4 +157,19 @@ TEST_CASE("Parsing cookie", "[normal]")
 	session = parse_cookie("name=value; id=0123456789ABCDEF0123456789ABCDEF; ");
 	REQUIRE(session.has_value());
 	REQUIRE(*session == SessionID{0x01,0x23,0x45, 0x67, 0x89,0xAB,0xCD,0xEF,0x01,0x23,0x45,0x67,0x89,0xAB,0xCD,0xEF});
+
+	// some lower case characters
+	session = parse_cookie("name=value; id=0123456789abcDEF0123456789ABCdef; ");
+	REQUIRE(session.has_value());
+	REQUIRE(*session == SessionID{0x01,0x23,0x45, 0x67, 0x89,0xAB,0xCD,0xEF,0x01,0x23,0x45,0x67,0x89,0xAB,0xCD,0xEF});
+
+	// Random round-trip
+	std::mt19937_64 salt_generator{secure_random<std::uint64_t>()};
+	SessionID rand{};
+	std::generate(rand.begin(), rand.end(), std::ref(salt_generator));
+	auto cookie = set_cookie(rand);
+	INFO("cookie for random session ID is " << cookie);
+	session = parse_cookie(cookie);
+	REQUIRE(session.has_value());
+	REQUIRE(*session == rand);
 }
