@@ -166,19 +166,24 @@ private:
 	template <typename Body>
 	using ResponseSender  = std::function<void(http::response<Body>&&)>;
 
-	enum class SessionState {anonymous, user};
+	template <typename Body>
+	using RequestHandler  = std::function<void(Request&&, ResponseSender<Body>&&)>;
 
 	template <typename Body>
 	struct SiteEntry
 	{
 		std::string_view        url_prefix;
 		http::verb              method;
-		SessionState            session;
-		std::function<void (Request&&, ResponseSender<Body>&&)> handler;
+		RequestHandler<Body>    handler;
 	};
 
 	// Generic handler
 	static void not_found_handler(Request&& req, ResponseSender<http::string_body>&& send);
+	static void forbidden(Request&& req, ResponseSender<http::string_body>&& send);
+
+	// Speicific handlers
+	void login_handler(Request&& req, ResponseSender<http::string_body>&& send);
+	void logout_handler(Request&& req, ResponseSender<http::string_body>&& send);
 
 	template <typename Body>
 	using SiteMap = boost::multi_index_container<
