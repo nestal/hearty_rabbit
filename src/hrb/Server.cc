@@ -124,22 +124,25 @@ void Server::get_blob(const Request& req, StringResponseSender&& send)
 	}
 }
 
-void Server::on_upload(const Request& req, StringResponseSender&& send)
+void Server::on_upload(const Request& req, EmptyResponseSender&& send)
 {
 	std::cout << "method = " << req.method() << " size = " << req.at(http::field::content_length) << std::endl;
-//	std::cout << "content = \n" << req.body() << std::endl;
+
+	auto [prefix, filename] = extract_prefix(req);
+	std::cout << "file = " << filename << std::endl;
 
 	for (auto&& field : req)
 		std::cout << field.name() << " " << field.value() << std::endl;
 
-	http::response<http::string_body> res{
-		std::piecewise_construct,
-		std::make_tuple("OK"),
-		std::make_tuple(http::status::not_found, req.version())
-	};
-	res.insert(http::field::content_type, "text/plain");
-	res.prepare_payload();
-	send(std::move(res));
+	BlobObject blob{req.body(), filename};
+
+	auto db = m_db.alloc(m_ioc);
+	blob.save(*db, [this, db, send=std::move(send), version=req.version()](BlobObject& blob, auto ec) mutable
+	{
+		m_db.release(std::move(db));
+
+		send(redirect("/blob/" + to_hex(blob.ID()), version));
+	});
 }
 
 void Server::on_invalid_session(const Request& req, EmptyResponseSender&& send)
@@ -274,6 +277,7 @@ std::string_view Server::resource_mime(const std::string& ext)
 	     if (ext == ".html")    return "text/html";
 	else if (ext == ".css")     return "text/css";
 	else if (ext == ".svg")     return "image/svg+xml";
+    else if (ext == ".js")      return "application/javascript";
 	else                        return "application/octet-stream";
 }
 
@@ -373,14 +377,18 @@ bool Server::allow_anonymous(boost::string_view target)
 	return web_resources.find(target.to_string()) != web_resources.end();
 }
 
-std::string_view Server::extract_prefix(const Request& req)
+std::tuple<
+	std::string_view,
+	std::string_view
+> Server::extract_prefix(const Request& req)
 {
 	auto target = req.target();
 	auto sv = std::string_view{target.data(), target.size()};
 	if (!sv.empty() && sv.front() == '/')
 		sv.remove_prefix(1);
 
-	return std::get<0>(split_front(sv, "/?$"));
+	auto prefix = std::get<0>(split_front(sv, "/?$"));
+	return std::make_tuple(prefix, sv);
 }
 
 } // end of namespace

@@ -202,6 +202,16 @@ TEST_CASE("GET static resource", "[normal]")
 		REQUIRE(checker.tested());
 	}
 
+	SECTION("Request hearty_rabbit.js success with login")
+	{
+		FileResponseChecker checker{http::status::ok, cfg.web_root()/"static/hearty_rabbit.js"};
+
+		req.target("/hearty_rabbit.js");
+		req.set(boost::beast::http::field::cookie, set_cookie(session));
+		subject.handle_https(std::move(req), std::ref(checker));
+		REQUIRE(checker.tested());
+	}
+
 	SECTION("Request index.html failed without login")
 	{
 		GenericStatusChecker checker{http::status::forbidden};
@@ -383,16 +393,18 @@ TEST_CASE("Extract prefix from URL until '/'", "[normal]")
 	SECTION("No suffix")
 	{
 		req.target("/target");
-		REQUIRE(Server::extract_prefix(req) == "target");
+		REQUIRE(Server::extract_prefix(req) == std::make_tuple("target", ""));
 	}
 	SECTION("2 levels")
 	{
 		req.target("/level1/level2");
-		REQUIRE(Server::extract_prefix(req) == "level1");
+		auto [prefix, remain] = Server::extract_prefix(req);
+		REQUIRE(prefix == "level1");
+		REQUIRE(remain == "level2");
 	}
 	SECTION("1 levels with ?")
 	{
 		req.target("/blob?q=s");
-		REQUIRE(Server::extract_prefix(req) == "blob");
+		REQUIRE(Server::extract_prefix(req) == std::make_tuple("blob", "q=s"));
 	}
 }

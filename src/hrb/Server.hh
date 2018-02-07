@@ -53,7 +53,10 @@ public:
 
 	http::response<http::empty_body> redirect_http(const Request& req);
 
-	static std::string_view extract_prefix(const Request& req);
+	static std::tuple<
+		std::string_view,
+		std::string_view
+	> extract_prefix(const Request& req);
 
 	template <class Send>
 	void on_valid_session(Request&& req, Send&& send, const SessionID& session)
@@ -153,7 +156,7 @@ private:
 	void on_login(const Request& req, EmptyResponseSender&& send);
 	void on_logout(const Request& req, const SessionID& id, EmptyResponseSender&& send);
 	void on_invalid_session(const Request& req, EmptyResponseSender&& send);
-	void on_upload(const Request& req, StringResponseSender&& send);
+	void on_upload(const Request& req, EmptyResponseSender&& send);
 	void get_blob(const Request& req, StringResponseSender&& send);
 	http::response<http::string_body> get_dir(const Request& req);
 	static bool allow_anonymous(boost::string_view target);
