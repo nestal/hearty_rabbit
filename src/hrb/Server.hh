@@ -74,7 +74,7 @@ public:
 			return on_logout(req, session, std::forward<Send>(send));
 
 		if (req.target().starts_with(url::upload))
-			return on_upload(req, std::forward<Send>(send));
+			return on_upload(std::move(req), std::forward<Send>(send));
 
 		return send(not_found(req));
 	}
@@ -156,7 +156,7 @@ private:
 	void on_login(const Request& req, EmptyResponseSender&& send);
 	void on_logout(const Request& req, const SessionID& id, EmptyResponseSender&& send);
 	void on_invalid_session(const Request& req, EmptyResponseSender&& send);
-	void on_upload(const Request& req, EmptyResponseSender&& send);
+	void on_upload(Request&& req, EmptyResponseSender&& send);
 	void get_blob(const Request& req, StringResponseSender&& send);
 	http::response<http::string_body> get_dir(const Request& req);
 	static bool allow_anonymous(boost::string_view target);

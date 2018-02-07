@@ -136,8 +136,7 @@ TEST_CASE("Load non-exist BlobObject from redis", "[error]")
 
 TEST_CASE("Create BlobObject from string_view", "[normal]")
 {
-	char s[] = "hello world!";
-	BlobObject subject({s,sizeof(s)-1}, "hello");
+	BlobObject subject(std::string{"hello world!"}, "hello");
 	INFO("hello world hash is " << subject.ID());
 
 	REQUIRE(subject.name() == "hello");

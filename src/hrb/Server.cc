@@ -124,7 +124,7 @@ void Server::get_blob(const Request& req, StringResponseSender&& send)
 	}
 }
 
-void Server::on_upload(const Request& req, EmptyResponseSender&& send)
+void Server::on_upload(Request&& req, EmptyResponseSender&& send)
 {
 	std::cout << "method = " << req.method() << " size = " << req.at(http::field::content_length) << std::endl;
 
@@ -135,7 +135,7 @@ void Server::on_upload(const Request& req, EmptyResponseSender&& send)
 		std::cout << field.name() << " " << field.value() << std::endl;
 
 	auto& data = req.body();
-	BlobObject blob{{data.data(), data.size()}, filename};
+	BlobObject blob{std::move(req).body(), filename};
 
 	auto db = m_db.alloc(m_ioc);
 	blob.save(*db, [this, db, send=std::move(send), version=req.version()](BlobObject& blob, auto ec) mutable

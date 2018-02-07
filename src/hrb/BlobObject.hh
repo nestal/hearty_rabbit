@@ -53,6 +53,7 @@ public:
 	BlobObject() = default;
 	explicit BlobObject(const boost::filesystem::path& path);
 	BlobObject(boost::asio::const_buffer blob, std::string_view name);
+	BlobObject(std::string&& blob, std::string_view name);
 	BlobObject(BlobObject&&) = default;
 	BlobObject(const BlobObject&) = delete;
 	~BlobObject() = default;
@@ -102,7 +103,7 @@ private:
 	std::string m_mime;     //!< Mime-type of the blob, deduced by libmagic
 
 	using Vec = std::vector<unsigned char>;
-	std::variant<MMap, Vec, redis::Reply> m_blob;
+	std::variant<MMap, Vec, std::string, redis::Reply> m_blob;
 };
 
 std::ostream& operator<<(std::ostream& os, const ObjectID& id);

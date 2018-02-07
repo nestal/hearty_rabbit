@@ -57,6 +57,15 @@ BlobObject::BlobObject(boost::asio::const_buffer blob, std::string_view name)
 		throw std::system_error(ec);
 }
 
+BlobObject::BlobObject(std::string&& blob, std::string_view name)
+{
+	m_id   = hash({blob.data(), blob.size()});
+	m_name = name;
+	m_mime = deduce_mime({blob.data(), blob.size()});
+	m_blob = std::move(blob);
+
+}
+
 void BlobObject::open(const boost::filesystem::path &path, std::error_code& ec)
 {
 	open(path, nullptr, path.filename().string(), {}, ec);
@@ -216,6 +225,7 @@ bool BlobObject::empty() const
 	{
 		bool operator()(const MMap& mmap) const noexcept {return !mmap.is_opened();}
 		bool operator()(const Vec& vec) const noexcept {return vec.empty();}
+		bool operator()(const std::string& s) const noexcept {return s.empty();}
 		bool operator()(const redis::Reply& reply) const noexcept
 		{
 			return reply.as_string().size() == 0;
@@ -232,9 +242,13 @@ boost::asio::const_buffer BlobObject::blob() const
 		{
 			return mmap.blob();
 		}
-		boost::asio::const_buffer operator()(const Vec& mmap) const noexcept
+		boost::asio::const_buffer operator()(const Vec& v) const noexcept
 		{
-			return {&mmap[0], mmap.size()};
+			return {&v[0], v.size()};
+		}
+		boost::asio::const_buffer operator()(const std::string& s) const noexcept
+		{
+			return {&s[0], s.size()};
 		}
 		boost::asio::const_buffer operator()(const redis::Reply& reply) const noexcept
 		{
