@@ -113,7 +113,7 @@ void Server::get_blob(const Request& req, StringResponseSender&& send)
 
 				http::response<http::string_body> res{
 					std::piecewise_construct,
-					std::make_tuple(ec ? std::string_view{} : blob.blob()),
+					std::make_tuple(ec ? std::string_view{} : blob.string_view()),
 					std::make_tuple(ec ? http::status::not_found : http::status::ok, version)
 				};
 				res.set(http::field::content_type, blob.mime());
@@ -134,7 +134,8 @@ void Server::on_upload(const Request& req, EmptyResponseSender&& send)
 	for (auto&& field : req)
 		std::cout << field.name() << " " << field.value() << std::endl;
 
-	BlobObject blob{req.body(), filename};
+	auto& data = req.body();
+	BlobObject blob{{data.data(), data.size()}, filename};
 
 	auto db = m_db.alloc(m_ioc);
 	blob.save(*db, [this, db, send=std::move(send), version=req.version()](BlobObject& blob, auto ec) mutable

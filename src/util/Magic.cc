@@ -24,7 +24,7 @@ Magic::~Magic()
 	::magic_close(m_cookie);
 }
 
-std::string_view Magic::mime(std::string_view buf) const
+std::string_view Magic::mime(boost::asio::const_buffer buf) const
 {
 	return mime(buf.data(), buf.size());
 }

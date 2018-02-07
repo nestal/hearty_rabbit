@@ -65,8 +65,8 @@ TEST_CASE("Load BlobObject from file", "[normal]")
 			REQUIRE(!ec);
 			REQUIRE(!loaded.empty());
 
-			REQUIRE(src.blob() == loaded.blob());
-			REQUIRE(loaded.blob().substr(0,2) == "/*");
+			REQUIRE(src.string_view() == loaded.string_view());
+			REQUIRE(loaded.string_view().substr(0,2) == "/*");
 			REQUIRE(loaded.name() == "BlobObject-UT.cc");
 			REQUIRE(loaded.mime() == "text/x-c");
 
@@ -79,9 +79,9 @@ TEST_CASE("Load BlobObject from file", "[normal]")
 
 				copy = std::move(loaded);
 
-				REQUIRE(loaded.blob().empty());
+				REQUIRE(loaded.string_view().empty());
 				REQUIRE(!copy.empty());
-				REQUIRE(src.blob() == copy.blob());
+				REQUIRE(src.string_view() == copy.string_view());
 				REQUIRE(copy.name() == "BlobObject-UT.cc");
 			}
 
@@ -95,8 +95,8 @@ TEST_CASE("Load BlobObject from file", "[normal]")
 		{
 			REQUIRE(!ec);
 			REQUIRE(!loaded.empty());
-			REQUIRE(src.blob() == loaded.blob());
-			REQUIRE(loaded.blob().substr(0,2) == "/*");
+			REQUIRE(src.string_view() == loaded.string_view());
+			REQUIRE(loaded.string_view().substr(0,2) == "/*");
 			REQUIRE(loaded.name() == "BlobObject-UT.cc");
 			REQUIRE(loaded.mime() == "text/x-c");
 
@@ -136,15 +136,16 @@ TEST_CASE("Load non-exist BlobObject from redis", "[error]")
 
 TEST_CASE("Create BlobObject from string_view", "[normal]")
 {
-	BlobObject subject("hello world!", "hello");
+	char s[] = "hello world!";
+	BlobObject subject({s,sizeof(s)-1}, "hello");
 	INFO("hello world hash is " << subject.ID());
 
 	REQUIRE(subject.name() == "hello");
-	REQUIRE(subject.blob() == "hello world!");
+	REQUIRE(subject.string_view() == "hello world!");
 
 	// test move ctor
 	BlobObject moved{std::move(subject)};
 	REQUIRE(subject.empty());
 	REQUIRE(moved.name() == "hello");
-	REQUIRE(moved.blob() == "hello world!");
+	REQUIRE(moved.string_view() == "hello world!");
 }

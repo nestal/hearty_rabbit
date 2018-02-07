@@ -50,7 +50,7 @@ BlobObject::BlobObject(const boost::filesystem::path &path)
 		throw std::system_error(ec);
 }
 
-BlobObject::BlobObject(std::string_view blob, std::string_view name)
+BlobObject::BlobObject(boost::asio::const_buffer blob, std::string_view name)
 {
 	std::error_code ec;
 	assign(blob, name, ec);
@@ -66,17 +66,17 @@ void BlobObject::open(const boost::filesystem::path &path, std::error_code& ec)
 void BlobObject::open(const boost::filesystem::path& path, const ObjectID* id, std::string_view name, std::string_view mime, std::error_code& ec)
 {
 	// read the file and calculate the sha and mime_type
-	auto blob = MMap::open(path, ec);
+	auto data = MMap::open(path, ec);
 	if (!ec)
 	{
-		m_blob = std::move(blob);
-		m_id   = (id ? *id : hash(m_blob.string_view()));
+		m_id   = (id ? *id : hash(data.blob()));
 		m_name = name;
-		m_mime = (mime.empty() ? deduce_mime(m_blob.string_view()) : mime);
+		m_mime = (mime.empty() ? deduce_mime(data.blob()) : mime);
+		m_blob = std::move(data);
 	}
 }
 
-ObjectID BlobObject::hash(std::string_view blob)
+ObjectID BlobObject::hash(boost::asio::const_buffer blob)
 {
 	Blake2 sha3;
 
@@ -102,6 +102,7 @@ void BlobObject::erase(redis::Connection& db, BlobObject::Completion completion)
 
 void BlobObject::save(redis::Connection& db, Completion completion)
 {
+	auto data = blob();
 	db.command(
 		[callback=std::move(completion), this](redis::Reply, std::error_code&& ec)
 		{
@@ -110,7 +111,7 @@ void BlobObject::save(redis::Connection& db, Completion completion)
 		"HSET %b%b blob %b name %b mime %b",
 		key_prefix.data(), key_prefix.size(),
 		m_id.data(), m_id.size(),
-		m_blob.data(), m_blob.size(),
+		data.data(), data.size(),
 		m_name.c_str(), m_name.size(),
 		m_mime.c_str(), m_mime.size()
 	);
@@ -190,29 +191,24 @@ void BlobObject::load(
 	);
 }
 
-void BlobObject::assign(std::string_view blob, std::string_view name, std::error_code& ec)
+void BlobObject::assign(boost::asio::const_buffer data, std::string_view name, std::error_code& ec)
 {
 	// Create an anonymous memory mapping to store the blob
-	auto new_mem = MMap::allocate(blob.size(), ec);
+	auto new_mem = MMap::allocate(data.size(), ec);
 	if (!ec)
 	{
-		std::memcpy(new_mem.data(), blob.data(), blob.size());
-		m_blob = std::move(new_mem);
-		m_id   = hash(m_blob.string_view());
+		std::memcpy(new_mem.data(), data.data(), data.size());
+		m_id   = hash(new_mem.blob());
 		m_name = name;
-		m_mime = deduce_mime(m_blob.string_view());
+		m_mime = deduce_mime(new_mem.blob());
+		m_blob = std::move(new_mem);
 	}
 }
 
-std::string BlobObject::deduce_mime(std::string_view blob)
+std::string BlobObject::deduce_mime(boost::asio::const_buffer blob)
 {
 	static const thread_local Magic magic;
 	return std::string{magic.mime(blob)};
-}
-
-std::string_view BlobObject::blob() const
-{
-	return {static_cast<const char*>(m_blob.data()), m_blob.size()};
 }
 
 void BlobObject::assign_field(std::string_view field, std::string_view value)
@@ -224,6 +220,33 @@ void BlobObject::assign_field(std::string_view field, std::string_view value)
 	// mime is also optional
 	else if (field == "mime")
 		m_mime = value;
+}
+
+bool BlobObject::empty() const
+{
+	struct IsEmpty
+	{
+		bool operator()(const MMap& mmap) const noexcept {return !mmap.is_opened();}
+	};
+	return std::visit(IsEmpty(), m_blob);
+}
+
+boost::asio::const_buffer BlobObject::blob() const
+{
+	struct GetBuffer
+	{
+		boost::asio::const_buffer operator()(const MMap& mmap) const noexcept
+		{
+			return mmap.blob();
+		}
+	};
+	return std::visit(GetBuffer(), m_blob);
+}
+
+std::string_view BlobObject::string_view() const
+{
+	auto data = blob();
+	return {static_cast<const char*>(data.data()), data.size()};
 }
 
 std::ostream& operator<<(std::ostream& os, const ObjectID& id)
