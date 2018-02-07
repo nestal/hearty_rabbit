@@ -102,7 +102,7 @@ private:
 	std::string m_mime;     //!< Mime-type of the blob, deduced by libmagic
 
 	using Vec = std::vector<unsigned char>;
-	std::variant<MMap, Vec> m_blob;
+	std::variant<MMap, Vec, redis::Reply> m_blob;
 };
 
 std::ostream& operator<<(std::ostream& os, const ObjectID& id);

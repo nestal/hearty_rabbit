@@ -130,8 +130,8 @@ void BlobObject::load(redis::Connection& db, const ObjectID& id, Completion comp
 			auto [blob_reply] = reply.map_kv_pair("blob");
 			if (auto blob = blob_reply.as_string(); !blob.empty())
 			{
-				result.m_id = id;
-				result.m_blob = Vec(blob.begin(), blob.end());
+				result.m_id   = id;
+				result.m_blob = blob_reply;
 
 				reply.foreach_kv_pair([&result](auto&& field, auto&& value)
 				{
@@ -218,7 +218,7 @@ bool BlobObject::empty() const
 		bool operator()(const Vec& vec) const noexcept {return vec.empty();}
 		bool operator()(const redis::Reply& reply) const noexcept
 		{
-			return reply.as_string().size() > 0;
+			return reply.as_string().size() == 0;
 		}
 	};
 	return std::visit(IsEmpty(), m_blob);
