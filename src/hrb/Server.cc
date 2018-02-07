@@ -100,7 +100,7 @@ void Server::get_blob(const Request& req, StringResponseSender&& send)
 
 	auto object_id = hex_to_object_id(std::string_view{blob_id.data(), blob_id.size()});
 	if (object_id == ObjectID{})
-		send(not_found(req, to_hex(object_id)));
+		send(not_found(req));
 	else
 	{
 		auto db = m_db.alloc(m_ioc);
@@ -141,14 +141,17 @@ void Server::on_upload(const Request& req, StringResponseSender&& send)
 	send(std::move(res));
 }
 
-void Server::on_invalid_session(const Request& req, std::function<void(http::response<http::empty_body>&&)>&& send)
+void Server::on_invalid_session(const Request& req, EmptyResponseSender&& send)
 {
 	// Introduce a small delay when responsing to requests with invalid session ID.
 	// This is to slow down bruce-force attacks on the session ID.
 	boost::asio::deadline_timer t{m_ioc, boost::posix_time::milliseconds{500}};
 	return t.async_wait([version=req.version(), send=std::move(send)](auto ec)
 	{
-		send(redirect("/login.html", version));
+		if (!ec)
+			Log(LOG_WARNING, "timer error %1% (%2%)", ec, ec.message());
+
+		send(http::response<http::empty_body>{http::status::forbidden, version});
 	});
 }
 
@@ -170,23 +173,27 @@ http::response<http::string_body> Server::bad_request(const Request& req, boost:
 }
 
 // Returns a not found response
-http::response<http::string_body> Server::not_found(const Request& req, boost::beast::string_view target)
+http::response<http::string_body> Server::not_found(const Request& req)
 {
+	using namespace std::literals;
 	http::response<http::string_body> res{
 		std::piecewise_construct,
-		std::make_tuple("The resource '" + target.to_string() + "' was not found."),
+		std::make_tuple("The resource '"s + req.target().to_string() + "' was not found."),
 		std::make_tuple(http::status::not_found, req.version())
 	};
-	res.set(http::field::content_type, "text/html");
+	res.set(http::field::content_type, "text/plain");
 	res.prepare_payload();
 	return res;
 }
 
 http::response<http::string_body> Server::server_error(const Request& req, boost::beast::string_view what)
 {
-	http::response<http::string_body> res{http::status::internal_server_error, req.version()};
-	res.set(http::field::content_type, "text/html");
-	res.body() = "An error occurred: '" + what.to_string() + "'";
+	http::response<http::string_body> res{
+		std::piecewise_construct,
+		std::make_tuple("An error occurred: '" + what.to_string() + "'"),
+		std::make_tuple(http::status::internal_server_error, req.version())
+	};
+	res.set(http::field::content_type, "text/plain");
 	res.prepare_payload();
 	return res;
 }

@@ -171,7 +171,7 @@ SessionID create_session(std::string_view username, std::string_view password, c
 
 TEST_CASE("GET static resource", "[normal]")
 {
-	auto local_json = (current_src / "../../../etc/localhost.json").string();
+	auto local_json = (current_src / "../../../etc/hearty_rabbit.json").string();
 
 	const char *argv[] = {"hearty_rabbit", "--cfg", local_json.c_str()};
 	Configuration cfg{sizeof(argv)/sizeof(argv[1]), argv, nullptr};
@@ -204,7 +204,7 @@ TEST_CASE("GET static resource", "[normal]")
 
 	SECTION("Request index.html failed without login")
 	{
-		MovedResponseChecker checker{"/login.html"};
+		GenericStatusChecker checker{http::status::forbidden};
 
 		req.target("/index.html");
 		subject.handle_https(std::move(req), std::ref(checker));
@@ -230,7 +230,7 @@ TEST_CASE("GET static resource", "[normal]")
 
 	SECTION("requesting something not exist")
 	{
-		MovedResponseChecker checker{"/login.html"};
+		GenericStatusChecker checker{http::status::forbidden};
 
 		req.target("/something_not_exist.html");
 		subject.handle_https(std::move(req), std::ref(checker));
@@ -240,11 +240,11 @@ TEST_CASE("GET static resource", "[normal]")
 
 	SECTION("Only allow login with POST: redirect GET request to login.html")
 	{
-		MovedResponseChecker checker{"/login.html"};
+		GenericStatusChecker checker{http::status::bad_request};
 
 		req.target("/login");
 		subject.handle_https(std::move(req), std::ref(checker));
-		REQUIRE(subject.get_io_context().run_for(10s) > 0);
+//		REQUIRE(subject.get_io_context().run_for(10s) > 0);
 		REQUIRE(checker.tested());
 	}
 
@@ -290,7 +290,8 @@ TEST_CASE("GET static resource", "[normal]")
 
 	SECTION("requesting other resources")
 	{
-		MovedResponseChecker checker{"/login.html"};
+//		MovedResponseChecker checker{"/login.html"};
+		GenericStatusChecker checker{http::status::forbidden};
 
 		req.target("/");
 		subject.handle_https(std::move(req), std::ref(checker));
@@ -301,7 +302,7 @@ TEST_CASE("GET static resource", "[normal]")
 	SECTION("requesting invalid blob")
 	{
 		GenericStatusChecker valid_session{http::status::not_found};
-		MovedResponseChecker invalid_session{"/login.html"};
+		GenericStatusChecker invalid_session{http::status::forbidden};
 		Checker *expected{nullptr};
 
 		SECTION("blob ID too short")

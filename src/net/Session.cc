@@ -123,7 +123,7 @@ void Session::handle_https(Request&& req, Send&& send)
 		auto ec = e.code();
 		// Handle the case where the file doesn't exist
 		if( ec == std::errc::no_such_file_or_directory)
-			return send(m_server.not_found(req, req.target()));
+			return send(m_server.not_found(req));
 
 		// Handle an unknown error
 		if(ec)

@@ -68,7 +68,7 @@ public:
 		if (opt_res)
 			return send(std::move(*opt_res));
 
-		return send(redirect("/login.html", req.version()));
+		return send(not_found(req));
 	}
 
 	template <class Send>
@@ -103,8 +103,13 @@ public:
 	void handle_https(Request&& req, Send&& send)
 	{
 		// Obviously "/login" always allow anonymous access, otherwise no one can login.
-		if (req.target() == url::login && req.method() == http::verb::post)
-			return on_login(req, std::forward<Send>(send));
+		if (req.target() == url::login)
+		{
+			if (req.method() == http::verb::post)
+				return on_login(req, std::forward<Send>(send));
+			else
+				return send(http::response<http::empty_body>{http::status::bad_request, req.version()});
+		}
 
 		// Only index.html require login
 		if (allow_anonymous(req.target()))
@@ -124,7 +129,7 @@ public:
 
 	std::optional<http::response<http::file_body>> file_request(const Request& req);
 	static http::response<http::string_body> bad_request(const Request& req, boost::beast::string_view why);
-	static http::response<http::string_body> not_found(const Request& req, boost::beast::string_view target);
+	static http::response<http::string_body> not_found(const Request& req);
 	static http::response<http::string_body> server_error(const Request& req, boost::beast::string_view what);
 	static http::response<http::empty_body> redirect(boost::beast::string_view where, unsigned version);
 
