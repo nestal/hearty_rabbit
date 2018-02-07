@@ -48,17 +48,16 @@ const std::error_category& redis_error_category();
 class Reply
 {
 public:
-	Reply() = default;
-	Reply(redisReply *r, bool owned) noexcept;
-	Reply(const Reply&) = delete;
+	explicit Reply(redisReply *r = nullptr) noexcept;
+	Reply(const Reply&) = default;
 	Reply(Reply&& other) = default ;
 	~Reply() = default;
 
-	Reply& operator=(const Reply&) = delete;
+	Reply& operator=(const Reply&) = default;
 	Reply& operator=(Reply&& other) = default ;
 	void swap(Reply& other) noexcept ;
 
-	class iterator;
+	using iterator = std::vector<Reply>::const_iterator;
 	iterator begin() const;
 	iterator end() const;
 
@@ -109,28 +108,9 @@ private:
 	}
 
 private:
-	struct Deleter
-	{
-		void operator()(::redisReply*) const noexcept;
-	};
-	std::unique_ptr<::redisReply, Deleter> m_reply;
-};
+	std::shared_ptr<::redisReply> m_reply;
 
-class Reply::iterator : public boost::iterator_adaptor<
-	iterator,
-	::redisReply* const*,
-	const Reply,
-	boost::use_default,
-	const Reply,
-	boost::use_default
->
-{
-public:
-	explicit iterator(::redisReply * const*elements = nullptr) : iterator_adaptor{elements} {}
-
- private:
-	friend class boost::iterator_core_access;
-	Reply dereference() const { return Reply(base() ? *base() : nullptr, false); }
+	std::vector<Reply> m_array;
 };
 
 class ReplyReader

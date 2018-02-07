@@ -139,20 +139,23 @@ void Connection::disconnect()
 	m_socket.close();
 }
 
-Reply::Reply(redisReply *r, bool owned) noexcept :
-	m_reply{r}
+Reply::Reply(::redisReply *r) noexcept :
+	m_reply{r, [](::redisReply *r){if (!r)::freeReplyObject(r);}}
 {
-}
-
-void Reply::Deleter::operator()(::redisReply *reply) const noexcept
-{
-//	if (!reply)
-//		::freeReplyObject(reply);
+	// Special handling for arrays
+	for (std::size_t i = 0 ; m_reply && m_reply->type == REDIS_REPLY_ARRAY && i < m_reply->elements; i++)
+	{
+		// Steal the element pointer and assign it to the shared_ptr of
+		// our vector. Basically takes the ownership of the array element.
+		m_array.emplace_back(m_reply->element[i]);
+		m_reply->element[i] = nullptr;
+	}
 }
 
 void Reply::swap(Reply& other) noexcept
 {
 	m_reply.swap(other.m_reply);
+	m_array.swap(other.m_array);
 }
 
 std::string_view Reply::as_string() const noexcept
@@ -182,8 +185,8 @@ std::string_view Reply::as_any_string() const noexcept
 
 Reply Reply::as_array(std::size_t i) const noexcept
 {
-	return m_reply && m_reply->type == REDIS_REPLY_ARRAY && i < m_reply->elements ?
-		Reply{m_reply->element[i], false} : Reply{};
+	return m_reply && m_reply->type == REDIS_REPLY_ARRAY && i < m_array.size() ?
+		m_array[i] : Reply{};
 }
 
 Reply Reply::as_array(std::size_t i, std::error_code& ec) const noexcept
@@ -192,9 +195,9 @@ Reply Reply::as_array(std::size_t i, std::error_code& ec) const noexcept
 	if (ec || !m_reply)
 		return Reply{};
 
-	if (m_reply->type == REDIS_REPLY_ARRAY && i < m_reply->elements)
+	if (m_reply->type == REDIS_REPLY_ARRAY && i < m_array.size())
 	{
-		return Reply{m_reply->element[i], false};
+		return m_array[i];
 	}
 	else
 	{
@@ -205,12 +208,12 @@ Reply Reply::as_array(std::size_t i, std::error_code& ec) const noexcept
 
 Reply::iterator Reply::begin() const
 {
-	return iterator{m_reply ? &m_reply->element[0] : nullptr};
+	return m_array.begin();
 }
 
 Reply::iterator Reply::end() const
 {
-	return iterator{m_reply ? &m_reply->element[m_reply->elements] : nullptr};
+	return m_array.end();
 }
 
 Reply Reply::operator[](std::size_t i) const noexcept
@@ -220,7 +223,7 @@ Reply Reply::operator[](std::size_t i) const noexcept
 
 std::size_t Reply::array_size() const noexcept
 {
-	return m_reply && m_reply->type == REDIS_REPLY_ARRAY ? m_reply->elements : 0ULL;
+	return m_reply && m_reply->type == REDIS_REPLY_ARRAY ? m_array.size() : 0ULL;
 }
 
 long Reply::as_int() const noexcept
@@ -303,7 +306,7 @@ std::tuple<Reply, ReplyReader::Result> ReplyReader::get()
 	::redisReply *reply{};
 	auto result = ::redisReaderGetReply(m_reader.get(), (void**)&reply);
 	return std::make_tuple(
-		Reply{reply, true},
+		Reply{reply},
 		result == REDIS_OK ? (reply ? Result::ok : Result::not_ready) : Result::error
 	);
 }
