@@ -79,7 +79,7 @@ public:
 	void assign(boost::asio::const_buffer blob, std::string_view name, std::error_code& ec);
 
 	boost::asio::const_buffer blob() const;
-	std::string_view string_view() const;
+	std::string_view string() const;
 	const std::string& name() const {return m_name;}
 	const std::string& mime() const {return m_mime;}
 

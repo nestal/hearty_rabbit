@@ -243,7 +243,7 @@ boost::asio::const_buffer BlobObject::blob() const
 	return std::visit(GetBuffer(), m_blob);
 }
 
-std::string_view BlobObject::string_view() const
+std::string_view BlobObject::string() const
 {
 	auto data = blob();
 	return {static_cast<const char*>(data.data()), data.size()};

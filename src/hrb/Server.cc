@@ -113,7 +113,7 @@ void Server::get_blob(const Request& req, StringResponseSender&& send)
 
 				http::response<http::string_body> res{
 					std::piecewise_construct,
-					std::make_tuple(ec ? std::string_view{} : blob.string_view()),
+					std::make_tuple(ec ? std::string_view{} : blob.string()),
 					std::make_tuple(ec ? http::status::not_found : http::status::ok, version)
 				};
 				res.set(http::field::content_type, blob.mime());

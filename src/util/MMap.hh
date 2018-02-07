@@ -40,7 +40,7 @@ public:
 	std::size_t size() const {return m_size;}
 
 	boost::asio::const_buffer blob() const noexcept {return {m_mmap, m_size};}
-	std::string_view string_view() const {return {static_cast<const char*>(m_mmap), m_size};}
+	std::string_view string() const {return {static_cast<const char*>(m_mmap), m_size};}
 
 	bool is_opened() const {return m_mmap != nullptr;}
 	void clear();
