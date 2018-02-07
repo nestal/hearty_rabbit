@@ -171,7 +171,7 @@ SessionID create_session(std::string_view username, std::string_view password, c
 
 TEST_CASE("GET static resource", "[normal]")
 {
-	auto local_json = (current_src / "../../../etc/hearty_rabbit.json").string();
+	auto local_json = (current_src / "../../../etc/hearty_rabbit/hearty_rabbit.json").string();
 
 	const char *argv[] = {"hearty_rabbit", "--cfg", local_json.c_str()};
 	Configuration cfg{sizeof(argv)/sizeof(argv[1]), argv, nullptr};

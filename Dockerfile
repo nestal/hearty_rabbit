@@ -50,5 +50,5 @@ COPY --from=builder \
 
 # Use environment to specify config file location.
 # It works even when we run --add-user
-ENV HEART_RABBIT_CONFIG /etc/hearty_rabbit.json
+ENV HEART_RABBIT_CONFIG /etc/hearty_rabbit/hearty_rabbit.json
 CMD ["/bin/hearty_rabbit"]
