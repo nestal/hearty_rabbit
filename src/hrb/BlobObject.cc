@@ -193,16 +193,13 @@ void BlobObject::load(
 
 void BlobObject::assign(boost::asio::const_buffer data, std::string_view name, std::error_code& ec)
 {
-	// Create an anonymous memory mapping to store the blob
-	auto new_mem = MMap::allocate(data.size(), ec);
-	if (!ec)
-	{
-		std::memcpy(new_mem.data(), data.data(), data.size());
-		m_id   = hash(new_mem.blob());
-		m_name = name;
-		m_mime = deduce_mime(new_mem.blob());
-		m_blob = std::move(new_mem);
-	}
+	m_id   = hash(data);
+	m_name = name;
+	m_mime = deduce_mime(data);
+	m_blob = Vec(
+		static_cast<const char*>(data.data()),
+		static_cast<const char*>(data.data()) + data.size()
+	);
 }
 
 std::string BlobObject::deduce_mime(boost::asio::const_buffer blob)
@@ -227,6 +224,7 @@ bool BlobObject::empty() const
 	struct IsEmpty
 	{
 		bool operator()(const MMap& mmap) const noexcept {return !mmap.is_opened();}
+		bool operator()(const Vec& vec) const noexcept {return vec.empty();}
 	};
 	return std::visit(IsEmpty(), m_blob);
 }
@@ -238,6 +236,10 @@ boost::asio::const_buffer BlobObject::blob() const
 		boost::asio::const_buffer operator()(const MMap& mmap) const noexcept
 		{
 			return mmap.blob();
+		}
+		boost::asio::const_buffer operator()(const Vec& mmap) const noexcept
+		{
+			return {&mmap[0], mmap.size()};
 		}
 	};
 	return std::visit(GetBuffer(), m_blob);

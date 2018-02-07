@@ -21,9 +21,9 @@
 #include <array>
 #include <cstddef>
 #include <functional>
-#include <optional>
 #include <system_error>
 #include <variant>
+#include <vector>
 
 namespace hrb {
 namespace redis {
@@ -100,10 +100,8 @@ private:
 	std::string m_name;     //!< Typically the file name of the blob
 	std::string m_mime;     //!< Mime-type of the blob, deduced by libmagic
 
-	// TODO:    use a variant to support other backing store in addition to memory mappings
-	//          e.g. std::string_view (non-owning), std::vector (owning)
-	//          also enforce the memory mapping to be read-only
-	std::variant<MMap> m_blob;
+	using Vec = std::vector<unsigned char>;
+	std::variant<MMap, Vec> m_blob;
 };
 
 std::ostream& operator<<(std::ostream& os, const ObjectID& id);
