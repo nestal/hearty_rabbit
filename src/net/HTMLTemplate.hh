@@ -22,11 +22,41 @@ namespace hrb {
 class HTMLTemplate
 {
 public:
-	using value_type = MMap;
+	using const_buffers_type = std::array<boost::asio::const_buffer, 3>;
+
+	class value_type
+	{
+	public:
+		value_type(const boost::filesystem::path& path, std::string_view extra, std::error_code& ec) :
+			m_mmap{MMap::open(path, ec)},
+			m_extra{extra}
+		{
+			auto str = m_mmap.string();
+			m_offset = str.find("<head>");
+			if (m_offset != str.npos)
+				m_offset += sizeof("<head>")-1;
+			else
+				m_offset = m_mmap.size();
+		}
+
+		const_buffers_type data() const
+		{
+			return {
+				boost::asio::const_buffer{m_mmap.data(), m_offset},
+				boost::asio::const_buffer{m_extra.data(), m_extra.size()},
+				boost::asio::const_buffer{static_cast<const char*>(m_mmap.data()) + m_offset, m_mmap.size() - m_offset}
+			};
+		}
+
+	private:
+		MMap            m_mmap;
+		std::size_t     m_offset{};
+		std::string     m_extra;
+	};
 
 	static std::uint64_t size(const value_type& body)
     {
-        return body.size();
+        return buffer_size(body.data());
     }
 
 	class reader
@@ -64,7 +94,7 @@ public:
 	class writer
 	{
 	public:
-        using const_buffers_type = boost::asio::const_buffer;
+        using const_buffers_type = HTMLTemplate::const_buffers_type;
 
         template<bool isRequest, class Fields>
         explicit
@@ -84,13 +114,7 @@ public:
             ec.assign(0, ec.category());
 
             return {
-	            {
-		            const_buffers_type{
-			            m_body.data(),
-			            m_body.size()
-		            },
-	                false
-	            } // pair
+	            {m_body.data(), false} // pair
             }; // optional
         }
 

@@ -125,7 +125,7 @@ public:
 		if (req.target() == "/test")
 			return send(http::response<HTMLTemplate>{
 				std::piecewise_construct,
-				std::make_tuple(MMap::open(__FILE__, ec)),
+				std::make_tuple(__FILE__, "sum sum sum sum sum", std::ref(ec)),
 				std::make_tuple(http::status::ok, req.version())
 			});
 
