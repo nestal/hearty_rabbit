@@ -143,7 +143,7 @@ void Server::on_upload(Request&& req, EmptyResponseSender&& send)
 		m_db.release(std::move(db));
 		auto loc = "/blob/" + to_hex(blob.ID());
 
-		http::response<http::empty_body> res{http::status::ok, version};
+		http::response<http::empty_body> res{http::status::created, version};
 		res.set(http::field::location, loc);
 		res.set(http::field::content_type, "text/plain");
 		return send(std::move(res));

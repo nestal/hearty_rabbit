@@ -13,7 +13,7 @@ find_path(LIBB2_INCLUDE blake2.h PATHS include)
 message(STATUS "found libb2 at ${LIBB2_LIBRARY} ${LIBB2_INCLUDE}")
 
 # Need to remove libsystemd as it pulls a lot of dependencies
-#pkg_check_modules(SYSTEMD libsystemd)
+##pkg_check_modules(SYSTEMD libsystemd)
 pkg_check_modules(RapidJSON REQUIRED RapidJSON)
 pkg_check_modules(HIREDIS REQUIRED hiredis)
 pkg_check_modules(LIBUNWIND libunwind)
