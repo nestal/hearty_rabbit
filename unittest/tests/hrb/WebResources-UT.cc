@@ -29,5 +29,6 @@ TEST_CASE("static resource", "[normal]")
 	auto res = lib.find_dynamic("index.html", 11);
 	REQUIRE(res.version() == 11);
 	REQUIRE(res.result() == http::status::ok);
+	REQUIRE(res[http::field::content_type] == "text/html");
 	REQUIRE(check_resource_content(web_root / "dynamic/index.html", std::move(res)));
 }

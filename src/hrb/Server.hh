@@ -121,15 +121,6 @@ public:
 				return send(http::response<http::empty_body>{http::status::bad_request, req.version()});
 		}
 
-		std::error_code ec;
-		// test
-/*		if (req.target() == "/test")
-			return send(http::response<HTMLTemplate>{
-				std::piecewise_construct,
-				std::make_tuple(__FILE__, "sum sum sum sum sum", std::ref(ec)),
-				std::make_tuple(http::status::ok, req.version())
-			});
-*/
 		if (allow_anonymous(req.target()))
 			return send(static_file_request(req));
 
@@ -141,9 +132,8 @@ public:
 			on_invalid_session(std::move(req), std::forward<Send>(send));
 	}
 
-	http::response<http::file_body> static_file_request(const Request& req);
-	http::response<http::file_body> file_request(const boost::filesystem::path& path, unsigned version);
-	http::response<http::file_body> serve_home(unsigned version);
+	http::response<FileBuffers> static_file_request(const Request& req);
+	http::response<FileBuffers> serve_home(unsigned version);
 	static http::response<http::string_body> bad_request(const Request& req, boost::beast::string_view why);
 	static http::response<http::string_body> not_found(const Request& req);
 	static http::response<http::string_body> server_error(const Request& req, boost::beast::string_view what);
@@ -158,7 +148,6 @@ public:
 	void add_blob(const boost::filesystem::path& path, std::function<void(BlobObject&, std::error_code)> complete);
 
 private:
-	static std::string_view resource_mime(const std::string& ext);
 	static void drop_privileges();
 
 	using EmptyResponseSender = std::function<void(http::response<http::empty_body>&&)>;

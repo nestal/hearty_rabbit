@@ -15,6 +15,17 @@
 #include "ResourcesList.hh"
 
 namespace hrb {
+namespace {
+std::string_view resource_mime(const std::string& ext)
+{
+	// don't expect a big list
+	if (ext == ".html") return "text/html";
+	else if (ext == ".css") return "text/css";
+	else if (ext == ".svg") return "image/svg+xml";
+	else if (ext == ".js") return "application/javascript";
+	else return "application/octet-stream";
+}
+}
 
 template <typename Iterator>
 auto WebResources::load(const boost::filesystem::path& base, Iterator first, Iterator last)
@@ -23,10 +34,14 @@ auto WebResources::load(const boost::filesystem::path& base, Iterator first, Ite
 	std::unordered_map<std::string, Resource> result;
 	for (auto it = first; it != last && !ec; ++it)
 	{
+		auto path = base / *it;
 		result.emplace(
 			std::piecewise_construct,
-            std::forward_as_tuple(*it),
-            std::forward_as_tuple(MMap::open(base / *it, ec), std::string{})
+			std::forward_as_tuple(*it),
+			std::forward_as_tuple(
+				MMap::open(path, ec),
+				std::string{resource_mime(path.extension().string())}
+			)
 		);
 	}
 	return result;
