@@ -25,7 +25,7 @@ TEST_CASE("injecting script in HTML", "[normal]")
 	REQUIRE(ec == std::error_code{});
 
 	std::string extra{"<script></script>"};
-	Subject subject{html.string(), extra, ec};
+	Subject subject{html.string(), extra};
 	REQUIRE(ec == std::error_code{});
 
 	auto buf = subject.data();
@@ -44,7 +44,7 @@ TEST_CASE("non-HTML has no <head>, append at-the-end", "[normal]")
 	REQUIRE(ec == std::error_code{});
 
 	std::string extra{"hahaha"};
-	Subject subject{css.string(), extra, ec};
+	Subject subject{css.string(), extra};
 	REQUIRE(ec == std::error_code{});
 
 	auto buf = subject.data();

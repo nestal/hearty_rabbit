@@ -27,7 +27,7 @@ public:
 	class value_type
 	{
 	public:
-		value_type(std::string_view html, std::string_view extra, std::error_code& ec) :
+		value_type(std::string_view html, std::string_view extra) :
 			m_html{html},
 			m_extra{extra}
 		{

@@ -14,6 +14,7 @@
 
 #include "Request.hh"
 #include "DatabasePool.hh"
+#include "WebResources.hh"
 
 #include "crypto/Authenication.hh"
 #include "net/HTMLTemplate.hh"
@@ -176,6 +177,7 @@ private:
 	boost::asio::io_context m_ioc;
 
 	DatabasePool    m_db;
+	WebResources    m_lib;
 };
 
 } // end of namespace

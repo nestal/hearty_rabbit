@@ -11,7 +11,7 @@
 //
 
 #include "Server.hh"
-#include "WebResources.hh"
+#include "ResourcesList.hh"
 #include "BlobObject.hh"
 
 #include "crypto/Password.hh"
@@ -33,7 +33,8 @@ namespace hrb {
 Server::Server(const Configuration& cfg) :
 	m_cfg{cfg},
 	m_ioc{static_cast<int>(std::max(1UL, cfg.thread_count()))},
-	m_db{cfg.redis()}
+	m_db{cfg.redis()},
+	m_lib{cfg.web_root()}
 {
 	OpenSSL_add_all_digests();
 }
@@ -379,7 +380,7 @@ bool Server::allow_anonymous(boost::string_view target)
 	assert(target.front() == '/');
 	target.remove_prefix(1);
 
-	return web_resources.find(target.to_string()) != web_resources.end();
+	return static_resources.find(target.to_string()) != static_resources.end();
 }
 
 std::tuple<
