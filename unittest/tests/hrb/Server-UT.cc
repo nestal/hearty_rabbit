@@ -374,7 +374,7 @@ TEST_CASE("GET static resource", "[normal]")
 			db->disconnect();
 
 			req.target("/blob/" + to_hex(blob.ID()));
-			req.insert(boost::beast::http::field::cookie, set_cookie(session));
+			req.set(boost::beast::http::field::cookie, set_cookie(session));
 			subject.handle_https(std::move(req), [&checker, &subject](auto&& res)
 			{
 				REQUIRE(res.at(http::field::content_type) == "text/x-c++");
@@ -384,6 +384,32 @@ TEST_CASE("GET static resource", "[normal]")
 		});
 		REQUIRE(subject.get_io_context().run_for(10s) > 0);
 		REQUIRE(checker.tested());
+	}
+
+	SECTION("upload blob")
+	{
+		GenericStatusChecker created{http::status::created};
+		GenericStatusChecker forbidden{http::status::forbidden};
+		GenericStatusChecker bad_request{http::status::bad_request};
+		GenericStatusChecker *checker = nullptr;
+
+		req.target("/upload/testdata");
+		req.body() = "some text";
+
+		SECTION("with credential")
+		{
+			req.set(http::field::cookie, set_cookie(session));
+			req.method(http::verb::put);
+
+			req.prepare_payload();
+			subject.handle_https(std::move(req), [&created, &subject](auto&& res)
+			{
+				created(std::move(res));
+				subject.disconnect_db();
+			});
+		}
+		REQUIRE(subject.get_io_context().run_for(10s) > 0);
+		REQUIRE(created.tested());
 	}
 }
 
