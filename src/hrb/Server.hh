@@ -16,6 +16,7 @@
 #include "DatabasePool.hh"
 
 #include "crypto/Authenication.hh"
+#include "net/HTMLTemplate.hh"
 
 #include <boost/filesystem/path.hpp>
 #include <boost/beast/http/fields.hpp>
@@ -118,6 +119,15 @@ public:
 			else
 				return send(http::response<http::empty_body>{http::status::bad_request, req.version()});
 		}
+
+		std::error_code ec;
+		// test
+		if (req.target() == "/test")
+			return send(http::response<HTMLTemplate>{
+				std::piecewise_construct,
+				std::make_tuple(MMap::open(__FILE__, ec)),
+				std::make_tuple(http::status::ok, req.version())
+			});
 
 		if (allow_anonymous(req.target()))
 			return send(static_file_request(req));
