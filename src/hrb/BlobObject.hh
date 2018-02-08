@@ -82,6 +82,7 @@ public:
 
 	boost::asio::const_buffer blob() const;
 	std::string_view string() const;
+	std::size_t size() const {return blob().size();}
 	const std::string& name() const {return m_name;}
 	const std::string& mime() const {return m_mime;}
 

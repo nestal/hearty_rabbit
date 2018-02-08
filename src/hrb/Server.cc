@@ -129,26 +129,13 @@ void Server::on_upload(Request&& req, EmptyResponseSender&& send)
 //	std::cout << "method = " << req.method() << " size = " << req.at(http::field::content_length) << std::endl;
 
 	auto [prefix, filename] = extract_prefix(req);
-	std::cout << "file = " << filename << std::endl;
+//	std::cout << "file = " << filename << std::endl;
 
-	for (auto&& field : req)
-		std::cout << field.name() << " " << field.value() << std::endl;
-
-	if (req.find(http::field::content_length) == req.end())
-	{
-		Log(LOG_WARNING, "upload %1% without content-length", req.target());
-		return send(http::response<http::empty_body>{http::status::bad_request, req.version()});
-	}
-
-	auto& data = req.body();
-	auto content_length = std::stoull(std::string{req[http::field::content_length]});
-	if (content_length != data.size())
-	{
-		Log(LOG_WARNING, "invalid length");
-		return send(http::response<http::empty_body>{http::status::bad_request, req.version()});
-	}
+//	for (auto&& field : req)
+//		std::cout << field.name() << " " << field.value() << std::endl;
 
 	BlobObject blob{std::move(req).body(), filename};
+	Log(LOG_INFO, "uploading %1% bytes to %2%", blob.size(), filename);
 
 	auto db = m_db.alloc(m_ioc);
 	blob.save(*db, [this, db, send=std::move(send), version=req.version()](BlobObject& blob, auto ec) mutable
