@@ -124,15 +124,9 @@ void Server::get_blob(const Request& req, StringResponseSender&& send)
 	}
 }
 
-void Server::on_upload(Request&& req, EmptyResponseSender&& send)
+void Server::on_upload(Request&& req, EmptyResponseSender&& send, std::string_view user)
 {
-//	std::cout << "method = " << req.method() << " size = " << req.at(http::field::content_length) << std::endl;
-
 	auto [prefix, filename] = extract_prefix(req);
-//	std::cout << "file = " << filename << std::endl;
-
-//	for (auto&& field : req)
-//		std::cout << field.name() << " " << field.value() << std::endl;
 
 	BlobObject blob{std::move(req).body(), filename};
 	Log(LOG_INFO, "uploading %1% bytes to %2%", blob.size(), filename);
@@ -142,6 +136,7 @@ void Server::on_upload(Request&& req, EmptyResponseSender&& send)
 	{
 		m_db.release(std::move(db));
 
+		// TODO: add ETag and Date for the resource
 		http::response<http::empty_body> res{http::status::created, version};
 		res.set(http::field::location, "/blob/" + to_hex(blob.ID()));
 		return send(std::move(res));
