@@ -39,7 +39,7 @@ configure_file(config.hh.in config.hh)
 
 # Static files served by HTTP
 file(GLOB STATIC_RESOURCES  lib/static/*)
-file(GLOB DYNAMIC_RESOURCES lib/static/*)
+file(GLOB DYNAMIC_RESOURCES lib/dynamic/*)
 
 # Generate a list of static files
 set(WEB_RESOURCE_LIST "${CMAKE_CURRENT_BINARY_DIR}/ResourcesList.hh")

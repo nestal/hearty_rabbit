@@ -12,6 +12,8 @@
 
 #include <catch.hpp>
 
+#include "CheckResource.hh"
+
 #include "hrb/Server.hh"
 #include "hrb/BlobObject.hh"
 
@@ -19,8 +21,6 @@
 #include "crypto/Password.hh"
 #include "util/Configuration.hh"
 
-#include <iostream>
-#include <fstream>
 #include <boost/beast/core/flat_buffer.hpp>
 #include <boost/beast/core/buffers_to_string.hpp>
 
@@ -33,46 +33,6 @@ namespace {
 // the source code, and use __FILE__ macro to find the test data.
 // Expect __FILE__ to give the absolute path so the unit test can be run in any directory.
 const boost::filesystem::path current_src = boost::filesystem::path{__FILE__}.parent_path();
-
-template <typename Body, typename Allocator>
-auto flatten_content(http::response<Body, http::basic_fields<Allocator>>&& res)
-{
-	boost::system::error_code ec;
-	boost::beast::flat_buffer fbuf;
-
-	// Spend a lot of time to get this line to compile...
-	typename http::response<Body, http::basic_fields<Allocator>>::body_type::writer writer{res};
-	while (auto buf = writer.get(ec))
-	{
-		if (!ec)
-		{
-			auto size = buffer_size(buf->first);
-			buffer_copy(fbuf.prepare(size), buf->first);
-			fbuf.commit(size);
-		}
-		if (ec || !buf->second)
-			break;
-	}
-	return fbuf;
-}
-
-template <typename ConstBuffer>
-bool check_file_content(const boost::filesystem::path& file, ConstBuffer content)
-{
-	// open index.html and compare
-	std::ifstream index{file.string()};
-	char buf[1024];
-	while (auto count = index.rdbuf()->sgetn(buf, sizeof(buf)))
-	{
-		auto result = std::memcmp(buf, content.data(), static_cast<std::size_t>(count));
-		if (result != 0)
-			return false;
-
-		content += count;
-	}
-
-	return content.size() == 0;
-}
 
 class Checker
 {
@@ -133,8 +93,7 @@ public:
 	void operator()(Response&& res) const
 	{
 		REQUIRE(res.result() == http::status::ok);
-		auto content = flatten_content(std::move(res));
-		REQUIRE(check_file_content(m_file, content.data()));
+		REQUIRE(check_resource_content(m_file, std::move(res)));
 		REQUIRE(res.version() == 11);
 
 		set_tested();

@@ -12,7 +12,10 @@
 
 #pragma once
 
+#include "Request.hh"
+
 #include "util/MMap.hh"
+#include "net/FileBuffers.hh"
 
 #include <boost/filesystem/path.hpp>
 #include <unordered_map>
@@ -24,12 +27,28 @@ class WebResources
 public:
 	explicit WebResources(const boost::filesystem::path& web_root);
 
-	std::string_view find_static(const std::string& filename) const;
-	std::string_view find_dynamic(const std::string& filename) const;
+	http::response<FileBuffers> find_static(const std::string& filename, int version) const;
+	http::response<FileBuffers> find_dynamic(const std::string& filename, int version) const;
 
 private:
-	const std::unordered_map<std::string, MMap>   m_static;
-	const std::unordered_map<std::string, MMap>   m_dynamic;
+	class Resource
+	{
+	public:
+		Resource(MMap&& file, std::string&& mime) : m_file{std::move(file)}, m_mime{std::move(mime)} {}
+
+		http::response<FileBuffers> get(int version) const;
+
+	private:
+		MMap        m_file;
+		std::string m_mime;
+	};
+
+	template <typename Iterator>
+	static auto load(const boost::filesystem::path& base, Iterator first, Iterator last);
+
+private:
+	const std::unordered_map<std::string, Resource>   m_static;
+	const std::unordered_map<std::string, Resource>   m_dynamic;
 };
 
 } // end of namespace hrb

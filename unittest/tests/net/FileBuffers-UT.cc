@@ -73,3 +73,9 @@ TEST_CASE("Not change content", "[normal]")
 	REQUIRE(b2.size() == 0);
 	REQUIRE(b3.size() == 0);
 }
+
+TEST_CASE("Default constructor", "[normal]")
+{
+	Subject subject;
+	REQUIRE(buffer_size(subject.data()) == 0);
+}

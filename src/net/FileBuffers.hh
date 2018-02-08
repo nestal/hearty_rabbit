@@ -27,7 +27,7 @@ public:
 	class value_type
 	{
 	public:
-		value_type(std::string_view file, std::string_view needle = {}, std::string_view extra = {}) :
+		explicit value_type(std::string_view file = {}, std::string_view needle = {}, std::string_view extra = {}) :
 			m_file{file},
 			m_extra{extra}
 		{
