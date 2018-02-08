@@ -12,11 +12,11 @@
 
 #include <catch.hpp>
 
-#include "net/HTMLTemplate.hh"
+#include "net/FileBuffers.hh"
 
 #include <boost/filesystem.hpp>
 
-using Subject = hrb::HTMLTemplate::value_type;
+using Subject = hrb::FileBuffers::value_type;
 
 TEST_CASE("injecting script in HTML", "[normal]")
 {
@@ -25,7 +25,7 @@ TEST_CASE("injecting script in HTML", "[normal]")
 	REQUIRE(ec == std::error_code{});
 
 	std::string extra{"<script></script>"};
-	Subject subject{html.string(), extra};
+	Subject subject{html.string(), "<head>", extra};
 	REQUIRE(ec == std::error_code{});
 
 	auto buf = subject.data();
@@ -44,7 +44,7 @@ TEST_CASE("non-HTML has no <head>, append at-the-end", "[normal]")
 	REQUIRE(ec == std::error_code{});
 
 	std::string extra{"hahaha"};
-	Subject subject{css.string(), extra};
+	Subject subject{css.string(), "<head>", extra};
 	REQUIRE(ec == std::error_code{});
 
 	auto buf = subject.data();
@@ -53,5 +53,23 @@ TEST_CASE("non-HTML has no <head>, append at-the-end", "[normal]")
 	auto [b1, b2, b3] = buf;
 	REQUIRE(std::string_view{static_cast<const char*>(b1.data()), b1.size()} == css.string());
 	REQUIRE(std::string_view{static_cast<const char*>(b2.data()), b2.size()} == extra);
+	REQUIRE(b3.size() == 0);
+}
+
+TEST_CASE("Not change content", "[normal]")
+{
+	std::error_code ec;
+	auto css = hrb::MMap::open(boost::filesystem::path{__FILE__}.parent_path() / "../../../lib/static/gallery.css", ec);
+	REQUIRE(ec == std::error_code{});
+
+	Subject subject{css.string()};
+	REQUIRE(ec == std::error_code{});
+
+	auto buf = subject.data();
+	static_assert(buf.size() == 3);
+
+	auto [b1, b2, b3] = buf;
+	REQUIRE(std::string_view{static_cast<const char*>(b1.data()), b1.size()} == css.string());
+	REQUIRE(b2.size() == 0);
 	REQUIRE(b3.size() == 0);
 }

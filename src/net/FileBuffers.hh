@@ -19,7 +19,7 @@
 
 namespace hrb {
 
-class HTMLTemplate
+class FileBuffers
 {
 public:
 	using const_buffers_type = std::array<boost::asio::const_buffer, 3>;
@@ -27,29 +27,28 @@ public:
 	class value_type
 	{
 	public:
-		value_type(std::string_view html, std::string_view extra) :
-			m_html{html},
+		value_type(std::string_view file, std::string_view needle = {}, std::string_view extra = {}) :
+			m_file{file},
 			m_extra{extra}
 		{
-			static const std::string_view needle{"<head>"};
-			m_offset = m_html.find(needle);
-			if (m_offset != m_html.npos)
+			m_offset = needle.size() > 0 ? m_file.find(needle) : m_file.npos;
+			if (m_offset != m_file.npos)
 				m_offset += needle.size();
 			else
-				m_offset = m_html.size();
+				m_offset = m_file.size();
 		}
 
 		const_buffers_type data() const
 		{
 			return {
-				boost::asio::const_buffer{m_html.data(), m_offset},
+				boost::asio::const_buffer{m_file.data(), m_offset},
 				boost::asio::const_buffer{m_extra.data(), m_extra.size()},
-				boost::asio::const_buffer{m_html.data() + m_offset, m_html.size() - m_offset}
+				boost::asio::const_buffer{m_file.data() + m_offset, m_file.size() - m_offset}
 			};
 		}
 
 	private:
-		std::string_view    m_html;
+		std::string_view    m_file;
 		std::size_t         m_offset{};
 		std::string         m_extra;
 	};
@@ -64,7 +63,7 @@ public:
 	public:
 		template<bool isRequest, class Fields>
         explicit
-        reader(boost::beast::http::message<isRequest, HTMLTemplate, Fields>& m)
+        reader(boost::beast::http::message<isRequest, FileBuffers, Fields>& m)
             : m_body(m.body())
         {
         }
@@ -94,11 +93,11 @@ public:
 	class writer
 	{
 	public:
-        using const_buffers_type = HTMLTemplate::const_buffers_type;
+        using const_buffers_type = FileBuffers::const_buffers_type;
 
         template<bool isRequest, class Fields>
         explicit
-        writer(boost::beast::http::message<isRequest, HTMLTemplate, Fields> const& msg)
+        writer(boost::beast::http::message<isRequest, FileBuffers, Fields> const& msg)
             : m_body(msg.body())
         {
         }

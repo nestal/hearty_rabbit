@@ -17,7 +17,7 @@
 #include "WebResources.hh"
 
 #include "crypto/Authenication.hh"
-#include "net/HTMLTemplate.hh"
+#include "net/FileBuffers.hh"
 
 #include <boost/filesystem/path.hpp>
 #include <boost/beast/http/fields.hpp>

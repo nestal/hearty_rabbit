@@ -10,7 +10,7 @@
 // Created by nestal on 2/8/18.
 //
 
-#include "HTMLTemplate.hh"
+#include "FileBuffers.hh"
 
 namespace hrb {
 
