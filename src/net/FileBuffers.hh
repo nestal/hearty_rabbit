@@ -77,7 +77,7 @@ public:
 		std::size_t put(const ConstBufferSeq& b, boost::system::error_code& ec)
 		{
 			// TODO: write to mmap
-			ec.clear();
+			ec.assign(0, ec.category());
 			return buffer_size(b);
 		}
 

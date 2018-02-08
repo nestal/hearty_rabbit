@@ -23,7 +23,6 @@
 #include <boost/beast/http/fields.hpp>
 #include <boost/beast/http/message.hpp>
 #include <boost/beast/http/empty_body.hpp>
-#include <boost/beast/http/file_body.hpp>
 #include <boost/beast/version.hpp>
 #include <boost/asio/io_context.hpp>
 
