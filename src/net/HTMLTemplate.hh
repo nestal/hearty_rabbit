@@ -27,31 +27,31 @@ public:
 	class value_type
 	{
 	public:
-		value_type(const boost::filesystem::path& path, std::string_view extra, std::error_code& ec) :
-			m_mmap{MMap::open(path, ec)},
+		value_type(std::string_view html, std::string_view extra, std::error_code& ec) :
+			m_html{html},
 			m_extra{extra}
 		{
-			auto str = m_mmap.string();
-			m_offset = str.find("<head>");
-			if (m_offset != str.npos)
-				m_offset += sizeof("<head>")-1;
+			static const std::string_view needle{"<head>"};
+			m_offset = m_html.find(needle);
+			if (m_offset != m_html.npos)
+				m_offset += needle.size();
 			else
-				m_offset = m_mmap.size();
+				m_offset = m_html.size();
 		}
 
 		const_buffers_type data() const
 		{
 			return {
-				boost::asio::const_buffer{m_mmap.data(), m_offset},
+				boost::asio::const_buffer{m_html.data(), m_offset},
 				boost::asio::const_buffer{m_extra.data(), m_extra.size()},
-				boost::asio::const_buffer{static_cast<const char*>(m_mmap.data()) + m_offset, m_mmap.size() - m_offset}
+				boost::asio::const_buffer{m_html.data() + m_offset, m_html.size() - m_offset}
 			};
 		}
 
 	private:
-		MMap            m_mmap;
-		std::size_t     m_offset{};
-		std::string     m_extra;
+		std::string_view    m_html;
+		std::size_t         m_offset{};
+		std::string         m_extra;
 	};
 
 	static std::uint64_t size(const value_type& body)

@@ -20,11 +20,12 @@ using Subject = hrb::HTMLTemplate::value_type;
 
 TEST_CASE("injecting script in HTML", "[normal]")
 {
-	std::string extra{"<script></script>"};
-	auto html = boost::filesystem::path{__FILE__}.parent_path() / "../../../lib/dynamic/index.html";
-
 	std::error_code ec;
-	Subject subject{html, extra, ec};
+	auto html = hrb::MMap::open(boost::filesystem::path{__FILE__}.parent_path() / "../../../lib/dynamic/index.html", ec);
+	REQUIRE(ec == std::error_code{});
+
+	std::string extra{"<script></script>"};
+	Subject subject{html.string(), extra, ec};
 	REQUIRE(ec == std::error_code{});
 
 	auto buf = subject.data();
@@ -33,23 +34,24 @@ TEST_CASE("injecting script in HTML", "[normal]")
 	auto [b1, b2, b3] = buf;
 	REQUIRE(std::string_view{static_cast<const char*>(b1.data()), b1.size()} == "<!doctype html>\n<html lang=\"en\">\n<head>");
 	REQUIRE(std::string_view{static_cast<const char*>(b2.data()), b2.size()} == extra);
-	REQUIRE(b3.size() == file_size(html) - b1.size());
+	REQUIRE(b3.size() == html.size() - b1.size());
 }
 
 TEST_CASE("non-HTML has no <head>, append at-the-end", "[normal]")
 {
-	std::string extra{"hahaha"};
-	auto css = boost::filesystem::path{__FILE__}.parent_path() / "../../../lib/static/gallery.css";
-
 	std::error_code ec;
-	Subject subject{css, extra, ec};
+	auto css = hrb::MMap::open(boost::filesystem::path{__FILE__}.parent_path() / "../../../lib/static/gallery.css", ec);
+	REQUIRE(ec == std::error_code{});
+
+	std::string extra{"hahaha"};
+	Subject subject{css.string(), extra, ec};
 	REQUIRE(ec == std::error_code{});
 
 	auto buf = subject.data();
 	static_assert(buf.size() == 3);
 
 	auto [b1, b2, b3] = buf;
-	REQUIRE(std::string_view{static_cast<const char*>(b1.data()), b1.size()} == hrb::MMap::open(css, ec).string());
+	REQUIRE(std::string_view{static_cast<const char*>(b1.data()), b1.size()} == css.string());
 	REQUIRE(std::string_view{static_cast<const char*>(b2.data()), b2.size()} == extra);
 	REQUIRE(b3.size() == 0);
 }

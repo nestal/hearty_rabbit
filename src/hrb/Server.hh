@@ -122,13 +122,13 @@ public:
 
 		std::error_code ec;
 		// test
-		if (req.target() == "/test")
+/*		if (req.target() == "/test")
 			return send(http::response<HTMLTemplate>{
 				std::piecewise_construct,
 				std::make_tuple(__FILE__, "sum sum sum sum sum", std::ref(ec)),
 				std::make_tuple(http::status::ok, req.version())
 			});
-
+*/
 		if (allow_anonymous(req.target()))
 			return send(static_file_request(req));
 
