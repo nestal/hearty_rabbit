@@ -14,14 +14,17 @@
 
 #include "crypto/Blake2.hh"
 #include "util/MMap.hh"
+#include "net/Redis.hh"
 
 #include <boost/filesystem/path.hpp>
+#include <boost/asio/buffer.hpp>
 
 #include <array>
 #include <cstddef>
 #include <functional>
-#include <optional>
 #include <system_error>
+#include <variant>
+#include <vector>
 
 namespace hrb {
 namespace redis {
@@ -49,7 +52,8 @@ class BlobObject
 public:
 	BlobObject() = default;
 	explicit BlobObject(const boost::filesystem::path& path);
-	BlobObject(std::string_view blob, std::string_view name);
+	BlobObject(boost::asio::const_buffer blob, std::string_view name);
+	BlobObject(std::string&& blob, std::string_view name);
 	BlobObject(BlobObject&&) = default;
 	BlobObject(const BlobObject&) = delete;
 	~BlobObject() = default;
@@ -58,7 +62,7 @@ public:
 	BlobObject& operator=(const BlobObject&) = delete;
 
 	const ObjectID& ID() const {return m_id;}
-	bool empty() const {return !m_blob.is_opened();}
+	bool empty() const;
 
 	using Completion = std::function<void(BlobObject&, std::error_code ec)>;
 
@@ -74,15 +78,16 @@ public:
 	void save(redis::Connection& db, Completion completion);
 	void erase(redis::Connection& db, Completion completion);
 	void open(const boost::filesystem::path& path, std::error_code& ec);
-	void assign(std::string_view blob, std::string_view name, std::error_code& ec);
+	void assign(boost::asio::const_buffer blob, std::string_view name, std::error_code& ec);
 
-	std::string_view blob() const;
+	boost::asio::const_buffer blob() const;
+	std::string_view string() const;
 	const std::string& name() const {return m_name;}
 	const std::string& mime() const {return m_mime;}
 
 private:
-	static ObjectID hash(std::string_view blob);
-	static std::string deduce_mime(std::string_view blob);
+	static ObjectID hash(boost::asio::const_buffer blob);
+	static std::string deduce_mime(boost::asio::const_buffer blob);
 	void open(
 		const boost::filesystem::path& path,
 		const ObjectID* id,
@@ -97,10 +102,8 @@ private:
 	std::string m_name;     //!< Typically the file name of the blob
 	std::string m_mime;     //!< Mime-type of the blob, deduced by libmagic
 
-	// TODO:    use a variant to support other backing store in addition to memory mappings
-	//          e.g. std::string_view (non-owning), std::vector (owning)
-	//          also enforce the memory mapping to be read-only
-	MMap        m_blob;
+	using Vec = std::vector<unsigned char>;
+	std::variant<MMap, Vec, std::string, redis::Reply> m_blob;
 };
 
 std::ostream& operator<<(std::ostream& os, const ObjectID& id);

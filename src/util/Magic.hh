@@ -14,6 +14,7 @@
 
 #include <magic.h>
 #include <string_view>
+#include <boost/asio/buffer.hpp>
 
 namespace hrb {
 
@@ -26,7 +27,7 @@ public:
 	~Magic();
 
 	std::string_view mime(const void *buffer, std::size_t size) const;
-	std::string_view mime(std::string_view buf) const;
+	std::string_view mime(boost::asio::const_buffer buf) const;
 
 private:
 	::magic_t m_cookie;

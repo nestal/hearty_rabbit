@@ -14,8 +14,10 @@
 
 #include "Request.hh"
 #include "DatabasePool.hh"
+#include "WebResources.hh"
 
 #include "crypto/Authenication.hh"
+#include "net/FileBuffers.hh"
 
 #include <boost/filesystem/path.hpp>
 #include <boost/beast/http/fields.hpp>
@@ -53,7 +55,10 @@ public:
 
 	http::response<http::empty_body> redirect_http(const Request& req);
 
-	static std::string_view extract_prefix(const Request& req);
+	static std::tuple<
+		std::string_view,
+		std::string_view
+	> extract_prefix(const Request& req);
 
 	template <class Send>
 	void on_valid_session(Request&& req, Send&& send, const SessionID& session)
@@ -71,7 +76,7 @@ public:
 			return on_logout(req, session, std::forward<Send>(send));
 
 		if (req.target().starts_with(url::upload))
-			return on_upload(req, std::forward<Send>(send));
+			return on_upload(std::move(req), std::forward<Send>(send));
 
 		return send(not_found(req));
 	}
@@ -127,9 +132,8 @@ public:
 			on_invalid_session(std::move(req), std::forward<Send>(send));
 	}
 
-	http::response<http::file_body> static_file_request(const Request& req);
-	http::response<http::file_body> file_request(const boost::filesystem::path& path, unsigned version);
-	http::response<http::file_body> serve_home(unsigned version);
+	http::response<FileBuffers> static_file_request(const Request& req);
+	http::response<FileBuffers> serve_home(unsigned version);
 	static http::response<http::string_body> bad_request(const Request& req, boost::beast::string_view why);
 	static http::response<http::string_body> not_found(const Request& req);
 	static http::response<http::string_body> server_error(const Request& req, boost::beast::string_view what);
@@ -144,7 +148,6 @@ public:
 	void add_blob(const boost::filesystem::path& path, std::function<void(BlobObject&, std::error_code)> complete);
 
 private:
-	static std::string_view resource_mime(const std::string& ext);
 	static void drop_privileges();
 
 	using EmptyResponseSender = std::function<void(http::response<http::empty_body>&&)>;
@@ -153,7 +156,7 @@ private:
 	void on_login(const Request& req, EmptyResponseSender&& send);
 	void on_logout(const Request& req, const SessionID& id, EmptyResponseSender&& send);
 	void on_invalid_session(const Request& req, EmptyResponseSender&& send);
-	void on_upload(const Request& req, StringResponseSender&& send);
+	void on_upload(Request&& req, EmptyResponseSender&& send);
 	void get_blob(const Request& req, StringResponseSender&& send);
 	http::response<http::string_body> get_dir(const Request& req);
 	static bool allow_anonymous(boost::string_view target);
@@ -163,6 +166,7 @@ private:
 	boost::asio::io_context m_ioc;
 
 	DatabasePool    m_db;
+	WebResources    m_lib;
 };
 
 } // end of namespace

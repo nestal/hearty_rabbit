@@ -13,7 +13,6 @@
 #include "BlobObject.hh"
 
 #include "crypto/Blake2.hh"
-#include "net/Redis.hh"
 #include "util/Error.hh"
 #include "util/Magic.hh"
 
@@ -50,12 +49,21 @@ BlobObject::BlobObject(const boost::filesystem::path &path)
 		throw std::system_error(ec);
 }
 
-BlobObject::BlobObject(std::string_view blob, std::string_view name)
+BlobObject::BlobObject(boost::asio::const_buffer blob, std::string_view name)
 {
 	std::error_code ec;
 	assign(blob, name, ec);
 	if (ec)
 		throw std::system_error(ec);
+}
+
+BlobObject::BlobObject(std::string&& blob, std::string_view name)
+{
+	m_id   = hash({blob.data(), blob.size()});
+	m_name = name;
+	m_mime = deduce_mime({blob.data(), blob.size()});
+	m_blob = std::move(blob);
+
 }
 
 void BlobObject::open(const boost::filesystem::path &path, std::error_code& ec)
@@ -66,17 +74,17 @@ void BlobObject::open(const boost::filesystem::path &path, std::error_code& ec)
 void BlobObject::open(const boost::filesystem::path& path, const ObjectID* id, std::string_view name, std::string_view mime, std::error_code& ec)
 {
 	// read the file and calculate the sha and mime_type
-	auto blob = MMap::open(path, ec);
+	auto data = MMap::open(path, ec);
 	if (!ec)
 	{
-		m_blob = std::move(blob);
-		m_id   = (id ? *id : hash(m_blob.string_view()));
+		m_id   = (id ? *id : hash(data.blob()));
 		m_name = name;
-		m_mime = (mime.empty() ? deduce_mime(m_blob.string_view()) : mime);
+		m_mime = (mime.empty() ? deduce_mime(data.blob()) : mime);
+		m_blob = std::move(data);
 	}
 }
 
-ObjectID BlobObject::hash(std::string_view blob)
+ObjectID BlobObject::hash(boost::asio::const_buffer blob)
 {
 	Blake2 sha3;
 
@@ -102,6 +110,7 @@ void BlobObject::erase(redis::Connection& db, BlobObject::Completion completion)
 
 void BlobObject::save(redis::Connection& db, Completion completion)
 {
+	auto data = blob();
 	db.command(
 		[callback=std::move(completion), this](redis::Reply, std::error_code&& ec)
 		{
@@ -110,7 +119,7 @@ void BlobObject::save(redis::Connection& db, Completion completion)
 		"HSET %b%b blob %b name %b mime %b",
 		key_prefix.data(), key_prefix.size(),
 		m_id.data(), m_id.size(),
-		m_blob.data(), m_blob.size(),
+		data.data(), data.size(),
 		m_name.c_str(), m_name.size(),
 		m_mime.c_str(), m_mime.size()
 	);
@@ -130,31 +139,23 @@ void BlobObject::load(redis::Connection& db, const ObjectID& id, Completion comp
 			auto [blob_reply] = reply.map_kv_pair("blob");
 			if (auto blob = blob_reply.as_string(); !blob.empty())
 			{
-				// Create an anonymous memory mapping to store the blob
-				auto new_mem = MMap::allocate(blob.size(), ec);
-				if (!ec)
+				result.m_id   = id;
+				result.m_blob = blob_reply;
+
+				reply.foreach_kv_pair([&result](auto&& field, auto&& value)
 				{
-					// everything OK, now commit
-					std::memcpy(new_mem.data(), blob.data(), blob.size());
-					result.m_id = id;
-					result.m_blob = std::move(new_mem);
+					if (field != "blob")
+						result.assign_field(field, value.as_string());
+				});
 
-					reply.foreach_kv_pair([&result](auto&& field, auto&& value)
-					{
-						if (field != "blob")
-							result.assign_field(field, value.as_string());
-					});
-
-					// deduce mime if it is not present in database
-					if (result.m_mime.empty())
-						result.m_mime = deduce_mime(result.blob());
-				}
+				// deduce mime if it is not present in database
+				if (result.m_mime.empty())
+					result.m_mime = deduce_mime(result.blob());
 			}
 
 			// if redis return OK but we don't have blob, then the object is not valid
 			else
 				ec = Error::invalid_object;
-
 
 			callback(result, ec);
 		},
@@ -190,29 +191,21 @@ void BlobObject::load(
 	);
 }
 
-void BlobObject::assign(std::string_view blob, std::string_view name, std::error_code& ec)
+void BlobObject::assign(boost::asio::const_buffer data, std::string_view name, std::error_code& ec)
 {
-	// Create an anonymous memory mapping to store the blob
-	auto new_mem = MMap::allocate(blob.size(), ec);
-	if (!ec)
-	{
-		std::memcpy(new_mem.data(), blob.data(), blob.size());
-		m_blob = std::move(new_mem);
-		m_id   = hash(m_blob.string_view());
-		m_name = name;
-		m_mime = deduce_mime(m_blob.string_view());
-	}
+	m_id   = hash(data);
+	m_name = name;
+	m_mime = deduce_mime(data);
+	m_blob = Vec(
+		static_cast<const char*>(data.data()),
+		static_cast<const char*>(data.data()) + data.size()
+	);
 }
 
-std::string BlobObject::deduce_mime(std::string_view blob)
+std::string BlobObject::deduce_mime(boost::asio::const_buffer blob)
 {
 	static const thread_local Magic magic;
 	return std::string{magic.mime(blob)};
-}
-
-std::string_view BlobObject::blob() const
-{
-	return {static_cast<const char*>(m_blob.data()), m_blob.size()};
 }
 
 void BlobObject::assign_field(std::string_view field, std::string_view value)
@@ -224,6 +217,52 @@ void BlobObject::assign_field(std::string_view field, std::string_view value)
 	// mime is also optional
 	else if (field == "mime")
 		m_mime = value;
+}
+
+bool BlobObject::empty() const
+{
+	struct IsEmpty
+	{
+		bool operator()(const MMap& mmap) const noexcept {return !mmap.is_opened();}
+		bool operator()(const Vec& vec) const noexcept {return vec.empty();}
+		bool operator()(const std::string& s) const noexcept {return s.empty();}
+		bool operator()(const redis::Reply& reply) const noexcept
+		{
+			return reply.as_string().size() == 0;
+		}
+	};
+	return std::visit(IsEmpty(), m_blob);
+}
+
+boost::asio::const_buffer BlobObject::blob() const
+{
+	struct GetBuffer
+	{
+		boost::asio::const_buffer operator()(const MMap& mmap) const noexcept
+		{
+			return mmap.blob();
+		}
+		boost::asio::const_buffer operator()(const Vec& v) const noexcept
+		{
+			return {&v[0], v.size()};
+		}
+		boost::asio::const_buffer operator()(const std::string& s) const noexcept
+		{
+			return {&s[0], s.size()};
+		}
+		boost::asio::const_buffer operator()(const redis::Reply& reply) const noexcept
+		{
+			auto s = reply.as_string();
+			return {s.data(), s.size()};
+		}
+	};
+	return std::visit(GetBuffer(), m_blob);
+}
+
+std::string_view BlobObject::string() const
+{
+	auto data = blob();
+	return {static_cast<const char*>(data.data()), data.size()};
 }
 
 std::ostream& operator<<(std::ostream& os, const ObjectID& id)
