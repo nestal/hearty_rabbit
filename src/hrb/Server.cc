@@ -70,7 +70,7 @@ void Server::on_login(const Request& req, EmptyResponseSender&& send)
 		);
 	}
 	else
-		send(redirect("/login.html", req.version()));
+		send(redirect("/", req.version()));
 }
 
 void Server::on_logout(const Request& req, const SessionID& id, EmptyResponseSender&& send)
@@ -80,7 +80,7 @@ void Server::on_logout(const Request& req, const SessionID& id, EmptyResponseSen
 	{
 		m_db.release(std::move(db));
 
-		auto&& res = redirect("/login.html", version);
+		auto&& res = redirect("/", version);
 		res.set(http::field::set_cookie, "id=; ");
 		res.keep_alive(false);
 		send(std::move(res));
@@ -149,7 +149,7 @@ void Server::on_invalid_session(const Request& req, FileResponseSender&& send)
 	// If the target is home (i.e. "/"), redirect to login page.
 	// Because it may be because the user's session just exprired.
 	if (req.target() == "/")
-		return send(m_lib.find_static("login.html", req.version()));
+		return send(m_lib.find_dynamic("login.html", req.version()));
 
 	// Introduce a small delay when responsing to requests with invalid session ID.
 	// This is to slow down bruce-force attacks on the session ID.

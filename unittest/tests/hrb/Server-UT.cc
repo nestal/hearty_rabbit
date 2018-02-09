@@ -145,9 +145,9 @@ TEST_CASE("GET static resource", "[normal]")
 
 	SECTION("Request login.html success without login")
 	{
-		FileResponseChecker checker{http::status::ok, cfg.web_root()/"static/login.html"};
+		FileResponseChecker checker{http::status::ok, cfg.web_root()/"dynamic/login.html"};
 
-		req.target("/login.html");
+		req.target("/");
 		subject.handle_https(std::move(req), std::ref(checker));
 		REQUIRE(checker.tested());
 	}
@@ -220,7 +220,7 @@ TEST_CASE("GET static resource", "[normal]")
 	SECTION("Login Incorrect")
 	{
 		MovedResponseChecker login_incorrect{"/login_incorrect.html"};
-		MovedResponseChecker invalid_login{"/login.html"};
+		MovedResponseChecker invalid_login{"/"};
 		Checker *expect{nullptr};
 
 		req.target("/login");
@@ -259,7 +259,7 @@ TEST_CASE("GET static resource", "[normal]")
 
 	SECTION("requesting other resources without a session")
 	{
-		FileResponseChecker  login{http::status::ok, cfg.web_root()/"static/login.html"};
+		FileResponseChecker  login{http::status::ok, cfg.web_root()/"dynamic/login.html"};
 		GenericStatusChecker forbidden{http::status::forbidden};
 		Checker *expected{nullptr};
 
