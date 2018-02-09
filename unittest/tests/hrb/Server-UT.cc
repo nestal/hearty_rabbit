@@ -263,13 +263,13 @@ TEST_CASE("GET static resource", "[normal]")
 		GenericStatusChecker forbidden{http::status::forbidden};
 		Checker *expected{nullptr};
 
-		SECTION("requests for / will get redirected to login page")
+		SECTION("requests for / will see login page without delay")
 		{
 			req.target("/");
 			subject.handle_https(std::move(req), std::ref(login));
 			expected = &login;
 		}
-		SECTION("requests to others will get 403 forbidden")
+		SECTION("requests to others will get 403 forbidden with delay")
 		{
 			req.target("/something");
 			subject.handle_https(std::move(req), std::ref(forbidden));

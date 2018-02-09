@@ -12,14 +12,13 @@
 
 #pragma once
 
-#include "crypto/Blake2.hh"
+#include "ObjectID.hh"
 #include "util/MMap.hh"
 #include "net/Redis.hh"
 
 #include <boost/filesystem/path.hpp>
 #include <boost/asio/buffer.hpp>
 
-#include <array>
 #include <cstddef>
 #include <functional>
 #include <system_error>
@@ -30,19 +29,6 @@ namespace hrb {
 namespace redis {
 class Connection;
 }
-
-// If use a typedef (or using), then the argument-dependent lookup (ADL) will not
-// work for operator<<
-struct ObjectID : std::array<unsigned char, Blake2::size>
-{
-	using array::array;
-	explicit ObjectID(const array& ar) : array{ar} {}
-};
-
-static_assert(std::is_standard_layout<ObjectID>::value);
-
-std::string to_hex(const ObjectID& id);
-ObjectID hex_to_object_id(std::string_view base64);
 
 bool operator==(const ObjectID& id1, const ObjectID& id2);
 bool operator!=(const ObjectID& id1, const ObjectID& id2);

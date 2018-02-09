@@ -77,6 +77,7 @@ http::response<FileBuffers> WebResources::Resource::get(int version) const
 		std::make_tuple(http::status::ok, version)
 	};
 	result.set(http::field::content_type, m_mime);
+	result.set(http::field::cache_control, "no-cache, no-store, must-revalidate");
 	return result;
 }
 } // end of namespace hrb

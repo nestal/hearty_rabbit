@@ -30,5 +30,6 @@ TEST_CASE("static resource", "[normal]")
 	REQUIRE(res.version() == 11);
 	REQUIRE(res.result() == http::status::ok);
 	REQUIRE(res[http::field::content_type] == "text/html");
+	REQUIRE(res[http::field::cache_control] == "no-cache, no-store, must-revalidate");
 	REQUIRE(check_resource_content(web_root / "dynamic/index.html", std::move(res)));
 }

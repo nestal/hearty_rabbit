@@ -146,8 +146,9 @@ void Server::on_upload(Request&& req, EmptyResponseSender&& send, std::string_vi
 
 void Server::on_invalid_session(const Request& req, FileResponseSender&& send)
 {
-	// If the target is home (i.e. "/"), redirect to login page.
-	// Because it may be because the user's session just exprired.
+	// If the target is home (i.e. "/"), show them the login page.
+	// Do not penalize the user, because their session may be expired.
+	// It may also be the first visit of an anonymous user.
 	if (req.target() == "/")
 		return send(m_lib.find_dynamic("login.html", req.version()));
 
