@@ -38,14 +38,21 @@ include_directories(
 configure_file(config.hh.in config.hh)
 
 # Static files served by HTTP
-file(GLOB STATIC_RESOURCES lib/static/*)
-message(STATUS ${STATIC_RESOURCES})
+file(GLOB STATIC_RESOURCES  lib/static/*)
+file(GLOB DYNAMIC_RESOURCES lib/dynamic/*)
 
 # Generate a list of static files
-set(WEB_RESOURCE_LIST "${CMAKE_CURRENT_BINARY_DIR}/WebResources.hh")
+set(WEB_RESOURCE_LIST "${CMAKE_CURRENT_BINARY_DIR}/ResourcesList.hh")
 file(REMOVE ${WEB_RESOURCE_LIST})
-file(APPEND ${WEB_RESOURCE_LIST} "#include <string>\n#include <unordered_set>\nnamespace hrb {\nconst std::unordered_set<std::string> web_resources = {\n")
+file(APPEND ${WEB_RESOURCE_LIST} "#include <string>\n#include <unordered_set>\nnamespace hrb {\n")
+
+file(APPEND ${WEB_RESOURCE_LIST} "const std::unordered_set<std::string> static_resources = {\n")
 foreach(fullpath ${STATIC_RESOURCES})
+	get_filename_component(FILENAME_WO_DIR ${fullpath} NAME)
+    file(APPEND ${WEB_RESOURCE_LIST} "\t\"${FILENAME_WO_DIR}\",\n")
+endforeach(fullpath)
+file(APPEND ${WEB_RESOURCE_LIST} "};\nconst std::unordered_set<std::string> dynamic_resources = {\n")
+foreach(fullpath ${DYNAMIC_RESOURCES})
 	get_filename_component(FILENAME_WO_DIR ${fullpath} NAME)
     file(APPEND ${WEB_RESOURCE_LIST} "\t\"${FILENAME_WO_DIR}\",\n")
 endforeach(fullpath)

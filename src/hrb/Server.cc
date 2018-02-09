@@ -11,7 +11,7 @@
 //
 
 #include "Server.hh"
-#include "WebResources.hh"
+#include "ResourcesList.hh"
 #include "BlobObject.hh"
 
 #include "crypto/Password.hh"
@@ -33,7 +33,8 @@ namespace hrb {
 Server::Server(const Configuration& cfg) :
 	m_cfg{cfg},
 	m_ioc{static_cast<int>(std::max(1UL, cfg.thread_count()))},
-	m_db{cfg.redis()}
+	m_db{cfg.redis()},
+	m_lib{cfg.web_root()}
 {
 	OpenSSL_add_all_digests();
 }
@@ -208,53 +209,19 @@ http::response<http::string_body> Server::server_error(const Request& req, boost
 	return res;
 }
 
-http::response<http::file_body> Server::serve_home(unsigned version)
+http::response<FileBuffers> Server::serve_home(unsigned version)
 {
-	return file_request(m_cfg.web_root() / "dynamic" / "index.html", version);
+	return m_lib.find_dynamic("index.html", version);
 }
 
-http::response<http::file_body> Server::static_file_request(const Request& req)
+http::response<FileBuffers> Server::static_file_request(const Request& req)
 {
 	Log(LOG_NOTICE, "requesting path %1%", req.target());
 
 	auto filepath = req.target();
 	filepath.remove_prefix(1);
 
-	return file_request(boost::filesystem::path{"static"} / filepath.to_string(), req.version());
-}
-
-http::response<http::file_body> Server::file_request(const boost::filesystem::path& req_path, unsigned version)
-{
-	auto path = canonical(req_path, m_cfg.web_root());
-	Log(LOG_NOTICE, "reading from %1%", path);
-
-	// Attempt to open the file
-	boost::beast::error_code ec;
-	http::file_body::value_type file;
-	file.open(path.string().c_str(), boost::beast::file_mode::scan, ec);
-
-	// Handle the case where the file doesn't exist
-	if (ec)
-	{
-		file.open(
-			(m_cfg.web_root() / "dynamic" / "not_found.html").string().c_str(),
-			boost::beast::file_mode::scan,
-			ec
-		);
-		if (ec)
-			throw std::system_error(ec);
-	}
-
-	auto file_size = file.size();
-
-	http::response<http::file_body> res{
-		std::piecewise_construct,
-		std::make_tuple(std::move(file)),
-		std::make_tuple(http::status::ok, version)
-	};
-	res.set(http::field::content_type, resource_mime(path.extension().string()));
-	res.content_length(file_size);
-	return std::move(res);
+	return m_lib.find_static(std::string{filepath}, req.version());
 }
 
 http::response<http::empty_body> Server::redirect_http(const Request &req)
@@ -267,16 +234,6 @@ http::response<http::empty_body> Server::redirect_http(const Request &req)
 	Log(LOG_INFO, "redirecting HTTP request %1% to host %2%", req.target(), dest);
 
 	return redirect(dest, req.version());
-}
-
-std::string_view Server::resource_mime(const std::string& ext)
-{
-	// don't expect a big list
-	     if (ext == ".html")    return "text/html";
-	else if (ext == ".css")     return "text/css";
-	else if (ext == ".svg")     return "image/svg+xml";
-    else if (ext == ".js")      return "application/javascript";
-	else                        return "application/octet-stream";
 }
 
 void Server::run()
@@ -372,7 +329,7 @@ bool Server::allow_anonymous(boost::string_view target)
 	assert(target.front() == '/');
 	target.remove_prefix(1);
 
-	return web_resources.find(target.to_string()) != web_resources.end();
+	return static_resources.find(target.to_string()) != static_resources.end();
 }
 
 std::tuple<
