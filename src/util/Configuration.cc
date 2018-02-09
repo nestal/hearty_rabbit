@@ -99,6 +99,7 @@ void Configuration::load_config(const boost::filesystem::path& path)
 		m_cert_chain    = weakly_canonical(absolute(string(required(json, "/cert_chain")),  path.parent_path()));
 		m_private_key   = weakly_canonical(absolute(string(required(json, "/private_key")), path.parent_path()));
 		m_root          = weakly_canonical(absolute(string(required(json, "/web_root")),    path.parent_path()));
+		m_cache_base	= weakly_canonical(absolute(string(required(json, "/cache_base")),  path.parent_path()));
 		m_server_name   = string(required(json, "/server_name"));
 		m_thread_count  = GetValueByPointerWithDefault(json, "/thread_count", m_thread_count).GetUint64();
 

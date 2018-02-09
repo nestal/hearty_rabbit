@@ -46,6 +46,7 @@ public:
 	boost::filesystem::path cert_chain() const {return m_cert_chain;}
 	boost::filesystem::path private_key() const {return m_private_key;}
 	boost::filesystem::path web_root() const {return m_root;}
+	boost::filesystem::path cache_base() const {return m_cache_base;}
 	std::size_t thread_count() const {return m_thread_count;}
 	const std::string& server_name() const {return m_server_name;}
 
@@ -83,7 +84,7 @@ private:
 	};
 
 	boost::filesystem::path m_cert_chain, m_private_key;
-	boost::filesystem::path m_root;
+	boost::filesystem::path m_root, m_cache_base;
 	std::string m_server_name;
 	std::size_t m_thread_count{1};
 };

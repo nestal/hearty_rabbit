@@ -2,6 +2,7 @@
   "cert_chain": "/etc/certificate.pem",
   "private_key": "/etc/key.pem",
   "web_root": ".",
+  "cache_base": ".",
   "server_name" : "example.com",
   "http": {
     "address": "0.0.0.0",
