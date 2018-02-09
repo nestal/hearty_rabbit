@@ -259,23 +259,23 @@ TEST_CASE("GET static resource", "[normal]")
 
 	SECTION("requesting other resources without a session")
 	{
-		MovedResponseChecker redirect_login{"/login.html"};
+		FileResponseChecker  login{http::status::ok, cfg.web_root()/"static/login.html"};
 		GenericStatusChecker forbidden{http::status::forbidden};
 		Checker *expected{nullptr};
 
 		SECTION("requests for / will get redirected to login page")
 		{
 			req.target("/");
-			subject.handle_https(std::move(req), std::ref(redirect_login));
-			expected = &redirect_login;
+			subject.handle_https(std::move(req), std::ref(login));
+			expected = &login;
 		}
 		SECTION("requests to others will get 403 forbidden")
 		{
 			req.target("/something");
 			subject.handle_https(std::move(req), std::ref(forbidden));
+	 		REQUIRE(subject.get_io_context().run_for(10s) > 0);
 			expected = &forbidden;
 		}
-		REQUIRE(subject.get_io_context().run_for(10s) > 0);
 		REQUIRE(expected != nullptr);
 		REQUIRE(expected->tested());
 	}

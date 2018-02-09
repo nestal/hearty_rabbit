@@ -144,25 +144,22 @@ void Server::on_upload(Request&& req, EmptyResponseSender&& send, std::string_vi
 	});
 }
 
-void Server::on_invalid_session(const Request& req, EmptyResponseSender&& send)
+void Server::on_invalid_session(const Request& req, FileResponseSender&& send)
 {
-	bool target_home = (req.target() == "/");
+	// If the target is home (i.e. "/"), redirect to login page.
+	// Because it may be because the user's session just exprired.
+	if (req.target() == "/")
+		return send(m_lib.find_static("login.html", req.version()));
 
 	// Introduce a small delay when responsing to requests with invalid session ID.
 	// This is to slow down bruce-force attacks on the session ID.
 	boost::asio::deadline_timer t{m_ioc, boost::posix_time::milliseconds{500}};
-	return t.async_wait([version=req.version(), target_home, send=std::move(send)](auto ec)
+	return t.async_wait([version=req.version(), send=std::move(send)](auto ec)
 	{
 		if (!ec)
 			Log(LOG_WARNING, "timer error %1% (%2%)", ec, ec.message());
 
-		// If the target is home (i.e. "/"), redirect to login page.
-		// Because it may be because the user's session just exprired.
-		send(
-			target_home ?
-				redirect("/login.html", version) :
-				http::response<http::empty_body>{http::status::forbidden, version}
-		);
+		send(http::response<FileBuffers>{http::status::forbidden, version});
 	});
 }
 

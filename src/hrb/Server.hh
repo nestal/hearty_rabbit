@@ -149,12 +149,13 @@ public:
 private:
 	static void drop_privileges();
 
-	using EmptyResponseSender = std::function<void(http::response<http::empty_body>&&)>;
+	using EmptyResponseSender  = std::function<void(http::response<http::empty_body>&&)>;
 	using StringResponseSender = std::function<void(http::response<http::string_body>&&)>;
+	using FileResponseSender   = std::function<void(http::response<FileBuffers>&&)>;
 
 	void on_login(const Request& req, EmptyResponseSender&& send);
 	void on_logout(const Request& req, const SessionID& id, EmptyResponseSender&& send);
-	void on_invalid_session(const Request& req, EmptyResponseSender&& send);
+	void on_invalid_session(const Request& req, FileResponseSender&& send);
 	void on_upload(Request&& req, EmptyResponseSender&& send, std::string_view user);
 	void get_blob(const Request& req, StringResponseSender&& send);
 	http::response<http::string_body> get_dir(const Request& req);
