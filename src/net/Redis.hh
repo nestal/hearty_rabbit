@@ -15,10 +15,8 @@
 #include "util/RepeatingTuple.hh"
 
 #include <boost/asio.hpp>
-#include <boost/iterator/iterator_adaptor.hpp>
 
 #include <hiredis/hiredis.h>
-#include <hiredis/async.h>
 
 #include <deque>
 #include <memory>
@@ -67,6 +65,7 @@ public:
 	std::string_view as_status() const noexcept;
 	std::string_view as_error() const noexcept;
 	std::string_view as_any_string() const noexcept;
+	boost::asio::const_buffer as_buffer() const noexcept;
 
 	explicit operator bool() const noexcept ;
 

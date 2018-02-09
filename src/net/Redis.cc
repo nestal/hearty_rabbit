@@ -183,6 +183,12 @@ std::string_view Reply::as_any_string() const noexcept
 		std::string_view{m_reply->str, static_cast<std::size_t>(m_reply->len)} : std::string_view{};
 }
 
+boost::asio::const_buffer Reply::as_buffer() const noexcept
+{
+	auto s = as_any_string();
+	return {s.data(), s.size()};
+}
+
 Reply Reply::as_array(std::size_t i) const noexcept
 {
 	return m_reply && m_reply->type == REDIS_REPLY_ARRAY && i < m_array.size() ?
