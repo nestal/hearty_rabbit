@@ -58,38 +58,6 @@ public:
         return buffer_size(body.data());
     }
 
-	class reader
-	{
-	public:
-		template<bool isRequest, class Fields>
-        explicit
-        reader(boost::beast::http::message<isRequest, FileBuffers, Fields>& m)
-            : m_body(m.body())
-        {
-        }
-
-		void init(boost::optional<std::uint64_t>, boost::system::error_code& ec)
-		{
-			ec.assign(0, ec.category());
-		}
-
-		template <typename ConstBufferSeq>
-		std::size_t put(const ConstBufferSeq& b, boost::system::error_code& ec)
-		{
-			// TODO: write to mmap
-			ec.assign(0, ec.category());
-			return buffer_size(b);
-		}
-
-		void finish(boost::system::error_code& ec)
-		{
-			ec.assign(0, ec.category());
-		}
-
-	private:
-		value_type& m_body;
-	};
-
 	class writer
 	{
 	public:
