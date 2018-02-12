@@ -82,7 +82,7 @@ void Session::do_read()
 
 void Session::on_read_header(boost::system::error_code ec, std::size_t bytes_transferred)
 {
-	m_str_request.emplace(std::move(m_parser));
+	m_body.emplace<0>(std::move(m_parser));
 
 	auto&& executor = boost::asio::bind_executor(
 		m_strand,
@@ -91,9 +91,9 @@ void Session::on_read_header(boost::system::error_code ec, std::size_t bytes_tra
 
 	// Read a request
 	if (m_stream)
-		async_read(*m_stream, m_buffer, *m_str_request, std::move(executor));
+		async_read(*m_stream, m_buffer, std::get<0>(m_body), std::move(executor));
 	else
-		async_read(m_socket,  m_buffer, *m_str_request, std::move(executor));
+		async_read(m_socket,  m_buffer, std::get<0>(m_body), std::move(executor));
 }
 
 // This function produces an HTTP response for the given
@@ -150,7 +150,7 @@ void Session::handle_https(Request&& req, Send&& send)
 
 void Session::on_read(boost::system::error_code ec, std::size_t)
 {
-	auto&& req = m_str_request->release();
+	auto&& req = std::get<0>(m_body).release();
 
 	// This means they closed the connection
 	if (ec == boost::beast::http::error::end_of_stream)

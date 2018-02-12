@@ -25,6 +25,7 @@
 #include <boost/filesystem/path.hpp>
 
 #include <optional>
+#include <variant>
 
 namespace hrb {
 
@@ -69,11 +70,9 @@ private:
 	// The parsed message are stored inside the parsers.
 	// Use parser::get() or release() to get the message.
 	EmptyRequestParser					m_parser;
-	std::optional<StringRequestParser>	m_str_request;
-	std::optional<FileRequestParser>	m_file_request;
+	std::variant<StringRequestParser, FileRequestParser> m_body;
 
 	Server& m_server;
-//	Request m_req;
 
 	// stats
 	std::size_t m_nth_session;
