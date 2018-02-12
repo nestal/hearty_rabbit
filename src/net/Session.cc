@@ -86,10 +86,7 @@ void Session::on_read_header(boost::system::error_code ec, std::size_t bytes_tra
 
 	auto&& executor = boost::asio::bind_executor(
 		m_strand,
-		[self=shared_from_this()](boost::system::error_code ec, std::size_t bytes)
-		{
-			self->on_read(ec, bytes);
-		}
+		[self=shared_from_this()](auto ec, auto bytes) {self->on_read(ec, bytes);}
 	);
 
 	// Read a request
