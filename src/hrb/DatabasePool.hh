@@ -19,7 +19,7 @@
 #include <mutex>
 
 namespace hrb {
-
+/// Test
 class DatabasePool
 {
 public:
