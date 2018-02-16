@@ -19,7 +19,10 @@
 
 namespace hrb {
 
-class FileBuffers
+/// A dynamic HTML response body base on a static file.
+/// This class is a HTML response body. It has a writer inner class that returns an array of 3 buffers.
+/// These 3 buffers are deduced by searching for a string in the static file.
+class SplitBuffers
 {
 public:
 	using const_buffers_type = std::array<boost::asio::const_buffer, 3>;
@@ -61,11 +64,11 @@ public:
 	class writer
 	{
 	public:
-        using const_buffers_type = FileBuffers::const_buffers_type;
+        using const_buffers_type = SplitBuffers::const_buffers_type;
 
         template<bool isRequest, class Fields>
         explicit
-        writer(boost::beast::http::message<isRequest, FileBuffers, Fields> const& msg)
+        writer(boost::beast::http::message<isRequest, SplitBuffers, Fields> const& msg)
             : m_body(msg.body())
         {
         }

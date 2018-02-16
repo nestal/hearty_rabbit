@@ -17,7 +17,7 @@
 #include "WebResources.hh"
 
 #include "crypto/Authenication.hh"
-#include "net/FileBuffers.hh"
+#include "net/SplitBuffers.hh"
 
 #include <boost/filesystem/path.hpp>
 #include <boost/beast/http/fields.hpp>
@@ -131,8 +131,8 @@ public:
 			on_invalid_session(std::move(req), std::forward<Send>(send));
 	}
 
-	http::response<FileBuffers> static_file_request(const Request& req);
-	http::response<FileBuffers> serve_home(unsigned version);
+	http::response<SplitBuffers> static_file_request(const Request& req);
+	http::response<SplitBuffers> serve_home(unsigned version);
 	static http::response<http::string_body> bad_request(const Request& req, boost::beast::string_view why);
 	static http::response<http::string_body> not_found(const Request& req);
 	static http::response<http::string_body> server_error(const Request& req, boost::beast::string_view what);
@@ -151,7 +151,7 @@ private:
 
 	using EmptyResponseSender  = std::function<void(http::response<http::empty_body>&&)>;
 	using StringResponseSender = std::function<void(http::response<http::string_body>&&)>;
-	using FileResponseSender   = std::function<void(http::response<FileBuffers>&&)>;
+	using FileResponseSender   = std::function<void(http::response<SplitBuffers>&&)>;
 
 	void on_login(const Request& req, EmptyResponseSender&& send);
 	void on_logout(const Request& req, const SessionID& id, EmptyResponseSender&& send);

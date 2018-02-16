@@ -15,7 +15,7 @@
 #include "Request.hh"
 
 #include "util/MMap.hh"
-#include "net/FileBuffers.hh"
+#include "net/SplitBuffers.hh"
 
 #include <boost/filesystem/path.hpp>
 #include <unordered_map>
@@ -27,8 +27,8 @@ class WebResources
 public:
 	explicit WebResources(const boost::filesystem::path& web_root);
 
-	http::response<FileBuffers> find_static(const std::string& filename, int version) const;
-	http::response<FileBuffers> find_dynamic(const std::string& filename, int version) const;
+	http::response<SplitBuffers> find_static(const std::string& filename, int version) const;
+	http::response<SplitBuffers> find_dynamic(const std::string& filename, int version) const;
 
 private:
 	class Resource
@@ -36,7 +36,7 @@ private:
 	public:
 		Resource(MMap&& file, std::string&& mime) : m_file{std::move(file)}, m_mime{std::move(mime)} {}
 
-		http::response<FileBuffers> get(int version) const;
+		http::response<SplitBuffers> get(int version) const;
 
 	private:
 		MMap        m_file;

@@ -53,25 +53,25 @@ WebResources::WebResources(const boost::filesystem::path& web_root) :
 {
 }
 
-http::response<FileBuffers> WebResources::find_static(const std::string& filename, int version) const
+http::response<SplitBuffers> WebResources::find_static(const std::string& filename, int version) const
 {
 	auto it = m_static.find(filename);
 	return it != m_static.end() ?
 		it->second.get(version) :
-		http::response<FileBuffers>{http::status::not_found, version};
+		http::response<SplitBuffers>{http::status::not_found, version};
 }
 
-http::response<FileBuffers> WebResources::find_dynamic(const std::string& filename, int version) const
+http::response<SplitBuffers> WebResources::find_dynamic(const std::string& filename, int version) const
 {
 	auto it = m_dynamic.find(filename);
 	return it != m_dynamic.end() ?
 		it->second.get(version) :
-		http::response<FileBuffers>{http::status::not_found, version};
+		http::response<SplitBuffers>{http::status::not_found, version};
 }
 
-http::response<FileBuffers> WebResources::Resource::get(int version) const
+http::response<SplitBuffers> WebResources::Resource::get(int version) const
 {
-	http::response<hrb::FileBuffers> result{
+	http::response<hrb::SplitBuffers> result{
 		std::piecewise_construct,
 		std::make_tuple(m_file.string()),
 		std::make_tuple(http::status::ok, version)

@@ -160,7 +160,7 @@ void Server::on_invalid_session(const Request& req, FileResponseSender&& send)
 		if (!ec)
 			Log(LOG_WARNING, "timer error %1% (%2%)", ec, ec.message());
 
-		send(http::response<FileBuffers>{http::status::forbidden, version});
+		send(http::response<SplitBuffers>{http::status::forbidden, version});
 	});
 }
 
@@ -207,12 +207,12 @@ http::response<http::string_body> Server::server_error(const Request& req, boost
 	return res;
 }
 
-http::response<FileBuffers> Server::serve_home(unsigned version)
+http::response<SplitBuffers> Server::serve_home(unsigned version)
 {
 	return m_lib.find_dynamic("index.html", version);
 }
 
-http::response<FileBuffers> Server::static_file_request(const Request& req)
+http::response<SplitBuffers> Server::static_file_request(const Request& req)
 {
 	Log(LOG_NOTICE, "requesting path %1%", req.target());
 
