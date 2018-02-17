@@ -15,6 +15,7 @@
 #include "crypto/Blake2.hh"
 
 #include <array>
+#include <iosfwd>
 #include <string_view>
 #include <type_traits>
 
@@ -32,5 +33,7 @@ static_assert(std::is_standard_layout<ObjectID>::value);
 
 std::string to_hex(const ObjectID& id);
 ObjectID hex_to_object_id(std::string_view base64);
+
+std::ostream& operator<<(std::ostream& os, const ObjectID& id);
 
 } // end of namespace

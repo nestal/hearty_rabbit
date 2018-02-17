@@ -93,6 +93,4 @@ private:
 	std::variant<MMap, Vec, std::string, redis::Reply> m_blob;
 };
 
-std::ostream& operator<<(std::ostream& os, const ObjectID& id);
-
 } // end of namespace hrb

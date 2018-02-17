@@ -19,15 +19,65 @@ BlobDatabase::BlobDatabase(const fs::path& base) : m_base{base}
 
 }
 
-boost::beast::file_posix BlobDatabase::tmp_file() const
+BlobDatabase::File BlobDatabase::tmp_file() const
 {
-	boost::beast::file_posix result;
-	auto fd = ::open(m_base.string().c_str(), O_TMPFILE | O_RDWR, S_IRUSR | S_IWUSR);
-	if (fd < 0)
-		throw std::system_error(errno, std::generic_category());
-	result.native_handle(fd);
+	boost::system::error_code err;
 
+	File result;
+	result.open(m_base.string().c_str(), {}, err);
+	if (err)
+		throw std::system_error(err);
 	return result;
+}
+
+bool BlobDatabase::File::is_open() const
+{
+	return m_file.is_open();
+}
+
+void BlobDatabase::File::close(boost::system::error_code& ec)
+{
+	return m_file.close(ec);
+}
+
+void BlobDatabase::File::open(char const *path, boost::beast::file_mode, boost::system::error_code& ec)
+{
+	auto fd = ::open(path, O_TMPFILE | O_RDWR, S_IRUSR | S_IWUSR);
+	if (fd < 0)
+		ec.assign(errno, boost::system::generic_category());
+	else
+		m_file.native_handle(fd);
+}
+
+std::uint64_t BlobDatabase::File::size(boost::system::error_code& ec) const
+{
+	return m_file.size(ec);
+}
+
+std::uint64_t BlobDatabase::File::pos(boost::system::error_code& ec) const
+{
+	return m_file.pos(ec);
+}
+
+void BlobDatabase::File::seek(std::uint64_t offset, boost::system::error_code& ec)
+{
+	return m_file.seek(offset, ec);
+}
+
+std::size_t BlobDatabase::File::read(void *buffer, std::size_t n, boost::system::error_code& ec) const
+{
+	return m_file.read(buffer, n, ec);
+}
+
+std::size_t BlobDatabase::File::write(void const *buffer, std::size_t n, boost::system::error_code& ec)
+{
+	m_hash.update(buffer, n);
+	return m_file.write(buffer, n, ec);
+}
+
+ObjectID BlobDatabase::File::ID()
+{
+	return ObjectID{m_hash.finalize()};
 }
 
 } // end of namespace hrb

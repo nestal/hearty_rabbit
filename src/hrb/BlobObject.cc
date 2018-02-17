@@ -265,15 +265,6 @@ std::string_view BlobObject::string() const
 	return {static_cast<const char*>(data.data()), data.size()};
 }
 
-std::ostream& operator<<(std::ostream& os, const ObjectID& id)
-{
-	for (auto ch : id)
-	{
-		os << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(ch);
-	}
-	return os;
-}
-
 std::string to_hex(const ObjectID& id)
 {
 	std::string result(id.size()*2, '\0');
@@ -299,6 +290,11 @@ bool operator!=(const ObjectID& id1, const ObjectID& id2)
 {
 	static_assert(id1.size() == id2.size());    // isn't it obvious?
 	return std::memcmp(id1.data(), id2.data(), id1.size()) != 0;
+}
+
+std::ostream& operator<<(std::ostream& os, const ObjectID& id)
+{
+	return os << to_hex(id);
 }
 
 } // end of namespace

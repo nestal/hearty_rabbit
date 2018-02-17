@@ -28,12 +28,16 @@ TEST_CASE("Open temp file", "[normal]")
 	REQUIRE(count == sizeof(test));
 	REQUIRE(ec == boost::system::error_code{});
 
+	// seek to begin in order to read back the data
 	tmp.seek(0, ec);
 	REQUIRE(ec == boost::system::error_code{});
+
 
 	char buf[80];
 	count = tmp.read(buf, sizeof(buf), ec);
 	REQUIRE(count == sizeof(test));
 	REQUIRE(ec == boost::system::error_code{});
 	REQUIRE(std::memcmp(test, buf, count) == 0);
+
+	REQUIRE(tmp.ID() != ObjectID{});
 }
