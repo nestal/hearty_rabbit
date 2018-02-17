@@ -40,4 +40,8 @@ TEST_CASE("Open temp file", "[normal]")
 	REQUIRE(std::memcmp(test, buf, count) == 0);
 
 	REQUIRE(tmp.ID() != ObjectID{});
+
+	auto dest = subject.open(std::move(tmp));
+	REQUIRE(exists(dest));
+	REQUIRE(file_size(dest) == sizeof(test));
 }

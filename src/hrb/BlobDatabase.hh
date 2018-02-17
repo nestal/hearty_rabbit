@@ -20,6 +20,7 @@
 namespace hrb {
 
 class ObjectID;
+class BlobObject;
 
 class BlobDatabase
 {
@@ -55,6 +56,8 @@ public:
 
 		ObjectID ID();
 
+		boost::beast::file_posix::native_handle_type native_handle() const;
+
 	private:
 		boost::beast::file_posix m_file;
 		Blake2  m_hash;
@@ -64,6 +67,8 @@ public:
 	explicit BlobDatabase(const fs::path& base);
 
 	File tmp_file() const;
+
+	fs::path open(File&& tmp) const;
 
 private:
 	fs::path    m_base;

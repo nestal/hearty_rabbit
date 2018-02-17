@@ -11,6 +11,9 @@
 //
 
 #include "BlobDatabase.hh"
+#include "BlobObject.hh"
+
+#include <sstream>
 
 namespace hrb {
 
@@ -30,6 +33,18 @@ BlobDatabase::File BlobDatabase::tmp_file() const
 	return result;
 }
 
+fs::path BlobDatabase::open(BlobDatabase::File&& tmp) const
+{
+	File file{std::move(tmp)};
+	auto dest = m_base/to_hex(file.ID());
+
+	std::ostringstream proc;
+	proc << "/proc/self/fd/" << file.native_handle();
+	::linkat(AT_FDCWD, proc.str().c_str(), AT_FDCWD, dest.string().c_str(), AT_SYMLINK_FOLLOW);
+
+	return dest;
+}
+
 bool BlobDatabase::File::is_open() const
 {
 	return m_file.is_open();
@@ -42,7 +57,9 @@ void BlobDatabase::File::close(boost::system::error_code& ec)
 
 void BlobDatabase::File::open(char const *path, boost::beast::file_mode, boost::system::error_code& ec)
 {
-	auto fd = ::open(path, O_TMPFILE | O_RDWR, S_IRUSR | S_IWUSR);
+	// Note that O_TMPFILE requires the "path" to be a directory.
+	// See http://man7.org/linux/man-pages/man2/open.2.html
+	auto fd = ::open(path, __O_TMPFILE | O_RDWR, S_IRUSR | S_IWUSR);
 	if (fd < 0)
 		ec.assign(errno, boost::system::generic_category());
 	else
@@ -78,6 +95,11 @@ std::size_t BlobDatabase::File::write(void const *buffer, std::size_t n, boost::
 ObjectID BlobDatabase::File::ID()
 {
 	return ObjectID{m_hash.finalize()};
+}
+
+boost::beast::file_posix::native_handle_type BlobDatabase::File::native_handle() const
+{
+	return m_file.native_handle();
 }
 
 } // end of namespace hrb
