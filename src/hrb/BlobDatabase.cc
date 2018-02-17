@@ -14,13 +14,16 @@
 #include "BlobObject.hh"
 
 #include <sstream>
-#include <iostream>
 
 namespace hrb {
 
 BlobDatabase::BlobDatabase(const fs::path& base) : m_base{base}
 {
+	if (exists(base) && !is_directory(base))
+		throw std::system_error(std::make_error_code(std::errc::file_exists));
 
+	if (!exists(base))
+		create_directories(base);
 }
 
 BlobDatabase::File BlobDatabase::tmp_file() const
@@ -42,9 +45,9 @@ fs::path BlobDatabase::save(BlobDatabase::File&& tmp, std::error_code& ec)
 	boost::system::error_code bec;
 	if (!exists(dest_path.parent_path()))
 		create_directories(dest_path.parent_path(), bec);
-	ec.assign(bec.value(), bec.category());
+//	ec.assign(bec.value(), bec.category());
 
-	if (!ec)
+//	if (!ec)
 	{
 		std::ostringstream proc;
 		proc << "/proc/self/fd/" << file.native_handle();
@@ -77,10 +80,10 @@ void BlobDatabase::File::open(char const *path, boost::beast::file_mode, boost::
 {
 	auto glibc_mkstemp = [path]
 	{
-		auto pathstr = (fs::path{path} / "blobXXXXXX").string();
+		auto pathstr = (fs::path{path} / "blob-XXXXXX").string();
 		auto fd = ::mkstemp(&pathstr[0]);
-		if (fd > 0)
-			::unlink(pathstr.c_str());
+//		if (fd > 0)
+//			::unlink(pathstr.c_str());
 		return fd;
 	};
 

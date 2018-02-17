@@ -18,7 +18,9 @@ using namespace hrb;
 
 TEST_CASE("Open temp file", "[normal]")
 {
-	BlobDatabase subject{"/tmp"};
+	fs::remove_all("/tmp/BlobDatabase-UT");
+
+	BlobDatabase subject{"/tmp/BlobDatabase-UT"};
 	auto tmp = subject.tmp_file();
 
 	boost::system::error_code ec;
@@ -43,6 +45,8 @@ TEST_CASE("Open temp file", "[normal]")
 
 	std::error_code sec;
 	auto dest = subject.save(std::move(tmp), sec);
+	INFO("save() error_code = " << sec << " " << sec.message());
+	REQUIRE(!sec);
 	REQUIRE(exists(dest));
 	REQUIRE(file_size(dest) == sizeof(test));
 }
