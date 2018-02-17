@@ -41,7 +41,8 @@ TEST_CASE("Open temp file", "[normal]")
 
 	REQUIRE(tmp.ID() != ObjectID{});
 
-	auto dest = subject.open(std::move(tmp));
+	std::error_code sec;
+	auto dest = subject.save(std::move(tmp), sec);
 	REQUIRE(exists(dest));
 	REQUIRE(file_size(dest) == sizeof(test));
 }

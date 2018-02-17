@@ -67,8 +67,10 @@ public:
 	explicit BlobDatabase(const fs::path& base);
 
 	File tmp_file() const;
+	fs::path save(File&& tmp, std::error_code& ec);
 
-	fs::path open(File&& tmp) const;
+private:
+	fs::path dest(ObjectID id) const;
 
 private:
 	fs::path    m_base;

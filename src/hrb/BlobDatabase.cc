@@ -14,6 +14,7 @@
 #include "BlobObject.hh"
 
 #include <sstream>
+#include <iostream>
 
 namespace hrb {
 
@@ -33,16 +34,33 @@ BlobDatabase::File BlobDatabase::tmp_file() const
 	return result;
 }
 
-fs::path BlobDatabase::open(BlobDatabase::File&& tmp) const
+fs::path BlobDatabase::save(BlobDatabase::File&& tmp, std::error_code& ec)
 {
 	File file{std::move(tmp)};
-	auto dest = m_base/to_hex(file.ID());
+	auto dest_path = dest(file.ID());
 
-	std::ostringstream proc;
-	proc << "/proc/self/fd/" << file.native_handle();
-	::linkat(AT_FDCWD, proc.str().c_str(), AT_FDCWD, dest.string().c_str(), AT_SYMLINK_FOLLOW);
+	boost::system::error_code bec;
+	if (!exists(dest_path.parent_path()))
+		create_directories(dest_path.parent_path(), bec);
+	ec.assign(bec.value(), bec.category());
 
-	return dest;
+	if (!ec)
+	{
+		std::ostringstream proc;
+		proc << "/proc/self/fd/" << file.native_handle();
+		if (::linkat(AT_FDCWD, proc.str().c_str(), AT_FDCWD, dest_path.string().c_str(), AT_SYMLINK_FOLLOW) != 0)
+			ec.assign(errno, std::generic_category());
+	}
+
+	return dest_path;
+}
+
+fs::path BlobDatabase::dest(ObjectID id) const
+{
+	auto hex = to_hex(id);
+	assert(hex.size() > 2);
+
+	return m_base / hex.substr(0, 2) / hex;
 }
 
 bool BlobDatabase::File::is_open() const
@@ -57,9 +75,30 @@ void BlobDatabase::File::close(boost::system::error_code& ec)
 
 void BlobDatabase::File::open(char const *path, boost::beast::file_mode, boost::system::error_code& ec)
 {
+	auto glibc_mkstemp = [path]
+	{
+		auto pathstr = (fs::path{path} / "blobXXXXXX").string();
+		auto fd = ::mkstemp(&pathstr[0]);
+		if (fd > 0)
+			::unlink(pathstr.c_str());
+		return fd;
+	};
+
+#ifdef O_TMPFILE
 	// Note that O_TMPFILE requires the "path" to be a directory.
 	// See http://man7.org/linux/man-pages/man2/open.2.html
-	auto fd = ::open(path, __O_TMPFILE | O_RDWR, S_IRUSR | S_IWUSR);
+	auto fd = ::open(path, O_TMPFILE | O_RDWR, S_IRUSR | S_IWUSR);
+
+	// Fallback to glibc mkstemp() if O_TMPFILE is not supported
+	// by the Linux kernel.
+	if (fd < 0 && errno == EISDIR)
+		fd = glibc_mkstemp();
+#else
+	// CentOS 7 (i.e. Linux 3.10) does not support O_TMPFILE, so
+	// don't bother even trying.
+	auto fd = glibc_mkstemp();
+#endif
+
 	if (fd < 0)
 		ec.assign(errno, boost::system::generic_category());
 	else
@@ -92,6 +131,9 @@ std::size_t BlobDatabase::File::write(void const *buffer, std::size_t n, boost::
 	return m_file.write(buffer, n, ec);
 }
 
+/// Get the object ID (blake2 hash) of the file.
+/// This function is not const. It will consume the internal hash object such that subsequent
+/// calls to write() cannot update it. Do not call write() after calling this function.
 ObjectID BlobDatabase::File::ID()
 {
 	return ObjectID{m_hash.finalize()};
