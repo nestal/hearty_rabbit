@@ -140,7 +140,7 @@ TEST_CASE("GET static resource", "[normal]")
 	Server subject{cfg};
 
 	REQUIRE(cfg.web_root() == (current_src/"../../../lib").lexically_normal());
-	Request req;
+	StringRequest req;
 	req.version(11);
 
 	SECTION("Request login.html success without login")
@@ -374,7 +374,7 @@ TEST_CASE("GET static resource", "[normal]")
 
 TEST_CASE("Extract prefix from URL until '/'", "[normal]")
 {
-	Request req;
+	StringRequest req;
 	SECTION("No suffix")
 	{
 		req.target("/target");

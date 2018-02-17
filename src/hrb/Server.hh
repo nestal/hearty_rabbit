@@ -52,14 +52,14 @@ class Server
 public:
 	explicit Server(const Configuration& cfg);
 
-	http::response<http::empty_body> redirect_http(const Request& req);
+	http::response<http::empty_body> redirect_http(const StringRequest& req);
 
 	static std::tuple<
 		std::string_view,
 		std::string_view
-	> extract_prefix(const Request& req);
+	> extract_prefix(const StringRequest& req);
 
-	template <class Send>
+	template <class Request, class Send>
 	void on_valid_session(Request&& req, Send&& send, std::string_view user, const SessionID& session)
 	{
 		if (req.target() == "/")
@@ -77,10 +77,10 @@ public:
 		if (req.target().starts_with(url::upload))
 			return on_upload(std::move(req), std::forward<Send>(send), user);
 
-		return send(not_found(req));
+		return send(not_found(req.target(), req.version()));
 	}
 
-	template <class Send>
+	template <class Request, class Send>
 	void on_session(Request&& req, Send&& send, const SessionID& session)
 	{
 		auto db = m_db.alloc(m_ioc);
@@ -108,7 +108,7 @@ public:
 	// request. The type of the response object depends on the
 	// contents of the request, so the interface requires the
 	// caller to pass a generic lambda for receiving the response.
-	template<class Send>
+	template<class Request, class Send>
 	void handle_https(Request&& req, Send&& send)
 	{
 		// Obviously "/login" always allow anonymous access, otherwise no one can login.
@@ -131,11 +131,11 @@ public:
 			on_invalid_session(std::move(req), std::forward<Send>(send));
 	}
 
-	http::response<SplitBuffers> static_file_request(const Request& req);
+	http::response<SplitBuffers> static_file_request(const StringRequest& req);
 	http::response<SplitBuffers> serve_home(unsigned version);
-	static http::response<http::string_body> bad_request(boost::beast::string_view why, unsigned version);
-	static http::response<http::string_body> not_found(const Request& req);
-	static http::response<http::string_body> server_error(const Request& req, boost::beast::string_view what);
+	static http::response<http::string_body> bad_request(boost::string_view why, unsigned version);
+	static http::response<http::string_body> not_found(boost::string_view target, unsigned version);
+	static http::response<http::string_body> server_error(boost::string_view what, unsigned version);
 	static http::response<http::empty_body> redirect(boost::beast::string_view where, unsigned version);
 
 	void disconnect_db();
@@ -153,12 +153,12 @@ private:
 	using StringResponseSender = std::function<void(http::response<http::string_body>&&)>;
 	using FileResponseSender   = std::function<void(http::response<SplitBuffers>&&)>;
 
-	void on_login(const Request& req, EmptyResponseSender&& send);
-	void on_logout(const Request& req, const SessionID& id, EmptyResponseSender&& send);
-	void on_invalid_session(const Request& req, FileResponseSender&& send);
-	void on_upload(Request&& req, EmptyResponseSender&& send, std::string_view user);
-	void get_blob(const Request& req, StringResponseSender&& send);
-	http::response<http::string_body> get_dir(const Request& req);
+	void on_login(const StringRequest& req, EmptyResponseSender&& send);
+	void on_logout(const StringRequest& req, const SessionID& id, EmptyResponseSender&& send);
+	void on_invalid_session(const StringRequest& req, FileResponseSender&& send);
+	void on_upload(StringRequest&& req, EmptyResponseSender&& send, std::string_view user);
+	void get_blob(const StringRequest& req, StringResponseSender&& send);
+	http::response<http::string_body> get_dir(const StringRequest& req);
 	static bool allow_anonymous(boost::string_view target);
 
 private:

@@ -97,12 +97,10 @@ void Session::on_read_header(boost::system::error_code ec, std::size_t bytes_tra
 
 		auto target = header.target();
 		std::cout << "on_read_header(): requesting " << target << " " << ec.message() << " " << bytes_transferred
-			<< "parser: " << m_parser->is_header_done() << std::endl;
+			<< " parser: " << m_parser->is_header_done() << std::endl;
 
 		for (auto&& field: header)
 			std::cout << "field = " << field.name() << " (" << field.name_string() << ") " << field.value() << std::endl;
-
-		m_body.emplace<0>(std::move(*m_parser));
 
 		auto&& executor = boost::asio::bind_executor(
 			m_strand,
@@ -110,11 +108,26 @@ void Session::on_read_header(boost::system::error_code ec, std::size_t bytes_tra
 			{ self->on_read(ec, bytes); }
 		);
 
-		// Read a request
-		if (m_stream)
-			async_read(*m_stream, m_buffer, std::get<0>(m_body), std::move(executor));
-		else
-			async_read(m_socket, m_buffer, std::get<0>(m_body), std::move(executor));
+/*		if (target.starts_with("/upload"))
+		{
+			m_body.emplace<1>(std::move(*m_parser));
+
+			// Read a request
+			if (m_stream)
+				async_read(*m_stream, m_buffer, std::get<1>(m_body), std::move(executor));
+			else
+				async_read(m_socket, m_buffer, std::get<1>(m_body), std::move(executor));
+		}
+		else*/
+		{
+			m_body.emplace<0>(std::move(*m_parser));
+
+			// Read a request
+			if (m_stream)
+				async_read(*m_stream, m_buffer, std::get<0>(m_body), std::move(executor));
+			else
+				async_read(m_socket, m_buffer, std::get<0>(m_body), std::move(executor));
+		}
 	}
 }
 
@@ -122,7 +135,7 @@ void Session::on_read_header(boost::system::error_code ec, std::size_t bytes_tra
 // request. The type of the response object depends on the
 // contents of the request, so the interface requires the
 // caller to pass a generic lambda for receiving the response.
-template<class Send>
+template<class Request, class Send>
 void Session::handle_https(Request&& req, Send&& send)
 {
 	try
@@ -163,11 +176,11 @@ void Session::handle_https(Request&& req, Send&& send)
 		auto ec = e.code();
 		// Handle the case where the file doesn't exist
 		if( ec == std::errc::no_such_file_or_directory)
-			return send(m_server.not_found(req));
+			return send(m_server.not_found(req.target(), req.version()));
 
 		// Handle an unknown error
 		if(ec)
-			return send(m_server.server_error(req, ec.message()));
+			return send(m_server.server_error(ec.message(), req.version()));
 	}
 }
 

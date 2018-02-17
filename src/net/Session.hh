@@ -58,7 +58,7 @@ private:
 	// request. The type of the response object depends on the
 	// contents of the request, so the interface requires the
 	// caller to pass a generic lambda for receiving the response.
-	template<class Send>
+	template<class Request, class Send>
 	void handle_https(Request&& req, Send&& send);
 
 private:

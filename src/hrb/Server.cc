@@ -39,7 +39,7 @@ Server::Server(const Configuration& cfg) :
 	OpenSSL_add_all_digests();
 }
 
-void Server::on_login(const Request& req, EmptyResponseSender&& send)
+void Server::on_login(const StringRequest& req, EmptyResponseSender&& send)
 {
 	auto&& body = req.body();
 	if (req[http::field::content_type] == "application/x-www-form-urlencoded")
@@ -73,7 +73,7 @@ void Server::on_login(const Request& req, EmptyResponseSender&& send)
 		send(redirect("/", req.version()));
 }
 
-void Server::on_logout(const Request& req, const SessionID& id, EmptyResponseSender&& send)
+void Server::on_logout(const StringRequest& req, const SessionID& id, EmptyResponseSender&& send)
 {
 	auto db = m_db.alloc(m_ioc);
 	destroy_session(id, *db, [this, db, send=std::move(send), version=req.version()](auto&& ec) mutable
@@ -94,7 +94,7 @@ http::response<http::empty_body> Server::redirect(boost::beast::string_view wher
 	return res;
 }
 
-void Server::get_blob(const Request& req, StringResponseSender&& send)
+void Server::get_blob(const StringRequest& req, StringResponseSender&& send)
 {
 	auto blob_id = req.target().size() > url::login.size() ?
 		req.target().substr(url::login.size()) :
@@ -102,7 +102,7 @@ void Server::get_blob(const Request& req, StringResponseSender&& send)
 
 	auto object_id = hex_to_object_id(std::string_view{blob_id.data(), blob_id.size()});
 	if (object_id == ObjectID{})
-		send(not_found(req));
+		send(not_found(req.target(), req.version()));
 	else
 	{
 		auto db = m_db.alloc(m_ioc);
@@ -125,7 +125,7 @@ void Server::get_blob(const Request& req, StringResponseSender&& send)
 	}
 }
 
-void Server::on_upload(Request&& req, EmptyResponseSender&& send, std::string_view user)
+void Server::on_upload(StringRequest&& req, EmptyResponseSender&& send, std::string_view user)
 {
 	auto [prefix, filename] = extract_prefix(req);
 
@@ -144,7 +144,7 @@ void Server::on_upload(Request&& req, EmptyResponseSender&& send, std::string_vi
 	});
 }
 
-void Server::on_invalid_session(const Request& req, FileResponseSender&& send)
+void Server::on_invalid_session(const StringRequest& req, FileResponseSender&& send)
 {
 	// If the target is home (i.e. "/"), show them the login page.
 	// Do not penalize the user, because their session may be expired.
@@ -164,7 +164,7 @@ void Server::on_invalid_session(const Request& req, FileResponseSender&& send)
 	});
 }
 
-http::response<http::string_body> Server::get_dir(const Request& req)
+http::response<http::string_body> Server::get_dir(const StringRequest& req)
 {
 	return http::response<http::string_body>();
 }
@@ -182,25 +182,25 @@ http::response<http::string_body> Server::bad_request(boost::beast::string_view 
 }
 
 // Returns a not found response
-http::response<http::string_body> Server::not_found(const Request& req)
+http::response<http::string_body> Server::not_found(boost::string_view target, unsigned version)
 {
 	using namespace std::literals;
 	http::response<http::string_body> res{
 		std::piecewise_construct,
-		std::make_tuple("The resource '"s + req.target().to_string() + "' was not found."),
-		std::make_tuple(http::status::not_found, req.version())
+		std::make_tuple("The resource '"s + target.to_string() + "' was not found."),
+		std::make_tuple(http::status::not_found, version)
 	};
 	res.set(http::field::content_type, "text/plain");
 	res.prepare_payload();
 	return res;
 }
 
-http::response<http::string_body> Server::server_error(const Request& req, boost::beast::string_view what)
+http::response<http::string_body> Server::server_error(boost::beast::string_view what, unsigned version)
 {
 	http::response<http::string_body> res{
 		std::piecewise_construct,
 		std::make_tuple("An error occurred: '" + what.to_string() + "'"),
-		std::make_tuple(http::status::internal_server_error, req.version())
+		std::make_tuple(http::status::internal_server_error, version)
 	};
 	res.set(http::field::content_type, "text/plain");
 	res.prepare_payload();
@@ -212,7 +212,7 @@ http::response<SplitBuffers> Server::serve_home(unsigned version)
 	return m_lib.find_dynamic("index.html", version);
 }
 
-http::response<SplitBuffers> Server::static_file_request(const Request& req)
+http::response<SplitBuffers> Server::static_file_request(const StringRequest& req)
 {
 	Log(LOG_NOTICE, "requesting path %1%", req.target());
 
@@ -222,7 +222,7 @@ http::response<SplitBuffers> Server::static_file_request(const Request& req)
 	return m_lib.find_static(std::string{filepath}, req.version());
 }
 
-http::response<http::empty_body> Server::redirect_http(const Request &req)
+http::response<http::empty_body> Server::redirect_http(const StringRequest &req)
 {
 	using namespace std::literals;
 	static const auto https_host = "https://" + m_cfg.server_name()
@@ -333,7 +333,7 @@ bool Server::allow_anonymous(boost::string_view target)
 std::tuple<
 	std::string_view,
 	std::string_view
-> Server::extract_prefix(const Request& req)
+> Server::extract_prefix(const StringRequest& req)
 {
 	auto target = req.target();
 	auto sv = std::string_view{target.data(), target.size()};
