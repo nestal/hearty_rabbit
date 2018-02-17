@@ -137,11 +137,9 @@ std::size_t BlobDatabase::TempFile::write(void const *buffer, std::size_t n, boo
 }
 
 /// Get the object ID (blake2 hash) of the file.
-/// This function is not const. It will consume the internal hash object such that subsequent
-/// calls to write() cannot update it. Do not call write() after calling this function.
-ObjectID BlobDatabase::TempFile::ID()
+ObjectID BlobDatabase::TempFile::ID() const
 {
-	return ObjectID{m_hash.finalize()};
+	return ObjectID{Blake2{m_hash}.finalize()};
 }
 
 boost::beast::file_posix::native_handle_type BlobDatabase::TempFile::native_handle() const

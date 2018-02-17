@@ -60,7 +60,7 @@ public:
         /// Write to the open file
         std::size_t write(void const* buffer, std::size_t n, boost::system::error_code& ec);
 
-		ObjectID ID();
+		ObjectID ID() const;
 
 		boost::beast::file_posix::native_handle_type native_handle() const;
 
