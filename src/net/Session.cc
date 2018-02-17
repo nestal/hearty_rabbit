@@ -74,23 +74,35 @@ void Session::do_read()
 		[self=shared_from_this()](auto ec, auto bytes) {self->on_read_header(ec, bytes);}
 	);
 
+	std::cout << "do read... reuse parser? " << std::endl;
+	m_parser.emplace();
+
 	// Read a request
 	if (m_stream)
-		async_read_header(*m_stream, m_buffer, m_parser, std::move(executor));
+		async_read_header(*m_stream, m_buffer, *m_parser, std::move(executor));
 	else
-		async_read_header(m_socket, m_buffer, m_parser, std::move(executor));
+		async_read_header(m_socket, m_buffer, *m_parser, std::move(executor));
 }
 
 void Session::on_read_header(boost::system::error_code ec, std::size_t bytes_transferred)
 {
 	if (ec)
-		on_read(ec, bytes_transferred);
-	else if (bytes_transferred > 0)
 	{
-		auto target = m_parser.get().target();
-		std::cout << "header requesting " << target << " " << ec.message() << " " << bytes_transferred << std::endl;
+		std::cout << "on_read_header(): error " << ec.message() << " " << bytes_transferred << std::endl;
+		on_read(ec, bytes_transferred);
+	}
+	else
+	{
+		auto&& header = m_parser->get();
 
-		m_body.emplace<0>(std::move(m_parser));
+		auto target = header.target();
+		std::cout << "on_read_header(): requesting " << target << " " << ec.message() << " " << bytes_transferred
+			<< "parser: " << m_parser->is_header_done() << std::endl;
+
+		for (auto&& field: header)
+			std::cout << "field = " << field.name() << " (" << field.name_string() << ") " << field.value() << std::endl;
+
+		m_body.emplace<0>(std::move(*m_parser));
 
 		auto&& executor = boost::asio::bind_executor(
 			m_strand,
