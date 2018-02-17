@@ -1,4 +1,10 @@
-# HeartyRabbit ![status](https://travis-ci.org/nestal/hearty_rabbit.svg?branch=develop)
+# HeartyRabbit
+
+Branch  | Status
+--------|--------
+[Develop](https://github.com/nestal/hearty_rabbit/tree/develop) | ![status](https://travis-ci.org/nestal/hearty_rabbit.svg?branch=develop)
+[Master](https://github.com/nestal/hearty_rabbit/tree/master)  | ![status](https://travis-ci.org/nestal/hearty_rabbit.svg?branch=master)
+
 It's a web server develop using [boost/beast](https://github.com/boostorg/beast), but it's
 not doing anything useful yet.
 

@@ -21,7 +21,17 @@ namespace hrb {
 
 /// A dynamic HTML response body base on a static file.
 /// This class is a HTML response body. It has a writer inner class that returns an array of 3 buffers.
-/// These 3 buffers are deduced by searching for a string in the static file.
+/// These 3 buffers are deduced by searching for a string in the static file. The primary purpose of this
+/// class is to inject the <script> tag in HTML files. The constructor will search for the <head> tag and
+/// save the offset in the HTML file. Then when the HTML file is sent to the browser, it will be split
+/// into three buffers:
+///
+/// 1. From the beginning to the <head> tag.
+/// 2. The additional <script> tag.
+/// 3. The rest of the HTML file.
+///
+/// Only the middle buffer can be assigned dynamically. The first and third buffers are specified by
+/// std::string_view
 class SplitBuffers
 {
 public:
@@ -34,7 +44,7 @@ public:
 			m_file{file},
 			m_extra{extra}
 		{
-			m_offset = needle.size() > 0 ? m_file.find(needle) : m_file.npos;
+			m_offset = needle.empty() ? m_file.npos : m_file.find(needle);
 			if (m_offset != m_file.npos)
 				m_offset += needle.size();
 			else
