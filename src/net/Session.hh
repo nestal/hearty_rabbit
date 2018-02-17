@@ -48,7 +48,6 @@ public:
 	void on_handshake(boost::system::error_code ec);
 	void do_read();
 	void on_read_header(boost::system::error_code ec, std::size_t bytes_transferred);
-	template <std::size_t parser_index>
 	void on_read(boost::system::error_code ec, std::size_t bytes_transferred);
 	void on_write(boost::system::error_code ec, std::size_t bytes_transferred, bool close);
 	void do_close();

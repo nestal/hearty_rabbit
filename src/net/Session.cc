@@ -86,28 +86,14 @@ void Session::on_read_header(boost::system::error_code ec, std::size_t bytes_tra
 		for (auto&& field: header)
 			std::cout << "field = " << field.name() << " (" << field.name_string() << ") " << field.value() << std::endl;
 
-/*		if (target.starts_with("/upload"))
-		{
-			m_body.emplace<1>(std::move(*m_parser));
+		m_body.emplace<0>(std::move(*m_parser));
 
-			// Read a request
-			if (m_stream)
-				async_read(*m_stream, m_buffer, std::get<1>(m_body), std::move(executor));
-			else
-				async_read(m_socket, m_buffer, std::get<1>(m_body), std::move(executor));
-		}
-		else*/
-		{
-			auto&& executor = boost::asio::bind_executor(
-				m_strand,
-				[self = shared_from_this()](auto ec, auto bytes)
-				{ self->on_read<0>(ec, bytes); }
-			);
-			m_body.emplace<0>(std::move(*m_parser));
-
-			// Read a request
-			async_read(m_stream, m_buffer, std::get<0>(m_body), std::move(executor));
-		}
+		// Read a request
+		async_read(m_stream, m_buffer, std::get<0>(m_body), boost::asio::bind_executor(
+			m_strand,
+			[self = shared_from_this()](auto ec, auto bytes)
+			{ self->on_read(ec, bytes); }
+		));
 	}
 }
 
@@ -188,7 +174,6 @@ void Session::handle_read_error(boost::system::error_code ec)
 	}
 }
 
-template <std::size_t parser_index>
 void Session::on_read(boost::system::error_code ec, std::size_t)
 {
 	// This means they closed the connection
@@ -197,16 +182,28 @@ void Session::on_read(boost::system::error_code ec, std::size_t)
 
 	else
 	{
-		auto req = std::get<parser_index>(m_body).release();
-		auto sender = [self = shared_from_this(), keep_alive = req.keep_alive()](auto&& response)
+		struct RequestVisitor
 		{
-			self->send_response(std::move(response), keep_alive);
+			void operator()(StringRequestParser& parser) const
+			{
+				auto req = parser.release();
+				auto sender = [self=pthis->shared_from_this(), keep_alive = req.keep_alive()](auto&& response)
+				{
+					self->send_response(std::move(response), keep_alive);
+				};
+
+				if (pthis->validate_request(req))
+				{
+					pthis->m_server.handle_https(std::move(req), std::move(sender));
+				}
+			}
+			void operator()(UploadRequestParser& parser) const
+			{
+			}
+			Session *pthis;
 		};
 
-		if (validate_request(req))
-		{
-			m_server.handle_https(std::move(req), std::move(sender));
-		}
+		std::visit(RequestVisitor{this}, m_body);
 	}
 	m_nth_transaction++;
 }
