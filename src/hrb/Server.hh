@@ -14,6 +14,7 @@
 
 #include "Request.hh"
 #include "DatabasePool.hh"
+#include "BlobDatabase.hh"
 #include "WebResources.hh"
 
 #include "crypto/Authenication.hh"
@@ -102,12 +103,22 @@ public:
 		);
 
 	}
+
+	template<class Send>
+	void handle_https(UploadRequest&& req, Send&& send)
+	{
+//		m_blob_db.save(req.body());
+		return send(not_found("HAHAHA: ", req.version()));
+	}
+
+	BlobDatabase::TempFile prepare_upload() const;
+
 	// This function produces an HTTP response for the given
 	// request. The type of the response object depends on the
 	// contents of the request, so the interface requires the
 	// caller to pass a generic lambda for receiving the response.
-	template<class Request, class Send>
-	void handle_https(Request&& req, Send&& send)
+	template<class Send>
+	void handle_https(StringRequest&& req, Send&& send)
 	{
 		// Obviously "/login" always allow anonymous access, otherwise no one can login.
 		if (req.target() == url::login)
@@ -166,6 +177,7 @@ private:
 
 	DatabasePool    m_db;
 	WebResources    m_lib;
+	BlobDatabase    m_blob_db;
 };
 
 } // end of namespace

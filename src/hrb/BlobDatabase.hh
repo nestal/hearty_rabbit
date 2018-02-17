@@ -34,7 +34,7 @@ public:
 		~TempFile();
 
 		TempFile& operator=(const TempFile&) = delete;
-		TempFile& operator=(TempFile&) = default;
+		TempFile& operator=(TempFile&&) = default;
 
 		/// Returns `true` if the file is open
         bool is_open() const;

@@ -34,7 +34,8 @@ Server::Server(const Configuration& cfg) :
 	m_cfg{cfg},
 	m_ioc{static_cast<int>(std::max(1UL, cfg.thread_count()))},
 	m_db{cfg.redis()},
-	m_lib{cfg.web_root()}
+	m_lib{cfg.web_root()},
+	m_blob_db{cfg.blob_path()}
 {
 	OpenSSL_add_all_digests();
 }
@@ -337,6 +338,14 @@ std::string Server::https_root() const
 	using namespace std::literals;
 	return "https://" + m_cfg.server_name()
 		+ (m_cfg.listen_https().port() == 443 ? ""s : (":"s + std::to_string(m_cfg.listen_https().port())));
+}
+
+BlobDatabase::TempFile Server::prepare_upload() const
+{
+	BlobDatabase::TempFile file;
+	boost::system::error_code ec;
+	file.open(m_cfg.blob_path().string().c_str(), boost::beast::file_mode::write, ec);
+	return file;
 }
 
 } // end of namespace

@@ -86,14 +86,20 @@ void Session::on_read_header(boost::system::error_code ec, std::size_t bytes_tra
 		for (auto&& field: header)
 			std::cout << "field = " << field.name() << " (" << field.name_string() << ") " << field.value() << std::endl;
 
-		m_body.emplace<0>(std::move(*m_parser));
 
-		// Read a request
-		async_read(m_stream, m_buffer, std::get<0>(m_body), boost::asio::bind_executor(
-			m_strand,
-			[self = shared_from_this()](auto ec, auto bytes)
-			{ self->on_read(ec, bytes); }
-		));
+		if (target == hrb::url::upload && header.method() == http::verb::put)
+			m_body.emplace<1>(std::move(*m_parser)).get().body().reset(m_server.prepare_upload(), ec);
+		else
+			m_body.emplace<0>(std::move(*m_parser));
+
+		std::visit([self = shared_from_this(), this](auto&& parser)
+		{
+			// Read a request
+			async_read(m_stream, m_buffer, parser, boost::asio::bind_executor(
+				m_strand,
+				[self](auto ec, auto bytes){self->on_read(ec, bytes);}
+			));
+		}, m_body);
 	}
 }
 
@@ -182,28 +188,19 @@ void Session::on_read(boost::system::error_code ec, std::size_t)
 
 	else
 	{
-		struct RequestVisitor
+		std::visit([self=shared_from_this(), this](auto&& parser)
 		{
-			void operator()(StringRequestParser& parser) const
+			auto req = parser.release();
+			auto sender = [self, keep_alive = req.keep_alive()](auto&& response)
 			{
-				auto req = parser.release();
-				auto sender = [self=pthis->shared_from_this(), keep_alive = req.keep_alive()](auto&& response)
-				{
-					self->send_response(std::move(response), keep_alive);
-				};
+				self->send_response(std::move(response), keep_alive);
+			};
 
-				if (pthis->validate_request(req))
-				{
-					pthis->m_server.handle_https(std::move(req), std::move(sender));
-				}
-			}
-			void operator()(UploadRequestParser& parser) const
+			if (validate_request(req))
 			{
+				m_server.handle_https(std::move(req), std::move(sender));
 			}
-			Session *pthis;
-		};
-
-		std::visit(RequestVisitor{this}, m_body);
+		}, m_body);
 	}
 	m_nth_transaction++;
 }
