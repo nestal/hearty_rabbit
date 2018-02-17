@@ -136,8 +136,6 @@ MMap& MMap::operator=(MMap&& rhs) noexcept
 {
 	MMap copy{std::move(rhs)};
 	swap(copy);
-	assert(!rhs.is_opened());
-
 	return *this;
 }
 

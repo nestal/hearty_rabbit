@@ -16,6 +16,7 @@
 
 #include <boost/asio/bind_executor.hpp>
 #include <boost/asio/strand.hpp>
+#include <iostream>
 
 namespace hrb {
 
@@ -82,6 +83,9 @@ void Session::do_read()
 
 void Session::on_read_header(boost::system::error_code ec, std::size_t bytes_transferred)
 {
+	auto target = m_parser.get().target();
+	std::cout << "header requesting " << target << std::endl;
+
 	m_body.emplace<0>(std::move(m_parser));
 
 	auto&& executor = boost::asio::bind_executor(

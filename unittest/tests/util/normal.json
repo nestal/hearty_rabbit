@@ -3,7 +3,7 @@
   "private_key": "key.pem",
   "web_root": "/usr/lib/hearty_rabbit",
   "server_name" : "example.com",
-  "cache_base": "/var/hearty_rabbit",
+  "blob_path": "/var/hearty_rabbit",
   "http": {
     "address": "0.0.0.0",
     "port": 8080
