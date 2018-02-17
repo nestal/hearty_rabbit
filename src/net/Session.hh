@@ -59,8 +59,13 @@ private:
 	// request. The type of the response object depends on the
 	// contents of the request, so the interface requires the
 	// caller to pass a generic lambda for receiving the response.
-	template<class Request, class Send>
-	void handle_https(Request&& req, Send&& send);
+	template<class Request>
+	bool validate_request(const Request& req);
+
+	template <class Response>
+	void send_response(Response&& response, bool keep_alive = false);
+
+	void handle_read_error(boost::system::error_code ec);
 
 private:
 	tcp::socket		                                            m_socket;

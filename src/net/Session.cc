@@ -64,7 +64,7 @@ void Session::do_read()
 		[self=shared_from_this()](auto ec, auto bytes) {self->on_read_header(ec, bytes);}
 	);
 
-	std::cout << "do read... reuse parser? " << std::endl;
+	// Destroy and re-construct the parser for a new HTTP transaction
 	m_parser.emplace();
 
 	// Read a request
@@ -74,10 +74,7 @@ void Session::do_read()
 void Session::on_read_header(boost::system::error_code ec, std::size_t bytes_transferred)
 {
 	if (ec)
-	{
-		std::cout << "on_read_header(): error " << ec.message() << " " << bytes_transferred << std::endl;
-		on_read<0>(ec, bytes_transferred);
-	}
+		handle_read_error(ec);
 	else
 	{
 		auto&& header = m_parser->get();
@@ -118,52 +115,76 @@ void Session::on_read_header(boost::system::error_code ec, std::size_t bytes_tra
 // request. The type of the response object depends on the
 // contents of the request, so the interface requires the
 // caller to pass a generic lambda for receiving the response.
-template<class Request, class Send>
-void Session::handle_https(Request&& req, Send&& send)
+template<class Request>
+bool Session::validate_request(const Request& req)
 {
-	try
+	boost::system::error_code ec;
+	auto endpoint = m_socket.remote_endpoint(ec);
+	if (ec)
+		Log(LOG_WARNING, "remote_endpoint() error: %1% %2%", ec, ec.message());
+
+	Log(
+		LOG_INFO,
+		"%1%:%2% request %3% from %4% (version %5%) %6% bytes",
+		m_nth_session,
+		m_nth_transaction,
+		req.target(),
+		endpoint,
+		req.version(),
+		req[http::field::content_length]
+	);
+
+	// Make sure we can handle the method
+	if (req.method() != http::verb::get  &&
+	    req.method() != http::verb::post &&
+	    req.method() != http::verb::put &&
+		req.method() != http::verb::head)
 	{
-		boost::system::error_code ec;
-		auto endpoint = m_socket.remote_endpoint(ec);
-		if (ec)
-			Log(LOG_WARNING, "remote_endpoint() error: %1% %2%", ec, ec.message());
-
-		Log(
-			LOG_INFO,
-			"%1%:%2% request %3% from %4% (version %5%) %6% bytes",
-			m_nth_session,
-			m_nth_transaction,
-			req.target(),
-			endpoint,
-			req.version(),
-			req[http::field::content_length]
-		);
-
-		// Make sure we can handle the method
-		if (req.method() != http::verb::get  &&
-		    req.method() != http::verb::post &&
-		    req.method() != http::verb::put &&
-			req.method() != http::verb::head)
-			return send(m_server.bad_request("Unknown HTTP-method", req.version()));
-
-		// Request path must be absolute and not contain "..".
-		if (req.target().empty() ||
-		    req.target()[0] != '/' ||
-		    req.target().find("..") != boost::beast::string_view::npos)
-			return send(m_server.bad_request("Illegal request-target", req.version()));
-
-		return m_server.handle_https(std::move(req), std::move(send));
+		send_response(m_server.bad_request("Unknown HTTP-method", req.version()));
+		return false;
 	}
-	catch (std::system_error& e)
-	{
-		auto ec = e.code();
-		// Handle the case where the file doesn't exist
-		if( ec == std::errc::no_such_file_or_directory)
-			return send(m_server.not_found(req.target(), req.version()));
 
-		// Handle an unknown error
-		if(ec)
-			return send(m_server.server_error(ec.message(), req.version()));
+	// Request path must be absolute and not contain "..".
+	if (req.target().empty() ||
+	    req.target()[0] != '/' ||
+	    req.target().find("..") != boost::beast::string_view::npos)
+	{
+		send_response(m_server.bad_request("Illegal request-target", req.version()));
+		return false;
+	}
+
+	return true;
+
+}
+
+template <class Response>
+void Session::send_response(Response&& response, bool keep_alive)
+{
+	// The lifetime of the message has to extend
+	// for the duration of the async operation so
+	// we use a shared_ptr to manage it.
+	auto sp = std::make_shared<std::remove_reference_t<decltype(response)>>(std::move(response));
+	sp->set(http::field::server, BOOST_BEAST_VERSION_STRING);
+	sp->keep_alive(keep_alive);
+
+	async_write(m_stream, *sp, boost::asio::bind_executor(
+		m_strand,
+		[self=shared_from_this(), sp](auto&& ec, auto bytes)
+		{ self->on_write(ec, bytes, sp->need_eof()); }
+	));
+}
+
+
+void Session::handle_read_error(boost::system::error_code ec)
+{
+	// This means they closed the connection
+	if (ec == boost::beast::http::error::end_of_stream)
+		return do_close();
+
+	else if (ec)
+	{
+		Log(LOG_WARNING, "read error: %1% (%2%)", ec, ec.message());
+		return send_response(m_server.bad_request(ec.message(), 11), false);
 	}
 }
 
@@ -171,42 +192,21 @@ template <std::size_t parser_index>
 void Session::on_read(boost::system::error_code ec, std::size_t)
 {
 	// This means they closed the connection
-	if (ec == boost::beast::http::error::end_of_stream)
-		return do_close();
-
-	// function that senders the response message
-	auto sender = [this, self=shared_from_this()](auto&& response, bool keep_alive)
-	{
-
-		// The lifetime of the message has to extend
-		// for the duration of the async operation so
-		// we use a shared_ptr to manage it.
-		auto sp = std::make_shared<std::remove_reference_t<decltype(response)>>(std::move(response));
-		sp->set(http::field::server, BOOST_BEAST_VERSION_STRING);
-		sp->keep_alive(keep_alive);
-
-		auto&& callback = boost::asio::bind_executor(
-			m_strand,
-			[self, sp](auto&& ec, auto bytes)
-			{ self->on_write(ec, bytes, sp->need_eof()); }
-		);
-
-		// Write the response
-		async_write(m_stream, *sp, std::move(callback));
-	};
-
 	if (ec)
-	{
-		Log(LOG_WARNING, "read error: %1% (%2%)", ec, ec.message());
-		sender(m_server.bad_request(ec.message(), 11), false);
-	}
+		return handle_read_error(ec);
+
 	else
 	{
 		auto req = std::get<parser_index>(m_body).release();
-		handle_https(std::move(req), [sender = std::move(sender), keep_alive=req.keep_alive()](auto&& response)
+		auto sender = [self = shared_from_this(), keep_alive = req.keep_alive()](auto&& response)
 		{
-			sender(std::move(response), keep_alive);
-		});
+			self->send_response(std::move(response), keep_alive);
+		};
+
+		if (validate_request(req))
+		{
+			m_server.handle_https(std::move(req), std::move(sender));
+		}
 	}
 	m_nth_transaction++;
 }
