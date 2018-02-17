@@ -13,8 +13,12 @@
 #pragma once
 
 #include <boost/beast/http/message.hpp>
-#include <boost/asio/ip/tcp.hpp>
 #include <boost/beast/http/string_body.hpp>
+#include <boost/beast/http/file_body.hpp>
+#include <boost/beast/http/empty_body.hpp>
+#include <boost/beast/http/parser.hpp>
+
+#include <boost/asio/ip/tcp.hpp>
 
 namespace hrb {
 
@@ -23,5 +27,13 @@ namespace http = boost::beast::http;    // from <boost/beast/http.hpp>
 
 using Request = http::request<http::string_body>;
 using EndPoint = boost::asio::ip::tcp::endpoint;
+
+using StringRequest = http::request<http::string_body>;
+using FileRequest   = http::request<http::file_body>;
+using EmptyRequest  = http::request<http::empty_body>;
+
+using StringRequestParser 	= http::request_parser<http::string_body>;
+using FileRequestParser 	= http::request_parser<http::file_body>;
+using EmptyRequestParser 	= http::request_parser<http::empty_body>;
 
 }

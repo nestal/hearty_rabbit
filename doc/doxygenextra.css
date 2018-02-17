@@ -1,0 +1,11 @@
+body, table, div, p, dl, table.directory {
+	font: 400 100%/180% Roboto,sans-serif;
+}
+
+.sm-dox a,.sm-dox a:focus,.sm-dox a:hover,.sm-dox a:active {
+    font-size:90%;
+}
+
+.navpath ul {
+    font-size: 80%;
+}

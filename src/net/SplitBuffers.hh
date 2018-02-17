@@ -19,7 +19,20 @@
 
 namespace hrb {
 
-class FileBuffers
+/// A dynamic HTML response body base on a static file.
+/// This class is a HTML response body. It has a writer inner class that returns an array of 3 buffers.
+/// These 3 buffers are deduced by searching for a string in the static file. The primary purpose of this
+/// class is to inject the <script> tag in HTML files. The constructor will search for the <head> tag and
+/// save the offset in the HTML file. Then when the HTML file is sent to the browser, it will be split
+/// into three buffers:
+///
+/// 1. From the beginning to the <head> tag.
+/// 2. The additional <script> tag.
+/// 3. The rest of the HTML file.
+///
+/// Only the middle buffer can be assigned dynamically. The first and third buffers are specified by
+/// std::string_view
+class SplitBuffers
 {
 public:
 	using const_buffers_type = std::array<boost::asio::const_buffer, 3>;
@@ -31,7 +44,7 @@ public:
 			m_file{file},
 			m_extra{extra}
 		{
-			m_offset = needle.size() > 0 ? m_file.find(needle) : m_file.npos;
+			m_offset = needle.empty() ? m_file.npos : m_file.find(needle);
 			if (m_offset != m_file.npos)
 				m_offset += needle.size();
 			else
@@ -58,46 +71,14 @@ public:
         return buffer_size(body.data());
     }
 
-	class reader
-	{
-	public:
-		template<bool isRequest, class Fields>
-        explicit
-        reader(boost::beast::http::message<isRequest, FileBuffers, Fields>& m)
-            : m_body(m.body())
-        {
-        }
-
-		void init(boost::optional<std::uint64_t>, boost::system::error_code& ec)
-		{
-			ec.assign(0, ec.category());
-		}
-
-		template <typename ConstBufferSeq>
-		std::size_t put(const ConstBufferSeq& b, boost::system::error_code& ec)
-		{
-			// TODO: write to mmap
-			ec.clear();
-			return buffer_size(b);
-		}
-
-		void finish(boost::system::error_code& ec)
-		{
-			ec.assign(0, ec.category());
-		}
-
-	private:
-		value_type& m_body;
-	};
-
 	class writer
 	{
 	public:
-        using const_buffers_type = FileBuffers::const_buffers_type;
+        using const_buffers_type = SplitBuffers::const_buffers_type;
 
         template<bool isRequest, class Fields>
         explicit
-        writer(boost::beast::http::message<isRequest, FileBuffers, Fields> const& msg)
+        writer(boost::beast::http::message<isRequest, SplitBuffers, Fields> const& msg)
             : m_body(msg.body())
         {
         }

@@ -16,6 +16,7 @@
 
 #include <boost/asio/bind_executor.hpp>
 #include <boost/asio/strand.hpp>
+#include <iostream>
 
 namespace hrb {
 
@@ -70,14 +71,33 @@ void Session::do_read()
 {
 	auto&& executor = boost::asio::bind_executor(
 		m_strand,
-		[self=shared_from_this()](auto ec, auto bytes){self->on_read(ec, bytes);}
+		[self=shared_from_this()](auto ec, auto bytes) {self->on_read_header(ec, bytes);}
 	);
 
 	// Read a request
 	if (m_stream)
-		async_read(*m_stream, m_buffer, m_req, std::move(executor));
+		async_read_header(*m_stream, m_buffer, m_parser, std::move(executor));
 	else
-		async_read(m_socket, m_buffer, m_req, std::move(executor));
+		async_read_header(m_socket, m_buffer, m_parser, std::move(executor));
+}
+
+void Session::on_read_header(boost::system::error_code ec, std::size_t bytes_transferred)
+{
+	auto target = m_parser.get().target();
+	std::cout << "header requesting " << target << std::endl;
+
+	m_body.emplace<0>(std::move(m_parser));
+
+	auto&& executor = boost::asio::bind_executor(
+		m_strand,
+		[self=shared_from_this()](auto ec, auto bytes) {self->on_read(ec, bytes);}
+	);
+
+	// Read a request
+	if (m_stream)
+		async_read(*m_stream, m_buffer, std::get<0>(m_body), std::move(executor));
+	else
+		async_read(m_socket,  m_buffer, std::get<0>(m_body), std::move(executor));
 }
 
 // This function produces an HTTP response for the given
@@ -134,6 +154,8 @@ void Session::handle_https(Request&& req, Send&& send)
 
 void Session::on_read(boost::system::error_code ec, std::size_t)
 {
+	auto&& req = std::get<0>(m_body).release();
+
 	// This means they closed the connection
 	if (ec == boost::beast::http::error::end_of_stream)
 		return do_close();
@@ -143,14 +165,15 @@ void Session::on_read(boost::system::error_code ec, std::size_t)
 	else
 	{
 		// Send the response
-		auto sender = [this, self = shared_from_this()](auto&& msg)
+		auto sender = [this, self = shared_from_this(), keep_alive=req.keep_alive()](auto&& msg)
 		{
+
 			// The lifetime of the message has to extend
 			// for the duration of the async operation so
 			// we use a shared_ptr to manage it.
 			auto sp = std::make_shared<std::remove_reference_t<decltype(msg)>>(std::move(msg));
 			sp->set(http::field::server, BOOST_BEAST_VERSION_STRING);
-			sp->keep_alive(m_req.keep_alive());
+			sp->keep_alive(keep_alive);
 
 			auto&& callback = boost::asio::bind_executor(
 				m_strand,
@@ -166,9 +189,9 @@ void Session::on_read(boost::system::error_code ec, std::size_t)
 		};
 
 		if (m_stream)
-			handle_https(std::move(m_req), std::move(sender));
+			handle_https(std::move(req), std::move(sender));
 		else
-			sender(m_server.redirect_http(m_req));
+			sender(m_server.redirect_http(req));
 	}
 	m_nth_transaction++;
 }

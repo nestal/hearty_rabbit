@@ -2,6 +2,7 @@
   "cert_chain": "certificate.pem",
   "private_key": "key.pem",
   "web_root": "../../lib",
+  "blob_path": ".",
   "server_name" : "localhost",
   "thread_count": 8,
   "http": {

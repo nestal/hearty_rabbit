@@ -12,11 +12,11 @@
 
 #include <catch.hpp>
 
-#include "net/FileBuffers.hh"
+#include "net/SplitBuffers.hh"
 
 #include <boost/filesystem.hpp>
 
-using Subject = hrb::FileBuffers::value_type;
+using Subject = hrb::SplitBuffers::value_type;
 
 TEST_CASE("injecting script in HTML", "[normal]")
 {

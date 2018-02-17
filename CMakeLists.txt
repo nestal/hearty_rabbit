@@ -6,6 +6,7 @@ find_package(Boost REQUIRED COMPONENTS system filesystem program_options)
 find_package(Threads REQUIRED)
 find_package(PkgConfig REQUIRED)
 find_package(OpenSSL REQUIRED)
+find_package(Doxygen)
 
 # Find libb2
 find_library(LIBB2_LIBRARY libb2.a b2 PATHS lib)
@@ -101,6 +102,18 @@ add_custom_command(
 	WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
 	COMMAND unittest
 )
+
+if (DOXYGEN_FOUND)
+	configure_file(doc/Doxyfile.in Doxyfile @ONLY)
+	add_custom_command(OUTPUT html
+		COMMAND ${DOXYGEN_EXECUTABLE} ${CMAKE_BINARY_DIR}/Doxyfile
+		COMMAND ${CMAKE_COMMAND} -E touch ${CMAKE_CURRENT_BINARY_DIR}/html
+		DEPENDS ${LIB_SRC} doc/Doxyfile.in doc/doxygenextra.css
+	)
+	add_custom_target(doc ALL DEPENDS html)
+else()
+	message(STATUS "No Doxygen found. Documentation won't be built")
+endif()
 
 # Installation
 install(TARGETS hearty_rabbit DESTINATION bin)

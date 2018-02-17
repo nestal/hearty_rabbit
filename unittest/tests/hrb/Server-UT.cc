@@ -145,9 +145,9 @@ TEST_CASE("GET static resource", "[normal]")
 
 	SECTION("Request login.html success without login")
 	{
-		FileResponseChecker checker{http::status::ok, cfg.web_root()/"static/login.html"};
+		FileResponseChecker checker{http::status::ok, cfg.web_root()/"dynamic/login.html"};
 
-		req.target("/login.html");
+		req.target("/");
 		subject.handle_https(std::move(req), std::ref(checker));
 		REQUIRE(checker.tested());
 	}
@@ -220,7 +220,7 @@ TEST_CASE("GET static resource", "[normal]")
 	SECTION("Login Incorrect")
 	{
 		MovedResponseChecker login_incorrect{"/login_incorrect.html"};
-		MovedResponseChecker invalid_login{"/login.html"};
+		MovedResponseChecker invalid_login{"/"};
 		Checker *expect{nullptr};
 
 		req.target("/login");
@@ -259,23 +259,23 @@ TEST_CASE("GET static resource", "[normal]")
 
 	SECTION("requesting other resources without a session")
 	{
-		MovedResponseChecker redirect_login{"/login.html"};
+		FileResponseChecker  login{http::status::ok, cfg.web_root()/"dynamic/login.html"};
 		GenericStatusChecker forbidden{http::status::forbidden};
 		Checker *expected{nullptr};
 
-		SECTION("requests for / will get redirected to login page")
+		SECTION("requests for / will see login page without delay")
 		{
 			req.target("/");
-			subject.handle_https(std::move(req), std::ref(redirect_login));
-			expected = &redirect_login;
+			subject.handle_https(std::move(req), std::ref(login));
+			expected = &login;
 		}
-		SECTION("requests to others will get 403 forbidden")
+		SECTION("requests to others will get 403 forbidden with delay")
 		{
 			req.target("/something");
 			subject.handle_https(std::move(req), std::ref(forbidden));
+	 		REQUIRE(subject.get_io_context().run_for(10s) > 0);
 			expected = &forbidden;
 		}
-		REQUIRE(subject.get_io_context().run_for(10s) > 0);
 		REQUIRE(expected != nullptr);
 		REQUIRE(expected->tested());
 	}
@@ -333,7 +333,7 @@ TEST_CASE("GET static resource", "[normal]")
 			db->disconnect();
 
 			req.target("/blob/" + to_hex(blob.ID()));
-			req.insert(boost::beast::http::field::cookie, set_cookie(session));
+			req.set(boost::beast::http::field::cookie, set_cookie(session));
 			subject.handle_https(std::move(req), [&checker, &subject](auto&& res)
 			{
 				REQUIRE(res.at(http::field::content_type) == "text/x-c++");
@@ -343,6 +343,32 @@ TEST_CASE("GET static resource", "[normal]")
 		});
 		REQUIRE(subject.get_io_context().run_for(10s) > 0);
 		REQUIRE(checker.tested());
+	}
+
+	SECTION("upload blob")
+	{
+		GenericStatusChecker created{http::status::created};
+		GenericStatusChecker forbidden{http::status::forbidden};
+		GenericStatusChecker bad_request{http::status::bad_request};
+		GenericStatusChecker *checker = nullptr;
+
+		req.target("/upload/testdata");
+		req.body() = "some text";
+
+		SECTION("with credential")
+		{
+			req.set(http::field::cookie, set_cookie(session));
+			req.method(http::verb::put);
+
+			req.prepare_payload();
+			subject.handle_https(std::move(req), [&created, &subject](auto&& res)
+			{
+				created(std::move(res));
+				subject.disconnect_db();
+			});
+		}
+		REQUIRE(subject.get_io_context().run_for(10s) > 0);
+		REQUIRE(created.tested());
 	}
 }
 

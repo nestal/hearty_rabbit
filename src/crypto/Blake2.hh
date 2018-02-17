@@ -23,11 +23,11 @@ class Blake2
 public:
 	Blake2();
 	Blake2(Blake2&&) = default;
-	Blake2(const Blake2&) = delete;
+	Blake2(const Blake2&) = default;
 	~Blake2() = default;
 
 	Blake2& operator=(Blake2&&) = default;
-	Blake2& operator=(const Blake2&) = delete;
+	Blake2& operator=(const Blake2&) = default;
 
 	// 20 byte hash space should be large enough to avoid collision.
 	// Hash values will be used as keys for database, so if they are

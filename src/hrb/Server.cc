@@ -70,7 +70,7 @@ void Server::on_login(const Request& req, EmptyResponseSender&& send)
 		);
 	}
 	else
-		send(redirect("/login.html", req.version()));
+		send(redirect("/", req.version()));
 }
 
 void Server::on_logout(const Request& req, const SessionID& id, EmptyResponseSender&& send)
@@ -80,7 +80,7 @@ void Server::on_logout(const Request& req, const SessionID& id, EmptyResponseSen
 	{
 		m_db.release(std::move(db));
 
-		auto&& res = redirect("/login.html", version);
+		auto&& res = redirect("/", version);
 		res.set(http::field::set_cookie, "id=; ");
 		res.keep_alive(false);
 		send(std::move(res));
@@ -125,51 +125,42 @@ void Server::get_blob(const Request& req, StringResponseSender&& send)
 	}
 }
 
-void Server::on_upload(Request&& req, EmptyResponseSender&& send)
+void Server::on_upload(Request&& req, EmptyResponseSender&& send, std::string_view user)
 {
-	std::cout << "method = " << req.method() << " size = " << req.at(http::field::content_length) << std::endl;
-
 	auto [prefix, filename] = extract_prefix(req);
-	std::cout << "file = " << filename << std::endl;
 
-	for (auto&& field : req)
-		std::cout << field.name() << " " << field.value() << std::endl;
-
-	auto& data = req.body();
 	BlobObject blob{std::move(req).body(), filename};
+	Log(LOG_INFO, "uploading %1% bytes to %2%", blob.size(), filename);
 
 	auto db = m_db.alloc(m_ioc);
 	blob.save(*db, [this, db, send=std::move(send), version=req.version()](BlobObject& blob, auto ec) mutable
 	{
 		m_db.release(std::move(db));
-		auto loc = "/blob/" + to_hex(blob.ID());
 
+		// TODO: add ETag and Date for the resource
 		http::response<http::empty_body> res{http::status::created, version};
-		res.set(http::field::location, loc);
-		res.set(http::field::content_type, "text/plain");
+		res.set(http::field::location, "/blob/" + to_hex(blob.ID()));
 		return send(std::move(res));
 	});
 }
 
-void Server::on_invalid_session(const Request& req, EmptyResponseSender&& send)
+void Server::on_invalid_session(const Request& req, FileResponseSender&& send)
 {
-	bool target_home = (req.target() == "/");
+	// If the target is home (i.e. "/"), show them the login page.
+	// Do not penalize the user, because their session may be expired.
+	// It may also be the first visit of an anonymous user.
+	if (req.target() == "/")
+		return send(m_lib.find_dynamic("login.html", req.version()));
 
 	// Introduce a small delay when responsing to requests with invalid session ID.
 	// This is to slow down bruce-force attacks on the session ID.
 	boost::asio::deadline_timer t{m_ioc, boost::posix_time::milliseconds{500}};
-	return t.async_wait([version=req.version(), target_home, send=std::move(send)](auto ec)
+	return t.async_wait([version=req.version(), send=std::move(send)](auto ec)
 	{
 		if (!ec)
 			Log(LOG_WARNING, "timer error %1% (%2%)", ec, ec.message());
 
-		// If the target is home (i.e. "/"), redirect to login page.
-		// Because it may be because the user's session just exprired.
-		send(
-			target_home ?
-				redirect("/login.html", version) :
-				http::response<http::empty_body>{http::status::forbidden, version}
-		);
+		send(http::response<SplitBuffers>{http::status::forbidden, version});
 	});
 }
 
@@ -216,12 +207,12 @@ http::response<http::string_body> Server::server_error(const Request& req, boost
 	return res;
 }
 
-http::response<FileBuffers> Server::serve_home(unsigned version)
+http::response<SplitBuffers> Server::serve_home(unsigned version)
 {
 	return m_lib.find_dynamic("index.html", version);
 }
 
-http::response<FileBuffers> Server::static_file_request(const Request& req)
+http::response<SplitBuffers> Server::static_file_request(const Request& req)
 {
 	Log(LOG_NOTICE, "requesting path %1%", req.target());
 
