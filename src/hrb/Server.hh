@@ -145,6 +145,7 @@ public:
 	// Administrative commands
 	void add_user(std::string_view username, Password&& password, std::function<void(std::error_code)> complete);
 	void add_blob(const boost::filesystem::path& path, std::function<void(BlobObject&, std::error_code)> complete);
+	std::string https_root() const;
 
 private:
 	static void drop_privileges();

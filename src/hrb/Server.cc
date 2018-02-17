@@ -344,4 +344,11 @@ std::tuple<
 	return std::make_tuple(prefix, sv);
 }
 
+std::string Server::https_root() const
+{
+	using namespace std::literals;
+	return "https://" + m_cfg.server_name()
+		+ (m_cfg.listen_https().port() == 443 ? ""s : (":"s + std::to_string(m_cfg.listen_https().port())));
+}
+
 } // end of namespace

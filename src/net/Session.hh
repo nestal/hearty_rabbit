@@ -48,6 +48,7 @@ public:
 	void on_handshake(boost::system::error_code ec);
 	void do_read();
 	void on_read_header(boost::system::error_code ec, std::size_t bytes_transferred);
+	template <std::size_t parser_index>
 	void on_read(boost::system::error_code ec, std::size_t bytes_transferred);
 	void on_write(boost::system::error_code ec, std::size_t bytes_transferred, bool close);
 	void do_close();
@@ -62,10 +63,10 @@ private:
 	void handle_https(Request&& req, Send&& send);
 
 private:
-	tcp::socket		m_socket;
+	tcp::socket		                                            m_socket;
 	std::optional<boost::asio::ssl::stream<tcp::socket&>> 		m_stream;
 	boost::asio::strand<boost::asio::io_context::executor_type> m_strand;
-	boost::beast::flat_buffer m_buffer;
+	boost::beast::flat_buffer                                   m_buffer;
 
 	// The parsed message are stored inside the parsers.
 	// Use parser::get() or release() to get the message.

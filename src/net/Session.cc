@@ -15,7 +15,6 @@
 #include "hrb/Server.hh"
 
 #include <boost/asio/bind_executor.hpp>
-#include <boost/asio/strand.hpp>
 #include <iostream>
 
 namespace hrb {
@@ -89,7 +88,7 @@ void Session::on_read_header(boost::system::error_code ec, std::size_t bytes_tra
 	if (ec)
 	{
 		std::cout << "on_read_header(): error " << ec.message() << " " << bytes_transferred << std::endl;
-		on_read(ec, bytes_transferred);
+		on_read<0>(ec, bytes_transferred);
 	}
 	else
 	{
@@ -101,12 +100,6 @@ void Session::on_read_header(boost::system::error_code ec, std::size_t bytes_tra
 
 		for (auto&& field: header)
 			std::cout << "field = " << field.name() << " (" << field.name_string() << ") " << field.value() << std::endl;
-
-		auto&& executor = boost::asio::bind_executor(
-			m_strand,
-			[self = shared_from_this()](auto ec, auto bytes)
-			{ self->on_read(ec, bytes); }
-		);
 
 /*		if (target.starts_with("/upload"))
 		{
@@ -120,6 +113,11 @@ void Session::on_read_header(boost::system::error_code ec, std::size_t bytes_tra
 		}
 		else*/
 		{
+			auto&& executor = boost::asio::bind_executor(
+				m_strand,
+				[self = shared_from_this()](auto ec, auto bytes)
+				{ self->on_read<0>(ec, bytes); }
+			);
 			m_body.emplace<0>(std::move(*m_parser));
 
 			// Read a request
@@ -184,7 +182,7 @@ void Session::handle_https(Request&& req, Send&& send)
 	}
 }
 
-
+template <std::size_t parser_index>
 void Session::on_read(boost::system::error_code ec, std::size_t)
 {
 	// This means they closed the connection
@@ -222,7 +220,7 @@ void Session::on_read(boost::system::error_code ec, std::size_t)
 	}
 	else
 	{
-		auto req = std::get<0>(m_body).release();
+		auto req = std::get<parser_index>(m_body).release();
 		if (m_stream)
 			handle_https(std::move(req), [sender = std::move(sender), keep_alive=req.keep_alive()](auto&& response)
 			{
