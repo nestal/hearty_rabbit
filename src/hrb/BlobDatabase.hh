@@ -25,10 +25,16 @@ class BlobObject;
 class BlobDatabase
 {
 public:
-	class File
+	class TempFile
 	{
 	public:
-		File() = default;
+		TempFile() = default;
+		TempFile(const TempFile&) = delete;
+		TempFile(TempFile&&) = default;
+		~TempFile();
+
+		TempFile& operator=(const TempFile&) = delete;
+		TempFile& operator=(TempFile&) = default;
 
 		/// Returns `true` if the file is open
         bool is_open() const;
@@ -60,14 +66,15 @@ public:
 
 	private:
 		boost::beast::file_posix m_file;
+		std::string m_path;
 		Blake2      m_hash;
 	};
 
 public:
 	explicit BlobDatabase(const fs::path& base);
 
-	File tmp_file() const;
-	fs::path save(File&& tmp, std::error_code& ec);
+	TempFile tmp_file() const;
+	fs::path save(TempFile&& tmp, std::error_code& ec);
 
 private:
 	fs::path dest(ObjectID id) const;
