@@ -60,7 +60,7 @@ public:
 
 	private:
 		boost::beast::file_posix m_file;
-		Blake2  m_hash;
+		Blake2      m_hash;
 	};
 
 public:

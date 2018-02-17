@@ -14,6 +14,7 @@
 #include "BlobObject.hh"
 
 #include <sstream>
+#include <iostream>
 
 namespace hrb {
 
@@ -45,14 +46,21 @@ fs::path BlobDatabase::save(BlobDatabase::File&& tmp, std::error_code& ec)
 	boost::system::error_code bec;
 	if (!exists(dest_path.parent_path()))
 		create_directories(dest_path.parent_path(), bec);
-//	ec.assign(bec.value(), bec.category());
+	ec.assign(bec.value(), bec.category());
 
-//	if (!ec)
+	if (!ec)
 	{
 		std::ostringstream proc;
 		proc << "/proc/self/fd/" << file.native_handle();
+
 		if (::linkat(AT_FDCWD, proc.str().c_str(), AT_FDCWD, dest_path.string().c_str(), AT_SYMLINK_FOLLOW) != 0)
 			ec.assign(errno, std::generic_category());
+
+#ifndef O_TMPFILE
+		auto tmp_file = fs::read_symlink(proc.str(), bec);
+		std::cout << "readlink: " << bec.message() << " " << tmp_file << std::endl;
+		remove(tmp_file);
+#endif
 	}
 
 	return dest_path;
@@ -81,10 +89,7 @@ void BlobDatabase::File::open(char const *path, boost::beast::file_mode, boost::
 	auto glibc_mkstemp = [path]
 	{
 		auto pathstr = (fs::path{path} / "blob-XXXXXX").string();
-		auto fd = ::mkstemp(&pathstr[0]);
-//		if (fd > 0)
-//			::unlink(pathstr.c_str());
-		return fd;
+		return ::mkstemp(&pathstr[0]);
 	};
 
 #ifdef O_TMPFILE
