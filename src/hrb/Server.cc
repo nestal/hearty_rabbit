@@ -130,7 +130,7 @@ void Server::on_upload(Request&& req, EmptyResponseSender&& send, std::string_vi
 	auto [prefix, filename] = extract_prefix(req);
 
 	BlobObject blob{std::move(req).body(), filename};
-	Log(LOG_INFO, "uploading %1% bytes to %2%", blob.size(), filename);
+	Log(LOG_INFO, "uploading %1% bytes to %2% (%3%)", blob.size(), filename, blob.ID());
 
 	auto db = m_db.alloc(m_ioc);
 	blob.save(*db, [this, db, send=std::move(send), version=req.version()](BlobObject& blob, auto ec) mutable
@@ -169,12 +169,12 @@ http::response<http::string_body> Server::get_dir(const Request& req)
 	return http::response<http::string_body>();
 }
 
-http::response<http::string_body> Server::bad_request(const Request& req, boost::beast::string_view why)
+http::response<http::string_body> Server::bad_request(boost::beast::string_view why, unsigned version)
 {
 	http::response<http::string_body> res{
 		std::piecewise_construct,
 		std::make_tuple(why),
-		std::make_tuple(http::status::bad_request, req.version())
+		std::make_tuple(http::status::bad_request, version)
 	};
 	res.set(http::field::content_type, "text/html");
 	res.prepare_payload();

@@ -133,7 +133,7 @@ public:
 
 	http::response<SplitBuffers> static_file_request(const Request& req);
 	http::response<SplitBuffers> serve_home(unsigned version);
-	static http::response<http::string_body> bad_request(const Request& req, boost::beast::string_view why);
+	static http::response<http::string_body> bad_request(boost::beast::string_view why, unsigned version);
 	static http::response<http::string_body> not_found(const Request& req);
 	static http::response<http::string_body> server_error(const Request& req, boost::beast::string_view what);
 	static http::response<http::empty_body> redirect(boost::beast::string_view where, unsigned version);

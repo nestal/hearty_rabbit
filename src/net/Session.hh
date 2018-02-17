@@ -70,7 +70,7 @@ private:
 	// The parsed message are stored inside the parsers.
 	// Use parser::get() or release() to get the message.
 	EmptyRequestParser					m_parser;
-	std::variant<StringRequestParser, FileRequestParser> m_body;
+	std::variant<StringRequestParser, UploadRequestParser> m_body;
 
 	Server& m_server;
 

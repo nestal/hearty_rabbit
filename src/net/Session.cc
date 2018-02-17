@@ -83,21 +83,27 @@ void Session::do_read()
 
 void Session::on_read_header(boost::system::error_code ec, std::size_t bytes_transferred)
 {
-	auto target = m_parser.get().target();
-	std::cout << "header requesting " << target << std::endl;
+	if (ec)
+		on_read(ec, bytes_transferred);
+	else if (bytes_transferred > 0)
+	{
+		auto target = m_parser.get().target();
+		std::cout << "header requesting " << target << " " << ec.message() << " " << bytes_transferred << std::endl;
 
-	m_body.emplace<0>(std::move(m_parser));
+		m_body.emplace<0>(std::move(m_parser));
 
-	auto&& executor = boost::asio::bind_executor(
-		m_strand,
-		[self=shared_from_this()](auto ec, auto bytes) {self->on_read(ec, bytes);}
-	);
+		auto&& executor = boost::asio::bind_executor(
+			m_strand,
+			[self = shared_from_this()](auto ec, auto bytes)
+			{ self->on_read(ec, bytes); }
+		);
 
-	// Read a request
-	if (m_stream)
-		async_read(*m_stream, m_buffer, std::get<0>(m_body), std::move(executor));
-	else
-		async_read(m_socket,  m_buffer, std::get<0>(m_body), std::move(executor));
+		// Read a request
+		if (m_stream)
+			async_read(*m_stream, m_buffer, std::get<0>(m_body), std::move(executor));
+		else
+			async_read(m_socket, m_buffer, std::get<0>(m_body), std::move(executor));
+	}
 }
 
 // This function produces an HTTP response for the given
@@ -110,17 +116,19 @@ void Session::handle_https(Request&& req, Send&& send)
 	try
 	{
 		boost::system::error_code ec;
+		auto endpoint = m_socket.remote_endpoint(ec);
 		if (ec)
 			Log(LOG_WARNING, "remote_endpoint() error: %1% %2%", ec, ec.message());
 
 		Log(
 			LOG_INFO,
-			"%1%:%2% request %3% from %4% (version %5%)",
+			"%1%:%2% request %3% from %4% (version %5%) %6% bytes",
 			m_nth_session,
 			m_nth_transaction,
 			req.target(),
-			m_socket.remote_endpoint(ec),
-			req.version()
+			endpoint,
+			req.version(),
+			req[http::field::content_length]
 		);
 
 		// Make sure we can handle the method
@@ -128,13 +136,13 @@ void Session::handle_https(Request&& req, Send&& send)
 		    req.method() != http::verb::post &&
 		    req.method() != http::verb::put &&
 			req.method() != http::verb::head)
-			return send(m_server.bad_request(req, "Unknown HTTP-method"));
+			return send(m_server.bad_request("Unknown HTTP-method", req.version()));
 
 		// Request path must be absolute and not contain "..".
 		if (req.target().empty() ||
 		    req.target()[0] != '/' ||
 		    req.target().find("..") != boost::beast::string_view::npos)
-			return send(m_server.bad_request(req, "Illegal request-target"));
+			return send(m_server.bad_request("Illegal request-target", req.version()));
 
 		return m_server.handle_https(std::move(req), std::move(send));
 	}
@@ -154,44 +162,49 @@ void Session::handle_https(Request&& req, Send&& send)
 
 void Session::on_read(boost::system::error_code ec, std::size_t)
 {
-	auto&& req = std::get<0>(m_body).release();
-
 	// This means they closed the connection
 	if (ec == boost::beast::http::error::end_of_stream)
 		return do_close();
 
+	// function that senders the response message
+	auto sender = [this, self=shared_from_this()](auto&& response, bool keep_alive)
+	{
+
+		// The lifetime of the message has to extend
+		// for the duration of the async operation so
+		// we use a shared_ptr to manage it.
+		auto sp = std::make_shared<std::remove_reference_t<decltype(response)>>(std::move(response));
+		sp->set(http::field::server, BOOST_BEAST_VERSION_STRING);
+		sp->keep_alive(keep_alive);
+
+		auto&& callback = boost::asio::bind_executor(
+			m_strand,
+			[self, sp](auto&& ec, auto bytes)
+			{ self->on_write(ec, bytes, sp->need_eof()); }
+		);
+
+		// Write the response
+		if (m_stream)
+			async_write(*m_stream, *sp, std::move(callback));
+		else
+			async_write(m_socket, *sp, std::move(callback));
+	};
+
 	if (ec)
-		Log(LOG_WARNING, "read error: %1%", ec);
+	{
+		Log(LOG_WARNING, "read error: %1% (%2%)", ec, ec.message());
+		sender(m_server.bad_request(ec.message(), 11), false);
+	}
 	else
 	{
-		// Send the response
-		auto sender = [this, self = shared_from_this(), keep_alive=req.keep_alive()](auto&& msg)
-		{
-
-			// The lifetime of the message has to extend
-			// for the duration of the async operation so
-			// we use a shared_ptr to manage it.
-			auto sp = std::make_shared<std::remove_reference_t<decltype(msg)>>(std::move(msg));
-			sp->set(http::field::server, BOOST_BEAST_VERSION_STRING);
-			sp->keep_alive(keep_alive);
-
-			auto&& callback = boost::asio::bind_executor(
-				m_strand,
-				[self, sp](auto&& ec, auto bytes)
-				{ self->on_write(ec, bytes, sp->need_eof()); }
-			);
-
-			// Write the response
-			if (m_stream)
-				async_write(*m_stream, *sp, std::move(callback));
-			else
-				async_write(m_socket, *sp, std::move(callback));
-		};
-
+		auto req = std::get<0>(m_body).release();
 		if (m_stream)
-			handle_https(std::move(req), std::move(sender));
+			handle_https(std::move(req), [sender = std::move(sender), keep_alive=req.keep_alive()](auto&& response)
+			{
+				sender(std::move(response), keep_alive);
+			});
 		else
-			sender(m_server.redirect_http(req));
+			sender(m_server.redirect_http(req), req.keep_alive() );
 	}
 	m_nth_transaction++;
 }
