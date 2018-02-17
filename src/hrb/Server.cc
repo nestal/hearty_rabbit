@@ -222,18 +222,6 @@ http::response<SplitBuffers> Server::static_file_request(const StringRequest& re
 	return m_lib.find_static(std::string{filepath}, req.version());
 }
 
-http::response<http::empty_body> Server::redirect_http(const StringRequest &req)
-{
-	using namespace std::literals;
-	static const auto https_host = "https://" + m_cfg.server_name()
-		+ (m_cfg.listen_https().port() == 443 ? ""s : (":"s + std::to_string(m_cfg.listen_https().port())));
-
-	auto&& dest = https_host + req.target().to_string();
-	Log(LOG_INFO, "redirecting HTTP request %1% to host %2%", req.target(), dest);
-
-	return redirect(dest, req.version());
-}
-
 void Server::run()
 {
 	auto const threads = std::max(1UL, m_cfg.thread_count());

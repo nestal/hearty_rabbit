@@ -52,8 +52,6 @@ class Server
 public:
 	explicit Server(const Configuration& cfg);
 
-	http::response<http::empty_body> redirect_http(const StringRequest& req);
-
 	static std::tuple<
 		std::string_view,
 		std::string_view

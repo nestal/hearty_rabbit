@@ -25,37 +25,28 @@ namespace http = boost::beast::http;    // from <boost/beast/http.hpp>
 Session::Session(
 	boost::asio::ip::tcp::socket socket,
 	Server& server,
-	boost::asio::ssl::context *ssl_ctx,
+	boost::asio::ssl::context&  ssl_ctx,
 	std::size_t nth
 ) :
 	m_socket{std::move(socket)},
+	m_stream{m_socket, ssl_ctx},
 	m_strand{m_socket.get_executor()},
 	m_server{server},
 	m_nth_session{nth}
 {
-	// TLS is optional for this class
-	if (ssl_ctx)
-		m_stream.emplace(m_socket, *ssl_ctx);
 }
 
 // Start the asynchronous operation
 void Session::run()
 {
-	if (m_stream)
-	{
-		// Perform the SSL handshake
-		m_stream->async_handshake(
-			boost::asio::ssl::stream_base::server,
-			boost::asio::bind_executor(
-				m_strand,
-				[self = shared_from_this()](auto ec){self->on_handshake(ec);}
-			)
-		);
-	}
-	else
-	{
-		do_read();
-	}
+	// Perform the SSL handshake
+	m_stream.async_handshake(
+		boost::asio::ssl::stream_base::server,
+		boost::asio::bind_executor(
+			m_strand,
+			[self = shared_from_this()](auto ec){self->on_handshake(ec);}
+		)
+	);
 }
 
 void Session::on_handshake(boost::system::error_code ec)
@@ -77,10 +68,7 @@ void Session::do_read()
 	m_parser.emplace();
 
 	// Read a request
-	if (m_stream)
-		async_read_header(*m_stream, m_buffer, *m_parser, std::move(executor));
-	else
-		async_read_header(m_socket, m_buffer, *m_parser, std::move(executor));
+	async_read_header(m_stream, m_buffer, *m_parser, std::move(executor));
 }
 
 void Session::on_read_header(boost::system::error_code ec, std::size_t bytes_transferred)
@@ -121,10 +109,7 @@ void Session::on_read_header(boost::system::error_code ec, std::size_t bytes_tra
 			m_body.emplace<0>(std::move(*m_parser));
 
 			// Read a request
-			if (m_stream)
-				async_read(*m_stream, m_buffer, std::get<0>(m_body), std::move(executor));
-			else
-				async_read(m_socket, m_buffer, std::get<0>(m_body), std::move(executor));
+			async_read(m_stream, m_buffer, std::get<0>(m_body), std::move(executor));
 		}
 	}
 }
@@ -207,10 +192,7 @@ void Session::on_read(boost::system::error_code ec, std::size_t)
 		);
 
 		// Write the response
-		if (m_stream)
-			async_write(*m_stream, *sp, std::move(callback));
-		else
-			async_write(m_socket, *sp, std::move(callback));
+		async_write(m_stream, *sp, std::move(callback));
 	};
 
 	if (ec)
@@ -221,13 +203,10 @@ void Session::on_read(boost::system::error_code ec, std::size_t)
 	else
 	{
 		auto req = std::get<parser_index>(m_body).release();
-		if (m_stream)
-			handle_https(std::move(req), [sender = std::move(sender), keep_alive=req.keep_alive()](auto&& response)
-			{
-				sender(std::move(response), keep_alive);
-			});
-		else
-			sender(m_server.redirect_http(req), req.keep_alive() );
+		handle_https(std::move(req), [sender = std::move(sender), keep_alive=req.keep_alive()](auto&& response)
+		{
+			sender(std::move(response), keep_alive);
+		});
 	}
 	m_nth_transaction++;
 }
@@ -256,20 +235,12 @@ void Session::do_close()
 {
 	// Send a TCP shutdown
 	boost::system::error_code ec;
-	if (m_stream)
-	{
-		m_stream->async_shutdown(
-			boost::asio::bind_executor(
-				m_strand,
-				[self=shared_from_this()](auto ec){self->on_shutdown(ec);}
-			)
-		);
-	}
-	else
-	{
-		m_socket.shutdown(tcp::socket::shutdown_send, ec);
-		on_shutdown(ec);
-	}
+	m_stream.async_shutdown(
+		boost::asio::bind_executor(
+			m_strand,
+			[self=shared_from_this()](auto ec){self->on_shutdown(ec);}
+		)
+	);
 }
 
 void Session::on_shutdown(boost::system::error_code ec)

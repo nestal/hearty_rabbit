@@ -39,7 +39,7 @@ public:
 	explicit Session(
 		boost::asio::ip::tcp::socket socket,
 		Server& server,
-		boost::asio::ssl::context *ssl_ctx,
+		boost::asio::ssl::context& ssl_ctx,
 		std::size_t nth
 	);
 
@@ -64,7 +64,7 @@ private:
 
 private:
 	tcp::socket		                                            m_socket;
-	std::optional<boost::asio::ssl::stream<tcp::socket&>> 		m_stream;
+	boost::asio::ssl::stream<tcp::socket&> 		                m_stream;
 	boost::asio::strand<boost::asio::io_context::executor_type> m_strand;
 	boost::beast::flat_buffer                                   m_buffer;
 
