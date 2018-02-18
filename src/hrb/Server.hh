@@ -16,6 +16,7 @@
 #include "DatabasePool.hh"
 #include "BlobDatabase.hh"
 #include "WebResources.hh"
+#include "UploadFile.hh"
 
 #include "crypto/Authenication.hh"
 #include "net/SplitBuffers.hh"
@@ -111,7 +112,7 @@ public:
 		return send(not_found("HAHAHA: ", req.version()));
 	}
 
-	BlobDatabase::TempFile prepare_upload() const;
+	UploadFile prepare_upload() const;
 
 	// This function produces an HTTP response for the given
 	// request. The type of the response object depends on the

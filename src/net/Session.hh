@@ -13,6 +13,7 @@
 #pragma once
 
 #include "hrb/Request.hh"
+#include "hrb/UploadFile.hh"
 
 #include <boost/beast/core.hpp>
 #include <boost/beast/http.hpp>

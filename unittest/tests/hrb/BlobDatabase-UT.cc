@@ -13,6 +13,7 @@
 #include <catch.hpp>
 
 #include "hrb/BlobDatabase.hh"
+#include "hrb/UploadFile.hh"
 
 using namespace hrb;
 
@@ -21,7 +22,7 @@ TEST_CASE("Open temp file", "[normal]")
 	fs::remove_all("/tmp/BlobDatabase-UT");
 
 	BlobDatabase subject{"/tmp/BlobDatabase-UT"};
-	auto tmp = subject.tmp_file();
+	auto tmp = subject.upload();
 
 	boost::system::error_code ec;
 
