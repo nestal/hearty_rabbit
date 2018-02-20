@@ -30,19 +30,18 @@ void UploadFile::close(boost::system::error_code& ec)
 	m_file.close(ec);
 }
 
-void UploadFile::open(char const *path, boost::system::error_code& ec)
+void UploadFile::open(const fs::path& parent_directory, boost::system::error_code& ec)
 {
-	auto glibc_mkstemp = [path, this]
+	auto glibc_mkstemp = [parent_directory, this]
 	{
-		m_path = (fs::path{path} / "blob-XXXXXX").string();
+		m_path = (parent_directory / "blob-XXXXXX").string();
 		return ::mkstemp(&m_path[0]);
 	};
 
 #ifdef O_TMPFILE
-//#if false
 	// Note that O_TMPFILE requires the "path" to be a directory.
 	// See http://man7.org/linux/man-pages/man2/open.2.html
-	auto fd = ::open(path, O_TMPFILE | O_RDWR, S_IRUSR | S_IWUSR);
+	auto fd = ::open(parent_directory.string().c_str(), O_TMPFILE | O_RDWR, S_IRUSR | S_IWUSR);
 
 	// Fallback to glibc mkstemp() if O_TMPFILE is not supported
 	// by the Linux kernel.
@@ -95,6 +94,12 @@ ObjectID UploadFile::ID() const
 UploadFile::native_handle_type UploadFile::native_handle() const
 {
 	return m_file.native_handle();
+}
+
+void UploadRequestBody::reader::init(const boost::optional<std::uint64_t>&, boost::system::error_code& ec)
+{
+	if (!m_body.is_open())
+		ec.assign(EBADF, boost::system::generic_category());
 }
 
 } // end of namespace hrb

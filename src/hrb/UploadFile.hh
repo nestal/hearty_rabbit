@@ -42,7 +42,7 @@ public:
 	void close(boost::system::error_code& ec);
 
 	/// Open a file at the given path with the specified mode
-	void open(char const* path, boost::system::error_code& ec);
+	void open(const fs::path& parent_directory, boost::system::error_code& ec);
 
 	/// Return the size of the open file
 	std::uint64_t size(boost::system::error_code& ec) const;
@@ -82,10 +82,7 @@ public:
 		{
 		}
 
-		void init(const boost::optional<std::uint64_t>&, boost::system::error_code& ec)
-		{
-			m_body.open("/tmp", ec);
-		}
+		void init(const boost::optional<std::uint64_t>&, boost::system::error_code& ec);
 
 		template<class ConstBufferSequence>
 		std::size_t put(const ConstBufferSequence& buffers, boost::system::error_code& ec)

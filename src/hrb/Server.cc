@@ -340,12 +340,10 @@ std::string Server::https_root() const
 		+ (m_cfg.listen_https().port() == 443 ? ""s : (":"s + std::to_string(m_cfg.listen_https().port())));
 }
 
-UploadFile Server::prepare_upload() const
+void Server::prepare_upload(UploadFile& upload) const
 {
-	UploadFile file;
 	boost::system::error_code ec;
-	file.open(m_cfg.blob_path().string().c_str(), ec);
-	return file;
+	upload.open(m_cfg.blob_path().string().c_str(), ec);
 }
 
 } // end of namespace

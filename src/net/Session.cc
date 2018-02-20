@@ -59,16 +59,14 @@ void Session::on_handshake(boost::system::error_code ec)
 
 void Session::do_read()
 {
-	auto&& executor = boost::asio::bind_executor(
-		m_strand,
-		[self=shared_from_this()](auto ec, auto bytes) {self->on_read_header(ec, bytes);}
-	);
-
 	// Destroy and re-construct the parser for a new HTTP transaction
 	m_parser.emplace();
 
 	// Read a request
-	async_read_header(m_stream, m_buffer, *m_parser, std::move(executor));
+	async_read_header(m_stream, m_buffer, *m_parser, boost::asio::bind_executor(
+		m_strand,
+		[self=shared_from_this()](auto ec, auto bytes) {self->on_read_header(ec, bytes);}
+	));
 }
 
 void Session::on_read_header(boost::system::error_code ec, std::size_t bytes_transferred)
@@ -77,18 +75,13 @@ void Session::on_read_header(boost::system::error_code ec, std::size_t bytes_tra
 		handle_read_error(ec);
 	else
 	{
+		// Get the HTTP header from the partially parsed request message from the parser.
+		// The body of the request message has not parsed yet.
 		auto&& header = m_parser->get();
 
-		auto target = header.target();
-		std::cout << "on_read_header(): requesting " << target << " " << ec.message() << " " << bytes_transferred
-			<< " parser: " << m_parser->is_header_done() << std::endl;
-
-		for (auto&& field: header)
-			std::cout << "field = " << field.name() << " (" << field.name_string() << ") " << field.value() << std::endl;
-
-
-		if (target == hrb::url::upload && header.method() == http::verb::put)
-			m_body.emplace<UploadRequestParser>(std::move(*m_parser));
+		// If received a file-upload request, create an UploadRequestParser and initialize it
+		if (m_server.is_upload(header))
+			m_server.prepare_upload(m_body.emplace<UploadRequestParser>(std::move(*m_parser)).get().body());
 		else
 			m_body.emplace<StringRequestParser>(std::move(*m_parser));
 

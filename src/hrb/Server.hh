@@ -108,11 +108,15 @@ public:
 	template<class Send>
 	void handle_https(UploadRequest&& req, Send&& send)
 	{
-//		m_blob_db.save(req.body());
 		return send(not_found("HAHAHA: ", req.version()));
 	}
 
-	UploadFile prepare_upload() const;
+	template <class Header>
+	static bool is_upload(Header& header)
+	{
+		return header.target() == hrb::url::upload && header.method() == http::verb::put;
+	}
+	void prepare_upload(UploadFile& upload) const;
 
 	// This function produces an HTTP response for the given
 	// request. The type of the response object depends on the
