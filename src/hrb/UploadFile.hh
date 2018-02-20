@@ -82,7 +82,7 @@ public:
 		{
 		}
 
-		void init(boost::optional<std::uint64_t> const&, boost::system::error_code& ec)
+		void init(const boost::optional<std::uint64_t>&, boost::system::error_code& ec)
 		{
 			m_body.open("/tmp", ec);
 		}

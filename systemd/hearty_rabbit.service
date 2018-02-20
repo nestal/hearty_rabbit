@@ -1,0 +1,11 @@
+[Unit]
+Description=Hearty Rabbit photo album
+Requires=docker.service redis.service
+
+[Service]
+ExecStart=/bin/docker run --rm \
+	-v /etc/letsencrypt:/etc/letsencrypt \
+	-v /etc/hearty_rabbit:/etc/hearty_rabbit \
+	-v /dev/log:/dev/log \
+	--network=host --name hearty_rabbit_systemd nestal/hearty_rabbit
+ExecStop=/bin/docker stop hearty_rabbit_systemd

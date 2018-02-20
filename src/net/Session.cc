@@ -88,7 +88,7 @@ void Session::on_read_header(boost::system::error_code ec, std::size_t bytes_tra
 
 
 		if (target == hrb::url::upload && header.method() == http::verb::put)
-			m_body.emplace<UploadRequestParser>(std::move(*m_parser))/*.get().body().reset(m_server.prepare_upload(), ec)*/;
+			m_body.emplace<UploadRequestParser>(std::move(*m_parser));
 		else
 			m_body.emplace<StringRequestParser>(std::move(*m_parser));
 
