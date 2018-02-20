@@ -63,7 +63,7 @@ private:
 	bool validate_request(const Request& req);
 
 	template <class Response>
-	void send_response(Response&& response, bool keep_alive = false);
+	void send_response(Response&& response);
 
 	void handle_read_error(boost::system::error_code ec);
 
@@ -72,6 +72,8 @@ private:
 	boost::asio::ssl::stream<tcp::socket&> 		                m_stream;
 	boost::asio::strand<boost::asio::io_context::executor_type> m_strand;
 	boost::beast::flat_buffer                                   m_buffer;
+
+	bool m_keep_alive{false};
 
 	// The parsed message are stored inside the parsers.
 	// Use parser::get() or release() to get the message.

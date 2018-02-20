@@ -78,16 +78,19 @@ void Session::on_read_header(boost::system::error_code ec, std::size_t bytes_tra
 		// Get the HTTP header from the partially parsed request message from the parser.
 		// The body of the request message has not parsed yet.
 		auto&& header = m_parser->get();
+		m_keep_alive = header.keep_alive();
 
-		// If received a file-upload request, create an UploadRequestParser and initialize it
+		// If received a file-upload request, create an UploadRequestParser and initialize it.
+		// The UploadRequestParser uses UploadFile as body. It is specifically design for
+		// handling upload file.
 		if (m_server.is_upload(header))
 			m_server.prepare_upload(m_body.emplace<UploadRequestParser>(std::move(*m_parser)).get().body());
 		else
 			m_body.emplace<StringRequestParser>(std::move(*m_parser));
 
+		// Call async_read() using the chosen parser to read and parse the request body.
 		std::visit([self = shared_from_this(), this](auto&& parser)
 		{
-			// Read a request
 			async_read(m_stream, m_buffer, parser, boost::asio::bind_executor(
 				m_strand,
 				[self](auto ec, auto bytes){self->on_read(ec, bytes);}
@@ -143,14 +146,14 @@ bool Session::validate_request(const Request& req)
 }
 
 template <class Response>
-void Session::send_response(Response&& response, bool keep_alive)
+void Session::send_response(Response&& response)
 {
 	// The lifetime of the message has to extend
 	// for the duration of the async operation so
 	// we use a shared_ptr to manage it.
-	auto sp = std::make_shared<std::remove_reference_t<decltype(response)>>(std::move(response));
+	auto sp = std::make_shared<std::remove_reference_t<decltype(response)>>(std::forward<decltype(response)>(response));
 	sp->set(http::field::server, BOOST_BEAST_VERSION_STRING);
-	sp->keep_alive(keep_alive);
+	sp->keep_alive(m_keep_alive);
 
 	async_write(m_stream, *sp, boost::asio::bind_executor(
 		m_strand,
@@ -169,7 +172,7 @@ void Session::handle_read_error(boost::system::error_code ec)
 	else if (ec)
 	{
 		Log(LOG_WARNING, "read error: %1% (%2%)", ec, ec.message());
-		return send_response(m_server.bad_request(ec.message(), 11), false);
+		return send_response(m_server.bad_request(ec.message(), 11));
 	}
 }
 
@@ -184,14 +187,12 @@ void Session::on_read(boost::system::error_code ec, std::size_t)
 		std::visit([self=shared_from_this(), this](auto&& parser)
 		{
 			auto req = parser.release();
-			auto sender = [self, keep_alive = req.keep_alive()](auto&& response)
-			{
-				self->send_response(std::move(response), keep_alive);
-			};
-
 			if (validate_request(req))
 			{
-				m_server.handle_https(std::move(req), std::move(sender));
+				m_server.handle_https(std::move(req), [self](auto&& response)
+				{
+					self->send_response(std::forward<decltype(response)>(response));
+				});
 			}
 		}, m_body);
 	}
