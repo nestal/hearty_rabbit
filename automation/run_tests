@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+
+# Have this script to exit if any of the step below fails
+set -e
+
+for TEST in ./tests/*;
+do
+	echo "Running test $TEST"
+	source $TEST
+done
