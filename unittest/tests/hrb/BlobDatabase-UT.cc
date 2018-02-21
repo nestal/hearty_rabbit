@@ -48,7 +48,7 @@ TEST_CASE("Open temp file", "[normal]")
 	REQUIRE(tmpid != ObjectID{});
 	REQUIRE(tmpid == tmp.ID());
 
-	auto dest = subject.save(std::move(tmp), sec);
+	auto dest = subject.dest(subject.save(std::move(tmp), sec));
 	INFO("save() error_code = " << sec << " " << sec.message());
 	REQUIRE(!sec);
 	REQUIRE(exists(dest));

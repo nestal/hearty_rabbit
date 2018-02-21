@@ -37,12 +37,13 @@ void BlobDatabase::prepare_upload(UploadFile& result, std::error_code& ec) const
 		throw std::system_error(err);
 }
 
-fs::path BlobDatabase::save(UploadFile&& tmp, std::error_code& ec)
+ObjectID BlobDatabase::save(UploadFile&& tmp, std::error_code& ec)
 {
 	// move the file in argument to local variable to make sure the destructor
 	// to delete the temp file.
 	auto file{std::move(tmp)};
-	auto dest_path = dest(file.ID());
+	auto id = file.ID();
+	auto dest_path = dest(id);
 	static_assert(std::is_same<decltype(file), UploadFile>::value);
 
 	boost::system::error_code bec;
@@ -53,7 +54,7 @@ fs::path BlobDatabase::save(UploadFile&& tmp, std::error_code& ec)
 	if (!ec)
 		file.linkat(dest_path, bec);
 
-	return dest_path;
+	return id;
 }
 
 fs::path BlobDatabase::dest(ObjectID id) const

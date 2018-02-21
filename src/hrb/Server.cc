@@ -130,6 +130,15 @@ void Server::on_upload(UploadRequest&& req, EmptyResponseSender&& send, std::str
 {
 	auto [prefix, filename] = extract_prefix(req);
 
+	std::error_code ec;
+	auto id = m_blob_db.save(std::move(req.body()), ec);
+
+	http::response<http::empty_body> res{
+		ec ? http::status::internal_server_error : http::status::created,
+		req.version()
+	};
+	res.set(http::field::location, "/blob/" + to_hex(id));
+	return send(std::move(res));
 /*	BlobObject blob{std::move(req).body(), filename};
 	Log(LOG_INFO, "uploading %1% bytes to %2% (%3%)", blob.size(), filename, blob.ID());
 
