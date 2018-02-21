@@ -11,6 +11,7 @@
 //
 
 #include "UploadFile.hh"
+#include "util/Log.hh"
 
 namespace hrb {
 
@@ -96,17 +97,19 @@ UploadFile::native_handle_type UploadFile::native_handle() const
 	return m_file.native_handle();
 }
 
-void UploadFile::linkat(const fs::path& dest, boost::system::error_code& ec)
+void UploadFile::linkat(const fs::path& dest, std::error_code& ec) const
 {
 	std::ostringstream proc;
 	proc << "/proc/self/fd/" << m_file.native_handle();
 
 	if (::linkat(AT_FDCWD, proc.str().c_str(), AT_FDCWD, dest.string().c_str(), AT_SYMLINK_FOLLOW) != 0)
-		ec.assign(errno, boost::system::generic_category());
+		ec.assign(errno, std::generic_category());
 }
 
 void UploadRequestBody::reader::init(const boost::optional<std::uint64_t>&, boost::system::error_code& ec)
 {
+	Log(LOG_NOTICE, "UploadRequestBody::reader::init()");
+
 	if (!m_body.is_open())
 		ec.assign(EBADF, boost::system::generic_category());
 }

@@ -128,10 +128,12 @@ void Server::get_blob(const EmptyRequest& req, StringResponseSender&& send)
 
 void Server::on_upload(UploadRequest&& req, EmptyResponseSender&& send, std::string_view user)
 {
+	boost::system::error_code bec;
 	auto [prefix, filename] = extract_prefix(req);
 
 	std::error_code ec;
-	auto id = m_blob_db.save(std::move(req.body()), ec);
+	auto id = m_blob_db.save(req.body(), ec);
+	Log(LOG_INFO, "uploading %1% bytes to %2%", req.body().size(bec), id);
 
 	http::response<http::empty_body> res{
 		ec ? http::status::internal_server_error : http::status::created,
@@ -140,7 +142,6 @@ void Server::on_upload(UploadRequest&& req, EmptyResponseSender&& send, std::str
 	res.set(http::field::location, "/blob/" + to_hex(id));
 	return send(std::move(res));
 /*	BlobObject blob{std::move(req).body(), filename};
-	Log(LOG_INFO, "uploading %1% bytes to %2% (%3%)", blob.size(), filename, blob.ID());
 
 	auto db = m_db.alloc(m_ioc);
 	blob.save(*db, [this, db, send=std::move(send), version=req.version()](BlobObject& blob, auto ec) mutable
@@ -351,8 +352,13 @@ std::string Server::https_root() const
 
 void Server::prepare_upload(UploadFile& upload) const
 {
+	Log(LOG_NOTICE, "server openning upload tmp file");
+
 	boost::system::error_code ec;
 	upload.open(m_cfg.blob_path().string().c_str(), ec);
+
+	if (!ec)
+		Log(LOG_WARNING, "error opening file %1%: %2% (%3%)", m_cfg.blob_path(), ec, ec.message());
 }
 
 } // end of namespace

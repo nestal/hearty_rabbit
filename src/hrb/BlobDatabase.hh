@@ -29,7 +29,7 @@ public:
 	explicit BlobDatabase(const fs::path& base);
 
 	void prepare_upload(UploadFile& result, std::error_code& ec) const;
-	ObjectID save(UploadFile&& tmp, std::error_code& ec);
+	ObjectID save(const UploadFile& tmp, std::error_code& ec);
 
 	fs::path dest(ObjectID id) const;
 

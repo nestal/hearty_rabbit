@@ -63,7 +63,7 @@ public:
 
 	native_handle_type native_handle() const;
 
-	void linkat(const fs::path& dest, boost::system::error_code& ec);
+	void linkat(const fs::path& dest, std::error_code& ec) const;
 
 private:
 	boost::beast::file_posix m_file;
