@@ -29,6 +29,8 @@ namespace http = boost::beast::http;    // from <boost/beast/http.hpp>
 
 using EndPoint = boost::asio::ip::tcp::endpoint;
 
+using RequestHeader = http::header<true, http::fields>;
+
 using StringRequest = http::request<http::string_body>;
 using FileRequest   = http::request<http::file_body>;
 using EmptyRequest  = http::request<http::empty_body>;

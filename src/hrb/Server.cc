@@ -126,7 +126,7 @@ void Server::get_blob(const EmptyRequest& req, StringResponseSender&& send)
 	}
 }
 
-void Server::on_upload(EmptyRequest&& req, EmptyResponseSender&& send, std::string_view user)
+void Server::on_upload(UploadRequest&& req, EmptyResponseSender&& send, std::string_view user)
 {
 /*	auto [prefix, filename] = extract_prefix(req);
 
@@ -145,7 +145,7 @@ void Server::on_upload(EmptyRequest&& req, EmptyResponseSender&& send, std::stri
 	});*/
 }
 
-void Server::on_invalid_session(const EmptyRequest& req, FileResponseSender&& send)
+void Server::on_invalid_session(const RequestHeader& req, FileResponseSender&& send)
 {
 	// If the target is home (i.e. "/"), show them the login page.
 	// Do not penalize the user, because their session may be expired.

@@ -12,6 +12,8 @@
 
 #pragma once
 
+#include "net/Redis.hh"
+
 #include <array>
 #include <functional>
 #include <optional>
@@ -41,11 +43,21 @@ void verify_user(
 	std::function<void(std::error_code, const SessionID&)> completion
 );
 
+template <typename Completion>
 void verify_session(
 	const SessionID& id,
 	redis::Connection& db,
-	std::function<void(std::error_code, std::string_view user)> completion
-);
+	Completion&& completion
+)
+{
+	db.command(
+		[comp=std::forward<Completion>(completion)](redis::Reply reply, auto&& ec) mutable
+		{
+			comp(std::move(ec), reply.as_string());
+		},
+		"GET session:%b", id.data(), id.size()
+	);
+}
 
 void destroy_session(
 	const SessionID& id,

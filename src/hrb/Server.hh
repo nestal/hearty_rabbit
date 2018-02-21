@@ -59,9 +59,20 @@ public:
 		std::string_view
 	> extract_prefix(const EmptyRequest& req);
 
-	template <class Request, class Send>
-	void on_valid_session(Request&& req, Send&& send, std::string_view user, const SessionID& session)
+	template <class Send>
+	void on_valid_session(UploadRequest&& req, Send&& send, std::string_view user, const SessionID& session)
 	{
+		if (req.target().starts_with(url::upload))
+			return on_upload(std::move(req), std::forward<Send>(send), user);
+
+		return send(not_found(req.target(), req.version()));
+	}
+
+	template <class Send>
+	void on_valid_session(EmptyRequest&& req, Send&& send, std::string_view user, const SessionID& session)
+	{
+		const RequestHeader& header = req;
+
 		if (req.target() == "/")
 			return send(serve_home(req.version()));
 
@@ -73,9 +84,6 @@ public:
 
 		if (req.target().starts_with(url::logout))
 			return on_logout(req, session, std::forward<Send>(send));
-
-		if (req.target().starts_with(url::upload))
-			return on_upload(std::move(req), std::forward<Send>(send), user);
 
 		return send(not_found(req.target(), req.version()));
 	}
@@ -90,7 +98,7 @@ public:
 			[
 				this,
 				db,
-				req=std::move(req),
+				req=std::forward<Request>(req),
 				send=std::forward<Send>(send),
 				session
 			](std::error_code ec, std::string_view user) mutable
@@ -102,13 +110,19 @@ public:
 					on_valid_session(std::move(req), std::forward<decltype(send)>(send), user, session);
 			}
 		);
-
 	}
 
 	template<class Send>
 	void handle_https(UploadRequest&& req, Send&& send)
 	{
-		return send(not_found("HAHAHA: ", req.version()));
+		assert(is_upload(req));
+		on_session(std::move(req), std::forward<Send>(send), {});
+
+/*		auto cookie = req[http::field::cookie];
+		auto session = parse_cookie({cookie.data(), cookie.size()});
+		return session ?
+			on_session(std::move(req), std::forward<Send>(send), *session) :
+			on_invalid_session(std::move(req), std::forward<Send>(send));*/
 	}
 
 	template <class Header>
@@ -175,8 +189,8 @@ private:
 
 	void on_login(const StringRequest& req, EmptyResponseSender&& send);
 	void on_logout(const EmptyRequest& req, const SessionID& id, EmptyResponseSender&& send);
-	void on_invalid_session(const EmptyRequest& req, FileResponseSender&& send);
-	void on_upload(EmptyRequest&& req, EmptyResponseSender&& send, std::string_view user);
+	void on_invalid_session(const RequestHeader& req, FileResponseSender&& send);
+	void on_upload(UploadRequest&& req, EmptyResponseSender&& send, std::string_view user);
 	void get_blob(const EmptyRequest& req, StringResponseSender&& send);
 	http::response<http::string_body> get_dir(const EmptyRequest& req);
 	static bool allow_anonymous(boost::string_view target);
