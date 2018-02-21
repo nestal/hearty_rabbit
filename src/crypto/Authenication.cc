@@ -150,21 +150,6 @@ void verify_user(
 	);
 }
 
-void destroy_session(
-	const SessionID& id,
-	redis::Connection& db,
-	std::function<void(std::error_code)> completion
-)
-{
-	db.command(
-		[comp=std::move(completion)](redis::Reply, auto&& ec)
-		{
-			comp(std::move(ec));
-		},
-		"DEL session:%b", id.data(), id.size()
-	);
-}
-
 std::string set_cookie(const SessionID& id)
 {
 	std::string result = "id=";

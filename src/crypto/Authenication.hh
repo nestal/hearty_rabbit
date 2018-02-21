@@ -59,11 +59,21 @@ void verify_session(
 	);
 }
 
+template <typename Completion>
 void destroy_session(
 	const SessionID& id,
 	redis::Connection& db,
-	std::function<void(std::error_code)> completion
-);
+	Completion&& completion
+)
+{
+	db.command(
+		[comp=std::move(completion)](redis::Reply, auto&& ec) mutable
+		{
+			comp(std::move(ec));
+		},
+		"DEL session:%b", id.data(), id.size()
+	);
+}
 
 std::string set_cookie(const SessionID& id);
 std::optional<SessionID> parse_cookie(std::string_view cookie);
