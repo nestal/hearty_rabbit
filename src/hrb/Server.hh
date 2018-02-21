@@ -132,15 +132,13 @@ public:
 	template<class Send>
 	void handle_https(StringRequest&& req, Send&& send)
 	{
+		assert(is_login(req));
 		return on_login(req, std::forward<Send>(send));
 	}
 
 	template <class Send>
 	void handle_https(EmptyRequest&& req, Send&& send)
 	{
-		if (req.target() == url::login)
-			return send(http::response<http::empty_body>{http::status::bad_request, req.version()});
-
 		if (allow_anonymous(req.target()))
 			return send(static_file_request(req));
 

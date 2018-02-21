@@ -209,11 +209,11 @@ TEST_CASE("GET static resource", "[normal]")
 
 	SECTION("Only allow login with POST: redirect GET request to login.html")
 	{
-		GenericStatusChecker checker{http::status::bad_request};
+		GenericStatusChecker checker{http::status::forbidden};
 
 		req.target("/login");
 		subject.handle_https(std::move(req), std::ref(checker));
-//		REQUIRE(subject.get_io_context().run_for(10s) > 0);
+		REQUIRE(subject.get_io_context().run_for(10s) > 0);
 		REQUIRE(checker.tested());
 	}
 

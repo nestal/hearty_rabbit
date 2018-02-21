@@ -80,13 +80,17 @@ void Session::on_read_header(boost::system::error_code ec, std::size_t bytes_tra
 		auto&& header = m_parser->get();
 		m_keep_alive = header.keep_alive();
 
-		// If received a file-upload request, create an UploadRequestParser and initialize it.
-		// The UploadRequestParser uses UploadFile as body. It is specifically design for
-		// handling upload file.
+		// Use a UploadRequestParser to parser upload requests.
+		// Need to call prepare_upload() before using UploadRequestBody.
 		if (m_server.is_upload(header))
 			m_server.prepare_upload(m_body.emplace<UploadRequestParser>(std::move(*m_parser)).get().body());
+
+		// Use StringRequestParser to parser login requests.
+		// The username/password will be stored in the string body.
 		else if (m_server.is_login(header))
 			m_body.emplace<StringRequestParser>(std::move(*m_parser));
+
+		// Other requests use EmptyRequestParser, because they don't have a body.
 		else
 			m_body.emplace<EmptyRequestParser>(std::move(*m_parser));
 
