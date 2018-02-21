@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 echo "Login correct set cookie"
-curl -Lk -D - -sS \
+curl -Lk -D - -sS --cookie \
 	-o /dev/null \
 	--write-out '%{http_code}' \
 	-d 'username=nestal&password=hello' https://localhost:4433/login

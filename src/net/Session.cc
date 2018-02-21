@@ -85,8 +85,10 @@ void Session::on_read_header(boost::system::error_code ec, std::size_t bytes_tra
 		// handling upload file.
 		if (m_server.is_upload(header))
 			m_server.prepare_upload(m_body.emplace<UploadRequestParser>(std::move(*m_parser)).get().body());
-		else
+		else if (m_server.is_login(header))
 			m_body.emplace<StringRequestParser>(std::move(*m_parser));
+		else
+			m_body.emplace<EmptyRequestParser>(std::move(*m_parser));
 
 		// Call async_read() using the chosen parser to read and parse the request body.
 		std::visit([self = shared_from_this(), this](auto&& parser)

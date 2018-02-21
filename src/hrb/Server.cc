@@ -74,7 +74,7 @@ void Server::on_login(const StringRequest& req, EmptyResponseSender&& send)
 		send(redirect("/", req.version()));
 }
 
-void Server::on_logout(const StringRequest& req, const SessionID& id, EmptyResponseSender&& send)
+void Server::on_logout(const EmptyRequest& req, const SessionID& id, EmptyResponseSender&& send)
 {
 	auto db = m_db.alloc(m_ioc);
 	destroy_session(id, *db, [this, db, send=std::move(send), version=req.version()](auto&& ec) mutable
@@ -95,7 +95,7 @@ http::response<http::empty_body> Server::redirect(boost::beast::string_view wher
 	return res;
 }
 
-void Server::get_blob(const StringRequest& req, StringResponseSender&& send)
+void Server::get_blob(const EmptyRequest& req, StringResponseSender&& send)
 {
 	auto blob_id = req.target().size() > url::login.size() ?
 		req.target().substr(url::login.size()) :
@@ -126,9 +126,9 @@ void Server::get_blob(const StringRequest& req, StringResponseSender&& send)
 	}
 }
 
-void Server::on_upload(StringRequest&& req, EmptyResponseSender&& send, std::string_view user)
+void Server::on_upload(EmptyRequest&& req, EmptyResponseSender&& send, std::string_view user)
 {
-	auto [prefix, filename] = extract_prefix(req);
+/*	auto [prefix, filename] = extract_prefix(req);
 
 	BlobObject blob{std::move(req).body(), filename};
 	Log(LOG_INFO, "uploading %1% bytes to %2% (%3%)", blob.size(), filename, blob.ID());
@@ -142,10 +142,10 @@ void Server::on_upload(StringRequest&& req, EmptyResponseSender&& send, std::str
 		http::response<http::empty_body> res{http::status::created, version};
 		res.set(http::field::location, "/blob/" + to_hex(blob.ID()));
 		return send(std::move(res));
-	});
+	});*/
 }
 
-void Server::on_invalid_session(const StringRequest& req, FileResponseSender&& send)
+void Server::on_invalid_session(const EmptyRequest& req, FileResponseSender&& send)
 {
 	// If the target is home (i.e. "/"), show them the login page.
 	// Do not penalize the user, because their session may be expired.
@@ -165,7 +165,7 @@ void Server::on_invalid_session(const StringRequest& req, FileResponseSender&& s
 	});
 }
 
-http::response<http::string_body> Server::get_dir(const StringRequest& req)
+http::response<http::string_body> Server::get_dir(const EmptyRequest& req)
 {
 	return http::response<http::string_body>();
 }
@@ -213,7 +213,7 @@ http::response<SplitBuffers> Server::serve_home(unsigned version)
 	return m_lib.find_dynamic("index.html", version);
 }
 
-http::response<SplitBuffers> Server::static_file_request(const StringRequest& req)
+http::response<SplitBuffers> Server::static_file_request(const EmptyRequest& req)
 {
 	Log(LOG_NOTICE, "requesting path %1%", req.target());
 
@@ -322,7 +322,7 @@ bool Server::allow_anonymous(boost::string_view target)
 std::tuple<
 	std::string_view,
 	std::string_view
-> Server::extract_prefix(const StringRequest& req)
+> Server::extract_prefix(const EmptyRequest& req)
 {
 	auto target = req.target();
 	auto sv = std::string_view{target.data(), target.size()};

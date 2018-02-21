@@ -57,7 +57,7 @@ public:
 	static std::tuple<
 		std::string_view,
 		std::string_view
-	> extract_prefix(const StringRequest& req);
+	> extract_prefix(const EmptyRequest& req);
 
 	template <class Request, class Send>
 	void on_valid_session(Request&& req, Send&& send, std::string_view user, const SessionID& session)
@@ -116,6 +116,13 @@ public:
 	{
 		return header.target() == hrb::url::upload && header.method() == http::verb::put;
 	}
+
+	template <class Header>
+	static bool is_login(Header& header)
+	{
+		return header.target() == hrb::url::login && header.method() == http::verb::post;
+	}
+
 	void prepare_upload(UploadFile& upload) const;
 
 	// This function produces an HTTP response for the given
@@ -125,14 +132,14 @@ public:
 	template<class Send>
 	void handle_https(StringRequest&& req, Send&& send)
 	{
-		// Obviously "/login" always allow anonymous access, otherwise no one can login.
+		return on_login(req, std::forward<Send>(send));
+	}
+
+	template <class Send>
+	void handle_https(EmptyRequest&& req, Send&& send)
+	{
 		if (req.target() == url::login)
-		{
-			if (req.method() == http::verb::post)
-				return on_login(req, std::forward<Send>(send));
-			else
-				return send(http::response<http::empty_body>{http::status::bad_request, req.version()});
-		}
+			return send(http::response<http::empty_body>{http::status::bad_request, req.version()});
 
 		if (allow_anonymous(req.target()))
 			return send(static_file_request(req));
@@ -145,7 +152,7 @@ public:
 			on_invalid_session(std::move(req), std::forward<Send>(send));
 	}
 
-	http::response<SplitBuffers> static_file_request(const StringRequest& req);
+	http::response<SplitBuffers> static_file_request(const EmptyRequest& req);
 	http::response<SplitBuffers> serve_home(unsigned version);
 	static http::response<http::string_body> bad_request(boost::string_view why, unsigned version);
 	static http::response<http::string_body> not_found(boost::string_view target, unsigned version);
@@ -169,11 +176,11 @@ private:
 	using FileResponseSender   = std::function<void(http::response<SplitBuffers>&&)>;
 
 	void on_login(const StringRequest& req, EmptyResponseSender&& send);
-	void on_logout(const StringRequest& req, const SessionID& id, EmptyResponseSender&& send);
-	void on_invalid_session(const StringRequest& req, FileResponseSender&& send);
-	void on_upload(StringRequest&& req, EmptyResponseSender&& send, std::string_view user);
-	void get_blob(const StringRequest& req, StringResponseSender&& send);
-	http::response<http::string_body> get_dir(const StringRequest& req);
+	void on_logout(const EmptyRequest& req, const SessionID& id, EmptyResponseSender&& send);
+	void on_invalid_session(const EmptyRequest& req, FileResponseSender&& send);
+	void on_upload(EmptyRequest&& req, EmptyResponseSender&& send, std::string_view user);
+	void get_blob(const EmptyRequest& req, StringResponseSender&& send);
+	http::response<http::string_body> get_dir(const EmptyRequest& req);
 	static bool allow_anonymous(boost::string_view target);
 
 private:
