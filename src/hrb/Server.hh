@@ -127,7 +127,7 @@ public:
 	template <class Header>
 	static bool is_upload(Header& header)
 	{
-		return header.target() == hrb::url::upload && header.method() == http::verb::put;
+		return header.target().starts_with(hrb::url::upload) && header.method() == http::verb::put;
 	}
 
 	template <class Header>
