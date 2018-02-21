@@ -116,13 +116,12 @@ public:
 	void handle_https(UploadRequest&& req, Send&& send)
 	{
 		assert(is_upload(req));
-		on_session(std::move(req), std::forward<Send>(send), {});
 
-/*		auto cookie = req[http::field::cookie];
+		auto cookie = req[http::field::cookie];
 		auto session = parse_cookie({cookie.data(), cookie.size()});
 		return session ?
 			on_session(std::move(req), std::forward<Send>(send), *session) :
-			on_invalid_session(std::move(req), std::forward<Send>(send));*/
+			on_invalid_session(std::move(req), std::forward<Send>(send));
 	}
 
 	template <class Header>
