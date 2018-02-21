@@ -28,15 +28,13 @@ BlobDatabase::BlobDatabase(const fs::path& base) : m_base{base}
 		create_directories(base);
 }
 
-UploadFile BlobDatabase::upload() const
+void BlobDatabase::prepare_upload(UploadFile& result, std::error_code& ec) const
 {
 	boost::system::error_code err;
 
-	UploadFile result;
 	result.open(m_base.string().c_str(), err);
 	if (err)
 		throw std::system_error(err);
-	return result;
 }
 
 fs::path BlobDatabase::save(UploadFile&& tmp, std::error_code& ec)
@@ -53,13 +51,7 @@ fs::path BlobDatabase::save(UploadFile&& tmp, std::error_code& ec)
 	ec.assign(bec.value(), bec.category());
 
 	if (!ec)
-	{
-		std::ostringstream proc;
-		proc << "/proc/self/fd/" << file.native_handle();
-
-		if (::linkat(AT_FDCWD, proc.str().c_str(), AT_FDCWD, dest_path.string().c_str(), AT_SYMLINK_FOLLOW) != 0)
-			ec.assign(errno, std::generic_category());
-	}
+		file.linkat(dest_path, bec);
 
 	return dest_path;
 }

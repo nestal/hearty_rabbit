@@ -96,6 +96,15 @@ UploadFile::native_handle_type UploadFile::native_handle() const
 	return m_file.native_handle();
 }
 
+void UploadFile::linkat(const fs::path& dest, boost::system::error_code& ec)
+{
+	std::ostringstream proc;
+	proc << "/proc/self/fd/" << m_file.native_handle();
+
+	if (::linkat(AT_FDCWD, proc.str().c_str(), AT_FDCWD, dest.string().c_str(), AT_SYMLINK_FOLLOW) != 0)
+		ec.assign(errno, boost::system::generic_category());
+}
+
 void UploadRequestBody::reader::init(const boost::optional<std::uint64_t>&, boost::system::error_code& ec)
 {
 	if (!m_body.is_open())

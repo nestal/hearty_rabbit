@@ -128,9 +128,9 @@ void Server::get_blob(const EmptyRequest& req, StringResponseSender&& send)
 
 void Server::on_upload(UploadRequest&& req, EmptyResponseSender&& send, std::string_view user)
 {
-/*	auto [prefix, filename] = extract_prefix(req);
+	auto [prefix, filename] = extract_prefix(req);
 
-	BlobObject blob{std::move(req).body(), filename};
+/*	BlobObject blob{std::move(req).body(), filename};
 	Log(LOG_INFO, "uploading %1% bytes to %2% (%3%)", blob.size(), filename, blob.ID());
 
 	auto db = m_db.alloc(m_ioc);
@@ -322,7 +322,7 @@ bool Server::allow_anonymous(boost::string_view target)
 std::tuple<
 	std::string_view,
 	std::string_view
-> Server::extract_prefix(const EmptyRequest& req)
+> Server::extract_prefix(const RequestHeader& req)
 {
 	auto target = req.target();
 	auto sv = std::string_view{target.data(), target.size()};

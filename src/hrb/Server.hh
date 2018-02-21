@@ -57,7 +57,7 @@ public:
 	static std::tuple<
 		std::string_view,
 		std::string_view
-	> extract_prefix(const EmptyRequest& req);
+	> extract_prefix(const RequestHeader& req);
 
 	template <class Send>
 	void on_valid_session(UploadRequest&& req, Send&& send, std::string_view user, const SessionID& session)

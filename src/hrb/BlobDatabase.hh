@@ -28,7 +28,7 @@ class BlobDatabase
 public:
 	explicit BlobDatabase(const fs::path& base);
 
-	UploadFile upload() const;
+	void prepare_upload(UploadFile& result, std::error_code& ec) const;
 	fs::path save(UploadFile&& tmp, std::error_code& ec);
 
 private:
