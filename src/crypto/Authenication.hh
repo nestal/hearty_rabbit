@@ -27,55 +27,72 @@ class Connection;
 }
 
 class Password;
-using SessionID = std::array<unsigned char, 16>;
 
-void add_user(
-	std::string_view username_mixed_case,
-	const Password& password,
-	redis::Connection& db,
-	std::function<void(std::error_code)> completion
-);
-
-void verify_user(
-	std::string_view username_mixed_case,
-	Password&& password,
-	redis::Connection& db,
-	std::function<void(std::error_code, const SessionID&)> completion
-);
-
-template <typename Completion>
-void verify_session(
-	const SessionID& id,
-	redis::Connection& db,
-	Completion&& completion
-)
+class Authentication
 {
-	db.command(
-		[comp=std::forward<Completion>(completion)](redis::Reply reply, auto&& ec) mutable
-		{
-			comp(std::move(ec), reply.as_string());
-		},
-		"GET session:%b", id.data(), id.size()
-	);
-}
+public:
+	using Cookie = std::array<unsigned char, 16>;
 
-template <typename Completion>
-void destroy_session(
-	const SessionID& id,
-	redis::Connection& db,
-	Completion&& completion
-)
-{
-	db.command(
-		[comp=std::move(completion)](redis::Reply, auto&& ec) mutable
-		{
-			comp(std::move(ec));
-		},
-		"DEL session:%b", id.data(), id.size()
-	);
-}
+	Authentication() = default;
+	Authentication(Cookie cookie, std::string_view user) : m_cookie{cookie}, m_user{user} {}
 
-std::string set_cookie(const SessionID& id);
-std::optional<SessionID> parse_cookie(std::string_view cookie);
+	bool valid() const;
+
+	static void add_user(
+		std::string_view username_mixed_case,
+		const Password& password,
+		redis::Connection& db,
+		std::function<void(std::error_code)> completion
+	);
+
+	static void verify_user(
+		std::string_view username_mixed_case,
+		Password&& password,
+		redis::Connection& db,
+		std::function<void(std::error_code, const Authentication&)> completion
+	);
+
+	template <typename Completion>
+	static void verify_session(
+		const Cookie& cookie,
+		redis::Connection& db,
+		Completion&& completion
+	)
+	{
+		db.command(
+			[comp=std::forward<Completion>(completion), cookie](redis::Reply reply, auto&& ec) mutable
+			{
+				comp(std::move(ec), Authentication{cookie, reply.as_string()});
+			},
+			"GET session:%b", cookie.data(), cookie.size()
+		);
+	}
+
+	const Cookie& cookie() const {return m_cookie;}
+	std::string_view user() const {return m_user;}
+
+	template <typename Completion>
+	static void destroy_session(
+		const Authentication& auth,
+		redis::Connection& db,
+		Completion&& completion
+	)
+	{
+		db.command(
+			[comp=std::move(completion)](redis::Reply, auto&& ec) mutable
+			{
+				comp(std::move(ec));
+			},
+			"DEL session:%b", auth.m_cookie.data(), auth.m_cookie.size()
+		);
+	}
+
+private:
+	Cookie      m_cookie{};
+	std::string m_user;
+};
+
+std::string set_cookie(const Authentication::Cookie& id);
+std::optional<Authentication::Cookie> parse_cookie(std::string_view cookie);
 
 } // end of namespace

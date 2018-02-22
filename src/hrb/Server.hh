@@ -78,7 +78,7 @@ public:
 		const RequestHeader& header,
 		EmptyRequestParser& src,
 		RequestBodyParsers& dest,
-		std::function<void(SessionID, std::string_view)>&& complete
+		std::function<void(const Authentication&)>&& complete
 	);
 
 	// This function produces an HTTP response for the given
@@ -125,16 +125,16 @@ private:
 	http::response<SplitBuffers> serve_home(unsigned version);
 
 	template <class Send>
-	void on_valid_session(UploadRequest&& req, Send&& send, std::string_view user, const SessionID& session)
+	void on_valid_session(UploadRequest&& req, Send&& send, const Authentication& session)
 	{
 		if (req.target().starts_with(url::upload))
-			return on_upload(std::move(req), std::forward<Send>(send), user);
+			return on_upload(std::move(req), std::forward<Send>(send), session);
 
 		return send(not_found(req.target(), req.version()));
 	}
 
 	template <class Send>
-	void on_valid_session(EmptyRequest&& req, Send&& send, std::string_view user, const SessionID& session)
+	void on_valid_session(EmptyRequest&& req, Send&& send, const Authentication& session)
 	{
 		const RequestHeader& header = req;
 
@@ -154,25 +154,24 @@ private:
 	}
 
 	template <class Request, class Send>
-	void on_session(Request&& req, Send&& send, const SessionID& session)
+	void on_session(Request&& req, Send&& send, const Authentication::Cookie& session_cookie)
 	{
 		auto db = m_db.alloc(m_ioc);
-		verify_session(
-			session,
+		Authentication::verify_session(
+			session_cookie,
 			*db,
 			[
 				this,
 				db,
 				req=std::forward<Request>(req),
-				send=std::forward<Send>(send),
-				session
-			](std::error_code ec, std::string_view user) mutable
+				send=std::forward<Send>(send)
+			](std::error_code ec, const Authentication& auth) mutable
 			{
 				m_db.release(std::move(db));
 
 				return ec ?
 					on_invalid_session(std::move(req), std::forward<decltype(send)>(send)) :
-					on_valid_session(std::move(req), std::forward<decltype(send)>(send), user, session);
+					on_valid_session(std::move(req), std::forward<decltype(send)>(send), auth);
 			}
 		);
 	}
@@ -187,9 +186,9 @@ private:
 	using BlobResponseSender   = std::function<void(http::response<http::file_body>&&)>;
 
 	void on_login(const StringRequest& req, EmptyResponseSender&& send);
-	void on_logout(const EmptyRequest& req, const SessionID& id, EmptyResponseSender&& send);
+	void on_logout(const EmptyRequest& req, const Authentication& auth, EmptyResponseSender&& send);
 	void on_invalid_session(const RequestHeader& req, FileResponseSender&& send);
-	void on_upload(UploadRequest&& req, EmptyResponseSender&& send, std::string_view user);
+	void on_upload(UploadRequest&& req, EmptyResponseSender&& send, const Authentication& user);
 	void get_blob(const EmptyRequest& req, BlobResponseSender&& send);
 	http::response<http::string_body> get_dir(const EmptyRequest& req);
 	static bool allow_anonymous(boost::string_view target);

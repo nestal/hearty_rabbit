@@ -104,21 +104,22 @@ private:
 	boost::filesystem::path m_file;
 };
 
-SessionID create_session(std::string_view username, std::string_view password, const Configuration& cfg)
+Authentication::Cookie create_session(std::string_view username, std::string_view password, const Configuration& cfg)
 {
 	boost::asio::io_context ioc;
 	auto db = redis::connect(ioc, cfg.redis());
 
-	std::promise<SessionID> result;
+	std::promise<Authentication::Cookie> result;
 
-	add_user(username, Password{password}, *db, [&result, db, username, password](std::error_code ec)
+	Authentication::add_user(username, Password{password}, *db, [&result, db, username, password](std::error_code ec)
 	{
 		REQUIRE(!ec);
 
-		verify_user(username, Password{password}, *db, [&result, db](std::error_code ec, const SessionID& id)
+		Authentication::verify_user(username, Password{password}, *db, [&result, db](std::error_code ec, auto&& auth)
 		{
 			REQUIRE(!ec);
-			result.set_value(id);
+			REQUIRE(auth.valid());
+			result.set_value(auth.cookie());
 			db->disconnect();
 		});
 	});

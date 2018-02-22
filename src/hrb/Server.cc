@@ -49,7 +49,7 @@ void Server::on_login(const StringRequest& req, EmptyResponseSender&& send)
 		auto [username, password] = find_fields(body, "username", "password");
 
 		auto db = m_db.alloc(m_ioc);
-		verify_user(
+		Authentication::verify_user(
 			username,
 			Password{password},
 			*db,
@@ -65,7 +65,7 @@ void Server::on_login(const StringRequest& req, EmptyResponseSender&& send)
 
 				auto&& res = redirect(ec ? "/login_incorrect.html" : "/", version);
 				if (!ec)
-					res.set(http::field::set_cookie, set_cookie(session));
+					res.set(http::field::set_cookie, set_cookie(session.cookie()));
 
 				send(std::move(res));
 			}
@@ -75,10 +75,10 @@ void Server::on_login(const StringRequest& req, EmptyResponseSender&& send)
 		send(redirect("/", req.version()));
 }
 
-void Server::on_logout(const EmptyRequest& req, const SessionID& id, EmptyResponseSender&& send)
+void Server::on_logout(const EmptyRequest& req, const Authentication& auth, EmptyResponseSender&& send)
 {
 	auto db = m_db.alloc(m_ioc);
-	destroy_session(id, *db, [this, db, send=std::move(send), version=req.version()](auto&& ec) mutable
+	Authentication::destroy_session(auth, *db, [this, db, send=std::move(send), version=req.version()](auto&& ec) mutable
 	{
 		m_db.release(std::move(db));
 
@@ -125,7 +125,7 @@ void Server::get_blob(const EmptyRequest& req, BlobResponseSender&& send)
 	}
 }
 
-void Server::on_upload(UploadRequest&& req, EmptyResponseSender&& send, std::string_view user)
+void Server::on_upload(UploadRequest&& req, EmptyResponseSender&& send, const Authentication& auth)
 {
 	boost::system::error_code bec;
 	auto [prefix, filename] = extract_prefix(req);
@@ -277,7 +277,7 @@ void Server::drop_privileges()
 void Server::add_user(std::string_view username, Password&& password, std::function<void(std::error_code)> complete)
 {
 	auto db = m_db.alloc(m_ioc);
-	hrb::add_user(username, std::move(password), *db, [db, &complete](std::error_code&& ec)
+	Authentication::add_user(username, std::move(password), *db, [db, &complete](std::error_code&& ec)
 	{
 		complete(std::move(ec));
 		db->disconnect();
@@ -345,7 +345,7 @@ void Server::on_request_header(
 	const RequestHeader& header,
 	EmptyRequestParser& src,
 	RequestBodyParsers& dest,
-	std::function<void(SessionID, std::string_view)>&& complete
+	std::function<void(const Authentication&)>&& complete
 )
 {
 	// Use StringRequestParser to parser login requests.
@@ -354,13 +354,13 @@ void Server::on_request_header(
 	if (is_login(header))
 	{
 		dest.emplace<StringRequestParser>(std::move(src));
-		return complete(SessionID{}, std::string_view{});
+		return complete(Authentication{});
 	}
 
 	if (allow_anonymous(header.target()))
 	{
 		dest.emplace<EmptyRequestParser>(std::move(src));
-		return complete(SessionID{}, std::string_view{});
+		return complete(Authentication{});
 	}
 
 	// Everything else require a valid session.
@@ -369,11 +369,11 @@ void Server::on_request_header(
 	if (!session)
 	{
 		dest.emplace<EmptyRequestParser>(std::move(src));
-		return complete(SessionID{}, std::string_view{});
+		return complete(Authentication{});
 	}
 
 	auto db = m_db.alloc(m_ioc);
-	verify_session(
+	Authentication::verify_session(
 		*session,
 		*db,
 		[
@@ -382,9 +382,8 @@ void Server::on_request_header(
 			&header,
 			&dest,
 			&src,
-			session=*session,
 			complete=std::move(complete)
-		](std::error_code ec, std::string_view user) mutable
+		](std::error_code ec, const Authentication& auth) mutable
 		{
 			m_db.release(std::move(db));
 
@@ -403,8 +402,7 @@ void Server::on_request_header(
 				dest.emplace<EmptyRequestParser>(std::move(src));
 			}
 
-			complete(session, user);
-
+			complete(auth);
 		}
 	);
 }

@@ -81,7 +81,7 @@ void Session::on_read_header(boost::system::error_code ec, std::size_t bytes_tra
 		auto&& header = m_parser->get();
 		m_keep_alive = header.keep_alive();
 
-		m_server.on_request_header(header, *m_parser, m_body, [self=shared_from_this(), this](SessionID session, std::string_view user)
+		m_server.on_request_header(header, *m_parser, m_body, [self=shared_from_this(), this](const Authentication&)
 		{
 			// Call async_read() using the chosen parser to read and parse the request body.
 			std::visit([self, this](auto&& parser)
