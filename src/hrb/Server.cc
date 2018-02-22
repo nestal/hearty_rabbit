@@ -103,8 +103,10 @@ void Server::get_blob(const EmptyRequest& req, BlobResponseSender&& send)
 		boost::string_view{};
 
 	auto object_id = hex_to_object_id(std::string_view{blob_id.data(), blob_id.size()});
+	Log(LOG_NOTICE, "get blob %1%", object_id);
 	if (object_id == ObjectID{})
 	{
+		Log(LOG_NOTICE, "invalid blob %1%", object_id);
 		return send(http::response<http::file_body>{http::status::not_found, req.version()});
 	}
 	else

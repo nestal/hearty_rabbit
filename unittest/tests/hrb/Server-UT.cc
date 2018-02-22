@@ -72,6 +72,8 @@ public:
 	template <typename Response>
 	void operator()(Response&& res) const
 	{
+		INFO("response type = " << boost::core::demangled_name(typeid(res)));
+
 		REQUIRE(res.result() == m_status);
 		REQUIRE(res.version() == 11);
 		set_tested();
@@ -104,12 +106,12 @@ private:
 	boost::filesystem::path m_file;
 };
 
-Authentication::Cookie create_session(std::string_view username, std::string_view password, const Configuration& cfg)
+Authentication create_session(std::string_view username, std::string_view password, const Configuration& cfg)
 {
 	boost::asio::io_context ioc;
 	auto db = redis::connect(ioc, cfg.redis());
 
-	std::promise<Authentication::Cookie> result;
+	std::promise<Authentication> result;
 
 	Authentication::add_user(username, Password{password}, *db, [&result, db, username, password](std::error_code ec)
 	{
@@ -119,7 +121,7 @@ Authentication::Cookie create_session(std::string_view username, std::string_vie
 		{
 			REQUIRE(!ec);
 			REQUIRE(auth.valid());
-			result.set_value(auth.cookie());
+			result.set_value(auth);
 			db->disconnect();
 		});
 	});
@@ -151,7 +153,7 @@ TEST_CASE("General server tests", "[normal]")
 			FileResponseChecker checker{http::status::ok, cfg.web_root() / "dynamic/login.html"};
 
 			req.target("/");
-			subject.handle_https(std::move(req), std::ref(checker));
+			subject.handle_https(std::move(req), std::ref(checker), {});
 			REQUIRE(checker.tested());
 		}
 
@@ -160,7 +162,7 @@ TEST_CASE("General server tests", "[normal]")
 			FileResponseChecker checker{http::status::ok, cfg.web_root() / "static/logo.svg"};
 
 			req.target("/logo.svg");
-			subject.handle_https(std::move(req), std::ref(checker));
+			subject.handle_https(std::move(req), std::ref(checker), {});
 			REQUIRE(checker.tested());
 		}
 
@@ -169,8 +171,8 @@ TEST_CASE("General server tests", "[normal]")
 			FileResponseChecker checker{http::status::ok, cfg.web_root() / "static/hearty_rabbit.js"};
 
 			req.target("/hearty_rabbit.js");
-			req.set(boost::beast::http::field::cookie, set_cookie(session));
-			subject.handle_https(std::move(req), std::ref(checker));
+			req.set(boost::beast::http::field::cookie, set_cookie(session.cookie()));
+			subject.handle_https(std::move(req), std::ref(checker), session);
 			REQUIRE(checker.tested());
 		}
 
@@ -179,7 +181,7 @@ TEST_CASE("General server tests", "[normal]")
 			GenericStatusChecker checker{http::status::forbidden};
 
 			req.target("/index.html");
-			subject.handle_https(std::move(req), std::ref(checker));
+			subject.handle_https(std::move(req), std::ref(checker), {});
 			REQUIRE(subject.get_io_context().run_for(10s) > 0);
 			REQUIRE(checker.tested());
 		}
@@ -189,16 +191,17 @@ TEST_CASE("General server tests", "[normal]")
 			FileResponseChecker checker{http::status::ok, cfg.web_root() / "dynamic/index.html"};
 
 			req.target("/");
-			req.insert(boost::beast::http::field::cookie, set_cookie(session));
+			req.set(boost::beast::http::field::cookie, set_cookie(session.cookie()));
 			subject.handle_https(
 				std::move(req), [&checker, &subject](auto&& res)
 				{
 					checker(std::move(res));
 					subject.disconnect_db();
-				}
+				},
+				session
 			);
 
-			REQUIRE(subject.get_io_context().run_for(10s) > 0);
+//			REQUIRE(subject.get_io_context().run_for(10s) > 0);
 			REQUIRE(checker.tested());
 		}
 
@@ -207,7 +210,7 @@ TEST_CASE("General server tests", "[normal]")
 			GenericStatusChecker checker{http::status::forbidden};
 
 			req.target("/something_not_exist.html");
-			subject.handle_https(std::move(req), std::ref(checker));
+			subject.handle_https(std::move(req), std::ref(checker), {});
 			REQUIRE(subject.get_io_context().run_for(10s) > 0);
 			REQUIRE(checker.tested());
 		}
@@ -217,7 +220,7 @@ TEST_CASE("General server tests", "[normal]")
 			GenericStatusChecker checker{http::status::forbidden};
 
 			req.target("/login");
-			subject.handle_https(std::move(req), std::ref(checker));
+			subject.handle_https(std::move(req), std::ref(checker), {});
 			REQUIRE(subject.get_io_context().run_for(10s) > 0);
 			REQUIRE(checker.tested());
 		}
@@ -231,13 +234,13 @@ TEST_CASE("General server tests", "[normal]")
 			SECTION("requests for / will see login page without delay")
 			{
 				req.target("/");
-				subject.handle_https(std::move(req), std::ref(login));
+				subject.handle_https(std::move(req), std::ref(login), {});
 				expected = &login;
 			}
 			SECTION("requests to others will get 403 forbidden with delay")
 			{
 				req.target("/something");
-				subject.handle_https(std::move(req), std::ref(forbidden));
+				subject.handle_https(std::move(req), std::ref(forbidden), {});
 				REQUIRE(subject.get_io_context().run_for(10s) > 0);
 				expected = &forbidden;
 			}
@@ -256,13 +259,15 @@ TEST_CASE("General server tests", "[normal]")
 				req.target("/blob/abc");
 				SECTION("with valid session")
 				{
-					req.insert(boost::beast::http::field::cookie, set_cookie(session));
-					subject.handle_https(std::move(req), std::ref(valid_session));
+					req.set(boost::beast::http::field::cookie, set_cookie(session.cookie()));
+					subject.handle_https(std::move(req), std::ref(valid_session), session);
+					REQUIRE(valid_session.tested());
 					expected = &valid_session;
 				}
 				SECTION("with invalid session")
 				{
-					subject.handle_https(std::move(req), std::ref(invalid_session));
+					subject.handle_https(std::move(req), std::ref(invalid_session), {});
+					REQUIRE(subject.get_io_context().run_for(10s) > 0);
 					expected = &invalid_session;
 				}
 			}
@@ -271,18 +276,19 @@ TEST_CASE("General server tests", "[normal]")
 				req.target("/blob");
 				SECTION("with valid session")
 				{
-					req.insert(boost::beast::http::field::cookie, set_cookie(session));
-					subject.handle_https(std::move(req), std::ref(valid_session));
+					req.set(boost::beast::http::field::cookie, set_cookie(session.cookie()));
+					subject.handle_https(std::move(req), std::ref(valid_session), session);
 					expected = &valid_session;
 				}
 				SECTION("with invalid session")
 				{
-					subject.handle_https(std::move(req), std::ref(invalid_session));
+					subject.handle_https(std::move(req), std::ref(invalid_session), {});
+					REQUIRE(subject.get_io_context().run_for(10s) > 0);
 					expected = &invalid_session;
 				}
 			}
 
-			REQUIRE(subject.get_io_context().run_for(10s) > 0);
+			INFO("Request target: " << req.target() << " session user: " << session.user());
 			REQUIRE(expected->tested());
 		}
 	}
@@ -310,7 +316,8 @@ TEST_CASE("General server tests", "[normal]")
 						REQUIRE(res[http::field::cookie] == "");
 						login_incorrect(std::move(res));
 						subject.disconnect_db();
-					}
+					},
+					{}
 				);
 				REQUIRE(subject.get_io_context().run_for(10s) > 0);
 				expect = &login_incorrect;
@@ -319,13 +326,13 @@ TEST_CASE("General server tests", "[normal]")
 			{
 				req.erase(http::field::content_type);
 				REQUIRE(req[http::field::content_type] == "");
-				subject.handle_https(std::move(req), std::ref(invalid_login));
+				subject.handle_https(std::move(req), std::ref(invalid_login), {});
 				expect = &invalid_login;
 			}
 			SECTION("without incorrect content_type")
 			{
 				req.insert(http::field::content_type, "text/plain");
-				subject.handle_https(std::move(req), std::ref(invalid_login));
+				subject.handle_https(std::move(req), std::ref(invalid_login), {});
 				expect = &invalid_login;
 			}
 

@@ -62,18 +62,6 @@ public:
 		std::string_view
 	> extract_prefix(const RequestHeader& req);
 
-	template<class Send>
-	void handle_https(UploadRequest&& req, Send&& send)
-	{
-		assert(is_upload(req));
-
-		auto cookie = req[http::field::cookie];
-		auto session = parse_cookie({cookie.data(), cookie.size()});
-		return session ?
-			on_session(std::move(req), std::forward<Send>(send), *session) :
-			on_invalid_session(std::move(req), std::forward<Send>(send));
-	}
-
 	void on_request_header(
 		const RequestHeader& header,
 		EmptyRequestParser& src,
@@ -81,29 +69,41 @@ public:
 		std::function<void(const Authentication&)>&& complete
 	);
 
+	template<class Send>
+	void handle_https(UploadRequest&& req, Send&& send, const Authentication& auth)
+	{
+		assert(is_upload(req));
+
+		if (auth.valid())
+			return req.target().starts_with(url::upload) ?
+				on_upload(std::move(req), std::forward<Send>(send), auth) :
+				send(not_found(req.target(), req.version()));
+
+		else
+			return on_invalid_session(std::move(req), std::forward<Send>(send));
+	}
+
 	// This function produces an HTTP response for the given
 	// request. The type of the response object depends on the
 	// contents of the request, so the interface requires the
 	// caller to pass a generic lambda for receiving the response.
 	template<class Send>
-	void handle_https(StringRequest&& req, Send&& send)
+	void handle_https(StringRequest&& req, Send&& send, const Authentication& auth)
 	{
 		assert(is_login(req));
 		return on_login(req, std::forward<Send>(send));
 	}
 
 	template <class Send>
-	void handle_https(EmptyRequest&& req, Send&& send)
+	void handle_https(EmptyRequest&& req, Send&& send, const Authentication& auth)
 	{
 		if (allow_anonymous(req.target()))
 			return send(static_file_request(req));
 
 		// Everything else require a valid session.
-		auto cookie = req[http::field::cookie];
-		auto session = parse_cookie({cookie.data(), cookie.size()});
-		return session ?
-			on_session(std::move(req), std::forward<Send>(send), *session) :
-			on_invalid_session(std::move(req), std::forward<Send>(send));
+		return auth.valid() ?
+			on_valid_session(std::move(req), std::forward<decltype(send)>(send), auth) :
+			on_invalid_session(std::move(req), std::forward<decltype(send)>(send));
 	}
 
 	static http::response<http::string_body> bad_request(boost::string_view why, unsigned version);
@@ -125,15 +125,6 @@ private:
 	http::response<SplitBuffers> serve_home(unsigned version);
 
 	template <class Send>
-	void on_valid_session(UploadRequest&& req, Send&& send, const Authentication& session)
-	{
-		if (req.target().starts_with(url::upload))
-			return on_upload(std::move(req), std::forward<Send>(send), session);
-
-		return send(not_found(req.target(), req.version()));
-	}
-
-	template <class Send>
 	void on_valid_session(EmptyRequest&& req, Send&& send, const Authentication& session)
 	{
 		const RequestHeader& header = req;
@@ -151,29 +142,6 @@ private:
 			return on_logout(req, session, std::forward<Send>(send));
 
 		return send(not_found(req.target(), req.version()));
-	}
-
-	template <class Request, class Send>
-	void on_session(Request&& req, Send&& send, const Authentication::Cookie& session_cookie)
-	{
-		auto db = m_db.alloc(m_ioc);
-		Authentication::verify_session(
-			session_cookie,
-			*db,
-			[
-				this,
-				db,
-				req=std::forward<Request>(req),
-				send=std::forward<Send>(send)
-			](std::error_code ec, const Authentication& auth) mutable
-			{
-				m_db.release(std::move(db));
-
-				return ec ?
-					on_invalid_session(std::move(req), std::forward<decltype(send)>(send)) :
-					on_valid_session(std::move(req), std::forward<decltype(send)>(send), auth);
-			}
-		);
 	}
 
 	static bool is_upload(const RequestHeader& header);
