@@ -11,7 +11,6 @@
 //
 
 #include "UploadFile.hh"
-#include "util/Log.hh"
 
 namespace hrb {
 
@@ -108,8 +107,6 @@ void UploadFile::linkat(const fs::path& dest, std::error_code& ec) const
 
 void UploadRequestBody::reader::init(const boost::optional<std::uint64_t>&, boost::system::error_code& ec)
 {
-	Log(LOG_NOTICE, "UploadRequestBody::reader::init()");
-
 	if (!m_body.is_open())
 		ec.assign(EBADF, boost::system::generic_category());
 }

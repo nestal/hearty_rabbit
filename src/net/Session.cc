@@ -80,16 +80,17 @@ void Session::on_read_header(boost::system::error_code ec, std::size_t bytes_tra
 		auto&& header = m_parser->get();
 		m_keep_alive = header.keep_alive();
 
-		m_server.on_request_header(header, *m_parser, m_body);
-
-		// Call async_read() using the chosen parser to read and parse the request body.
-		std::visit([self = shared_from_this(), this](auto&& parser)
+		m_server.on_request_header(header, *m_parser, m_body, [self=shared_from_this(), this]
 		{
-			async_read(m_stream, m_buffer, parser, boost::asio::bind_executor(
-				m_strand,
-				[self](auto ec, auto bytes){self->on_read(ec, bytes);}
-			));
-		}, m_body);
+			// Call async_read() using the chosen parser to read and parse the request body.
+			std::visit([self, this](auto&& parser)
+			{
+				async_read(m_stream, m_buffer, parser, boost::asio::bind_executor(
+					m_strand,
+					[self](auto ec, auto bytes){self->on_read(ec, bytes);}
+				));
+			}, m_body);
+		});
 	}
 }
 

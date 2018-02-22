@@ -74,9 +74,12 @@ public:
 			on_invalid_session(std::move(req), std::forward<Send>(send));
 	}
 
-	void on_request_header(const RequestHeader& header, EmptyRequestParser& src, RequestBodyParsers& dest);
-
-	void prepare_upload(UploadFile& upload) const;
+	void on_request_header(
+		const RequestHeader& header,
+		EmptyRequestParser& src,
+		RequestBodyParsers& dest,
+		std::function<void()> complete
+	);
 
 	// This function produces an HTTP response for the given
 	// request. The type of the response object depends on the

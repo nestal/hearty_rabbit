@@ -336,31 +336,37 @@ std::string Server::https_root() const
 		+ (m_cfg.listen_https().port() == 443 ? ""s : (":"s + std::to_string(m_cfg.listen_https().port())));
 }
 
-void Server::prepare_upload(UploadFile& upload) const
-{
-	boost::system::error_code ec;
-	upload.open(m_cfg.blob_path().string().c_str(), ec);
-
-	if (ec)
-		Log(LOG_WARNING, "error opening file %1%: %2% (%3%)", m_cfg.blob_path(), ec, ec.message());
-}
-
-void Server::on_request_header(const RequestHeader& header, EmptyRequestParser& src, RequestBodyParsers& dest)
+void Server::on_request_header(
+	const RequestHeader& header,
+	EmptyRequestParser& src,
+	RequestBodyParsers& dest,
+	std::function<void()> complete
+)
 {
 	// Use a UploadRequestParser to parser upload requests.
 	// Need to call prepare_upload() before using UploadRequestBody.
 	if (is_upload(header))
-		prepare_upload(dest.emplace<UploadRequestParser>(std::move(src)).get().body());
+	{
+		std::error_code ec;
+		m_blob_db.prepare_upload(dest.emplace<UploadRequestParser>(std::move(src)).get().body(), ec);
+		if (ec)
+			Log(LOG_WARNING, "error opening file %1%: %2% (%3%)", m_cfg.blob_path(), ec, ec.message());
+	}
 
-	// Use StringRequestParser to parser login requests.
+		// Use StringRequestParser to parser login requests.
 	// The username/password will be stored in the string body.
 	else if (is_login(header))
+	{
 		dest.emplace<StringRequestParser>(std::move(src));
+	}
 
 	// Other requests use EmptyRequestParser, because they don't have a body.
 	else
+	{
 		dest.emplace<EmptyRequestParser>(std::move(src));
+	}
 
+	complete();
 }
 
 bool Server::is_upload(const RequestHeader& header)

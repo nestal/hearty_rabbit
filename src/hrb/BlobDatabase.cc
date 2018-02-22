@@ -34,7 +34,7 @@ void BlobDatabase::prepare_upload(UploadFile& result, std::error_code& ec) const
 
 	result.open(m_base.string().c_str(), err);
 	if (err)
-		throw std::system_error(err);
+		ec.assign(err.value(), err.category());
 }
 
 ObjectID BlobDatabase::save(const UploadFile& tmp, std::error_code& ec)
