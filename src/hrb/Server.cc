@@ -352,12 +352,10 @@ std::string Server::https_root() const
 
 void Server::prepare_upload(UploadFile& upload) const
 {
-	Log(LOG_NOTICE, "server openning upload tmp file");
-
 	boost::system::error_code ec;
 	upload.open(m_cfg.blob_path().string().c_str(), ec);
 
-	if (!ec)
+	if (ec)
 		Log(LOG_WARNING, "error opening file %1%: %2% (%3%)", m_cfg.blob_path(), ec, ec.message());
 }
 
@@ -366,7 +364,7 @@ void Server::on_request_header(const RequestHeader& header, EmptyRequestParser& 
 	// Use a UploadRequestParser to parser upload requests.
 	// Need to call prepare_upload() before using UploadRequestBody.
 	if (is_upload(header))
-		prepare_upload(dest.emplace<UploadRequestParser>(std::move(header)).get().body());
+		prepare_upload(dest.emplace<UploadRequestParser>(std::move(src)).get().body());
 
 	// Use StringRequestParser to parser login requests.
 	// The username/password will be stored in the string body.
@@ -377,6 +375,16 @@ void Server::on_request_header(const RequestHeader& header, EmptyRequestParser& 
 	else
 		dest.emplace<EmptyRequestParser>(std::move(src));
 
+}
+
+bool Server::is_upload(const RequestHeader& header)
+{
+	return header.target().starts_with(hrb::url::upload) && header.method() == http::verb::put;
+}
+
+bool Server::is_login(const RequestHeader& header)
+{
+	return header.target() == hrb::url::login && header.method() == http::verb::post;
 }
 
 } // end of namespace

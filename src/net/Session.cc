@@ -175,7 +175,6 @@ void Session::on_read(boost::system::error_code ec, std::size_t)
 	// This means they closed the connection
 	if (ec)
 		return handle_read_error(ec);
-
 	else
 	{
 		std::visit([self=shared_from_this(), this](auto&& parser)
@@ -225,10 +224,10 @@ void Session::do_close()
 	);
 }
 
-void Session::on_shutdown(boost::system::error_code ec)
+void Session::on_shutdown(boost::system::error_code)
 {
-	if (ec)
-		Log(LOG_WARNING, "shutdown error: %1% (%2%)", ec, ec.message());
+//	if (ec)
+//		Log(LOG_WARNING, "shutdown error: %1% (%2%)", ec, ec.message());
 
 	// At this point the connection is closed gracefully
 }
