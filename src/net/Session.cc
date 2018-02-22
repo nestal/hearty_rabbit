@@ -16,6 +16,7 @@
 
 #include <boost/asio/bind_executor.hpp>
 #include <iostream>
+#include <util/Error.hh>
 
 namespace hrb {
 
@@ -72,7 +73,7 @@ void Session::do_read()
 void Session::on_read_header(boost::system::error_code ec, std::size_t bytes_transferred)
 {
 	if (ec)
-		handle_read_error(ec);
+		handle_read_error({ec.value(), ec.category()});
 	else
 	{
 		// Get the HTTP header from the partially parsed request message from the parser.
@@ -80,7 +81,7 @@ void Session::on_read_header(boost::system::error_code ec, std::size_t bytes_tra
 		auto&& header = m_parser->get();
 		m_keep_alive = header.keep_alive();
 
-		m_server.on_request_header(header, *m_parser, m_body, [self=shared_from_this(), this]
+		m_server.on_request_header(header, *m_parser, m_body, [self=shared_from_this(), this](SessionID session, std::string_view user)
 		{
 			// Call async_read() using the chosen parser to read and parse the request body.
 			std::visit([self, this](auto&& parser)
@@ -92,6 +93,29 @@ void Session::on_read_header(boost::system::error_code ec, std::size_t bytes_tra
 			}, m_body);
 		});
 	}
+}
+
+
+void Session::on_read(boost::system::error_code ec, std::size_t)
+{
+	// This means they closed the connection
+	if (ec)
+		return handle_read_error(ec);
+	else
+	{
+		std::visit([self=shared_from_this(), this](auto&& parser)
+		{
+			auto req = parser.release();
+			if (validate_request(req))
+			{
+				m_server.handle_https(std::move(req), [self](auto&& response)
+				{
+					self->send_response(std::forward<decltype(response)>(response));
+				});
+			}
+		}, m_body);
+	}
+	m_nth_transaction++;
 }
 
 // This function produces an HTTP response for the given
@@ -169,28 +193,6 @@ void Session::handle_read_error(boost::system::error_code ec)
 		Log(LOG_WARNING, "read error: %1% (%2%)", ec, ec.message());
 		return send_response(m_server.bad_request(ec.message(), 11));
 	}
-}
-
-void Session::on_read(boost::system::error_code ec, std::size_t)
-{
-	// This means they closed the connection
-	if (ec)
-		return handle_read_error(ec);
-	else
-	{
-		std::visit([self=shared_from_this(), this](auto&& parser)
-		{
-			auto req = parser.release();
-			if (validate_request(req))
-			{
-				m_server.handle_https(std::move(req), [self](auto&& response)
-				{
-					self->send_response(std::forward<decltype(response)>(response));
-				});
-			}
-		}, m_body);
-	}
-	m_nth_transaction++;
 }
 
 void Session::on_write(

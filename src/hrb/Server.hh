@@ -78,7 +78,7 @@ public:
 		const RequestHeader& header,
 		EmptyRequestParser& src,
 		RequestBodyParsers& dest,
-		std::function<void()> complete
+		std::function<void(SessionID, std::string_view)>&& complete
 	);
 
 	// This function produces an HTTP response for the given

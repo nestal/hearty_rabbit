@@ -17,6 +17,7 @@
 #include "crypto/Password.hh"
 #include "crypto/Authenication.hh"
 #include "net/Listener.hh"
+#include "util/Error.hh"
 #include "util/Configuration.hh"
 #include "util/Exception.hh"
 #include "util/Escape.hh"
@@ -336,37 +337,76 @@ std::string Server::https_root() const
 		+ (m_cfg.listen_https().port() == 443 ? ""s : (":"s + std::to_string(m_cfg.listen_https().port())));
 }
 
+/// \arg    header      The header we just received. This reference must be valid
+///						until \a complete() is called.
+/// \arg    src         The request_parser that produce \a header. It will be moved
+///                     to \a dest. Must be valid until \a complete() is called.
 void Server::on_request_header(
 	const RequestHeader& header,
 	EmptyRequestParser& src,
 	RequestBodyParsers& dest,
-	std::function<void()> complete
+	std::function<void(SessionID, std::string_view)>&& complete
 )
 {
-	// Use a UploadRequestParser to parser upload requests.
-	// Need to call prepare_upload() before using UploadRequestBody.
-	if (is_upload(header))
-	{
-		std::error_code ec;
-		m_blob_db.prepare_upload(dest.emplace<UploadRequestParser>(std::move(src)).get().body(), ec);
-		if (ec)
-			Log(LOG_WARNING, "error opening file %1%: %2% (%3%)", m_cfg.blob_path(), ec, ec.message());
-	}
-
-		// Use StringRequestParser to parser login requests.
+	// Use StringRequestParser to parser login requests.
 	// The username/password will be stored in the string body.
-	else if (is_login(header))
+	// No need to verify session.
+	if (is_login(header))
 	{
 		dest.emplace<StringRequestParser>(std::move(src));
+		return complete(SessionID{}, std::string_view{});
 	}
 
-	// Other requests use EmptyRequestParser, because they don't have a body.
-	else
+	if (allow_anonymous(header.target()))
 	{
 		dest.emplace<EmptyRequestParser>(std::move(src));
+		return complete(SessionID{}, std::string_view{});
 	}
 
-	complete();
+	// Everything else require a valid session.
+	auto cookie = header[http::field::cookie];
+	auto session = parse_cookie({cookie.data(), cookie.size()});
+	if (!session)
+	{
+		dest.emplace<EmptyRequestParser>(std::move(src));
+		return complete(SessionID{}, std::string_view{});
+	}
+
+	auto db = m_db.alloc(m_ioc);
+	verify_session(
+		*session,
+		*db,
+		[
+			this,
+			db,
+			&header,
+			&dest,
+			&src,
+			session=*session,
+			complete=std::move(complete)
+		](std::error_code ec, std::string_view user) mutable
+		{
+			m_db.release(std::move(db));
+
+			// Use a UploadRequestParse to parser upload requests, only when the session is authenicated.
+			if (!ec && is_upload(header))
+			{
+				// Need to call prepare_upload() before using UploadRequestBody.
+				m_blob_db.prepare_upload(dest.emplace<UploadRequestParser>(std::move(src)).get().body(), ec);
+				if (ec)
+					Log(LOG_WARNING, "error opening file %1%: %2% (%3%)", m_cfg.blob_path(), ec, ec.message());
+			}
+
+			// Other requests use EmptyRequestParser, because they don't have a body.
+			else
+			{
+				dest.emplace<EmptyRequestParser>(std::move(src));
+			}
+
+			complete(session, user);
+
+		}
+	);
 }
 
 bool Server::is_upload(const RequestHeader& header)
