@@ -361,4 +361,22 @@ void Server::prepare_upload(UploadFile& upload) const
 		Log(LOG_WARNING, "error opening file %1%: %2% (%3%)", m_cfg.blob_path(), ec, ec.message());
 }
 
+void Server::on_request_header(const RequestHeader& header, EmptyRequestParser& src, RequestBodyParsers& dest)
+{
+	// Use a UploadRequestParser to parser upload requests.
+	// Need to call prepare_upload() before using UploadRequestBody.
+	if (is_upload(header))
+		prepare_upload(dest.emplace<UploadRequestParser>(std::move(header)).get().body());
+
+	// Use StringRequestParser to parser login requests.
+	// The username/password will be stored in the string body.
+	else if (is_login(header))
+		dest.emplace<StringRequestParser>(std::move(src));
+
+	// Other requests use EmptyRequestParser, because they don't have a body.
+	else
+		dest.emplace<EmptyRequestParser>(std::move(src));
+
+}
+
 } // end of namespace

@@ -12,7 +12,7 @@
 
 #pragma once
 
-#include "Request.hh"
+#include "net/Request.hh"
 #include "DatabasePool.hh"
 #include "BlobDatabase.hh"
 #include "WebResources.hh"
@@ -124,17 +124,7 @@ public:
 			on_invalid_session(std::move(req), std::forward<Send>(send));
 	}
 
-	template <class Header>
-	static bool is_upload(Header& header)
-	{
-		return header.target().starts_with(hrb::url::upload) && header.method() == http::verb::put;
-	}
-
-	template <class Header>
-	static bool is_login(Header& header)
-	{
-		return header.target() == hrb::url::login && header.method() == http::verb::post;
-	}
+	void on_request_header(const RequestHeader& header, EmptyRequestParser& src, RequestBodyParsers& dest);
 
 	void prepare_upload(UploadFile& upload) const;
 
@@ -180,6 +170,16 @@ public:
 	std::string https_root() const;
 
 private:
+	static bool is_upload(const RequestHeader& header)
+	{
+		return header.target().starts_with(hrb::url::upload) && header.method() == http::verb::put;
+	}
+
+	static bool is_login(const RequestHeader& header)
+	{
+		return header.target() == hrb::url::login && header.method() == http::verb::post;
+	}
+
 	static void drop_privileges();
 
 	using EmptyResponseSender  = std::function<void(http::response<http::empty_body>&&)>;

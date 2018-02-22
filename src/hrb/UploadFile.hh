@@ -14,7 +14,7 @@
 
 #include "ObjectID.hh"
 #include "util/FS.hh"
-#include "Request.hh"
+#include "net/Request.hh"
 
 #include <boost/beast/core/file_posix.hpp>
 #include <system_error>
@@ -79,8 +79,8 @@ public:
 	class reader
 	{
 	public:
-		template<bool isRequest, class Fields>
-		explicit reader(http::message<isRequest, UploadRequestBody, Fields>& m) : m_body{m.body()}
+		template<bool is_request, class Fields>
+		explicit reader(http::message<is_request, UploadRequestBody, Fields>& m) : m_body{m.body()}
 		{
 		}
 
@@ -102,10 +102,10 @@ public:
 			return total;
 		}
 
-		void finish(boost::system::error_code& ec)
+		void finish(boost::system::error_code&)
 		{
-			// TODO: save to blob database
 		}
+
 	private:
 		value_type& m_body;
 	};

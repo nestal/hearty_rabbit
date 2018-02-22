@@ -20,6 +20,8 @@
 
 #include <boost/asio/ip/tcp.hpp>
 
+#include <variant>
+
 namespace hrb {
 
 class UploadRequestBody;
@@ -40,5 +42,7 @@ using StringRequestParser 	= http::request_parser<http::string_body>;
 using FileRequestParser 	= http::request_parser<http::file_body>;
 using EmptyRequestParser 	= http::request_parser<http::empty_body>;
 using UploadRequestParser   = http::request_parser<UploadRequestBody>;
+
+using RequestBodyParsers = std::variant<StringRequestParser, UploadRequestParser, EmptyRequestParser>;
 
 }

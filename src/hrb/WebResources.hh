@@ -12,7 +12,7 @@
 
 #pragma once
 
-#include "Request.hh"
+#include "net/Request.hh"
 
 #include "util/MMap.hh"
 #include "net/SplitBuffers.hh"

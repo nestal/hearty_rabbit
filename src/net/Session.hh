@@ -12,7 +12,7 @@
 
 #pragma once
 
-#include "hrb/Request.hh"
+#include "Request.hh"
 #include "hrb/UploadFile.hh"
 
 #include <boost/beast/core.hpp>
@@ -26,7 +26,6 @@
 #include <boost/filesystem/path.hpp>
 
 #include <optional>
-#include <variant>
 
 namespace hrb {
 
