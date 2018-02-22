@@ -29,6 +29,13 @@ std::enable_if_t<std::is_standard_layout<T>::value, T> secure_random()
 	return val;
 }
 
+template <typename T, class=std::enable_if_t<std::is_standard_layout<T>::value, T>>
+auto secure_random(T& t)
+{
+	secure_random(&t, sizeof(t));
+	return t;
+}
+
 template <typename T, std::size_t size>
 std::enable_if_t<std::is_standard_layout<T>::value, std::array<T, size>> secure_random_array()
 {

@@ -64,7 +64,7 @@ Blake2x::Blake2x()
 void Blake2x::reseed()
 {
 	secure_random(m_param.salt, sizeof(m_param.salt));
-	m_h0 = secure_random<decltype(m_h0)>();
+	secure_random(m_h0);
 }
 
 Blake2x::result_type Blake2x::operator()()
