@@ -15,7 +15,7 @@
 #include "BlobObject.hh"
 
 #include "crypto/Password.hh"
-#include "crypto/Authenication.hh"
+#include "crypto/Authentication.hh"
 #include "net/Listener.hh"
 #include "util/Error.hh"
 #include "util/Configuration.hh"
@@ -96,17 +96,15 @@ http::response<http::empty_body> Server::redirect(boost::beast::string_view wher
 	return res;
 }
 
-void Server::get_blob(const EmptyRequest& req, BlobResponseSender&& send)
+void Server::get_blob(const EmptyRequest& req, BlobResponseSender&& send, const Authentication& )
 {
 	auto blob_id = req.target().size() > url::login.size() ?
 		req.target().substr(url::login.size()) :
 		boost::string_view{};
 
 	auto object_id = hex_to_object_id(std::string_view{blob_id.data(), blob_id.size()});
-	Log(LOG_NOTICE, "get blob %1%", object_id);
 	if (object_id == ObjectID{})
 	{
-		Log(LOG_NOTICE, "invalid blob %1%", object_id);
 		return send(http::response<http::file_body>{http::status::not_found, req.version()});
 	}
 	else

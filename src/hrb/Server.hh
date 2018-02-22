@@ -18,7 +18,7 @@
 #include "WebResources.hh"
 #include "UploadFile.hh"
 
-#include "crypto/Authenication.hh"
+#include "crypto/Authentication.hh"
 #include "net/SplitBuffers.hh"
 
 #include <boost/filesystem/path.hpp>
@@ -125,7 +125,7 @@ private:
 	http::response<SplitBuffers> serve_home(unsigned version);
 
 	template <class Send>
-	void on_valid_session(EmptyRequest&& req, Send&& send, const Authentication& session)
+	void on_valid_session(EmptyRequest&& req, Send&& send, const Authentication& auth)
 	{
 		const RequestHeader& header = req;
 
@@ -133,13 +133,13 @@ private:
 			return send(serve_home(req.version()));
 
 		if (req.target().starts_with(url::blob))
-			return get_blob(req, std::forward<decltype(send)>(send));
+			return get_blob(req, std::forward<decltype(send)>(send), auth);
 
 		if (req.target().starts_with(url::dir))
 			return send(get_dir(req));
 
 		if (req.target().starts_with(url::logout))
-			return on_logout(req, session, std::forward<Send>(send));
+			return on_logout(req, auth, std::forward<Send>(send));
 
 		return send(not_found(req.target(), req.version()));
 	}
@@ -156,8 +156,8 @@ private:
 	void on_login(const StringRequest& req, EmptyResponseSender&& send);
 	void on_logout(const EmptyRequest& req, const Authentication& auth, EmptyResponseSender&& send);
 	void on_invalid_session(const RequestHeader& req, FileResponseSender&& send);
-	void on_upload(UploadRequest&& req, EmptyResponseSender&& send, const Authentication& user);
-	void get_blob(const EmptyRequest& req, BlobResponseSender&& send);
+	void on_upload(UploadRequest&& req, EmptyResponseSender&& send, const Authentication& auth);
+	void get_blob(const EmptyRequest& req, BlobResponseSender&& send, const Authentication& auth);
 	http::response<http::string_body> get_dir(const EmptyRequest& req);
 	static bool allow_anonymous(boost::string_view target);
 

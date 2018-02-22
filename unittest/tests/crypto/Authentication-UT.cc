@@ -14,7 +14,7 @@
 
 #include "net/Redis.hh"
 #include "util/Error.hh"
-#include "crypto/Authenication.hh"
+#include "crypto/Authentication.hh"
 #include "crypto/Random.hh"
 #include "crypto/Password.hh"
 

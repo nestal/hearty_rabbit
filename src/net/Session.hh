@@ -14,7 +14,7 @@
 
 #include "Request.hh"
 #include "hrb/UploadFile.hh"
-#include "crypto/Authenication.hh"
+#include "crypto/Authentication.hh"
 
 #include <boost/beast/core.hpp>
 #include <boost/beast/http.hpp>
