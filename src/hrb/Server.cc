@@ -78,7 +78,7 @@ void Server::on_login(const StringRequest& req, EmptyResponseSender&& send)
 void Server::on_logout(const EmptyRequest& req, const Authentication& auth, EmptyResponseSender&& send)
 {
 	auto db = m_db.alloc(m_ioc);
-	Authentication::destroy_session(auth, *db, [this, db, send=std::move(send), version=req.version()](auto&& ec) mutable
+	auth.destroy_session(*db, [this, db, send=std::move(send), version=req.version()](auto&& ec) mutable
 	{
 		m_db.release(std::move(db));
 

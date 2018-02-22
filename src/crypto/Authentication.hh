@@ -12,8 +12,6 @@
 
 #pragma once
 
-#include "net/Redis.hh"
-
 #include <array>
 #include <functional>
 #include <optional>
@@ -35,6 +33,12 @@ public:
 
 	Authentication() = default;
 	Authentication(Cookie cookie, std::string_view user) : m_cookie{cookie}, m_user{user} {}
+	Authentication(Authentication&&) = default;
+	Authentication(const Authentication&) = default;
+	~Authentication() = default;
+
+	Authentication& operator=(Authentication&&) = default;
+	Authentication& operator=(const Authentication&) = default;
 
 	bool valid() const;
 
@@ -52,42 +56,21 @@ public:
 		std::function<void(std::error_code, const Authentication&)> completion
 	);
 
-	template <typename Completion>
 	static void verify_session(
 		const Cookie& cookie,
 		redis::Connection& db,
-		Completion&& completion
-	)
-	{
-		db.command(
-			[comp=std::forward<Completion>(completion), cookie](redis::Reply reply, auto&& ec) mutable
-			{
-				comp(std::move(ec), Authentication{cookie, reply.as_string()});
-			},
-			"GET session:%b", cookie.data(), cookie.size()
-		);
-	}
+		std::function<void(std::error_code, Authentication&&)>&& completion
+	);
+
+	void destroy_session(
+		redis::Connection& db,
+		std::function<void(std::error_code)>&& completion
+	) const;
+
+	std::string set_cookie() const;
 
 	const Cookie& cookie() const {return m_cookie;}
 	std::string_view user() const {return m_user;}
-
-	template <typename Completion>
-	static void destroy_session(
-		const Authentication& auth,
-		redis::Connection& db,
-		Completion&& completion
-	)
-	{
-		db.command(
-			[comp=std::move(completion)](redis::Reply, auto&& ec) mutable
-			{
-				comp(std::move(ec));
-			},
-			"DEL session:%b", auth.m_cookie.data(), auth.m_cookie.size()
-		);
-	}
-
-	std::string set_cookie() const;
 
 private:
 	Cookie      m_cookie{};

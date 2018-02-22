@@ -122,6 +122,21 @@ void Authentication::add_user(
 	);
 }
 
+void Authentication::verify_session(
+	const Cookie& cookie,
+	redis::Connection& db,
+	std::function<void(std::error_code, Authentication&&)>&& completion
+)
+{
+	db.command(
+		[comp=std::move(completion), cookie](redis::Reply reply, auto&& ec) mutable
+		{
+			comp(std::move(ec), Authentication{cookie, reply.as_string()});
+		},
+		"GET session:%b", cookie.data(), cookie.size()
+	);
+}
+
 void Authentication::verify_user(
 	std::string_view username_mixed_case,
 	Password&& password,
@@ -182,6 +197,20 @@ std::optional<Authentication::Cookie> parse_cookie(std::string_view cookie)
 			cookie.remove_prefix(1);
 	}
 	return std::nullopt;
+}
+
+void Authentication::destroy_session(
+	redis::Connection& db,
+	std::function<void(std::error_code)>&& completion
+) const
+{
+	db.command(
+		[comp=std::move(completion)](redis::Reply, auto&& ec) mutable
+		{
+			comp(std::move(ec));
+		},
+		"DEL session:%b", m_cookie.data(), m_cookie.size()
+	);
 }
 
 bool Authentication::valid() const
