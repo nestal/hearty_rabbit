@@ -1,4 +1,5 @@
-cmake_minimum_required(VERSION 3.6)
+# cmake 3.8 is required for C++17
+cmake_minimum_required(VERSION 3.8)
 project(hearty_rabbit)
 
 set(Boost_USE_STATIC_LIBS  ON)
@@ -13,8 +14,6 @@ find_library(LIBB2_LIBRARY libb2.a b2 PATHS lib)
 find_path(LIBB2_INCLUDE blake2.h PATHS include)
 message(STATUS "found libb2 at ${LIBB2_LIBRARY} ${LIBB2_INCLUDE}")
 
-# Need to remove libsystemd as it pulls a lot of dependencies
-##pkg_check_modules(SYSTEMD libsystemd)
 pkg_check_modules(RapidJSON REQUIRED RapidJSON)
 pkg_check_modules(HIREDIS REQUIRED hiredis)
 pkg_check_modules(LIBUNWIND libunwind)
@@ -23,6 +22,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(VERSION "0.1")
 set(CONFIG_FILENAME "hearty_rabbit.json")
 
+# Enable std::string support in rapidjson
 add_definitions(-DRAPIDJSON_HAS_STDSTRING=1)
 
 include_directories(
@@ -92,7 +92,7 @@ target_link_libraries(
 )
 
 # Automatically run unit tests after the build
-# Although we specific the ${CMAKE_BINARY_DIR} as the current directory when running unit tests,
+# Although we specified the ${CMAKE_BINARY_DIR} as the current directory when running unit tests,
 # the test cases should not use absolute path when referring to test data. The test cases
 # must not assume the location of ${CMAKE_BINARY_DIR} relative to the source code.
 add_custom_command(
