@@ -171,7 +171,7 @@ TEST_CASE("General server tests", "[normal]")
 			FileResponseChecker checker{http::status::ok, cfg.web_root() / "static/hearty_rabbit.js"};
 
 			req.target("/hearty_rabbit.js");
-			req.set(boost::beast::http::field::cookie, set_cookie(session.cookie()));
+			req.set(boost::beast::http::field::cookie, session.set_cookie());
 			subject.handle_https(std::move(req), std::ref(checker), session);
 			REQUIRE(checker.tested());
 		}
@@ -191,7 +191,7 @@ TEST_CASE("General server tests", "[normal]")
 			FileResponseChecker checker{http::status::ok, cfg.web_root() / "dynamic/index.html"};
 
 			req.target("/");
-			req.set(boost::beast::http::field::cookie, set_cookie(session.cookie()));
+			req.set(boost::beast::http::field::cookie, session.set_cookie());
 			subject.handle_https(
 				std::move(req), [&checker, &subject](auto&& res)
 				{
@@ -259,7 +259,7 @@ TEST_CASE("General server tests", "[normal]")
 				req.target("/blob/abc");
 				SECTION("with valid session")
 				{
-					req.set(boost::beast::http::field::cookie, set_cookie(session.cookie()));
+					req.set(boost::beast::http::field::cookie, session.set_cookie());
 					subject.handle_https(std::move(req), std::ref(valid_session), session);
 					REQUIRE(valid_session.tested());
 					expected = &valid_session;
@@ -276,7 +276,7 @@ TEST_CASE("General server tests", "[normal]")
 				req.target("/blob");
 				SECTION("with valid session")
 				{
-					req.set(boost::beast::http::field::cookie, set_cookie(session.cookie()));
+					req.set(boost::beast::http::field::cookie, session.set_cookie());
 					subject.handle_https(std::move(req), std::ref(valid_session), session);
 					expected = &valid_session;
 				}

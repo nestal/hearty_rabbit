@@ -168,7 +168,7 @@ TEST_CASE("Parsing cookie", "[normal]")
 	std::mt19937_64 salt_generator{secure_random<std::uint64_t>()};
 	Authentication::Cookie rand{};
 	std::generate(rand.begin(), rand.end(), std::ref(salt_generator));
-	auto cookie = set_cookie(rand);
+	auto cookie = Authentication{rand, "test"}.set_cookie();
 	INFO("cookie for random session ID is " << cookie);
 	session = parse_cookie(cookie);
 	REQUIRE(session.has_value());

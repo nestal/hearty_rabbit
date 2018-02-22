@@ -158,10 +158,10 @@ void Authentication::verify_user(
 	);
 }
 
-std::string set_cookie(const Authentication::Cookie& id)
+std::string Authentication::set_cookie() const
 {
 	std::string result = "id=";
-	boost::algorithm::hex_lower(id.begin(), id.end(), std::back_inserter(result));
+	boost::algorithm::hex_lower(m_cookie.begin(), m_cookie.end(), std::back_inserter(result));
 	result.append("; Secure; HttpOnly; SameSite=Strict; Max-Age=3600");
 	return result;
 }

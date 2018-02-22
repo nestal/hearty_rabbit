@@ -87,12 +87,13 @@ public:
 		);
 	}
 
+	std::string set_cookie() const;
+
 private:
 	Cookie      m_cookie{};
 	std::string m_user;
 };
 
-std::string set_cookie(const Authentication::Cookie& id);
 std::optional<Authentication::Cookie> parse_cookie(std::string_view cookie);
 
 } // end of namespace

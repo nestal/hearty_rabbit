@@ -65,7 +65,7 @@ void Server::on_login(const StringRequest& req, EmptyResponseSender&& send)
 
 				auto&& res = redirect(ec ? "/login_incorrect.html" : "/", version);
 				if (!ec)
-					res.set(http::field::set_cookie, set_cookie(session.cookie()));
+					res.set(http::field::set_cookie, session.set_cookie());
 
 				send(std::move(res));
 			}
