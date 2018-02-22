@@ -95,7 +95,7 @@ http::response<http::empty_body> Server::redirect(boost::beast::string_view wher
 	return res;
 }
 
-void Server::get_blob(const EmptyRequest& req, StringResponseSender&& send)
+void Server::get_blob(const EmptyRequest& req, BlobResponseSender&& send)
 {
 	auto blob_id = req.target().size() > url::login.size() ?
 		req.target().substr(url::login.size()) :
@@ -103,26 +103,24 @@ void Server::get_blob(const EmptyRequest& req, StringResponseSender&& send)
 
 	auto object_id = hex_to_object_id(std::string_view{blob_id.data(), blob_id.size()});
 	if (object_id == ObjectID{})
-		send(not_found(req.target(), req.version()));
+	{
+		return send(http::response<http::file_body>{http::status::not_found, req.version()});
+	}
 	else
 	{
-		auto db = m_db.alloc(m_ioc);
-		BlobObject::load(
-			*db, object_id,
-			[db, this, send=std::move(send), version=req.version()](BlobObject& blob, std::error_code ec) mutable
-			{
-				m_db.release(std::move(db));
+		auto path = m_blob_db.dest(object_id);
 
-				http::response<http::string_body> res{
-					std::piecewise_construct,
-					std::make_tuple(ec ? std::string_view{} : blob.string()),
-					std::make_tuple(ec ? http::status::not_found : http::status::ok, version)
-				};
-				res.set(http::field::content_type, blob.mime());
-				res.prepare_payload();
-				send(std::move(res));
-			}
-		);
+		boost::system::error_code ec;
+		http::file_body::value_type blob;
+		blob.open(path.string().c_str(), boost::beast::file_mode::read, ec);
+
+		http::response<http::file_body> res{
+			std::piecewise_construct,
+			std::make_tuple(std::move(blob)),
+			std::make_tuple(ec ? http::status::not_found : http::status::ok, req.version())
+		};
+		res.prepare_payload();
+		return send(std::move(res));
 	}
 }
 
@@ -141,18 +139,6 @@ void Server::on_upload(UploadRequest&& req, EmptyResponseSender&& send, std::str
 	};
 	res.set(http::field::location, "/blob/" + to_hex(id));
 	return send(std::move(res));
-/*	BlobObject blob{std::move(req).body(), filename};
-
-	auto db = m_db.alloc(m_ioc);
-	blob.save(*db, [this, db, send=std::move(send), version=req.version()](BlobObject& blob, auto ec) mutable
-	{
-		m_db.release(std::move(db));
-
-		// TODO: add ETag and Date for the resource
-		http::response<http::empty_body> res{http::status::created, version};
-		res.set(http::field::location, "/blob/" + to_hex(blob.ID()));
-		return send(std::move(res));
-	});*/
 }
 
 void Server::on_invalid_session(const RequestHeader& req, FileResponseSender&& send)

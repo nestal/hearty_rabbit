@@ -181,12 +181,13 @@ private:
 	using EmptyResponseSender  = std::function<void(http::response<http::empty_body>&&)>;
 	using StringResponseSender = std::function<void(http::response<http::string_body>&&)>;
 	using FileResponseSender   = std::function<void(http::response<SplitBuffers>&&)>;
+	using BlobResponseSender   = std::function<void(http::response<http::file_body>&&)>;
 
 	void on_login(const StringRequest& req, EmptyResponseSender&& send);
 	void on_logout(const EmptyRequest& req, const SessionID& id, EmptyResponseSender&& send);
 	void on_invalid_session(const RequestHeader& req, FileResponseSender&& send);
 	void on_upload(UploadRequest&& req, EmptyResponseSender&& send, std::string_view user);
-	void get_blob(const EmptyRequest& req, StringResponseSender&& send);
+	void get_blob(const EmptyRequest& req, BlobResponseSender&& send);
 	http::response<http::string_body> get_dir(const EmptyRequest& req);
 	static bool allow_anonymous(boost::string_view target);
 

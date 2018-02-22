@@ -322,7 +322,7 @@ TEST_CASE("GET static resource", "[normal]")
 		REQUIRE(expected->tested());
 	}
 
-	SECTION("requesting good blob ID")
+/*	SECTION("requesting good blob ID")
 	{
 		FileResponseChecker checker{http::status::ok, __FILE__};
 
@@ -346,7 +346,7 @@ TEST_CASE("GET static resource", "[normal]")
 		REQUIRE(checker.tested());
 	}
 
-/*	SECTION("upload blob")
+	SECTION("upload blob")
 	{
 		GenericStatusChecker created{http::status::created};
 		GenericStatusChecker forbidden{http::status::forbidden};

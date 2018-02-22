@@ -34,7 +34,7 @@ Salt random_salt()
 {
 	union
 	{
-		std::array<std::uint64_t, 4>    lls;
+		std::array<std::uint64_t, sizeof(Salt)/sizeof(std::uint64_t)>    lls;
 		Salt salt;
 	} tmp;
 
