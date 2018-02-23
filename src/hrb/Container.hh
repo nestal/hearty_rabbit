@@ -27,7 +27,7 @@ namespace hrb {
 class Container
 {
 private:
-	static constexpr std::string_view redis_prefix{"dir:"};
+	static const std::string_view redis_prefix;
 
 public:
 	Container(std::string_view name);

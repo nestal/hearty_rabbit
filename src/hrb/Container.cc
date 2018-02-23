@@ -14,6 +14,8 @@
 
 namespace hrb {
 
+const std::string_view Container::redis_prefix{"dir:"};
+
 Container::Container(std::string_view name) : m_name{name}
 {
 }
