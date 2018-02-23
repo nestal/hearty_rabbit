@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
 
 # Need to specify the 'Expect:' header to suppress default PUT handling in curl
-curl -v -Lk -c /tmp/cookiejar -b /tmp/cookiejar -T Dockerfile -H 'Expect:' -- \
+curl $CURLOPTS -T Dockerfile -H 'Expect:' -- \
 	https://localhost:4433/upload/Dockerfile

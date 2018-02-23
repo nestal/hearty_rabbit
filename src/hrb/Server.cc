@@ -132,7 +132,7 @@ void Server::on_upload(UploadRequest&& req, EmptyResponseSender&& send, const Au
 
 	std::error_code ec;
 	auto id = m_blob_db.save(req.body(), ec);
-	Log(LOG_INFO, "uploading %1% bytes to %2%", req.body().size(bec), id);
+	Log(LOG_INFO, "uploading %1% bytes to %2% (%3% %4%)", req.body().size(bec), id, ec, ec.message());
 
 	http::response<http::empty_body> res{
 		ec ? http::status::internal_server_error : http::status::created,
