@@ -15,6 +15,7 @@
 #include <boost/endian/conversion.hpp>
 
 #include <system_error>
+#include <utility>
 
 // C++17 is doing cmake's job
 #if __has_include(<sys/random.h>)
@@ -88,6 +89,20 @@ Blake2x::result_type Blake2x::operator()()
 		reseed();
 
 	return hash;
+}
+
+void insecure_random(void *buf, std::size_t size)
+{
+	static thread_local Blake2x gen;
+	for (std::size_t i = 0 ; i < size ; i += sizeof(Blake2x::result_type))
+	{
+		auto rand = gen();
+		std::memcpy(
+			static_cast<char*>(buf) + i,
+			&rand,
+			std::min(sizeof(rand), size-i)
+		);
+	}
 }
 
 } // end of namespace hrb
