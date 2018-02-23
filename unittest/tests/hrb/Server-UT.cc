@@ -15,7 +15,6 @@
 #include "CheckResource.hh"
 
 #include "hrb/Server.hh"
-#include "hrb/BlobObject.hh"
 
 #include "crypto/Random.hh"
 #include "crypto/Password.hh"

@@ -11,7 +11,6 @@
 //
 
 #include "BlobDatabase.hh"
-#include "BlobObject.hh"
 #include "UploadFile.hh"
 
 #include "util/Log.hh"

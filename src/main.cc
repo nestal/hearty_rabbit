@@ -11,7 +11,6 @@
 #include "util/Exception.hh"
 #include "util/Log.hh"
 #include "hrb/Server.hh"
-#include "hrb/BlobObject.hh"
 
 #include <boost/exception/errinfo_api_function.hpp>
 #include <boost/exception/info.hpp>
@@ -50,8 +49,8 @@ int Main(int argc, const char* const* argv)
 
 	else if (cfg.blob_id([&server](auto&& filename)
 	{
-		BlobObject blob{boost::filesystem::path{filename}};
-		std::cout << blob.ID() << std::endl;
+//		BlobObject blob{boost::filesystem::path{filename}};
+//		std::cout << blob.ID() << std::endl;
 	})) { return EXIT_SUCCESS;}
 
 	else
