@@ -15,6 +15,8 @@
 #include "ObjectID.hh"
 #include "net/Redis.hh"
 
+#include <rapidjson/document.h>
+
 #include <string_view>
 #include <functional>
 #include <vector>
@@ -92,6 +94,8 @@ public:
 	iterator end() const {return m_blobs.end();}
 	std::size_t size() const {return m_blobs.size();}
 	bool empty() const {return m_blobs.empty();}
+
+	rapidjson::Document serialize() const;
 
 private:
 	std::string             m_name;

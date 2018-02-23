@@ -18,4 +18,21 @@ Container::Container(std::string_view name) : m_name{name}
 {
 }
 
+rapidjson::Document Container::serialize() const
+{
+	using namespace rapidjson;
+	Document json;
+	json["name"] = Value().SetString(m_name.c_str(), m_name.size(), json.GetAllocator());
+
+	Value elements(kArrayType);
+	for (auto&& blob : m_blobs)
+	{
+		auto bs = to_hex(blob);
+		elements.PushBack(Value{bs, json.GetAllocator()}, json.GetAllocator());
+	}
+	json["elements"] = std::move(elements);
+
+	return json;
+}
+
 } // end of namespace hrb
