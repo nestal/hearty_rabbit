@@ -11,6 +11,7 @@
 //
 
 #include <catch.hpp>
+#include <iostream>
 #include "crypto/Random.hh"
 
 #include "hrb/Container.hh"
@@ -27,7 +28,7 @@ TEST_CASE("Container tests", "[normal]")
 	ObjectID testid;
 	insecure_random(&testid[0], testid.size());
 
-	bool tested = false;
+	int tested = 0;
 	Container::add(*redis, "test", testid, [&tested, redis, testid](std::error_code ec)
 	{
 		REQUIRE(!ec);
@@ -36,9 +37,20 @@ TEST_CASE("Container tests", "[normal]")
 		{
 			REQUIRE(!ec);
 			REQUIRE(added);
-			tested = true;
+			tested++;
+		});
+
+		Container::load(*redis, "test", [&tested, testid](std::error_code ec, Container&& container)
+		{
+			REQUIRE(!ec);
+			REQUIRE(container.name() == "test");
+			REQUIRE(container.size() > 0);
+			REQUIRE(!container.empty());
+
+			REQUIRE(std::find(container.begin(), container.end(), testid) != container.end());
+			tested++;
 		});
 	});
 	REQUIRE(ioc.run_for(10s) > 0);
-	REQUIRE(tested);
+	REQUIRE(tested == 2);
 }

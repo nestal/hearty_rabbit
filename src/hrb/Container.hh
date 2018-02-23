@@ -34,7 +34,26 @@ public:
 		Complete&& complete
 	)
 	{
-		complete(Container{container});
+		db.command([comp=std::forward<Complete>(complete), name=std::string{container}](auto&& reply, std::error_code&& ec)
+		{
+			Container result{name};
+			for (auto&& element : reply)
+			{
+				ObjectID oid{};
+				auto s = element.as_string();
+
+				if (s.size() == oid.size())
+				{
+					std::copy(
+						element.as_string().begin(), element.as_string().end(),
+						oid.begin()
+					);
+					result.m_blobs.push_back(oid);
+				}
+			}
+
+			comp(std::move(ec), std::move(result));
+		}, "SMEMBERS dir:%b", container.data(), container.size());
 	}
 
 	template <typename Complete>
@@ -64,6 +83,15 @@ public:
 			comp(std::move(ec), reply.as_int() == 1);
 		}, "SISMEMBER dir:%b %b", container.data(), container.size(), blob.data(), blob.size());
 	}
+
+	const std::string& name() const {return m_name;}
+
+	using value_type = ObjectID;
+	using iterator = std::vector<ObjectID>::const_iterator;
+	iterator begin() const {return m_blobs.begin();}
+	iterator end() const {return m_blobs.end();}
+	std::size_t size() const {return m_blobs.size();}
+	bool empty() const {return m_blobs.empty();}
 
 private:
 	std::string             m_name;
