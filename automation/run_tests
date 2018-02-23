@@ -8,8 +8,8 @@ CURLOPTS_NOCOOKIE="-sSvLk -o /dev/null"
 CURLOPTS="$CURLOPTS_NOCOOKIE $USE_COOKIE"
 
 # login and save cookie in /tmp/cookiejar
-curl $CURLOPTS -d 'username=nestal&password=hello' -- https://localhost:4433/login
-
+# the same credential is used in unit test, so it should work
+curl $CURLOPTS -d 'username=sumsum&password=bearbear' -- https://localhost:4433/login
 
 for TEST in ./tests/*;
 do
