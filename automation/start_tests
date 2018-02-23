@@ -6,8 +6,10 @@ pwd
 
 # Start server
 docker run -t --detach --rm \
-  -v $(pwd)/etc/hearty_rabbit:/etc/hearty_rabbit \
-  -v $(pwd)/lib:/lib \
+  -v $(pwd)/etc/hearty_rabbit:/etc/hearty_rabbit:ro \
+  -v $(pwd)/lib:/lib:ro \
+  -v /dev/log:/dev/log \
+  -v /tmp:/tmp \
   --network=host --name hb_test \
     nestal/hearty_rabbit
 

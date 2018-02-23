@@ -4,8 +4,9 @@ Requires=docker.service redis.service
 
 [Service]
 ExecStart=/bin/docker run --rm \
-	-v /etc/letsencrypt:/etc/letsencrypt \
-	-v /etc/hearty_rabbit:/etc/hearty_rabbit \
+	-v /etc/letsencrypt:/etc/letsencrypt:ro \
+	-v /etc/hearty_rabbit:/etc/hearty_rabbit:ro \
 	-v /dev/log:/dev/log \
+	-v /var/lib/hearty_rabbit:/var/lib/hearty_rabbit \
 	--network=host --name hearty_rabbit_systemd nestal/hearty_rabbit
 ExecStop=/bin/docker stop hearty_rabbit_systemd
