@@ -54,10 +54,10 @@ ObjectID BlobDatabase::save(const UploadFile& tmp, std::error_code& ec)
 	if (!ec)
 	{
 		tmp.linkat(dest_path, ec);
-		if (ec.default_error_condition() == std::errc::file_exists)
+		if (ec == std::errc::file_exists)
 		{
 			// TODO: check file size before accepting
-			Log(LOG_WARNING, "linkat() %1% exists", dest_path);
+			Log(LOG_INFO, "linkat() %1% exists", dest_path);
 			ec.clear();
 		}
 		else if (ec)
