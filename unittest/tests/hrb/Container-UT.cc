@@ -28,10 +28,16 @@ TEST_CASE("Container tests", "[normal]")
 	insecure_random(&testid[0], testid.size());
 
 	bool tested = false;
-	Container::add(*redis, "test", testid, [&tested](std::error_code ec)
+	Container::add(*redis, "test", testid, [&tested, redis, testid](std::error_code ec)
 	{
 		REQUIRE(!ec);
-		tested = true;
+
+		Container::is_member(*redis, "test", testid, [&tested](std::error_code ec, bool added)
+		{
+			REQUIRE(!ec);
+			REQUIRE(added);
+			tested = true;
+		});
 	});
 	REQUIRE(ioc.run_for(10s) > 0);
 	REQUIRE(tested);

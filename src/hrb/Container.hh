@@ -51,13 +51,19 @@ public:
 		}, "SADD dir:%b %b", container.data(), container.size(), blob.data(), blob.size());
 	}
 
-
-	static void contains(
+	template <typename Complete>
+	static void is_member(
 		redis::Connection& db,
 		std::string_view container,
 		const ObjectID& blob,
-		std::function<void(std::error_code)> complete
-	);
+		Complete&& complete
+	)
+	{
+		db.command([comp=std::forward<Complete>(complete)](auto&& reply, std::error_code&& ec)
+		{
+			comp(std::move(ec), reply.as_int() == 1);
+		}, "SISMEMBER dir:%b %b", container.data(), container.size(), blob.data(), blob.size());
+	}
 
 private:
 	std::string             m_name;
