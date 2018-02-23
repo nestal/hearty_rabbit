@@ -19,6 +19,9 @@
 #include <sstream>
 
 namespace hrb {
+namespace {
+const std::string_view default_rendition = "master";
+}
 
 BlobDatabase::BlobDatabase(const fs::path& base) : m_base{base}
 {
@@ -67,12 +70,12 @@ ObjectID BlobDatabase::save(const UploadFile& tmp, std::error_code& ec)
 	return id;
 }
 
-fs::path BlobDatabase::dest(ObjectID id) const
+fs::path BlobDatabase::dest(ObjectID id, std::string_view) const
 {
 	auto hex = to_hex(id);
 	assert(hex.size() > 2);
 
-	return m_base / hex.substr(0, 2) / hex;
+	return m_base / hex.substr(0, 2) / hex / std::string{default_rendition};
 }
 
 } // end of namespace hrb

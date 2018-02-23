@@ -37,7 +37,6 @@ TEST_CASE("Open temp file", "[normal]")
 	tmp.seek(0, ec);
 	REQUIRE(ec == boost::system::error_code{});
 
-
 	char buf[80];
 	count = tmp.read(buf, sizeof(buf), ec);
 	REQUIRE(count == sizeof(test));

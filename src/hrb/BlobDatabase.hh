@@ -31,7 +31,7 @@ public:
 	void prepare_upload(UploadFile& result, std::error_code& ec) const;
 	ObjectID save(const UploadFile& tmp, std::error_code& ec);
 
-	fs::path dest(ObjectID id) const;
+	fs::path dest(ObjectID id, std::string_view rendition = {}) const;
 
 private:
 	fs::path    m_base;
