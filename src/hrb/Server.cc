@@ -12,7 +12,6 @@
 
 #include "Server.hh"
 #include "ResourcesList.hh"
-#include "BlobObject.hh"
 
 #include "crypto/Password.hh"
 #include "crypto/Authentication.hh"
@@ -280,18 +279,6 @@ void Server::add_user(std::string_view username, Password&& password, std::funct
 	Authentication::add_user(username, std::move(password), *db, [db, &complete](std::error_code&& ec)
 	{
 		complete(std::move(ec));
-		db->disconnect();
-	});
-	m_ioc.run();
-}
-
-void Server::add_blob(const boost::filesystem::path& path, std::function<void(BlobObject&, std::error_code)> complete)
-{
-	auto db = m_db.alloc(m_ioc);
-	BlobObject blob{path};
-	blob.save(*db, [db, complete=std::move(complete)](BlobObject& blob, std::error_code&& ec)
-	{
-		complete(blob, ec);
 		db->disconnect();
 	});
 	m_ioc.run();
