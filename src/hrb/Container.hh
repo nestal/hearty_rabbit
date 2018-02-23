@@ -24,6 +24,9 @@ namespace hrb {
 /// A set of blob objects represented by a redis set.
 class Container
 {
+private:
+	static constexpr std::string_view redis_prefix{"dir:"};
+
 public:
 	Container(std::string_view name);
 
@@ -39,21 +42,12 @@ public:
 			Container result{name};
 			for (auto&& element : reply)
 			{
-				ObjectID oid{};
-				auto s = element.as_string();
-
-				if (s.size() == oid.size())
-				{
-					std::copy(
-						element.as_string().begin(), element.as_string().end(),
-						oid.begin()
-					);
+				if (ObjectID oid = raw_to_object_id(element.as_string()); oid != ObjectID{})
 					result.m_blobs.push_back(oid);
-				}
 			}
 
 			comp(std::move(ec), std::move(result));
-		}, "SMEMBERS dir:%b", container.data(), container.size());
+		}, "SMEMBERS %b%b", redis_prefix.data(), redis_prefix.size(), container.data(), container.size());
 	}
 
 	template <typename Complete>
@@ -67,7 +61,7 @@ public:
 		db.command([comp=std::forward<Complete>(complete)](auto&&, std::error_code&& ec)
 		{
 			comp(std::move(ec));
-		}, "SADD dir:%b %b", container.data(), container.size(), blob.data(), blob.size());
+		}, "SADD %b%b %b", redis_prefix.data(), redis_prefix.size(), container.data(), container.size(), blob.data(), blob.size());
 	}
 
 	template <typename Complete>
@@ -78,10 +72,16 @@ public:
 		Complete&& complete
 	)
 	{
-		db.command([comp=std::forward<Complete>(complete)](auto&& reply, std::error_code&& ec)
-		{
-			comp(std::move(ec), reply.as_int() == 1);
-		}, "SISMEMBER dir:%b %b", container.data(), container.size(), blob.data(), blob.size());
+		db.command(
+			[comp=std::forward<Complete>(complete)](auto&& reply, std::error_code&& ec)
+			{
+				comp(std::move(ec), reply.as_int() == 1);
+			},
+			"SISMEMBER %b%b %b",
+			redis_prefix.data(), redis_prefix.size(),
+			container.data(), container.size(),
+			blob.data(), blob.size()
+		);
 	}
 
 	const std::string& name() const {return m_name;}

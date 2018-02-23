@@ -41,6 +41,14 @@ ObjectID hex_to_object_id(std::string_view hex)
 	return result;
 }
 
+ObjectID raw_to_object_id(std::string_view raw)
+{
+	ObjectID result{};
+	if (raw.size() == result.size())
+		std::copy(raw.begin(), raw.end(), result.begin());
+	return result;
+}
+
 bool operator==(const ObjectID& id1, const ObjectID& id2)
 {
 	static_assert(id1.size() == id2.size());    // isn't it obvious?
