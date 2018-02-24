@@ -117,13 +117,12 @@ TEST_CASE("Test normal user login", "[normal]")
 					REQUIRE(!ec);
 					REQUIRE(session.valid());
 
-					Authentication::verify_session(session.cookie(), *redis, [redis, &tested](std::error_code ec, auto&& auth)
+					Authentication::verify_session(session.cookie(), *redis, [&tested](std::error_code ec, auto&& auth)
 					{
 						// Username returned is always lower case.
 						REQUIRE(!ec);
 						REQUIRE(auth.valid());
 						REQUIRE(auth.user() == "sumsum");
-						redis->disconnect();
 						tested = true;
 					});
 				}
@@ -132,13 +131,26 @@ TEST_CASE("Test normal user login", "[normal]")
 		SECTION("incorrect user")
 		{
 			Authentication::verify_user(
-				"siuyung", Password{"rabbit"}, *redis, [redis, &tested](std::error_code ec, auto&& session)
+				"siuyung", Password{"rabbit"}, *redis, [&tested](std::error_code ec, auto&& session)
 				{
 					INFO("verify_user(incorrect) result = " << ec.message());
 					REQUIRE(ec == Error::login_incorrect);
 					REQUIRE(!session.valid());
 					tested = true;
-					redis->disconnect();
+				}
+			);
+		}
+		SECTION("verify random session ID")
+		{
+			Authentication::Cookie cookie{};
+			hrb::insecure_random(&cookie[0], cookie.size());
+
+			Authentication::verify_session(cookie, *redis, [&tested](std::error_code ec, auto&& session)
+				{
+					INFO("verify_session(incorrect) result = " << ec.message());
+					REQUIRE(!ec);
+					REQUIRE(!session.valid());
+					tested = true;
 				}
 			);
 		}
