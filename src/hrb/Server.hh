@@ -20,6 +20,7 @@
 #include "net/SplitBuffers.hh"
 #include "net/Request.hh"
 #include "net/Redis.hh"
+#include "net/MMapResponseBody.hh"
 #include "util/Magic.hh"
 
 #include <boost/filesystem/path.hpp>
@@ -149,7 +150,7 @@ private:
 	using EmptyResponseSender  = std::function<void(http::response<http::empty_body>&&)>;
 	using StringResponseSender = std::function<void(http::response<http::string_body>&&)>;
 	using FileResponseSender   = std::function<void(http::response<SplitBuffers>&&)>;
-	using BlobResponseSender   = std::function<void(http::response<http::file_body>&&)>;
+	using BlobResponseSender   = std::function<void(http::response<MMapResponseBody>&&)>;
 
 	void on_login(const StringRequest& req, EmptyResponseSender&& send);
 	void on_logout(const EmptyRequest& req, const Authentication& auth, EmptyResponseSender&& send);

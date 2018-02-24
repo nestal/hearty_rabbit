@@ -105,37 +105,43 @@ void Server::get_blob(const EmptyRequest& req, BlobResponseSender&& send, const 
 	// Return 404 not_found if the blob ID is invalid
 	auto object_id = hex_to_object_id(std::string_view{blob_id.data(), blob_id.size()});
 	if (object_id == ObjectID{})
-		return send(http::response<http::file_body>{http::status::not_found, req.version()});
+		return send(http::response<MMapResponseBody>{http::status::not_found, req.version()});
 
 	// Check if the user has permission to read the blob
 	Container::is_member(*m_db.alloc(), auth.user(), object_id,
-		[send=std::move(send), object_id, version=req.version(), this](auto ec, bool is_member) mutable
+		[
+			send=std::move(send),
+			object_id,
+			version=req.version(),
+			etag=req[http::field::if_none_match].to_string(),
+			this
+		](auto ec, bool is_member) mutable
 		{
 			if (ec)
-				return send(http::response<http::file_body>{http::status::internal_server_error, version});
+				return send(http::response<MMapResponseBody>{http::status::internal_server_error, version});
 
 			if (!is_member)
-				return send(http::response<http::file_body>{http::status::forbidden, version});
+				return send(http::response<MMapResponseBody>{http::status::forbidden, version});
+
+			if (etag == to_hex(object_id))
+				return send(http::response<MMapResponseBody>{http::status::not_modified, version});
 
 			auto path = m_blob_db.dest(object_id);
 
-			boost::system::error_code bec;
-			boost::beast::file blob;
-			blob.open(path.string().c_str(), boost::beast::file_mode::read, bec);
-			if (bec)
-				return send(http::response<http::file_body>{http::status::not_found, version});
+			auto mmap = MMap::open(path, ec);
+			if (ec)
+				return send(http::response<MMapResponseBody>{http::status::not_found, version});
 
-			auto mime = m_magic.mime(blob.native_handle());
+			auto mime = m_magic.mime(mmap.blob());
 
-			http::file_body::value_type body;
-			body.reset(std::move(blob), bec);
-
-			http::response<http::file_body> res{
+			http::response<MMapResponseBody> res{
 				std::piecewise_construct,
-				std::make_tuple(std::move(body)),
+				std::make_tuple(std::move(mmap)),
 				std::make_tuple(http::status::ok, version)
 			};
 			res.set(http::field::content_type, mime);
+			res.set(http::field::cache_control, "private, max-age=0, must-revalidate");
+			res.set(http::field::etag, to_hex(object_id));
 			res.prepare_payload();
 			return send(std::move(res));
 		}
