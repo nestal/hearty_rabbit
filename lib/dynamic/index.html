@@ -1,50 +1,51 @@
 <!doctype html>
 <html lang="en">
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Hearty Rabbit photo gallery">
-    <title>Hearty Rabbit</title>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<meta name="description" content="Hearty Rabbit photo gallery">
+	<title>Hearty Rabbit</title>
 
-    <link rel="stylesheet" href="hearty_rabbit.css">
-    <link rel="icon" href="logo.svg" type="image/svg+xml">
-    <link href="https://fonts.googleapis.com/css?family=Mukta+Mahee" rel="stylesheet">
-    <script src="hearty_rabbit.js"></script>
+	<link rel="stylesheet" href="hearty_rabbit.css">
+	<link rel="icon" href="logo.svg" type="image/svg+xml">
+	<link href="https://fonts.googleapis.com/css?family=Mukta+Mahee" rel="stylesheet">
+	<script src="hearty_rabbit.js"></script>
 </head>
 <body>
-    <div class="topnav" id="myTopnav">
-        <a href="#home" class="active"><span id="username"></span>'s Home</a>
-        <a href="#about">About</a>
-        <a href="/logout">Logout</a>
-        <a href="javascript:void(0);" class="icon" onclick="myFunction()">&#9776;</a>
-    </div>
+<div class="topnav" id="myTopnav">
+	<a href="#home" class="active"><span id="username"></span>'s Home</a>
+	<a href="#about">About</a>
+	<a href="/logout">Logout</a>
+	<a href="javascript:void(0);" class="icon" onclick="myFunction()">&#9776;</a>
+</div>
 
-    <section id="hrb-entry-root">
-        <img
-                id="hrb-entry-prototype"
-                class="hrb-image"
-                src="logo.svg"
-                onclick="show_image(this.dataset.blob_id);"
-        >
-    </section>
+<section id="hrb-entry-root">
+	<img
+			id="hrb-entry-prototype"
+			class="hrb-image"
+			src="logo.svg"
+			onclick="show_image(this.dataset.blob_id);"
+	>
+</section>
 
-    <div class="pure-u-1 form-box">
-        <div class="l-box">
-            <h2>Upload File</h2>
+<div class="pure-u-1 form-box">
+	<div class="l-box">
+		<h2>Upload File</h2>
 
-            <input id="file-input" type="file" onchange="upload_file(this.files[0])">
-        </div>
-    </div>
+		<input id="file-input" type="file" onchange="upload_file(this.files[0])">
+	</div>
+</div>
 
-    <div id="light-box" class="modal">
-        <span class="close cursor" onclick="hide_image();">&times;</span>
-        <div class="modal-content">
-            <img id="light-box-image" src="logo.svg" style="width:100%">
-        </div>
-    </div>
+<div id="light-box" class="modal">
+	<span class="close cursor" onclick="hide_image();">&times;</span>
+	<div class="modal-content">
+		<img id="light-box-image" src="logo.svg">
+	</div>
+</div>
 
 <script>
-    on_home_page_loaded();
+	// Make sure it's called after loading the DOM.
+	on_home_page_loaded();
 </script>
 
 </body>

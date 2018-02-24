@@ -78,11 +78,19 @@ div.login {
 /* Modal Content */
 .modal-content {
 	position: relative;
-	background-color: #fefefe;
+	background-color: black;
 	margin: auto;
 	padding: 0;
 	width: 90%;
-	max-width: 1200px;
+	height: 90%;
+	object-fit: contain;
+	text-align: center;
+}
+
+.modal-content img {
+	vertical-align: middle;
+	max-width: 100%;
+	max-height: 100%;
 }
 
 /* The Close Button */
