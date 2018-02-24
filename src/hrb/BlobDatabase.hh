@@ -42,8 +42,12 @@ public:
 		ObjectID id,
 		const Magic& magic,
 		unsigned version,
+		std::string_view etag,
 		std::string_view rendition = {}
 	) const;
+
+private:
+	static void set_cache_control(BlobResponse& res, const ObjectID& id);
 
 private:
 	fs::path    m_base;

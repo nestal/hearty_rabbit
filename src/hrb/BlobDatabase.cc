@@ -84,9 +84,17 @@ BlobDatabase::BlobResponse BlobDatabase::response(
 	ObjectID id,
 	const Magic& magic,
 	unsigned version,
+	std::string_view etag,
 	std::string_view rendition
 ) const
 {
+	if (etag == to_hex(id))
+	{
+		http::response<MMapResponseBody> res{http::status::not_modified, version};
+		set_cache_control(res, id);
+		return res;
+	}
+
 	auto path = dest(id);
 
 	std::error_code ec;
@@ -102,11 +110,16 @@ BlobDatabase::BlobResponse BlobDatabase::response(
 		std::make_tuple(http::status::ok, version)
 	};
 	res.set(http::field::content_type, mime);
-	res.set(http::field::cache_control, "private, max-age=0, must-revalidate");
-	res.set(http::field::etag, to_hex(id));
 	res.prepare_payload();
+	set_cache_control(res, id);
 	return res;
 
+}
+
+void BlobDatabase::set_cache_control(BlobResponse& res, const ObjectID& id)
+{
+	res.set(http::field::cache_control, "private, max-age=31536000, immutable");
+	res.set(http::field::etag, to_hex(id));
 }
 
 } // end of namespace hrb
