@@ -12,13 +12,14 @@
 
 #pragma once
 
-#include "net/Request.hh"
 #include "BlobDatabase.hh"
 #include "WebResources.hh"
 #include "UploadFile.hh"
 
 #include "crypto/Authentication.hh"
 #include "net/SplitBuffers.hh"
+#include "net/Request.hh"
+#include "net/Redis.hh"
 
 #include <boost/filesystem/path.hpp>
 #include <boost/beast/http/fields.hpp>
