@@ -18,12 +18,15 @@
 
 #include <boost/beast/core.hpp>
 #include <boost/beast/http.hpp>
+#include <boost/beast/version.hpp>
 
 #include <boost/asio/ip/tcp.hpp>
 
+#include <boost/asio/bind_executor.hpp>
 #include <boost/asio/strand.hpp>
 #include <boost/asio/ssl/context.hpp>
 #include <boost/asio/ssl/stream.hpp>
+
 #include <boost/filesystem/path.hpp>
 
 #include <optional>
@@ -35,6 +38,22 @@ class Server;
 // Handles an HTTP server connection
 class Session : public std::enable_shared_from_this<Session>
 {
+public:
+	class ResponseSender
+	{
+	public:
+		explicit ResponseSender(std::shared_ptr<Session>&& self) : m_self{std::move(self)} {}
+
+		template <typename Response>
+		void operator()(Response&& res)
+		{
+			m_self->send_response(std::forward<Response>(res));
+		}
+
+	private:
+		std::shared_ptr<Session> m_self;
+	};
+
 public:
 	// Take ownership of the socket
 	explicit Session(
@@ -63,7 +82,21 @@ private:
 	bool validate_request(const Request& req);
 
 	template <class Response>
-	void send_response(Response&& response);
+	void send_response(Response&& response)
+	{
+		// The lifetime of the message has to extend
+		// for the duration of the async operation so
+		// we use a shared_ptr to manage it.
+		auto sp = std::make_shared<std::remove_reference_t<decltype(response)>>(std::forward<decltype(response)>(response));
+		sp->set(http::field::server, BOOST_BEAST_VERSION_STRING);
+		sp->keep_alive(m_keep_alive);
+
+		async_write(m_stream, *sp, boost::asio::bind_executor(
+			m_strand,
+			[self=shared_from_this(), sp](auto&& ec, auto bytes)
+			{ self->on_write(ec, bytes, sp->need_eof()); }
+		));
+	}
 
 	void handle_read_error(boost::system::error_code ec);
 

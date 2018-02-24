@@ -12,11 +12,8 @@
 
 #include "Session.hh"
 #include "util/Log.hh"
+#include "util/Error.hh"
 #include "hrb/Server.hh"
-
-#include <boost/asio/bind_executor.hpp>
-#include <iostream>
-#include <util/Error.hh>
 
 namespace hrb {
 
@@ -103,15 +100,12 @@ void Session::on_read(boost::system::error_code ec, std::size_t, const Authentic
 		return handle_read_error(ec);
 	else
 	{
-		std::visit([self=shared_from_this(), this, &auth](auto&& parser)
+		std::visit([this, &auth](auto&& parser)
 		{
 			auto req = parser.release();
 			if (validate_request(req))
 			{
-				m_server.handle_https(std::move(req), [self](auto&& response)
-				{
-					self->send_response(std::forward<decltype(response)>(response));
-				}, auth);
+				m_server.handle_https(std::move(req), ResponseSender{shared_from_this()}, auth);
 			}
 		}, m_body);
 	}
@@ -163,24 +157,6 @@ bool Session::validate_request(const Request& req)
 	return true;
 
 }
-
-template <class Response>
-void Session::send_response(Response&& response)
-{
-	// The lifetime of the message has to extend
-	// for the duration of the async operation so
-	// we use a shared_ptr to manage it.
-	auto sp = std::make_shared<std::remove_reference_t<decltype(response)>>(std::forward<decltype(response)>(response));
-	sp->set(http::field::server, BOOST_BEAST_VERSION_STRING);
-	sp->keep_alive(m_keep_alive);
-
-	async_write(m_stream, *sp, boost::asio::bind_executor(
-		m_strand,
-		[self=shared_from_this(), sp](auto&& ec, auto bytes)
-		{ self->on_write(ec, bytes, sp->need_eof()); }
-	));
-}
-
 
 void Session::handle_read_error(boost::system::error_code ec)
 {

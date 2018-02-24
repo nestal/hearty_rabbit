@@ -98,8 +98,8 @@ http::response<http::empty_body> Server::see_other(boost::beast::string_view whe
 
 void Server::get_blob(const EmptyRequest& req, BlobResponseSender&& send, const Authentication& auth)
 {
-	auto blob_id = req.target().size() > url::login.size() ?
-		req.target().substr(url::login.size()) :
+	auto blob_id = req.target().size() > (url::blob.size()+1) ?
+		req.target().substr(url::blob.size()+1) :
 		boost::string_view{};
 
 	// Return 404 not_found if the blob ID is invalid
@@ -109,13 +109,22 @@ void Server::get_blob(const EmptyRequest& req, BlobResponseSender&& send, const 
 
 	// Check if the user has permission to read the blob
 	Container::is_member(*m_db.alloc(), auth.user(), object_id,
-		[send=std::move(send), object_id, version=req.version(), this](auto ec, bool is_member) mutable
+		[
+			send=std::move(send),
+			object_id,
+			version=req.version(),
+			etag=req[http::field::if_none_match].to_string(),
+			this
+		](auto ec, bool is_member) mutable
 		{
 			if (ec)
 				return send(http::response<http::file_body>{http::status::internal_server_error, version});
 
 			if (!is_member)
 				return send(http::response<http::file_body>{http::status::forbidden, version});
+
+			if (etag == to_hex(object_id))
+				return send(http::response<http::file_body>{http::status::not_modified, version});
 
 			auto path = m_blob_db.dest(object_id);
 
@@ -136,6 +145,8 @@ void Server::get_blob(const EmptyRequest& req, BlobResponseSender&& send, const 
 				std::make_tuple(http::status::ok, version)
 			};
 			res.set(http::field::content_type, mime);
+			res.set(http::field::cache_control, "private, max-age=0, must-revalidate");
+			res.set(http::field::etag, to_hex(object_id));
 			res.prepare_payload();
 			return send(std::move(res));
 		}
