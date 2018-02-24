@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+
+# Have this script to exit if any of the step below fails
+set -e
+
+USE_COOKIE="-c /tmp/cookiejar -b /tmp/cookiejar"
+CURLOPTS_NOCOOKIE="-sSvLk -o /dev/null"
+CURLOPTS="$CURLOPTS_NOCOOKIE $USE_COOKIE"
+
+# login and save cookie in /tmp/cookiejar
+# the same credential is used in unit test, so it should work
+curl $CURLOPTS -d 'username=sumsum&password=bearbear' -- https://localhost:4433/login
+
+for TEST in ./tests/*;
+do
+	echo "Running test $TEST"
+	source $TEST
+done

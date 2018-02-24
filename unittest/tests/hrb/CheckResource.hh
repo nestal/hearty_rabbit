@@ -12,7 +12,7 @@
 
 #pragma once
 
-#include "hrb/Request.hh"
+#include "net/Request.hh"
 
 #include <boost/beast/core/flat_buffer.hpp>
 #include <boost/filesystem/path.hpp>

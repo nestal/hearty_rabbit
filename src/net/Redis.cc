@@ -32,20 +32,37 @@ std::shared_ptr<Connection> connect(
 	const boost::asio::ip::tcp::endpoint& remote
 )
 {
-	return std::make_shared<Connection>(Connection::Token{}, bic, remote);
+	struct Wrapper
+	{
+		Pool pool;
+		std::shared_ptr<Connection> conn;
+
+		Wrapper(
+			boost::asio::io_context& bic,
+			const boost::asio::ip::tcp::endpoint& remote
+		) : pool{bic, remote}, conn{pool.alloc()}
+		{
+		}
+	};
+
+	auto p = std::make_shared<Wrapper>(bic, remote);
+	return std::shared_ptr<Connection>(p, p->conn.get());
 }
 
 Connection::Connection(
-	Token,
-	boost::asio::io_context& ioc,
-	const boost::asio::ip::tcp::endpoint& remote
+	PoolBase& parent,
+	boost::asio::ip::tcp::socket socket
 ) :
-	m_ioc{ioc},
-	m_socket{m_ioc},
+	m_socket{std::move(socket)},
 	m_strand{m_socket.get_executor()},
-	m_read_buf(1024*1024)
+	m_read_buf(1024*1024),
+	m_parent{parent}
 {
-	m_socket.connect(remote);
+}
+
+Connection::~Connection()
+{
+	m_parent.dealloc(std::move(m_socket));
 }
 
 void Connection::do_write(CommandString&& cmd, Completion&& completion)
@@ -320,6 +337,43 @@ std::tuple<Reply, ReplyReader::Result> ReplyReader::get()
 void ReplyReader::Deleter::operator()(::redisReader *reader) const noexcept
 {
 	::redisReaderFree(reader);
+}
+
+Pool::Pool(boost::asio::io_context& ioc, const boost::asio::ip::tcp::endpoint& remote) :
+	m_ioc{ioc},
+	m_remote{remote}
+{
+}
+
+boost::asio::ip::tcp::socket Pool::get_sock()
+{
+	if (!m_socks.empty())
+	{
+		std::unique_lock<std::mutex> lock{m_mx};
+		if (!m_socks.empty())
+		{
+			auto sock = std::move(m_socks.back());
+			m_socks.pop_back();
+			return sock;
+		}
+	}
+
+	boost::asio::ip::tcp::socket sock{m_ioc};
+	sock.connect(m_remote);
+
+	return sock;
+}
+
+std::shared_ptr<Connection> Pool::alloc()
+{
+	return std::make_shared<Connection>(*this, get_sock());
+}
+
+void Pool::dealloc(boost::asio::ip::tcp::socket socket)
+{
+	std::unique_lock<std::mutex> lock{m_mx};
+	assert(&socket.get_io_context() == &m_ioc);
+	m_socks.push_back(std::move(socket));
 }
 
 }} // end of namespace

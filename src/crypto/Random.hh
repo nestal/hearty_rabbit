@@ -20,6 +20,7 @@
 namespace hrb {
 
 void secure_random(void *buf, std::size_t size);
+void insecure_random(void *buf, std::size_t size);
 
 template <typename T>
 std::enable_if_t<std::is_standard_layout<T>::value, T> secure_random()
@@ -27,6 +28,13 @@ std::enable_if_t<std::is_standard_layout<T>::value, T> secure_random()
 	T val;
 	secure_random(&val, sizeof(val));
 	return val;
+}
+
+template <typename T, class=std::enable_if_t<std::is_standard_layout<T>::value, T>>
+auto secure_random(T& t)
+{
+	secure_random(&t, sizeof(t));
+	return t;
 }
 
 template <typename T, std::size_t size>

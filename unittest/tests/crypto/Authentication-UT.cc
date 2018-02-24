@@ -14,7 +14,7 @@
 
 #include "net/Redis.hh"
 #include "util/Error.hh"
-#include "crypto/Authenication.hh"
+#include "crypto/Authentication.hh"
 #include "crypto/Random.hh"
 #include "crypto/Password.hh"
 
@@ -101,7 +101,7 @@ TEST_CASE("Test normal user login", "[normal]")
 
 	bool tested = false;
 
-	add_user("sumsum", Password{"bearbear"}, *redis, [redis, &tested](std::error_code ec)
+	Authentication::add_user("sumsum", Password{"bearbear"}, *redis, [redis, &tested](std::error_code ec)
 	{
 		INFO("add_user() result = " << ec.message());
 		REQUIRE(!ec);
@@ -110,18 +110,19 @@ TEST_CASE("Test normal user login", "[normal]")
 		{
 			// Verify user with a username in a different case.
 			// Since username is case-insensitive, it should still work.
-			verify_user(
+			Authentication::verify_user(
 				"suMSum", Password{"bearbear"}, *redis, [redis, &tested](std::error_code ec, auto&& session)
 				{
 					INFO("verify_user(correct) result = " << ec.message());
 					REQUIRE(!ec);
-					REQUIRE(session != SessionID{});
+					REQUIRE(session.valid());
 
-					verify_session(session, *redis, [redis, &tested](std::error_code ec, auto&& user)
+					Authentication::verify_session(session.cookie(), *redis, [redis, &tested](std::error_code ec, auto&& auth)
 					{
 						// Username returned is always lower case.
 						REQUIRE(!ec);
-						REQUIRE(user == "sumsum");
+						REQUIRE(auth.valid());
+						REQUIRE(auth.user() == "sumsum");
 						redis->disconnect();
 						tested = true;
 					});
@@ -130,12 +131,12 @@ TEST_CASE("Test normal user login", "[normal]")
 		}
 		SECTION("incorrect user")
 		{
-			verify_user(
+			Authentication::verify_user(
 				"siuyung", Password{"rabbit"}, *redis, [redis, &tested](std::error_code ec, auto&& session)
 				{
 					INFO("verify_user(incorrect) result = " << ec.message());
 					REQUIRE(ec == Error::login_incorrect);
-					REQUIRE(session == SessionID{});
+					REQUIRE(!session.valid());
 					tested = true;
 					redis->disconnect();
 				}
@@ -152,22 +153,22 @@ TEST_CASE("Parsing cookie", "[normal]")
 {
 	auto session = parse_cookie("id=0123456789ABCDEF0123456789ABCDEF; somethingelse; ");
 	REQUIRE(session.has_value());
-	REQUIRE(*session == SessionID{0x01,0x23,0x45, 0x67, 0x89,0xAB,0xCD,0xEF,0x01,0x23,0x45,0x67,0x89,0xAB,0xCD,0xEF});
+	REQUIRE(*session == Authentication::Cookie{0x01,0x23,0x45, 0x67, 0x89,0xAB,0xCD,0xEF,0x01,0x23,0x45,0x67,0x89,0xAB,0xCD,0xEF});
 
 	session = parse_cookie("name=value; id=0123456789ABCDEF0123456789ABCDEF; ");
 	REQUIRE(session.has_value());
-	REQUIRE(*session == SessionID{0x01,0x23,0x45, 0x67, 0x89,0xAB,0xCD,0xEF,0x01,0x23,0x45,0x67,0x89,0xAB,0xCD,0xEF});
+	REQUIRE(*session == Authentication::Cookie{0x01,0x23,0x45, 0x67, 0x89,0xAB,0xCD,0xEF,0x01,0x23,0x45,0x67,0x89,0xAB,0xCD,0xEF});
 
 	// some lower case characters
 	session = parse_cookie("name=value; id=0123456789abcDEF0123456789ABCdef; ");
 	REQUIRE(session.has_value());
-	REQUIRE(*session == SessionID{0x01,0x23,0x45, 0x67, 0x89,0xAB,0xCD,0xEF,0x01,0x23,0x45,0x67,0x89,0xAB,0xCD,0xEF});
+	REQUIRE(*session == Authentication::Cookie{0x01,0x23,0x45, 0x67, 0x89,0xAB,0xCD,0xEF,0x01,0x23,0x45,0x67,0x89,0xAB,0xCD,0xEF});
 
 	// Random round-trip
 	std::mt19937_64 salt_generator{secure_random<std::uint64_t>()};
-	SessionID rand{};
+	Authentication::Cookie rand{};
 	std::generate(rand.begin(), rand.end(), std::ref(salt_generator));
-	auto cookie = set_cookie(rand);
+	auto cookie = Authentication{rand, "test"}.set_cookie();
 	INFO("cookie for random session ID is " << cookie);
 	session = parse_cookie(cookie);
 	REQUIRE(session.has_value());

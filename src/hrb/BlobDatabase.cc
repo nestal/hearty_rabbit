@@ -11,12 +11,16 @@
 //
 
 #include "BlobDatabase.hh"
-#include "BlobObject.hh"
+#include "UploadFile.hh"
+
+#include "util/Log.hh"
 
 #include <sstream>
-#include <iostream>
 
 namespace hrb {
+namespace {
+const std::string_view default_rendition = "master";
+}
 
 BlobDatabase::BlobDatabase(const fs::path& base) : m_base{base}
 {
@@ -27,130 +31,50 @@ BlobDatabase::BlobDatabase(const fs::path& base) : m_base{base}
 		create_directories(base);
 }
 
-BlobDatabase::TempFile BlobDatabase::tmp_file() const
+void BlobDatabase::prepare_upload(UploadFile& result, std::error_code& ec) const
 {
 	boost::system::error_code err;
 
-	TempFile result;
-	result.open(m_base.string().c_str(), {}, err);
+	result.open(m_base.string().c_str(), err);
 	if (err)
-		throw std::system_error(err);
-	return result;
+		ec.assign(err.value(), err.category());
 }
 
-fs::path BlobDatabase::save(BlobDatabase::TempFile&& tmp, std::error_code& ec)
+ObjectID BlobDatabase::save(const UploadFile& tmp, std::error_code& ec)
 {
-	// move the file in argument to local variable to make sure the destructor
-	// to delete the temp file.
-	TempFile file{std::move(tmp)};
-	auto dest_path = dest(file.ID());
+	auto id = tmp.ID();
+	auto dest_path = dest(id);
 
 	boost::system::error_code bec;
 	if (!exists(dest_path.parent_path()))
 		create_directories(dest_path.parent_path(), bec);
+	if (bec)
+		Log(LOG_WARNING, "create directory %1% %2%", bec, bec.message());
+
 	ec.assign(bec.value(), bec.category());
 
 	if (!ec)
 	{
-		std::ostringstream proc;
-		proc << "/proc/self/fd/" << file.native_handle();
-
-		if (::linkat(AT_FDCWD, proc.str().c_str(), AT_FDCWD, dest_path.string().c_str(), AT_SYMLINK_FOLLOW) != 0)
-			ec.assign(errno, std::generic_category());
+		tmp.linkat(dest_path, ec);
+		if (ec == std::errc::file_exists)
+		{
+			// TODO: check file size before accepting
+			Log(LOG_INFO, "linkat() %1% exists", dest_path);
+			ec.clear();
+		}
+		else if (ec)
+			Log(LOG_WARNING, "linkat() %1% %2%", ec, ec.message());
 	}
 
-	return dest_path;
+	return id;
 }
 
-fs::path BlobDatabase::dest(ObjectID id) const
+fs::path BlobDatabase::dest(ObjectID id, std::string_view) const
 {
 	auto hex = to_hex(id);
 	assert(hex.size() > 2);
 
-	return m_base / hex.substr(0, 2) / hex;
-}
-
-bool BlobDatabase::TempFile::is_open() const
-{
-	return m_file.is_open();
-}
-
-void BlobDatabase::TempFile::close(boost::system::error_code& ec)
-{
-	return m_file.close(ec);
-}
-
-void BlobDatabase::TempFile::open(char const *path, boost::beast::file_mode, boost::system::error_code& ec)
-{
-	auto glibc_mkstemp = [path, this]
-	{
-		m_path = (fs::path{path} / "blob-XXXXXX").string();
-		return ::mkstemp(&m_path[0]);
-	};
-
-#ifdef O_TMPFILE
-//#if false
-	// Note that O_TMPFILE requires the "path" to be a directory.
-	// See http://man7.org/linux/man-pages/man2/open.2.html
-	auto fd = ::open(path, O_TMPFILE | O_RDWR, S_IRUSR | S_IWUSR);
-
-	// Fallback to glibc mkstemp() if O_TMPFILE is not supported
-	// by the Linux kernel.
-	if (fd < 0 && errno == EISDIR)
-		fd = glibc_mkstemp();
-#else
-	// CentOS 7 (i.e. Linux 3.10) does not support O_TMPFILE, so
-	// don't bother even trying.
-	auto fd = glibc_mkstemp();
-#endif
-
-	if (fd < 0)
-		ec.assign(errno, boost::system::generic_category());
-	else
-		m_file.native_handle(fd);
-}
-
-std::uint64_t BlobDatabase::TempFile::size(boost::system::error_code& ec) const
-{
-	return m_file.size(ec);
-}
-
-std::uint64_t BlobDatabase::TempFile::pos(boost::system::error_code& ec) const
-{
-	return m_file.pos(ec);
-}
-
-void BlobDatabase::TempFile::seek(std::uint64_t offset, boost::system::error_code& ec)
-{
-	return m_file.seek(offset, ec);
-}
-
-std::size_t BlobDatabase::TempFile::read(void *buffer, std::size_t n, boost::system::error_code& ec) const
-{
-	return m_file.read(buffer, n, ec);
-}
-
-std::size_t BlobDatabase::TempFile::write(void const *buffer, std::size_t n, boost::system::error_code& ec)
-{
-	m_hash.update(buffer, n);
-	return m_file.write(buffer, n, ec);
-}
-
-/// Get the object ID (blake2 hash) of the file.
-ObjectID BlobDatabase::TempFile::ID() const
-{
-	return ObjectID{Blake2{m_hash}.finalize()};
-}
-
-boost::beast::file_posix::native_handle_type BlobDatabase::TempFile::native_handle() const
-{
-	return m_file.native_handle();
-}
-
-BlobDatabase::TempFile::~TempFile()
-{
-	if (!m_path.empty())
-		fs::remove(m_path);
+	return m_base / hex.substr(0, 2) / hex / std::string{default_rendition};
 }
 
 } // end of namespace hrb

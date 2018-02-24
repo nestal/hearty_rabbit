@@ -12,7 +12,6 @@
 
 #pragma once
 
-#cmakedefine SYSTEMD_FOUND
 #cmakedefine LIBUNWIND_FOUND
 
 #include <string_view>

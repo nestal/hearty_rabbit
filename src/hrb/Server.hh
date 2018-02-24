@@ -12,12 +12,14 @@
 
 #pragma once
 
-#include "Request.hh"
-#include "DatabasePool.hh"
+#include "BlobDatabase.hh"
 #include "WebResources.hh"
+#include "UploadFile.hh"
 
-#include "crypto/Authenication.hh"
+#include "crypto/Authentication.hh"
 #include "net/SplitBuffers.hh"
+#include "net/Request.hh"
+#include "net/Redis.hh"
 
 #include <boost/filesystem/path.hpp>
 #include <boost/beast/http/fields.hpp>
@@ -47,126 +49,123 @@ class Configuration;
 class Password;
 class BlobObject;
 
+/// The main application logic of hearty rabbit.
+/// This is the class that handles HTTP requests from and produce response to clients. The unit test
+/// this class calls handle_https().
 class Server
 {
 public:
 	explicit Server(const Configuration& cfg);
 
-	http::response<http::empty_body> redirect_http(const Request& req);
-
 	static std::tuple<
 		std::string_view,
 		std::string_view
-	> extract_prefix(const Request& req);
+	> extract_prefix(const RequestHeader& req);
 
-	template <class Send>
-	void on_valid_session(Request&& req, Send&& send, std::string_view user, const SessionID& session)
+	void on_request_header(
+		const RequestHeader& header,
+		EmptyRequestParser& src,
+		RequestBodyParsers& dest,
+		std::function<void(const Authentication&)>&& complete
+	);
+
+	template<class Send>
+	void handle_https(UploadRequest&& req, Send&& send, const Authentication& auth)
 	{
-		if (req.target() == "/")
-			return send(serve_home(req.version()));
+		assert(is_upload(req));
 
-		if (req.target().starts_with(url::blob))
-			return get_blob(req, std::forward<decltype(send)>(send));
+		if (auth.valid())
+			return req.target().starts_with(url::upload) ?
+				on_upload(std::move(req), std::forward<Send>(send), auth) :
+				send(not_found(req.target(), req.version()));
 
-		if (req.target().starts_with(url::dir))
-			return send(get_dir(req));
-
-		if (req.target().starts_with(url::logout))
-			return on_logout(req, session, std::forward<Send>(send));
-
-		if (req.target().starts_with(url::upload))
-			return on_upload(std::move(req), std::forward<Send>(send), user);
-
-		return send(not_found(req));
+		else
+			return on_invalid_session(std::move(req), std::forward<Send>(send));
 	}
 
-	template <class Send>
-	void on_session(Request&& req, Send&& send, const SessionID& session)
-	{
-		auto db = m_db.alloc(m_ioc);
-		verify_session(
-			session,
-			*db,
-			[
-				this,
-				db,
-				req=std::move(req),
-				send=std::forward<Send>(send),
-				session
-			](std::error_code ec, std::string_view user) mutable
-			{
-				m_db.release(std::move(db));
-
-				return ec ?
-					on_invalid_session(std::move(req), std::forward<decltype(send)>(send)) :
-					on_valid_session(std::move(req), std::forward<decltype(send)>(send), user, session);
-			}
-		);
-
-	}
 	// This function produces an HTTP response for the given
 	// request. The type of the response object depends on the
 	// contents of the request, so the interface requires the
 	// caller to pass a generic lambda for receiving the response.
 	template<class Send>
-	void handle_https(Request&& req, Send&& send)
+	void handle_https(StringRequest&& req, Send&& send, const Authentication& auth)
 	{
-		// Obviously "/login" always allow anonymous access, otherwise no one can login.
-		if (req.target() == url::login)
-		{
-			if (req.method() == http::verb::post)
-				return on_login(req, std::forward<Send>(send));
-			else
-				return send(http::response<http::empty_body>{http::status::bad_request, req.version()});
-		}
+		assert(is_login(req));
+		return on_login(req, std::forward<Send>(send));
+	}
 
+	template <class Send>
+	void handle_https(EmptyRequest&& req, Send&& send, const Authentication& auth)
+	{
 		if (allow_anonymous(req.target()))
 			return send(static_file_request(req));
 
 		// Everything else require a valid session.
-		auto cookie = req[http::field::cookie];
-		auto session = parse_cookie({cookie.data(), cookie.size()});
-		return session ?
-			on_session(std::move(req), std::forward<Send>(send), *session) :
-			on_invalid_session(std::move(req), std::forward<Send>(send));
+		return auth.valid() ?
+			on_valid_session(std::move(req), std::forward<decltype(send)>(send), auth) :
+			on_invalid_session(std::move(req), std::forward<decltype(send)>(send));
 	}
 
-	http::response<SplitBuffers> static_file_request(const Request& req);
-	http::response<SplitBuffers> serve_home(unsigned version);
-	static http::response<http::string_body> bad_request(const Request& req, boost::beast::string_view why);
-	static http::response<http::string_body> not_found(const Request& req);
-	static http::response<http::string_body> server_error(const Request& req, boost::beast::string_view what);
-	static http::response<http::empty_body> redirect(boost::beast::string_view where, unsigned version);
+	static http::response<http::string_body> bad_request(boost::string_view why, unsigned version);
+	static http::response<http::string_body> not_found(boost::string_view target, unsigned version);
+	static http::response<http::string_body> server_error(boost::string_view what, unsigned version);
+	static http::response<http::empty_body> see_other(boost::beast::string_view where, unsigned version);
 
-	void disconnect_db();
 	void run();
 	boost::asio::io_context& get_io_context();
 
 	// Administrative commands
 	void add_user(std::string_view username, Password&& password, std::function<void(std::error_code)> complete);
-	void add_blob(const boost::filesystem::path& path, std::function<void(BlobObject&, std::error_code)> complete);
+	std::string https_root() const;
 
 private:
+	http::response<SplitBuffers> static_file_request(const EmptyRequest& req);
+
+	template <class Send>
+	void on_valid_session(EmptyRequest&& req, Send&& send, const Authentication& auth)
+	{
+		const RequestHeader& header = req;
+
+		if (req.target() == "/")
+			return serve_home(std::forward<decltype(send)>(send), req.version(), auth);
+
+		if (req.target().starts_with(url::blob))
+			return get_blob(req, std::forward<decltype(send)>(send), auth);
+
+		if (req.target().starts_with(url::dir))
+			return send(get_dir(req));
+
+		if (req.target() == url::logout)
+			return on_logout(req, auth, std::forward<Send>(send));
+
+		return send(not_found(req.target(), req.version()));
+	}
+
+	static bool is_upload(const RequestHeader& header);
+	static bool is_login(const RequestHeader& header);
 	static void drop_privileges();
 
 	using EmptyResponseSender  = std::function<void(http::response<http::empty_body>&&)>;
 	using StringResponseSender = std::function<void(http::response<http::string_body>&&)>;
 	using FileResponseSender   = std::function<void(http::response<SplitBuffers>&&)>;
+	using BlobResponseSender   = std::function<void(http::response<http::file_body>&&)>;
 
-	void on_login(const Request& req, EmptyResponseSender&& send);
-	void on_logout(const Request& req, const SessionID& id, EmptyResponseSender&& send);
-	void on_invalid_session(const Request& req, FileResponseSender&& send);
-	void on_upload(Request&& req, EmptyResponseSender&& send, std::string_view user);
-	void get_blob(const Request& req, StringResponseSender&& send);
-	http::response<http::string_body> get_dir(const Request& req);
+	void on_login(const StringRequest& req, EmptyResponseSender&& send);
+	void on_logout(const EmptyRequest& req, const Authentication& auth, EmptyResponseSender&& send);
+	void on_invalid_session(const RequestHeader& req, FileResponseSender&& send);
+	void on_upload(UploadRequest&& req, EmptyResponseSender&& send, const Authentication& auth);
+	void get_blob(const EmptyRequest& req, BlobResponseSender&& send, const Authentication& auth);
+	http::response<http::string_body> get_dir(const EmptyRequest& req);
 	static bool allow_anonymous(boost::string_view target);
+	void serve_home(FileResponseSender&& send, unsigned version, const Authentication& auth);
 
 private:
 	const Configuration&    m_cfg;
 	boost::asio::io_context m_ioc;
 
-	DatabasePool    m_db;
+	redis::Pool     m_db;
 	WebResources    m_lib;
+	BlobDatabase    m_blob_db;
 };
 
 } // end of namespace

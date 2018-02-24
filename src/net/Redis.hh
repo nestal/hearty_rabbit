@@ -21,6 +21,7 @@
 #include <deque>
 #include <memory>
 #include <string>
+#include <mutex>
 
 namespace hrb {
 namespace redis {
@@ -168,26 +169,24 @@ std::shared_ptr<Connection> connect(
 	}
 );
 
+class Pool;
+class PoolBase
+{
+public:
+	virtual void dealloc(boost::asio::ip::tcp::socket socket) = 0;
+};
+
 class Connection : public std::enable_shared_from_this<Connection>
 {
-private:
-	struct Token {};
-
 public:
-	friend std::shared_ptr<Connection> connect(
-		boost::asio::io_context& bic,
-		const boost::asio::ip::tcp::endpoint& remote
-	);
-
 	explicit Connection(
-		Token,
-		boost::asio::io_context& ioc,
-		const boost::asio::ip::tcp::endpoint& remote
+		PoolBase& parent,
+		boost::asio::ip::tcp::socket socket
 	);
 
 	Connection(Connection&&) = delete;
 	Connection(const Connection&) = delete;
-	~Connection() = default;
+	~Connection();
 
 	Connection& operator=(Connection&&) = delete;
 	Connection& operator=(const Connection&) = delete;
@@ -199,7 +198,7 @@ public:
 		{
 			do_write(
 				CommandString{args...},
-				[cb=std::make_shared<Callback>(std::forward<Callback>(callback))](auto&& r, auto ec)
+				[cb=std::make_shared<Callback>(std::forward<Callback>(callback)), self=shared_from_this()](auto&& r, auto ec)
 				{
 					(*cb)(std::move(r), std::move(ec));
 				}
@@ -211,7 +210,7 @@ public:
 		}
 	}
 
-	boost::asio::io_context& get_io_context() {return m_ioc;}
+	boost::asio::io_context& get_io_context() {return m_socket.get_io_context();}
 	void disconnect() ;
 
 private:
@@ -222,7 +221,6 @@ private:
 	void on_read(boost::system::error_code ec, std::size_t bytes);
 
 private:
-	boost::asio::io_context& m_ioc;
 	boost::asio::ip::tcp::socket m_socket;
 	boost::asio::strand<boost::asio::io_context::executor_type> m_strand;
 
@@ -233,6 +231,26 @@ private:
 	std::deque<Completion> m_callbacks;
 
 	ReplyReader m_reader;
+	PoolBase&   m_parent;
+};
+
+class Pool : public PoolBase
+{
+public:
+	Pool(boost::asio::io_context& ioc, const boost::asio::ip::tcp::endpoint& remote);
+
+	std::shared_ptr<Connection> alloc();
+	void dealloc(boost::asio::ip::tcp::socket socket) override;
+
+private:
+	boost::asio::ip::tcp::socket get_sock();
+
+private:
+	boost::asio::io_context&                    m_ioc;
+	boost::asio::ip::tcp::endpoint              m_remote;
+	std::vector<boost::asio::ip::tcp::socket>   m_socks;
+
+	std::mutex  m_mx;
 };
 
 }} // end of namespace

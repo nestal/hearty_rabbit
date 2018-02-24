@@ -32,7 +32,9 @@ struct ObjectID : std::array<unsigned char, Blake2::size>
 static_assert(std::is_standard_layout<ObjectID>::value);
 
 std::string to_hex(const ObjectID& id);
-ObjectID hex_to_object_id(std::string_view base64);
+ObjectID hex_to_object_id(std::string_view hex);
+
+ObjectID raw_to_object_id(std::string_view raw);
 
 std::ostream& operator<<(std::ostream& os, const ObjectID& id);
 

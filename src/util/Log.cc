@@ -12,23 +12,12 @@
 
 #include "Log.hh"
 
-#ifdef SYSTEMD_FOUND
-#include <systemd/sd-journal.h>
-#endif
-
 namespace hrb {
 namespace detail {
 
 void DetailLog(int priority, std::string &&line)
 {
-	// preprocessor is bad
-#ifdef SYSTEMD_FOUND
-	::sd_journal_print
-#else
-	::syslog
-#endif
-	(priority, "%s", line.c_str());
-
+	::syslog(priority, "%s", line.c_str());
 	::printf("%s\n", line.c_str());
 }
 

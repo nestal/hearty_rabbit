@@ -15,7 +15,6 @@
 #include "CheckResource.hh"
 
 #include "hrb/Server.hh"
-#include "hrb/BlobObject.hh"
 
 #include "crypto/Random.hh"
 #include "crypto/Password.hh"
@@ -39,11 +38,15 @@ class Checker
 public:
 	bool tested() const {return m_tested;}
 
+	template <typename T>
+	auto operator[](T&& field) const { return m_header[std::forward<T>(field)]; }
+
 protected:
-	void set_tested() const {m_tested = true;}
+	void set_tested(const http::header<false>& header) const {m_tested = true; m_header = header;}
 
 private:
 	mutable bool m_tested = false;
+	mutable http::header<false> m_header;
 };
 
 class MovedResponseChecker : public Checker
@@ -54,10 +57,10 @@ public:
 	template <typename Response>
 	void operator()(Response&& res) const
 	{
-		REQUIRE(res.result() == http::status::moved_permanently);
+		REQUIRE(res.result() == http::status::see_other);
 		REQUIRE(res.at(http::field::location) == m_redirect);
 		REQUIRE(res.version() == 11);
-		set_tested();
+		set_tested(res);
 	}
 
 private:
@@ -72,9 +75,11 @@ public:
 	template <typename Response>
 	void operator()(Response&& res) const
 	{
+		INFO("response type = " << boost::core::demangled_name(typeid(res)));
+
 		REQUIRE(res.result() == m_status);
 		REQUIRE(res.version() == 11);
-		set_tested();
+		set_tested(res);
 	}
 
 private:
@@ -96,7 +101,7 @@ public:
 		REQUIRE(check_resource_content(m_file, std::move(res)));
 		REQUIRE(res.version() == 11);
 
-		set_tested();
+		set_tested(res);
 	}
 
 private:
@@ -104,21 +109,22 @@ private:
 	boost::filesystem::path m_file;
 };
 
-SessionID create_session(std::string_view username, std::string_view password, const Configuration& cfg)
+Authentication create_session(std::string_view username, std::string_view password, const Configuration& cfg)
 {
 	boost::asio::io_context ioc;
 	auto db = redis::connect(ioc, cfg.redis());
 
-	std::promise<SessionID> result;
+	std::promise<Authentication> result;
 
-	add_user(username, Password{password}, *db, [&result, db, username, password](std::error_code ec)
+	Authentication::add_user(username, Password{password}, *db, [&result, db, username, password](std::error_code ec)
 	{
 		REQUIRE(!ec);
 
-		verify_user(username, Password{password}, *db, [&result, db](std::error_code ec, const SessionID& id)
+		Authentication::verify_user(username, Password{password}, *db, [&result, db](std::error_code ec, auto&& auth)
 		{
 			REQUIRE(!ec);
-			result.set_value(id);
+			REQUIRE(auth.valid());
+			result.set_value(auth);
 			db->disconnect();
 		});
 	});
@@ -128,7 +134,7 @@ SessionID create_session(std::string_view username, std::string_view password, c
 
 }
 
-TEST_CASE("GET static resource", "[normal]")
+TEST_CASE("General server tests", "[normal]")
 {
 	auto local_json = (current_src / "../../../etc/hearty_rabbit/hearty_rabbit.json").string();
 
@@ -138,243 +144,252 @@ TEST_CASE("GET static resource", "[normal]")
 	auto session = create_session("testuser", "password", cfg);
 
 	Server subject{cfg};
-
 	REQUIRE(cfg.web_root() == (current_src/"../../../lib").lexically_normal());
-	Request req;
-	req.version(11);
 
-	SECTION("Request login.html success without login")
+	SECTION("Request with empty body")
 	{
-		FileResponseChecker checker{http::status::ok, cfg.web_root()/"dynamic/login.html"};
+		EmptyRequest req;
+		req.version(11);
 
-		req.target("/");
-		subject.handle_https(std::move(req), std::ref(checker));
-		REQUIRE(checker.tested());
-	}
-
-	SECTION("Request logo.svg success without login")
-	{
-		FileResponseChecker checker{http::status::ok, cfg.web_root()/"static/logo.svg"};
-
-		req.target("/logo.svg");
-		subject.handle_https(std::move(req), std::ref(checker));
-		REQUIRE(checker.tested());
-	}
-
-	SECTION("Request hearty_rabbit.js success with login")
-	{
-		FileResponseChecker checker{http::status::ok, cfg.web_root()/"static/hearty_rabbit.js"};
-
-		req.target("/hearty_rabbit.js");
-		req.set(boost::beast::http::field::cookie, set_cookie(session));
-		subject.handle_https(std::move(req), std::ref(checker));
-		REQUIRE(checker.tested());
-	}
-
-	SECTION("Request index.html failed without login")
-	{
-		GenericStatusChecker checker{http::status::forbidden};
-
-		req.target("/index.html");
-		subject.handle_https(std::move(req), std::ref(checker));
-		REQUIRE(subject.get_io_context().run_for(10s) > 0);
-		REQUIRE(checker.tested());
-	}
-
-	SECTION("Request index.html success with login")
-	{
-		FileResponseChecker checker{http::status::ok, cfg.web_root()/"dynamic/index.html"};
-
-		req.target("/");
-		req.insert(boost::beast::http::field::cookie, set_cookie(session));
-		subject.handle_https(std::move(req), [&checker, &subject](auto&& res)
+		SECTION("Request login.html success without login")
 		{
-			checker(std::move(res));
-			subject.disconnect_db();
-		});
+			FileResponseChecker checker{http::status::ok, cfg.web_root() / "dynamic/login.html"};
 
-		REQUIRE(subject.get_io_context().run_for(10s) > 0);
-		REQUIRE(checker.tested());
-	}
-
-	SECTION("requesting something not exist")
-	{
-		GenericStatusChecker checker{http::status::forbidden};
-
-		req.target("/something_not_exist.html");
-		subject.handle_https(std::move(req), std::ref(checker));
-		REQUIRE(subject.get_io_context().run_for(10s) > 0);
-		REQUIRE(checker.tested());
-	}
-
-	SECTION("Only allow login with POST: redirect GET request to login.html")
-	{
-		GenericStatusChecker checker{http::status::bad_request};
-
-		req.target("/login");
-		subject.handle_https(std::move(req), std::ref(checker));
-//		REQUIRE(subject.get_io_context().run_for(10s) > 0);
-		REQUIRE(checker.tested());
-	}
-
-	SECTION("Login Incorrect")
-	{
-		MovedResponseChecker login_incorrect{"/login_incorrect.html"};
-		MovedResponseChecker invalid_login{"/"};
-		Checker *expect{nullptr};
-
-		req.target("/login");
-		req.method(http::verb::post);
-		req.body() = "username=user&password=123";
-
-		SECTION("correct content_type")
-		{
-			req.insert(http::field::content_type, "application/x-www-form-urlencoded");
-			subject.handle_https(std::move(req), [&login_incorrect, &subject](auto&& res)
-			{
-				REQUIRE(res[http::field::cookie] == "");
-				login_incorrect(std::move(res));
-				subject.disconnect_db();
-			});
-			REQUIRE(subject.get_io_context().run_for(10s) > 0);
-			expect = &login_incorrect;
-		}
-		SECTION("without content_type")
-		{
-			req.erase(http::field::content_type);
-			REQUIRE(req[http::field::content_type] == "");
-			subject.handle_https(std::move(req), std::ref(invalid_login));
-			expect = &invalid_login;
-		}
-		SECTION("without incorrect content_type")
-		{
-			req.insert(http::field::content_type, "text/plain");
-			subject.handle_https(std::move(req), std::ref(invalid_login));
-			expect = &invalid_login;
-		}
-
-		REQUIRE(expect != nullptr);
-		REQUIRE(expect->tested());
-	}
-
-	SECTION("requesting other resources without a session")
-	{
-		FileResponseChecker  login{http::status::ok, cfg.web_root()/"dynamic/login.html"};
-		GenericStatusChecker forbidden{http::status::forbidden};
-		Checker *expected{nullptr};
-
-		SECTION("requests for / will see login page without delay")
-		{
 			req.target("/");
-			subject.handle_https(std::move(req), std::ref(login));
-			expected = &login;
+			subject.handle_https(std::move(req), std::ref(checker), {});
+			REQUIRE(checker.tested());
 		}
-		SECTION("requests to others will get 403 forbidden with delay")
+
+		SECTION("Request logo.svg success without login")
 		{
-			req.target("/something");
-			subject.handle_https(std::move(req), std::ref(forbidden));
-	 		REQUIRE(subject.get_io_context().run_for(10s) > 0);
-			expected = &forbidden;
+			FileResponseChecker checker{http::status::ok, cfg.web_root() / "static/logo.svg"};
+
+			req.target("/logo.svg");
+			subject.handle_https(std::move(req), std::ref(checker), {});
+			REQUIRE(checker.tested());
 		}
-		REQUIRE(expected != nullptr);
-		REQUIRE(expected->tested());
+
+		SECTION("Request hearty_rabbit.js success with login")
+		{
+			FileResponseChecker checker{http::status::ok, cfg.web_root() / "static/hearty_rabbit.js"};
+
+			req.target("/hearty_rabbit.js");
+			req.set(boost::beast::http::field::cookie, session.set_cookie());
+			subject.handle_https(std::move(req), std::ref(checker), session);
+			REQUIRE(checker.tested());
+		}
+
+		SECTION("Request index.html failed without login")
+		{
+			GenericStatusChecker checker{http::status::forbidden};
+
+			req.target("/index.html");
+			subject.handle_https(std::move(req), std::ref(checker), {});
+			REQUIRE(subject.get_io_context().run_for(10s) > 0);
+			REQUIRE(checker.tested());
+		}
+
+		SECTION("Request index.html success with login")
+		{
+			// TODO: check index.html file content
+			GenericStatusChecker checker{http::status::ok};
+
+			req.target("/");
+			req.set(boost::beast::http::field::cookie, session.set_cookie());
+			subject.handle_https(std::move(req), std::ref(checker), session);
+			REQUIRE(subject.get_io_context().run_for(10s) > 0);
+			REQUIRE(checker.tested());
+		}
+
+		SECTION("requesting something not exist")
+		{
+			GenericStatusChecker checker{http::status::forbidden};
+
+			req.target("/something_not_exist.html");
+			subject.handle_https(std::move(req), std::ref(checker), {});
+			REQUIRE(subject.get_io_context().run_for(10s) > 0);
+			REQUIRE(checker.tested());
+		}
+
+		SECTION("Only allow login with POST: redirect GET request to login.html")
+		{
+			GenericStatusChecker checker{http::status::forbidden};
+
+			req.target("/login");
+			subject.handle_https(std::move(req), std::ref(checker), {});
+			REQUIRE(subject.get_io_context().run_for(10s) > 0);
+			REQUIRE(checker.tested());
+		}
+
+		SECTION("requesting other resources without a session")
+		{
+			FileResponseChecker login{http::status::ok, cfg.web_root() / "dynamic/login.html"};
+			GenericStatusChecker forbidden{http::status::forbidden};
+			Checker *expected{nullptr};
+
+			SECTION("requests for / will see login page without delay")
+			{
+				req.target("/");
+				subject.handle_https(std::move(req), std::ref(login), {});
+				expected = &login;
+			}
+			SECTION("requests to others will get 403 forbidden with delay")
+			{
+				req.target("/something");
+				subject.handle_https(std::move(req), std::ref(forbidden), {});
+				REQUIRE(subject.get_io_context().run_for(10s) > 0);
+				expected = &forbidden;
+			}
+			REQUIRE(expected != nullptr);
+			REQUIRE(expected->tested());
+		}
+
+		SECTION("requesting invalid blob")
+		{
+			GenericStatusChecker valid_session{http::status::not_found};
+			GenericStatusChecker invalid_session{http::status::forbidden};
+			Checker *expected{nullptr};
+
+			SECTION("blob ID too short")
+			{
+				req.target("/blob/abc");
+				SECTION("with valid session")
+				{
+					req.set(boost::beast::http::field::cookie, session.set_cookie());
+					subject.handle_https(std::move(req), std::ref(valid_session), session);
+					REQUIRE(valid_session.tested());
+					expected = &valid_session;
+				}
+				SECTION("with invalid session")
+				{
+					subject.handle_https(std::move(req), std::ref(invalid_session), {});
+					REQUIRE(subject.get_io_context().run_for(10s) > 0);
+					expected = &invalid_session;
+				}
+			}
+			SECTION("empty blob ID")
+			{
+				req.target("/blob");
+				SECTION("with valid session")
+				{
+					req.set(boost::beast::http::field::cookie, session.set_cookie());
+					subject.handle_https(std::move(req), std::ref(valid_session), session);
+					expected = &valid_session;
+				}
+				SECTION("with invalid session")
+				{
+					subject.handle_https(std::move(req), std::ref(invalid_session), {});
+					REQUIRE(subject.get_io_context().run_for(10s) > 0);
+					expected = &invalid_session;
+				}
+			}
+
+			INFO("Request target: " << req.target() << " session user: " << session.user());
+			REQUIRE(expected->tested());
+		}
+	}
+	SECTION("Request with string body")
+	{
+		StringRequest req;
+		req.version(11);
+
+		SECTION("Login Incorrect")
+		{
+			MovedResponseChecker login_incorrect{"/login_incorrect.html"};
+			MovedResponseChecker invalid_login{"/"};
+
+			req.target("/login");
+			req.method(http::verb::post);
+			req.body() = "username=user&password=123";
+
+			SECTION("correct content_type")
+			{
+				req.set(http::field::content_type, "application/x-www-form-urlencoded");
+				subject.handle_https(std::move(req), std::ref(login_incorrect), {});
+				REQUIRE(subject.get_io_context().run_for(10s) > 0);
+				REQUIRE(login_incorrect.tested());
+				REQUIRE(login_incorrect[http::field::cookie] == "");
+			}
+			SECTION("without content_type")
+			{
+				req.erase(http::field::content_type);
+				REQUIRE(req[http::field::content_type] == "");
+				subject.handle_https(std::move(req), std::ref(invalid_login), {});
+				REQUIRE(invalid_login.tested());
+				REQUIRE(invalid_login[http::field::cookie] == "");
+			}
+			SECTION("without incorrect content_type")
+			{
+				req.insert(http::field::content_type, "text/plain");
+				subject.handle_https(std::move(req), std::ref(invalid_login), {});
+				REQUIRE(invalid_login.tested());
+				REQUIRE(invalid_login[http::field::cookie] == "");
+			}
+		}
 	}
 
-	SECTION("requesting invalid blob")
+	SECTION("Upload request")
 	{
-		GenericStatusChecker valid_session{http::status::not_found};
-		GenericStatusChecker invalid_session{http::status::forbidden};
-		Checker *expected{nullptr};
-
-		SECTION("blob ID too short")
-		{
-			req.target("/blob/abc");
-			SECTION("with valid session")
-			{
-				req.insert(boost::beast::http::field::cookie, set_cookie(session));
-				subject.handle_https(std::move(req), std::ref(valid_session));
-				expected = &valid_session;
-			}
-			SECTION("with invalid session")
-			{
-				subject.handle_https(std::move(req), std::ref(invalid_session));
-				expected = &invalid_session;
-			}
-		}
-		SECTION("empty blob ID")
-		{
-			req.target("/blob");
-			SECTION("with valid session")
-			{
-				req.insert(boost::beast::http::field::cookie, set_cookie(session));
-				subject.handle_https(std::move(req), std::ref(valid_session));
-				expected = &valid_session;
-			}
-			SECTION("with invalid session")
-			{
-				subject.handle_https(std::move(req), std::ref(invalid_session));
-				expected = &invalid_session;
-			}
-		}
-
-		REQUIRE(subject.get_io_context().run_for(10s) > 0);
-		REQUIRE(expected->tested());
-	}
-
-	SECTION("requesting good blob ID")
-	{
-		FileResponseChecker checker{http::status::ok, __FILE__};
-
-		BlobObject blob{__FILE__};
-		auto db = redis::connect(subject.get_io_context(), cfg.redis());
-
-		blob.save(*db, [&subject, db, &req, &checker, session](auto&& blob, std::error_code ec)
-		{
-			db->disconnect();
-
-			req.target("/blob/" + to_hex(blob.ID()));
-			req.set(boost::beast::http::field::cookie, set_cookie(session));
-			subject.handle_https(std::move(req), [&checker, &subject](auto&& res)
-			{
-				REQUIRE(res.at(http::field::content_type) == "text/x-c++");
-				checker(std::move(res));
-				subject.disconnect_db();
-			});
-		});
-		REQUIRE(subject.get_io_context().run_for(10s) > 0);
-		REQUIRE(checker.tested());
-	}
-
-	SECTION("upload blob")
-	{
-		GenericStatusChecker created{http::status::created};
-		GenericStatusChecker forbidden{http::status::forbidden};
-		GenericStatusChecker bad_request{http::status::bad_request};
-		GenericStatusChecker *checker = nullptr;
-
+		UploadRequest req;
 		req.target("/upload/testdata");
-		req.body() = "some text";
+		req.method(http::verb::put);
 
-		SECTION("with credential")
+		boost::system::error_code bec;
+		req.body().open(cfg.blob_path(), bec);
+		REQUIRE(bec == boost::system::error_code{});
+
+		std::error_code sec;
+		auto testdata = MMap::open(__FILE__, sec);
+		REQUIRE(sec == std::error_code{});
+
+		req.body().write(testdata.data(), testdata.size(), bec);
+		REQUIRE(bec == boost::system::error_code{});
+
+		SECTION("request with valid session response with 200 created")
 		{
-			req.set(http::field::cookie, set_cookie(session));
-			req.method(http::verb::put);
+			GenericStatusChecker checker{http::status::created};
+			req.set(boost::beast::http::field::cookie, session.set_cookie());
+			subject.handle_https(std::move(req), std::ref(checker), session);
+			REQUIRE(subject.get_io_context().run_for(10s) > 0);
+			REQUIRE(checker.tested());
+			REQUIRE(checker[http::field::location] != "");
 
-			req.prepare_payload();
-			subject.handle_https(std::move(req), [&created, &subject](auto&& res)
+			INFO("Upload request returned location: " << checker[http::field::location]);
+
+			EmptyRequest get_blob;
+			get_blob.target(checker[http::field::location]);
+
+			subject.get_io_context().restart();
+
+			SECTION("get back the uploaded blob with valid session")
 			{
-				created(std::move(res));
-				subject.disconnect_db();
-			});
+				get_blob.set(boost::beast::http::field::cookie, session.set_cookie());
+				FileResponseChecker blob{http::status::ok, __FILE__};
+				subject.handle_https(std::move(get_blob), std::ref(blob), session);
+				REQUIRE(subject.get_io_context().run_for(10s) > 0);
+				REQUIRE(blob.tested());
+			}
+			SECTION("get 403 without valid session and delay")
+			{
+				GenericStatusChecker forbidden{http::status::forbidden};
+				subject.handle_https(std::move(get_blob), std::ref(forbidden), {});
+				REQUIRE(subject.get_io_context().run_for(10s) > 0);
+				REQUIRE(forbidden.tested());
+			}
 		}
-		REQUIRE(subject.get_io_context().run_for(10s) > 0);
-		REQUIRE(created.tested());
+		SECTION("request without valid session response with 403 forbidden and delay")
+		{
+			GenericStatusChecker checker{http::status::forbidden};
+			subject.handle_https(std::move(req), std::ref(checker), {});
+			REQUIRE(subject.get_io_context().run_for(10s) > 0);
+			REQUIRE(checker.tested());
+		}
 	}
 }
 
 TEST_CASE("Extract prefix from URL until '/'", "[normal]")
 {
-	Request req;
+	EmptyRequest req;
 	SECTION("No suffix")
 	{
 		req.target("/target");

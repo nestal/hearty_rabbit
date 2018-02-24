@@ -12,6 +12,8 @@
 
 #include "Listener.hh"
 #include "Session.hh"
+#include "InsecureSession.hh"
+#include "hrb/Server.hh"
 
 #include "util/Log.hh"
 
@@ -35,6 +37,8 @@ Listener::Listener(
 	if (ec)
 		throw std::system_error(ec);
 
+	m_acceptor.set_option(boost::asio::socket_base::reuse_address{true});
+
 	// Bind to the server address
 	m_acceptor.bind(endpoint, ec);
 	if (ec)
@@ -44,8 +48,6 @@ Listener::Listener(
 	m_acceptor.listen(boost::asio::socket_base::max_listen_connections, ec);
 	if (ec)
 		throw std::system_error(ec);
-
-	m_acceptor.set_option(boost::asio::socket_base::reuse_address{true});
 }
 
 void Listener::run()
@@ -71,11 +73,15 @@ void Listener::on_accept(boost::system::error_code ec)
 	{
 		Log(LOG_WARNING, "accept error: %1%", ec);
 	}
-	else
+	else if (m_ssl_ctx)
 	{
 		// Create the session and run it
-		std::make_shared<Session>(std::move(m_socket), m_server, m_ssl_ctx, m_session_count)->run();
+		std::make_shared<Session>(std::move(m_socket), m_server, *m_ssl_ctx, m_session_count)->run();
 		m_session_count++;
+	}
+	else
+	{
+		std::make_shared<InsecureSession>(std::move(m_socket), m_server.https_root())->run();
 	}
 
 	// Accept another connection

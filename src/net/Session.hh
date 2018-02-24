@@ -12,7 +12,9 @@
 
 #pragma once
 
-#include "hrb/Request.hh"
+#include "Request.hh"
+#include "hrb/UploadFile.hh"
+#include "crypto/Authentication.hh"
 
 #include <boost/beast/core.hpp>
 #include <boost/beast/http.hpp>
@@ -25,7 +27,6 @@
 #include <boost/filesystem/path.hpp>
 
 #include <optional>
-#include <variant>
 
 namespace hrb {
 
@@ -39,7 +40,7 @@ public:
 	explicit Session(
 		boost::asio::ip::tcp::socket socket,
 		Server& server,
-		boost::asio::ssl::context *ssl_ctx,
+		boost::asio::ssl::context& ssl_ctx,
 		std::size_t nth
 	);
 
@@ -48,7 +49,7 @@ public:
 	void on_handshake(boost::system::error_code ec);
 	void do_read();
 	void on_read_header(boost::system::error_code ec, std::size_t bytes_transferred);
-	void on_read(boost::system::error_code ec, std::size_t bytes_transferred);
+	void on_read(boost::system::error_code ec, std::size_t bytes_transferred, const Authentication& auth);
 	void on_write(boost::system::error_code ec, std::size_t bytes_transferred, bool close);
 	void do_close();
 	void on_shutdown(boost::system::error_code ec);
@@ -58,19 +59,26 @@ private:
 	// request. The type of the response object depends on the
 	// contents of the request, so the interface requires the
 	// caller to pass a generic lambda for receiving the response.
-	template<class Send>
-	void handle_https(Request&& req, Send&& send);
+	template<class Request>
+	bool validate_request(const Request& req);
+
+	template <class Response>
+	void send_response(Response&& response);
+
+	void handle_read_error(boost::system::error_code ec);
 
 private:
-	tcp::socket		m_socket;
-	std::optional<boost::asio::ssl::stream<tcp::socket&>> 		m_stream;
+	tcp::socket		                                            m_socket;
+	boost::asio::ssl::stream<tcp::socket&> 		                m_stream;
 	boost::asio::strand<boost::asio::io_context::executor_type> m_strand;
-	boost::beast::flat_buffer m_buffer;
+	boost::beast::flat_buffer                                   m_buffer;
+
+	bool m_keep_alive{false};
 
 	// The parsed message are stored inside the parsers.
 	// Use parser::get() or release() to get the message.
-	EmptyRequestParser					m_parser;
-	std::variant<StringRequestParser, FileRequestParser> m_body;
+	std::optional<EmptyRequestParser> m_parser;
+	std::variant<StringRequestParser, UploadRequestParser, EmptyRequestParser> m_body;
 
 	Server& m_server;
 

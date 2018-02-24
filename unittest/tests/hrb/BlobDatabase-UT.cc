@@ -13,6 +13,7 @@
 #include <catch.hpp>
 
 #include "hrb/BlobDatabase.hh"
+#include "hrb/UploadFile.hh"
 
 using namespace hrb;
 
@@ -20,8 +21,10 @@ TEST_CASE("Open temp file", "[normal]")
 {
 	fs::remove_all("/tmp/BlobDatabase-UT");
 
+	std::error_code sec;
 	BlobDatabase subject{"/tmp/BlobDatabase-UT"};
-	auto tmp = subject.tmp_file();
+	UploadFile tmp;
+	subject.prepare_upload(tmp, sec);
 
 	boost::system::error_code ec;
 
@@ -34,7 +37,6 @@ TEST_CASE("Open temp file", "[normal]")
 	tmp.seek(0, ec);
 	REQUIRE(ec == boost::system::error_code{});
 
-
 	char buf[80];
 	count = tmp.read(buf, sizeof(buf), ec);
 	REQUIRE(count == sizeof(test));
@@ -45,8 +47,7 @@ TEST_CASE("Open temp file", "[normal]")
 	REQUIRE(tmpid != ObjectID{});
 	REQUIRE(tmpid == tmp.ID());
 
-	std::error_code sec;
-	auto dest = subject.save(std::move(tmp), sec);
+	auto dest = subject.dest(subject.save(std::move(tmp), sec));
 	INFO("save() error_code = " << sec << " " << sec.message());
 	REQUIRE(!sec);
 	REQUIRE(exists(dest));
