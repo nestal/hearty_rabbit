@@ -24,7 +24,8 @@ rapidjson::Document Container::serialize() const
 {
 	using namespace rapidjson;
 	Document json;
-	json["name"] = Value().SetString(m_name.c_str(), m_name.size(), json.GetAllocator());
+	json.SetObject();
+	json.AddMember("name", Value().SetString(m_name.c_str(), m_name.size(), json.GetAllocator()), json.GetAllocator());
 
 	Value elements(kArrayType);
 	for (auto&& blob : m_blobs)
@@ -32,7 +33,7 @@ rapidjson::Document Container::serialize() const
 		auto bs = to_hex(blob);
 		elements.PushBack(Value{bs, json.GetAllocator()}, json.GetAllocator());
 	}
-	json["elements"] = std::move(elements);
+	json.AddMember("elements", std::move(elements), json.GetAllocator());
 
 	return json;
 }

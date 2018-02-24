@@ -109,9 +109,8 @@ public:
 	static http::response<http::string_body> bad_request(boost::string_view why, unsigned version);
 	static http::response<http::string_body> not_found(boost::string_view target, unsigned version);
 	static http::response<http::string_body> server_error(boost::string_view what, unsigned version);
-	static http::response<http::empty_body> redirect(boost::beast::string_view where, unsigned version);
+	static http::response<http::empty_body> see_other(boost::beast::string_view where, unsigned version);
 
-	void disconnect_db();
 	void run();
 	boost::asio::io_context& get_io_context();
 
@@ -121,7 +120,6 @@ public:
 
 private:
 	http::response<SplitBuffers> static_file_request(const EmptyRequest& req);
-	http::response<SplitBuffers> serve_home(unsigned version);
 
 	template <class Send>
 	void on_valid_session(EmptyRequest&& req, Send&& send, const Authentication& auth)
@@ -129,7 +127,7 @@ private:
 		const RequestHeader& header = req;
 
 		if (req.target() == "/")
-			return send(serve_home(req.version()));
+			return serve_home(std::forward<decltype(send)>(send), req.version(), auth);
 
 		if (req.target().starts_with(url::blob))
 			return get_blob(req, std::forward<decltype(send)>(send), auth);
@@ -137,7 +135,7 @@ private:
 		if (req.target().starts_with(url::dir))
 			return send(get_dir(req));
 
-		if (req.target().starts_with(url::logout))
+		if (req.target() == url::logout)
 			return on_logout(req, auth, std::forward<Send>(send));
 
 		return send(not_found(req.target(), req.version()));
@@ -159,6 +157,7 @@ private:
 	void get_blob(const EmptyRequest& req, BlobResponseSender&& send, const Authentication& auth);
 	http::response<http::string_body> get_dir(const EmptyRequest& req);
 	static bool allow_anonymous(boost::string_view target);
+	void serve_home(FileResponseSender&& send, unsigned version, const Authentication& auth);
 
 private:
 	const Configuration&    m_cfg;

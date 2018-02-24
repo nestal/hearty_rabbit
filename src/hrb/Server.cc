@@ -27,7 +27,8 @@
 #include <boost/exception/info.hpp>
 #include <boost/filesystem.hpp>
 
-#include <iostream>
+#include <rapidjson/stringbuffer.h>
+#include <rapidjson/writer.h>
 
 namespace hrb {
 
@@ -59,32 +60,38 @@ void Server::on_login(const StringRequest& req, EmptyResponseSender&& send)
 			{
 				Log(LOG_INFO, "login result: %1% %2%", ec, ec.message());
 
-				auto&& res = redirect(ec ? "/login_incorrect.html" : "/", version);
+				auto&& res = see_other(ec ? "/login_incorrect.html" : "/", version);
 				if (!ec)
 					res.set(http::field::set_cookie, session.set_cookie());
 
+				res.set(http::field::cache_control, "no-cache, no-store, must-revalidate");
 				send(std::move(res));
 			}
 		);
 	}
 	else
-		send(redirect("/", req.version()));
+		send(see_other("/", req.version()));
 }
 
 void Server::on_logout(const EmptyRequest& req, const Authentication& auth, EmptyResponseSender&& send)
 {
 	auth.destroy_session(*m_db.alloc(), [this, send=std::move(send), version=req.version()](auto&& ec) mutable
 	{
-		auto&& res = redirect("/", version);
+		auto&& res = see_other("/", version);
 		res.set(http::field::set_cookie, "id=; ");
+		res.set(http::field::cache_control, "no-cache, no-store, must-revalidate");
 		res.keep_alive(false);
 		send(std::move(res));
 	});
 }
 
-http::response<http::empty_body> Server::redirect(boost::beast::string_view where, unsigned version)
+/// Helper function to create a 303 See Other response.
+/// See [MDN](https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/303) for details.
+/// It is used to redirect to home page after login, for example, and other cases which
+/// we don't want the browser to cache.
+http::response<http::empty_body> Server::see_other(boost::beast::string_view where, unsigned version)
 {
-	http::response<http::empty_body> res{http::status::moved_permanently, version};
+	http::response<http::empty_body> res{http::status::see_other, version};
 	res.set(http::field::location, where);
 	return res;
 }
@@ -218,9 +225,18 @@ http::response<http::string_body> Server::server_error(boost::beast::string_view
 	return res;
 }
 
-http::response<SplitBuffers> Server::serve_home(unsigned version)
+void Server::serve_home(FileResponseSender&& send, unsigned version, const Authentication& auth)
 {
-	return m_lib.find_dynamic("index.html", version);
+	Container::load(*m_db.alloc(), auth.user(), [send=std::move(send), version, this](auto ec, Container&& cond)
+	{
+		rapidjson::StringBuffer buffer;
+		rapidjson::Writer<rapidjson::StringBuffer> writer{buffer};
+		cond.serialize().Accept(writer);
+
+		auto res = m_lib.find_dynamic("index.html", version);
+		res.body().extra(buffer.GetString(), buffer.GetSize());
+		send(std::move(res));
+	});
 }
 
 http::response<SplitBuffers> Server::static_file_request(const EmptyRequest& req)
@@ -299,11 +315,6 @@ void Server::add_user(std::string_view username, Password&& password, std::funct
 boost::asio::io_context& Server::get_io_context()
 {
 	return m_ioc;
-}
-
-void Server::disconnect_db()
-{
-//	m_db.release_all();
 }
 
 bool Server::allow_anonymous(boost::string_view target)

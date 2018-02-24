@@ -48,6 +48,10 @@ TEST_CASE("Container tests", "[normal]")
 			REQUIRE(!container.empty());
 
 			REQUIRE(std::find(container.begin(), container.end(), testid) != container.end());
+
+			auto json = container.serialize();
+			REQUIRE(json.IsObject());
+
 			tested++;
 		});
 	});

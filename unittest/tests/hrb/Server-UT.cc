@@ -57,7 +57,7 @@ public:
 	template <typename Response>
 	void operator()(Response&& res) const
 	{
-		REQUIRE(res.result() == http::status::moved_permanently);
+		REQUIRE(res.result() == http::status::see_other);
 		REQUIRE(res.at(http::field::location) == m_redirect);
 		REQUIRE(res.version() == 11);
 		set_tested(res);
@@ -191,11 +191,13 @@ TEST_CASE("General server tests", "[normal]")
 
 		SECTION("Request index.html success with login")
 		{
-			FileResponseChecker checker{http::status::ok, cfg.web_root() / "dynamic/index.html"};
+			// TODO: check index.html file content
+			GenericStatusChecker checker{http::status::ok};
 
 			req.target("/");
 			req.set(boost::beast::http::field::cookie, session.set_cookie());
 			subject.handle_https(std::move(req), std::ref(checker), session);
+			REQUIRE(subject.get_io_context().run_for(10s) > 0);
 			REQUIRE(checker.tested());
 		}
 

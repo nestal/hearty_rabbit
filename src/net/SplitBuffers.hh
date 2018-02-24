@@ -51,6 +51,11 @@ public:
 				m_offset = m_file.size();
 		}
 
+		void extra(const char *data, std::size_t size)
+		{
+			m_extra.assign(data, size);
+		}
+
 		const_buffers_type data() const
 		{
 			return {
