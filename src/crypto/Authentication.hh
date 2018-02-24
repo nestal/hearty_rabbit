@@ -32,7 +32,7 @@ public:
 	using Cookie = std::array<unsigned char, 16>;
 
 	Authentication() = default;
-	Authentication(Cookie cookie, std::string_view user) : m_cookie{cookie}, m_user{user} {}
+	Authentication(Cookie cookie, std::string_view user);
 	Authentication(Authentication&&) = default;
 	Authentication(const Authentication&) = default;
 	~Authentication() = default;

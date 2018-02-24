@@ -44,7 +44,7 @@
             >
 
             <aside class="photo-box-caption">
-                <span class="hrb-caption"></span>
+                <span class="hrb-caption">This is the caption</span>
             </aside>
         </div>
 
@@ -74,19 +74,19 @@
         document.getElementById("username").textContent = dir.name;
 
         // create one new entry for each blob
-        const prototype = document.getElementById("hrb-entry-prototype");
+        const proto = document.getElementById("hrb-entry-prototype");
         const root = document.getElementById("hrb-entry-root");
 
         dir.elements.forEach(element =>
         {
             console.log("here is a blob", element);
-            const entry = prototype.cloneNode(true);
+            const entry = proto.cloneNode(true);
             entry.id = "hrb-entry-" + element;
             entry.querySelector(".hrb-image").src = "/blob/" + element;
-            root.appendChild(entry);
+            root.insertBefore(entry, proto);
         });
 
-        root.removeChild(prototype);
+        root.removeChild(proto);
     }
     onload();
 </script>

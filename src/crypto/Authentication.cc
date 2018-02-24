@@ -91,6 +91,13 @@ void create_session(Completion&& completion, const std::string& username, redis:
 
 } // end of anonymous namespace
 
+Authentication::Authentication(Cookie cookie, std::string_view user) :
+	m_cookie{cookie}, m_user{user}
+{
+	if (m_user.empty())
+		m_cookie = Cookie{};
+}
+
 void Authentication::add_user(
 	std::string_view username_mixed_case,
 	const Password& password,
