@@ -13,7 +13,10 @@
 #include "BlobDatabase.hh"
 #include "UploadFile.hh"
 
+#include "net/MMapResponseBody.hh"
+
 #include "util/Log.hh"
+#include "util/Magic.hh"
 
 #include <sstream>
 
@@ -75,6 +78,35 @@ fs::path BlobDatabase::dest(ObjectID id, std::string_view) const
 	assert(hex.size() > 2);
 
 	return m_base / hex.substr(0, 2) / hex / std::string{default_rendition};
+}
+
+BlobDatabase::BlobResponse BlobDatabase::response(
+	ObjectID id,
+	const Magic& magic,
+	unsigned version,
+	std::string_view rendition
+) const
+{
+	auto path = dest(id);
+
+	std::error_code ec;
+	auto mmap = MMap::open(path, ec);
+	if (ec)
+		return BlobResponse{http::status::not_found, version};
+
+	auto mime = magic.mime(mmap.blob());
+
+	BlobResponse res{
+		std::piecewise_construct,
+		std::make_tuple(std::move(mmap)),
+		std::make_tuple(http::status::ok, version)
+	};
+	res.set(http::field::content_type, mime);
+	res.set(http::field::cache_control, "private, max-age=0, must-revalidate");
+	res.set(http::field::etag, to_hex(id));
+	res.prepare_payload();
+	return res;
+
 }
 
 } // end of namespace hrb

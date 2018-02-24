@@ -126,24 +126,7 @@ void Server::get_blob(const EmptyRequest& req, BlobResponseSender&& send, const 
 			if (etag == to_hex(object_id))
 				return send(http::response<MMapResponseBody>{http::status::not_modified, version});
 
-			auto path = m_blob_db.dest(object_id);
-
-			auto mmap = MMap::open(path, ec);
-			if (ec)
-				return send(http::response<MMapResponseBody>{http::status::not_found, version});
-
-			auto mime = m_magic.mime(mmap.blob());
-
-			http::response<MMapResponseBody> res{
-				std::piecewise_construct,
-				std::make_tuple(std::move(mmap)),
-				std::make_tuple(http::status::ok, version)
-			};
-			res.set(http::field::content_type, mime);
-			res.set(http::field::cache_control, "private, max-age=0, must-revalidate");
-			res.set(http::field::etag, to_hex(object_id));
-			res.prepare_payload();
-			return send(std::move(res));
+			return send(m_blob_db.response(object_id, m_magic, version));
 		}
 	);
 }

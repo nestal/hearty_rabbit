@@ -15,16 +15,21 @@
 #include "ObjectID.hh"
 #include "util/FS.hh"
 
-#include <boost/beast/core/file_posix.hpp>
+#include <boost/beast/http/message.hpp>
 
 namespace hrb {
 
 class ObjectID;
 class BlobObject;
 class UploadFile;
+class MMapResponseBody;
+class Magic;
 
 class BlobDatabase
 {
+public:
+	using BlobResponse = boost::beast::http::response<MMapResponseBody>;
+
 public:
 	explicit BlobDatabase(const fs::path& base);
 
@@ -32,6 +37,13 @@ public:
 	ObjectID save(const UploadFile& tmp, std::error_code& ec);
 
 	fs::path dest(ObjectID id, std::string_view rendition = {}) const;
+
+	BlobResponse response(
+		ObjectID id,
+		const Magic& magic,
+		unsigned version,
+		std::string_view rendition = {}
+	) const;
 
 private:
 	fs::path    m_base;
