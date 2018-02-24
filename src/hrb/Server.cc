@@ -246,7 +246,7 @@ void Server::serve_home(FileResponseSender&& send, unsigned version, const Authe
 		script_tag << ";</script>";
 
 		auto res = m_lib.find_dynamic("index.html", version);
-		res.body().extra("<head>", script_tag.str());
+		res.body().extra("<meta charset=\"utf-8\">", script_tag.str());
 		send(std::move(res));
 	});
 }
