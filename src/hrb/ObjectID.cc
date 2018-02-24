@@ -14,12 +14,12 @@
 
 #include "crypto/Blake2.hh"
 #include "util/Error.hh"
-#include "util/Magic.hh"
 
 #include <boost/algorithm/hex.hpp>
 
 #include <openssl/evp.h>
 
+#include <cstring>
 #include <cassert>
 #include <fstream>
 #include <iomanip>

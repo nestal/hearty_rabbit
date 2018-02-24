@@ -120,14 +120,22 @@ void Server::get_blob(const EmptyRequest& req, BlobResponseSender&& send, const 
 			auto path = m_blob_db.dest(object_id);
 
 			boost::system::error_code bec;
-			http::file_body::value_type blob;
+			boost::beast::file blob;
 			blob.open(path.string().c_str(), boost::beast::file_mode::read, bec);
+			if (bec)
+				return send(http::response<http::file_body>{http::status::not_found, version});
+
+			auto mime = m_magic.mime(blob.native_handle());
+
+			http::file_body::value_type body;
+			body.reset(std::move(blob), bec);
 
 			http::response<http::file_body> res{
 				std::piecewise_construct,
-				std::make_tuple(std::move(blob)),
-				std::make_tuple(bec ? http::status::not_found : http::status::ok, version)
+				std::make_tuple(std::move(body)),
+				std::make_tuple(http::status::ok, version)
 			};
+			res.set(http::field::content_type, mime);
 			res.prepare_payload();
 			return send(std::move(res));
 		}
