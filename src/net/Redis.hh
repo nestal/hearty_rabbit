@@ -21,6 +21,7 @@
 #include <deque>
 #include <memory>
 #include <string>
+#include <mutex>
 
 namespace hrb {
 namespace redis {
@@ -197,7 +198,7 @@ public:
 		{
 			do_write(
 				CommandString{args...},
-				[cb=std::make_shared<Callback>(std::forward<Callback>(callback))](auto&& r, auto ec)
+				[cb=std::make_shared<Callback>(std::forward<Callback>(callback)), self=shared_from_this()](auto&& r, auto ec)
 				{
 					(*cb)(std::move(r), std::move(ec));
 				}
@@ -248,6 +249,8 @@ private:
 	boost::asio::io_context&                    m_ioc;
 	boost::asio::ip::tcp::endpoint              m_remote;
 	std::vector<boost::asio::ip::tcp::socket>   m_socks;
+
+	std::mutex  m_mx;
 };
 
 }} // end of namespace

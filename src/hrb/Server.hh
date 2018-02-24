@@ -13,7 +13,6 @@
 #pragma once
 
 #include "net/Request.hh"
-#include "DatabasePool.hh"
 #include "BlobDatabase.hh"
 #include "WebResources.hh"
 #include "UploadFile.hh"
@@ -164,7 +163,7 @@ private:
 	const Configuration&    m_cfg;
 	boost::asio::io_context m_ioc;
 
-	DatabasePool    m_db;
+	redis::Pool     m_db;
 	WebResources    m_lib;
 	BlobDatabase    m_blob_db;
 };

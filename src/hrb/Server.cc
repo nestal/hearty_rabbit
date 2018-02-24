@@ -34,7 +34,7 @@ namespace hrb {
 Server::Server(const Configuration& cfg) :
 	m_cfg{cfg},
 	m_ioc{static_cast<int>(std::max(1UL, cfg.thread_count()))},
-	m_db{cfg.redis()},
+	m_db{m_ioc, cfg.redis()},
 	m_lib{cfg.web_root()},
 	m_blob_db{cfg.blob_path()}
 {
@@ -48,20 +48,16 @@ void Server::on_login(const StringRequest& req, EmptyResponseSender&& send)
 	{
 		auto [username, password] = find_fields(body, "username", "password");
 
-		auto db = m_db.alloc(m_ioc);
 		Authentication::verify_user(
 			username,
 			Password{password},
-			*db,
+			*m_db.alloc(),
 			[
-				db,
 				version=req.version(),
-				send=std::move(send),
-				this
+				send=std::move(send)
 			](std::error_code ec, auto&& session) mutable
 			{
 				Log(LOG_INFO, "login result: %1% %2%", ec, ec.message());
-				m_db.release(std::move(db));
 
 				auto&& res = redirect(ec ? "/login_incorrect.html" : "/", version);
 				if (!ec)
@@ -77,11 +73,8 @@ void Server::on_login(const StringRequest& req, EmptyResponseSender&& send)
 
 void Server::on_logout(const EmptyRequest& req, const Authentication& auth, EmptyResponseSender&& send)
 {
-	auto db = m_db.alloc(m_ioc);
-	auth.destroy_session(*db, [this, db, send=std::move(send), version=req.version()](auto&& ec) mutable
+	auth.destroy_session(*m_db.alloc(), [this, send=std::move(send), version=req.version()](auto&& ec) mutable
 	{
-		m_db.release(std::move(db));
-
 		auto&& res = redirect("/", version);
 		res.set(http::field::set_cookie, "id=; ");
 		res.keep_alive(false);
@@ -108,12 +101,9 @@ void Server::get_blob(const EmptyRequest& req, BlobResponseSender&& send, const 
 		return send(http::response<http::file_body>{http::status::not_found, req.version()});
 
 	// Check if the user has permission to read the blob
-	auto db = m_db.alloc(m_ioc);
-	Container::is_member(*db, auth.user(), object_id,
-		[send=std::move(send), db, object_id, version=req.version(), this](auto ec, bool is_member) mutable
+	Container::is_member(*m_db.alloc(), auth.user(), object_id,
+		[send=std::move(send), object_id, version=req.version(), this](auto ec, bool is_member) mutable
 		{
-			m_db.release(std::move(db));
-
 			if (ec)
 				return send(http::response<http::file_body>{http::status::internal_server_error, version});
 
@@ -152,11 +142,8 @@ void Server::on_upload(UploadRequest&& req, EmptyResponseSender&& send, const Au
 	// Add the newly created blob to the user's container.
 	// The user's container contains all the blobs that is owned by the user.
 	// It will be used for authorizing the user's request on these blob later.
-	auto db = m_db.alloc(m_ioc);
-	Container::add(*db, auth.user(), id, [send=std::move(send), db, id, version=req.version(), this](auto ec) mutable
+	Container::add(*m_db.alloc(), auth.user(), id, [send=std::move(send), id, version=req.version(), this](auto ec) mutable
 	{
-		m_db.release(std::move(db));
-
 		http::response<http::empty_body> res{
 			ec ? http::status::internal_server_error : http::status::created,
 			version
@@ -302,11 +289,9 @@ void Server::drop_privileges()
 
 void Server::add_user(std::string_view username, Password&& password, std::function<void(std::error_code)> complete)
 {
-	auto db = m_db.alloc(m_ioc);
-	Authentication::add_user(username, std::move(password), *db, [db, &complete](std::error_code&& ec)
+	Authentication::add_user(username, std::move(password), *m_db.alloc(), [&complete](std::error_code&& ec)
 	{
 		complete(std::move(ec));
-		db->disconnect();
 	});
 	m_ioc.run();
 }
@@ -318,7 +303,7 @@ boost::asio::io_context& Server::get_io_context()
 
 void Server::disconnect_db()
 {
-	m_db.release_all();
+//	m_db.release_all();
 }
 
 bool Server::allow_anonymous(boost::string_view target)
@@ -386,21 +371,17 @@ void Server::on_request_header(
 		return complete(Authentication{});
 	}
 
-	auto db = m_db.alloc(m_ioc);
 	Authentication::verify_session(
 		*session,
-		*db,
+		*m_db.alloc(),
 		[
 			this,
-			db,
 			&header,
 			&dest,
 			&src,
 			complete=std::move(complete)
 		](std::error_code ec, const Authentication& auth) mutable
 		{
-			m_db.release(std::move(db));
-
 			// Use a UploadRequestParse to parser upload requests, only when the session is authenicated.
 			if (!ec && is_upload(header))
 			{

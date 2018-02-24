@@ -347,20 +347,21 @@ Pool::Pool(boost::asio::io_context& ioc, const boost::asio::ip::tcp::endpoint& r
 
 boost::asio::ip::tcp::socket Pool::get_sock()
 {
-	if (m_socks.empty())
+	if (!m_socks.empty())
 	{
-		boost::asio::ip::tcp::socket sock{m_ioc};
-		sock.connect(m_remote);
-
-		return sock;
+		std::unique_lock<std::mutex> lock{m_mx};
+		if (!m_socks.empty())
+		{
+			auto sock = std::move(m_socks.back());
+			m_socks.pop_back();
+			return sock;
+		}
 	}
-	else
-	{
-		auto sock = std::move(m_socks.back());
-		m_socks.pop_back();
 
-		return sock;
-	}
+	boost::asio::ip::tcp::socket sock{m_ioc};
+	sock.connect(m_remote);
+
+	return sock;
 }
 
 std::shared_ptr<Connection> Pool::alloc()
@@ -370,6 +371,7 @@ std::shared_ptr<Connection> Pool::alloc()
 
 void Pool::dealloc(boost::asio::ip::tcp::socket socket)
 {
+	std::unique_lock<std::mutex> lock{m_mx};
 	assert(&socket.get_io_context() == &m_ioc);
 	m_socks.push_back(std::move(socket));
 }
