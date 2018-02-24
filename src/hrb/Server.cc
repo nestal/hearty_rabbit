@@ -234,12 +234,8 @@ void Server::serve_home(FileResponseSender&& send, unsigned version, const Authe
 
 		rapidjson::OStreamWrapper osw{script_tag};
 		rapidjson::Writer<rapidjson::OStreamWrapper> writer{osw};
-
 		cond.serialize().Accept(writer);
-
 		script_tag << ";</script>";
-
-		Log(LOG_NOTICE, "json is %1%", script_tag.str());
 
 		auto res = m_lib.find_dynamic("index.html", version);
 		res.body().extra("<head>", script_tag.str());
