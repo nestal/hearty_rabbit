@@ -27,7 +27,7 @@
 #include <boost/exception/info.hpp>
 #include <boost/filesystem.hpp>
 
-#include <rapidjson/stringbuffer.h>
+#include <rapidjson/ostreamwrapper.h>
 #include <rapidjson/writer.h>
 
 namespace hrb {
@@ -157,7 +157,7 @@ void Server::on_upload(UploadRequest&& req, EmptyResponseSender&& send, const Au
 		};
 		if (!ec)
 			res.set(http::field::location, "/blob/" + to_hex(id));
-
+		res.set(http::field::cache_control, "no-cache, no-store, must-revalidate");
 		send(std::move(res));
 	});
 }
@@ -229,12 +229,20 @@ void Server::serve_home(FileResponseSender&& send, unsigned version, const Authe
 {
 	Container::load(*m_db.alloc(), auth.user(), [send=std::move(send), version, this](auto ec, Container&& cond)
 	{
-		rapidjson::StringBuffer buffer;
-		rapidjson::Writer<rapidjson::StringBuffer> writer{buffer};
+		std::ostringstream script_tag;
+		script_tag << "<script>var dir = ";
+
+		rapidjson::OStreamWrapper osw{script_tag};
+		rapidjson::Writer<rapidjson::OStreamWrapper> writer{osw};
+
 		cond.serialize().Accept(writer);
 
+		script_tag << ";</script>";
+
+		Log(LOG_NOTICE, "json is %1%", script_tag.str());
+
 		auto res = m_lib.find_dynamic("index.html", version);
-		res.body().extra(buffer.GetString(), buffer.GetSize());
+		res.body().extra("<head>", script_tag.str());
 		send(std::move(res));
 	});
 }

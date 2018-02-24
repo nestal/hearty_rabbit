@@ -40,20 +40,26 @@ public:
 	class value_type
 	{
 	public:
-		explicit value_type(std::string_view file = {}, std::string_view needle = {}, std::string_view extra = {}) :
+		explicit value_type(std::string_view file = {}) :
 			m_file{file},
-			m_extra{extra}
+			m_offset{m_file.size()}
 		{
+		}
+
+		value_type(std::string_view file, std::string_view needle, std::string_view xtra) :
+			m_file{file}
+		{
+			extra(needle, std::string{xtra});
+		}
+
+		void extra(std::string_view needle, std::string&& extra)
+		{
+			m_extra = std::move(extra);
 			m_offset = needle.empty() ? m_file.npos : m_file.find(needle);
 			if (m_offset != m_file.npos)
 				m_offset += needle.size();
 			else
 				m_offset = m_file.size();
-		}
-
-		void extra(const char *data, std::size_t size)
-		{
-			m_extra.assign(data, size);
 		}
 
 		const_buffers_type data() const
