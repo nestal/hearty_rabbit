@@ -39,7 +39,7 @@ public:
 		Complete&& complete
 	)
 	{
-		db.command([comp=std::forward<Complete>(complete), name=std::string{container}](auto&& reply, std::error_code&& ec)
+		db.command([comp=std::forward<Complete>(complete), name=std::string{container}](auto&& reply, std::error_code&& ec) mutable
 		{
 			Container result{name};
 			for (auto&& element : reply)
@@ -60,7 +60,7 @@ public:
 		Complete&& complete
 	)
 	{
-		db.command([comp=std::forward<Complete>(complete)](auto&&, std::error_code&& ec)
+		db.command([comp=std::forward<Complete>(complete)](auto&&, std::error_code&& ec) mutable
 		{
 			comp(std::move(ec));
 		}, "SADD %b%b %b", redis_prefix.data(), redis_prefix.size(), container.data(), container.size(), blob.data(), blob.size());
@@ -75,7 +75,7 @@ public:
 	)
 	{
 		db.command(
-			[comp=std::forward<Complete>(complete)](auto&& reply, std::error_code&& ec)
+			[comp=std::forward<Complete>(complete)](auto&& reply, std::error_code&& ec) mutable
 			{
 				comp(std::move(ec), reply.as_int() == 1);
 			},

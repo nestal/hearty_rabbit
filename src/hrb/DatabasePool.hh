@@ -23,7 +23,7 @@ namespace hrb {
 class DatabasePool
 {
 public:
-	DatabasePool(const boost::asio::ip::tcp::endpoint& remote);
+	explicit DatabasePool(const boost::asio::ip::tcp::endpoint& remote);
 
 	std::shared_ptr<redis::Connection> alloc(boost::asio::io_context& ioc);
 	void release(std::shared_ptr<redis::Connection>&& conn);

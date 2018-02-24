@@ -55,7 +55,7 @@ void DatabasePool::release_all()
 	// callbacks have been finished.
 	if (!pool.empty())
 	{
-		for (auto&& db : m_pool)
+		for (auto&& db : pool)
 			db->disconnect();
 
 		auto&& ioc = pool.front()->get_io_context();

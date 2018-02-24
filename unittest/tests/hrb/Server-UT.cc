@@ -357,18 +357,20 @@ TEST_CASE("General server tests", "[normal]")
 			EmptyRequest get_blob;
 			get_blob.target(checker[http::field::location]);
 
+			subject.get_io_context().restart();
+
 			SECTION("get back the uploaded blob with valid session")
 			{
 				get_blob.set(boost::beast::http::field::cookie, session.set_cookie());
 				FileResponseChecker blob{http::status::ok, __FILE__};
 				subject.handle_https(std::move(get_blob), std::ref(blob), session);
+				REQUIRE(subject.get_io_context().run_for(10s) > 0);
 				REQUIRE(blob.tested());
 			}
 			SECTION("get 403 without valid session and delay")
 			{
 				GenericStatusChecker forbidden{http::status::forbidden};
 				subject.handle_https(std::move(get_blob), std::ref(forbidden), {});
-				subject.get_io_context().restart();
 				REQUIRE(subject.get_io_context().run_for(10s) > 0);
 				REQUIRE(forbidden.tested());
 			}

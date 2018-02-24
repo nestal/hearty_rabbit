@@ -96,33 +96,45 @@ http::response<http::empty_body> Server::redirect(boost::beast::string_view wher
 	return res;
 }
 
-void Server::get_blob(const EmptyRequest& req, BlobResponseSender&& send, const Authentication& )
+void Server::get_blob(const EmptyRequest& req, BlobResponseSender&& send, const Authentication& auth)
 {
 	auto blob_id = req.target().size() > url::login.size() ?
 		req.target().substr(url::login.size()) :
 		boost::string_view{};
 
+	// Return 404 not_found if the blob ID is invalid
 	auto object_id = hex_to_object_id(std::string_view{blob_id.data(), blob_id.size()});
 	if (object_id == ObjectID{})
-	{
 		return send(http::response<http::file_body>{http::status::not_found, req.version()});
-	}
-	else
-	{
-		auto path = m_blob_db.dest(object_id);
 
-		boost::system::error_code ec;
-		http::file_body::value_type blob;
-		blob.open(path.string().c_str(), boost::beast::file_mode::read, ec);
+	// Check if the user has permission to read the blob
+	auto db = m_db.alloc(m_ioc);
+	Container::is_member(*db, auth.user(), object_id,
+		[send=std::move(send), db, object_id, version=req.version(), this](auto ec, bool is_member) mutable
+		{
+			m_db.release(std::move(db));
 
-		http::response<http::file_body> res{
-			std::piecewise_construct,
-			std::make_tuple(std::move(blob)),
-			std::make_tuple(ec ? http::status::not_found : http::status::ok, req.version())
-		};
-		res.prepare_payload();
-		return send(std::move(res));
-	}
+			if (ec)
+				return send(http::response<http::file_body>{http::status::internal_server_error, version});
+
+			if (!is_member)
+				return send(http::response<http::file_body>{http::status::forbidden, version});
+
+			auto path = m_blob_db.dest(object_id);
+
+			boost::system::error_code bec;
+			http::file_body::value_type blob;
+			blob.open(path.string().c_str(), boost::beast::file_mode::read, bec);
+
+			http::response<http::file_body> res{
+				std::piecewise_construct,
+				std::make_tuple(std::move(blob)),
+				std::make_tuple(bec ? http::status::not_found : http::status::ok, version)
+			};
+			res.prepare_payload();
+			return send(std::move(res));
+		}
+	);
 }
 
 void Server::on_upload(UploadRequest&& req, EmptyResponseSender&& send, const Authentication& auth)
@@ -141,8 +153,10 @@ void Server::on_upload(UploadRequest&& req, EmptyResponseSender&& send, const Au
 	// The user's container contains all the blobs that is owned by the user.
 	// It will be used for authorizing the user's request on these blob later.
 	auto db = m_db.alloc(m_ioc);
-	Container::add(*db, auth.user(), id, [send=std::move(send), db, id, version=req.version()](auto ec)
+	Container::add(*db, auth.user(), id, [send=std::move(send), db, id, version=req.version(), this](auto ec) mutable
 	{
+		m_db.release(std::move(db));
+
 		http::response<http::empty_body> res{
 			ec ? http::status::internal_server_error : http::status::created,
 			version
