@@ -169,28 +169,23 @@ std::shared_ptr<Connection> connect(
 );
 
 class Pool;
+class PoolBase
+{
+public:
+	virtual void dealloc(boost::asio::ip::tcp::socket socket) = 0;
+};
 
 class Connection : public std::enable_shared_from_this<Connection>
 {
-private:
-	struct Token {};
-	friend class Pool;
-
 public:
-	friend std::shared_ptr<Connection> connect(
-		boost::asio::io_context& bic,
-		const boost::asio::ip::tcp::endpoint& remote
-	);
-
 	explicit Connection(
-		Token,
-		boost::asio::io_context& ioc,
-		const boost::asio::ip::tcp::endpoint& remote
+		PoolBase& parent,
+		boost::asio::ip::tcp::socket socket
 	);
 
 	Connection(Connection&&) = delete;
 	Connection(const Connection&) = delete;
-	~Connection() = default;
+	~Connection();
 
 	Connection& operator=(Connection&&) = delete;
 	Connection& operator=(const Connection&) = delete;
@@ -235,14 +230,23 @@ private:
 	std::deque<Completion> m_callbacks;
 
 	ReplyReader m_reader;
+	PoolBase&   m_parent;
 };
 
-class Pool
+class Pool : public PoolBase
 {
 public:
+	Pool(boost::asio::io_context& ioc, const boost::asio::ip::tcp::endpoint& remote);
+
+	std::shared_ptr<Connection> alloc();
+	void dealloc(boost::asio::ip::tcp::socket socket) override;
+
+private:
+	boost::asio::ip::tcp::socket get_sock();
 
 private:
 	boost::asio::io_context&                    m_ioc;
+	boost::asio::ip::tcp::endpoint              m_remote;
 	std::vector<boost::asio::ip::tcp::socket>   m_socks;
 };
 
