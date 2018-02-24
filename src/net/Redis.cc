@@ -40,8 +40,7 @@ Connection::Connection(
 	boost::asio::io_context& ioc,
 	const boost::asio::ip::tcp::endpoint& remote
 ) :
-	m_ioc{ioc},
-	m_socket{m_ioc},
+	m_socket{ioc},
 	m_strand{m_socket.get_executor()},
 	m_read_buf(1024*1024)
 {

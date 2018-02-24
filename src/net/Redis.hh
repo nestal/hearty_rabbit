@@ -168,10 +168,13 @@ std::shared_ptr<Connection> connect(
 	}
 );
 
+class Pool;
+
 class Connection : public std::enable_shared_from_this<Connection>
 {
 private:
 	struct Token {};
+	friend class Pool;
 
 public:
 	friend std::shared_ptr<Connection> connect(
@@ -211,7 +214,7 @@ public:
 		}
 	}
 
-	boost::asio::io_context& get_io_context() {return m_ioc;}
+	boost::asio::io_context& get_io_context() {return m_socket.get_io_context();}
 	void disconnect() ;
 
 private:
@@ -222,7 +225,6 @@ private:
 	void on_read(boost::system::error_code ec, std::size_t bytes);
 
 private:
-	boost::asio::io_context& m_ioc;
 	boost::asio::ip::tcp::socket m_socket;
 	boost::asio::strand<boost::asio::io_context::executor_type> m_strand;
 
@@ -233,6 +235,15 @@ private:
 	std::deque<Completion> m_callbacks;
 
 	ReplyReader m_reader;
+};
+
+class Pool
+{
+public:
+
+private:
+	boost::asio::io_context&                    m_ioc;
+	std::vector<boost::asio::ip::tcp::socket>   m_socks;
 };
 
 }} // end of namespace
