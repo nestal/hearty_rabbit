@@ -348,8 +348,11 @@ TEST_CASE("General server tests", "[normal]")
 			GenericStatusChecker checker{http::status::created};
 			req.set(boost::beast::http::field::cookie, session.set_cookie());
 			subject.handle_https(std::move(req), std::ref(checker), session);
+			REQUIRE(subject.get_io_context().run_for(10s) > 0);
 			REQUIRE(checker.tested());
 			REQUIRE(checker[http::field::location] != "");
+
+			INFO("Upload request returned location: " << checker[http::field::location]);
 
 			EmptyRequest get_blob;
 			get_blob.target(checker[http::field::location]);
@@ -363,10 +366,11 @@ TEST_CASE("General server tests", "[normal]")
 			}
 			SECTION("get 403 without valid session and delay")
 			{
-				GenericStatusChecker checker{http::status::forbidden};
-				subject.handle_https(std::move(get_blob), std::ref(checker), {});
+				GenericStatusChecker forbidden{http::status::forbidden};
+				subject.handle_https(std::move(get_blob), std::ref(forbidden), {});
+				subject.get_io_context().restart();
 				REQUIRE(subject.get_io_context().run_for(10s) > 0);
-				REQUIRE(checker.tested());
+				REQUIRE(forbidden.tested());
 			}
 		}
 		SECTION("request without valid session response with 403 forbidden and delay")

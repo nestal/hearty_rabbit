@@ -11,6 +11,7 @@
 //
 
 #include "Server.hh"
+#include "Container.hh"
 #include "ResourcesList.hh"
 
 #include "crypto/Password.hh"
@@ -131,14 +132,26 @@ void Server::on_upload(UploadRequest&& req, EmptyResponseSender&& send, const Au
 
 	std::error_code ec;
 	auto id = m_blob_db.save(req.body(), ec);
-	Log(LOG_INFO, "uploading %1% bytes to %2% (%3% %4%)", req.body().size(bec), id, ec, ec.message());
+	Log(LOG_INFO, "uploaded %1% bytes to %2% (%3% %4%)", req.body().size(bec), id, ec, ec.message());
 
-	http::response<http::empty_body> res{
-		ec ? http::status::internal_server_error : http::status::created,
-		req.version()
-	};
-	res.set(http::field::location, "/blob/" + to_hex(id));
-	return send(std::move(res));
+	if (ec)
+		return send(http::response<http::empty_body>{http::status::internal_server_error, req.version()});
+
+	// Add the newly created blob to the user's container.
+	// The user's container contains all the blobs that is owned by the user.
+	// It will be used for authorizing the user's request on these blob later.
+	auto db = m_db.alloc(m_ioc);
+	Container::add(*db, auth.user(), id, [send=std::move(send), db, id, version=req.version()](auto ec)
+	{
+		http::response<http::empty_body> res{
+			ec ? http::status::internal_server_error : http::status::created,
+			version
+		};
+		if (!ec)
+			res.set(http::field::location, "/blob/" + to_hex(id));
+
+		send(std::move(res));
+	});
 }
 
 void Server::on_invalid_session(const RequestHeader& req, FileResponseSender&& send)
@@ -152,7 +165,7 @@ void Server::on_invalid_session(const RequestHeader& req, FileResponseSender&& s
 	// Introduce a small delay when responsing to requests with invalid session ID.
 	// This is to slow down bruce-force attacks on the session ID.
 	boost::asio::deadline_timer t{m_ioc, boost::posix_time::milliseconds{500}};
-	return t.async_wait([version=req.version(), send=std::move(send)](auto ec)
+	t.async_wait([version=req.version(), send=std::move(send), target=req.target().to_string()](auto ec)
 	{
 		if (!ec)
 			Log(LOG_WARNING, "timer error %1% (%2%)", ec, ec.message());
