@@ -40,7 +40,7 @@ TEST_CASE("injecting script in HTML", "[normal]")
 TEST_CASE("non-HTML has no <head>, append at-the-end", "[normal]")
 {
 	std::error_code ec;
-	auto css = hrb::MMap::open(boost::filesystem::path{__FILE__}.parent_path() / "../../../lib/static/gallery.css", ec);
+	auto css = hrb::MMap::open(boost::filesystem::path{__FILE__}.parent_path() / "../../../lib/static/hearty_rabbit.css", ec);
 	REQUIRE(ec == std::error_code{});
 
 	std::string extra{"hahaha"};
@@ -59,7 +59,7 @@ TEST_CASE("non-HTML has no <head>, append at-the-end", "[normal]")
 TEST_CASE("Not change content", "[normal]")
 {
 	std::error_code ec;
-	auto css = hrb::MMap::open(boost::filesystem::path{__FILE__}.parent_path() / "../../../lib/static/gallery.css", ec);
+	auto css = hrb::MMap::open(boost::filesystem::path{__FILE__}.parent_path() / "../../../lib/static/hearty_rabbit.js", ec);
 	REQUIRE(ec == std::error_code{});
 
 	Subject subject{css.string()};
