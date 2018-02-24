@@ -20,9 +20,11 @@
     </div>
 
     <section id="hrb-entry-root">
-        <img id="hrb-entry-prototype"
+        <img
+                id="hrb-entry-prototype"
                 class="hrb-image"
                 src="logo.svg"
+                onclick="show_image(this.dataset.blob_id);"
         >
     </section>
 
@@ -33,7 +35,13 @@
             <input id="file-input" type="file" onchange="upload_file(this.files[0])">
         </div>
     </div>
-</div>
+
+    <div id="light-box" class="modal">
+        <span class="close cursor" onclick="hide_image();">&times;</span>
+        <div class="modal-content">
+            <img id="light-box-image" src="logo.svg" style="width:100%">
+        </div>
+    </div>
 
 <script>
     on_home_page_loaded();
