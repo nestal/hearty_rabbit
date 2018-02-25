@@ -24,8 +24,8 @@ using tcp = boost::asio::ip::tcp;       // from <boost/asio/ip/tcp.hpp>
 namespace http = boost::beast::http;    // from <boost/beast/http.hpp>
 
 Session::Session(
-	boost::asio::ip::tcp::socket socket,
 	Server& server,
+	boost::asio::ip::tcp::socket socket,
 	boost::asio::ssl::context&  ssl_ctx,
 	std::size_t nth
 ) :
@@ -63,7 +63,9 @@ void Session::do_read()
 	// Destroy and re-construct the parser for a new HTTP transaction
 	m_parser.emplace();
 
-	// Read a request
+	m_parser->body_limit(m_server.upload_limit());
+
+	// Read the header of a request
 	async_read_header(m_stream, m_buffer, *m_parser, boost::asio::bind_executor(
 		m_strand,
 		[self=shared_from_this()](auto ec, auto bytes) {self->on_read_header(ec, bytes);}
@@ -73,7 +75,7 @@ void Session::do_read()
 void Session::on_read_header(boost::system::error_code ec, std::size_t bytes_transferred)
 {
 	if (ec)
-		handle_read_error({ec.value(), ec.category()});
+		handle_read_error(__PRETTY_FUNCTION__, {ec.value(), ec.category()});
 	else
 	{
 		// Get the HTTP header from the partially parsed request message from the parser.
@@ -100,7 +102,7 @@ void Session::on_read(boost::system::error_code ec, std::size_t, const Authentic
 {
 	// This means they closed the connection
 	if (ec)
-		return handle_read_error(ec);
+		return handle_read_error(__PRETTY_FUNCTION__, ec);
 	else
 	{
 		std::visit([self=shared_from_this(), this, &auth](auto&& parser)
@@ -173,6 +175,7 @@ void Session::send_response(Response&& response)
 	auto sp = std::make_shared<std::remove_reference_t<decltype(response)>>(std::forward<decltype(response)>(response));
 	sp->set(http::field::server, BOOST_BEAST_VERSION_STRING);
 	sp->keep_alive(m_keep_alive);
+	sp->prepare_payload();
 
 	async_write(m_stream, *sp, boost::asio::bind_executor(
 		m_strand,
@@ -182,7 +185,7 @@ void Session::send_response(Response&& response)
 }
 
 
-void Session::handle_read_error(boost::system::error_code ec)
+void Session::handle_read_error(std::string_view where, boost::system::error_code ec)
 {
 	// This means they closed the connection
 	if (ec == boost::beast::http::error::end_of_stream)
@@ -190,7 +193,7 @@ void Session::handle_read_error(boost::system::error_code ec)
 
 	else if (ec)
 	{
-		Log(LOG_WARNING, "read error: %1% (%2%)", ec, ec.message());
+		Log(LOG_WARNING, "read error @ %3%: %1% (%2%)", ec, ec.message(), where);
 		return send_response(m_server.bad_request(ec.message(), 11));
 	}
 }

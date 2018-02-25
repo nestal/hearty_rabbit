@@ -12,9 +12,11 @@
 
 #pragma once
 
+#include <boost/asio/buffer.hpp>
+#include <boost/beast/core/file.hpp>
+
 #include <magic.h>
 #include <string_view>
-#include <boost/asio/buffer.hpp>
 
 namespace hrb {
 
@@ -28,6 +30,7 @@ public:
 
 	std::string_view mime(const void *buffer, std::size_t size) const;
 	std::string_view mime(boost::asio::const_buffer buf) const;
+	std::string_view mime(boost::beast::file::native_handle_type fd) const;
 
 private:
 	::magic_t m_cookie;

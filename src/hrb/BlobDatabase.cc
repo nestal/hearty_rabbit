@@ -13,7 +13,10 @@
 #include "BlobDatabase.hh"
 #include "UploadFile.hh"
 
+#include "net/MMapResponseBody.hh"
+
 #include "util/Log.hh"
+#include "util/Magic.hh"
 
 #include <sstream>
 
@@ -75,6 +78,47 @@ fs::path BlobDatabase::dest(ObjectID id, std::string_view) const
 	assert(hex.size() > 2);
 
 	return m_base / hex.substr(0, 2) / hex / std::string{default_rendition};
+}
+
+BlobDatabase::BlobResponse BlobDatabase::response(
+	ObjectID id,
+	const Magic& magic,
+	unsigned version,
+	std::string_view etag,
+	std::string_view rendition
+) const
+{
+	if (etag == to_quoted_hex(id))
+	{
+		http::response<MMapResponseBody> res{http::status::not_modified, version};
+		set_cache_control(res, id);
+		return res;
+	}
+
+	auto path = dest(id);
+
+	std::error_code ec;
+	auto mmap = MMap::open(path, ec);
+	if (ec)
+		return BlobResponse{http::status::not_found, version};
+
+	auto mime = magic.mime(mmap.blob());
+
+	BlobResponse res{
+		std::piecewise_construct,
+		std::make_tuple(std::move(mmap)),
+		std::make_tuple(http::status::ok, version)
+	};
+	res.set(http::field::content_type, mime);
+	set_cache_control(res, id);
+	return res;
+
+}
+
+void BlobDatabase::set_cache_control(BlobResponse& res, const ObjectID& id)
+{
+	res.set(http::field::cache_control, "private, max-age=31536000, immutable");
+	res.set(http::field::etag, to_quoted_hex(id));
 }
 
 } // end of namespace hrb

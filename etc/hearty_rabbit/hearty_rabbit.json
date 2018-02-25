@@ -4,6 +4,7 @@
   "web_root": "../../lib",
   "blob_path": "/tmp",
   "server_name" : "localhost",
+  "upload_limit_mb" : 10,
   "thread_count": 8,
   "http": {
     "address": "0.0.0.0",

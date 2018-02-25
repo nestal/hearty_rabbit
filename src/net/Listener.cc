@@ -76,7 +76,7 @@ void Listener::on_accept(boost::system::error_code ec)
 	else if (m_ssl_ctx)
 	{
 		// Create the session and run it
-		std::make_shared<Session>(std::move(m_socket), m_server, *m_ssl_ctx, m_session_count)->run();
+		std::make_shared<Session>(m_server, std::move(m_socket), *m_ssl_ctx, m_session_count)->run();
 		m_session_count++;
 	}
 	else

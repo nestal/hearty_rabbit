@@ -18,6 +18,7 @@
 #include "net/SplitBuffers.hh"
 
 #include <boost/filesystem/path.hpp>
+#include <boost/utility/string_view.hpp>
 #include <unordered_map>
 
 namespace hrb {
@@ -25,22 +26,28 @@ namespace hrb {
 class WebResources
 {
 public:
+	using Response = http::response<SplitBuffers>;
+
 	explicit WebResources(const boost::filesystem::path& web_root);
 
-	http::response<SplitBuffers> find_static(const std::string& filename, int version) const;
-	http::response<SplitBuffers> find_dynamic(const std::string& filename, int version) const;
+	Response find_static(const std::string& filename, boost::string_view etag, int version) const;
+	Response find_dynamic(const std::string& filename, int version) const;
 
 private:
 	class Resource
 	{
 	public:
-		Resource(MMap&& file, std::string&& mime) : m_file{std::move(file)}, m_mime{std::move(mime)} {}
+		Resource(MMap&& file, std::string&& mime, boost::string_view etag) :
+			m_file{std::move(file)}, m_mime{std::move(mime)}, m_etag{etag} {}
 
-		http::response<SplitBuffers> get(int version) const;
+		http::response<SplitBuffers> get(int version, bool dynamic) const;
+
+		boost::string_view etag() const {return m_etag;}
 
 	private:
 		MMap        m_file;
 		std::string m_mime;
+		std::string m_etag;
 	};
 
 	template <typename Iterator>

@@ -34,4 +34,9 @@ std::string_view Magic::mime(const void *buffer, std::size_t size) const
 	return ::magic_buffer(m_cookie, buffer, size);
 }
 
+std::string_view Magic::mime(boost::beast::file_posix::native_handle_type fd) const
+{
+	return ::magic_descriptor(m_cookie, fd);
+}
+
 } // end of namespace

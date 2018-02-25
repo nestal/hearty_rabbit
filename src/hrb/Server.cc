@@ -78,7 +78,7 @@ void Server::on_logout(const EmptyRequest& req, const Authentication& auth, Empt
 	auth.destroy_session(*m_db.alloc(), [this, send=std::move(send), version=req.version()](auto&& ec) mutable
 	{
 		auto&& res = see_other("/", version);
-		res.set(http::field::set_cookie, "id=; ");
+		res.set(http::field::set_cookie, "id=; expires=Thu, Jan 01 1970 00:00:00 UTC;");
 		res.set(http::field::cache_control, "no-cache, no-store, must-revalidate");
 		res.keep_alive(false);
 		send(std::move(res));
@@ -105,31 +105,25 @@ void Server::get_blob(const EmptyRequest& req, BlobResponseSender&& send, const 
 	// Return 404 not_found if the blob ID is invalid
 	auto object_id = hex_to_object_id(std::string_view{blob_id.data(), blob_id.size()});
 	if (object_id == ObjectID{})
-		return send(http::response<http::file_body>{http::status::not_found, req.version()});
+		return send(http::response<MMapResponseBody>{http::status::not_found, req.version()});
 
 	// Check if the user has permission to read the blob
 	Container::is_member(*m_db.alloc(), auth.user(), object_id,
-		[send=std::move(send), object_id, version=req.version(), this](auto ec, bool is_member) mutable
+		[
+			send=std::move(send),
+			object_id,
+			version=req.version(),
+			etag=req[http::field::if_none_match].to_string(),
+			this
+		](auto ec, bool is_member) mutable
 		{
 			if (ec)
-				return send(http::response<http::file_body>{http::status::internal_server_error, version});
+				return send(http::response<MMapResponseBody>{http::status::internal_server_error, version});
 
 			if (!is_member)
-				return send(http::response<http::file_body>{http::status::forbidden, version});
+				return send(http::response<MMapResponseBody>{http::status::forbidden, version});
 
-			auto path = m_blob_db.dest(object_id);
-
-			boost::system::error_code bec;
-			http::file_body::value_type blob;
-			blob.open(path.string().c_str(), boost::beast::file_mode::read, bec);
-
-			http::response<http::file_body> res{
-				std::piecewise_construct,
-				std::make_tuple(std::move(blob)),
-				std::make_tuple(bec ? http::status::not_found : http::status::ok, version)
-			};
-			res.prepare_payload();
-			return send(std::move(res));
+			return send(m_blob_db.response(object_id, m_magic, version, etag));
 		}
 	);
 }
@@ -195,7 +189,6 @@ http::response<http::string_body> Server::bad_request(boost::beast::string_view 
 		std::make_tuple(http::status::bad_request, version)
 	};
 	res.set(http::field::content_type, "text/html");
-	res.prepare_payload();
 	return res;
 }
 
@@ -209,7 +202,6 @@ http::response<http::string_body> Server::not_found(boost::string_view target, u
 		std::make_tuple(http::status::not_found, version)
 	};
 	res.set(http::field::content_type, "text/plain");
-	res.prepare_payload();
 	return res;
 }
 
@@ -221,7 +213,6 @@ http::response<http::string_body> Server::server_error(boost::beast::string_view
 		std::make_tuple(http::status::internal_server_error, version)
 	};
 	res.set(http::field::content_type, "text/plain");
-	res.prepare_payload();
 	return res;
 }
 
@@ -238,19 +229,19 @@ void Server::serve_home(FileResponseSender&& send, unsigned version, const Authe
 		script_tag << ";</script>";
 
 		auto res = m_lib.find_dynamic("index.html", version);
-		res.body().extra("<head>", script_tag.str());
+		res.body().extra("<meta charset=\"utf-8\">", script_tag.str());
 		send(std::move(res));
 	});
 }
 
 http::response<SplitBuffers> Server::static_file_request(const EmptyRequest& req)
 {
-	Log(LOG_NOTICE, "requesting path %1%", req.target());
+	Log(LOG_NOTICE, "requesting path %1% %2%", req.target(), req[http::field::if_none_match]);
 
 	auto filepath = req.target();
 	filepath.remove_prefix(1);
 
-	return m_lib.find_static(std::string{filepath}, req.version());
+	return m_lib.find_static(std::string{filepath}, req[http::field::if_none_match], req.version());
 }
 
 void Server::run()
@@ -349,6 +340,11 @@ std::string Server::https_root() const
 	using namespace std::literals;
 	return "https://" + m_cfg.server_name()
 		+ (m_cfg.listen_https().port() == 443 ? ""s : (":"s + std::to_string(m_cfg.listen_https().port())));
+}
+
+std::size_t Server::upload_limit() const
+{
+	return m_cfg.upload_limit();
 }
 
 /// \arg    header      The header we just received. This reference must be valid

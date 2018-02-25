@@ -1,61 +1,52 @@
 <!doctype html>
 <html lang="en">
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Hearty Rabbit photo gallery">
-    <title>Hearty Rabbit</title>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<meta name="description" content="Hearty Rabbit photo gallery">
+	<title>Hearty Rabbit</title>
 
-    <link rel="stylesheet" href="https://unpkg.com/purecss@1.0.0/build/pure-min.css" integrity="sha384-" crossorigin="anonymous">
-    <link rel="stylesheet" href="https://unpkg.com/purecss@1.0.0/build/grids-responsive-min.css">
-
-    <link rel="stylesheet" href="gallery.css">
-    <link rel="icon" href="logo.svg" type="image/svg+xml">
-    <script src="hearty_rabbit.js"></script>
+	<link rel="stylesheet" href="hearty_rabbit.css">
+	<link rel="icon" href="logo.svg" type="image/svg+xml">
+	<link href="https://fonts.googleapis.com/css?family=Mukta+Mahee" rel="stylesheet">
+	<script src="hearty_rabbit.js"></script>
 </head>
 <body>
-<div>
-    <div class="header">
-        <div class="pure-menu pure-menu-horizontal">
-            <a class="pure-menu-heading" href="/" id="username"></a>
+<div class="topnav">
+	<img class="nav-logo" src="logo.svg">
+	<a href="#home" class="active"><span id="username"></span>'s Home</a>
+	<a href="#about">About</a>
+	<a href="/logout">Logout</a>
+	<a href="javascript:void(0);" class="icon" onclick="myFunction()">&#9776;</a>
+</div>
 
-            <ul class="pure-menu-list">
-                <li class="pure-menu-item pure-menu-selected"><a href="#" class="pure-menu-link">Home</a></li>
-                <li class="pure-menu-item"><a href="#" class="pure-menu-link">Blog</a></li>
-                <li class="pure-menu-item"><a href="#" class="pure-menu-link">About</a></li>
-                <li class="pure-menu-item"><a href="/logout" class="pure-menu-link">Logout</a></li>
-            </ul>
-        </div>
-    </div>
+<section id="hrb-entry-root">
+	<img
+			id="hrb-entry-prototype"
+			class="hrb-image"
+			src="logo.svg"
+			onclick="show_image(this.dataset.blob_id);"
+	>
+</section>
 
-    <div id="hrb-entry-root" class="pure-g">
-        <div id="hrb-entry-prototype" class="photo-box pure-u-1 pure-u-md-1-2 pure-u-lg-1-3">
-            <img
-                    class="hrb-image"
-                    src="logo.svg"
-            >
+<div class="pure-u-1 form-box">
+	<div class="l-box">
+		<h2>Upload File</h2>
 
-            <aside class="photo-box-caption">
-                <span class="hrb-caption">This is the caption</span>
-            </aside>
-        </div>
+		<input id="file-input" type="file" onchange="upload_file(this.files[0])">
+	</div>
+</div>
 
-        <div class="pure-u-1 form-box">
-            <div class="l-box">
-                <h2>Upload File</h2>
-
-                <input id="file-input" type="file" onchange="upload_file(this.files[0])">
-            </div>
-        </div>
-    </div>
-
-    <div class="footer">
-        View the source of this layout to learn more. Made with love by the YUI Team.
-    </div>
+<div id="light-box" class="modal">
+	<span class="close cursor" onclick="hide_image();">&times;</span>
+	<div class="modal-content">
+		<img id="light-box-image" src="logo.svg">
+	</div>
 </div>
 
 <script>
-    on_home_page_loaded();
+	// Make sure it's called after loading the DOM.
+	on_home_page_loaded();
 </script>
 
 </body>

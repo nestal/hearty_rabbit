@@ -12,7 +12,9 @@
 
 #include "WebResources.hh"
 
+#include "ObjectID.hh"
 #include "ResourcesList.hh"
+#include "crypto/Blake2.hh"
 
 namespace hrb {
 namespace {
@@ -35,12 +37,19 @@ auto WebResources::load(const boost::filesystem::path& base, Iterator first, Ite
 	for (auto it = first; it != last && !ec; ++it)
 	{
 		auto path = base / *it;
+		auto mmap = MMap::open(path, ec);
+
+		Blake2 hasher;
+		hasher.update(mmap.data(), mmap.size());
+		auto etag = to_quoted_hex(ObjectID{hasher.finalize()});
+
 		result.emplace(
 			std::piecewise_construct,
 			std::forward_as_tuple(*it),
 			std::forward_as_tuple(
-				MMap::open(path, ec),
-				std::string{resource_mime(path.extension().string())}
+				std::move(mmap),
+				std::string{resource_mime(path.extension().string())},
+				std::move(etag)
 			)
 		);
 	}
@@ -53,23 +62,32 @@ WebResources::WebResources(const boost::filesystem::path& web_root) :
 {
 }
 
-http::response<SplitBuffers> WebResources::find_static(const std::string& filename, int version) const
+WebResources::Response WebResources::find_static(const std::string& filename, boost::string_view etag, int version) const
 {
 	auto it = m_static.find(filename);
-	return it != m_static.end() ?
-		it->second.get(version) :
-		http::response<SplitBuffers>{http::status::not_found, version};
+	if (it == m_static.end())
+		return Response{http::status::not_found, version};
+
+	if (!etag.empty() && etag == it->second.etag())
+	{
+		Response res{http::status::not_modified, version};
+		res.set(http::field::cache_control, "private, max-age=0, must-revalidate");
+		res.set(http::field::etag, it->second.etag());
+		return res;
+	}
+
+	return it->second.get(version, false);
 }
 
-http::response<SplitBuffers> WebResources::find_dynamic(const std::string& filename, int version) const
+WebResources::Response WebResources::find_dynamic(const std::string& filename, int version) const
 {
 	auto it = m_dynamic.find(filename);
 	return it != m_dynamic.end() ?
-		it->second.get(version) :
-		http::response<SplitBuffers>{http::status::not_found, version};
+		it->second.get(version, true) :
+		Response{http::status::not_found, version};
 }
 
-http::response<SplitBuffers> WebResources::Resource::get(int version) const
+WebResources::Response WebResources::Resource::get(int version, bool dynamic) const
 {
 	http::response<hrb::SplitBuffers> result{
 		std::piecewise_construct,
@@ -77,7 +95,11 @@ http::response<SplitBuffers> WebResources::Resource::get(int version) const
 		std::make_tuple(http::status::ok, version)
 	};
 	result.set(http::field::content_type, m_mime);
-	result.set(http::field::cache_control, "no-cache, no-store, must-revalidate");
+	result.set(http::field::cache_control,
+		dynamic ? "no-cache, no-store, must-revalidate" : "public, max-age=0, must-revalidate"
+	);
+	result.set(http::field::etag, m_etag);
+	result.prepare_payload();
 	return result;
 }
 } // end of namespace hrb

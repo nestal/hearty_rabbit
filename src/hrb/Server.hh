@@ -20,6 +20,8 @@
 #include "net/SplitBuffers.hh"
 #include "net/Request.hh"
 #include "net/Redis.hh"
+#include "net/MMapResponseBody.hh"
+#include "util/Magic.hh"
 
 #include <boost/filesystem/path.hpp>
 #include <boost/beast/http/fields.hpp>
@@ -114,9 +116,10 @@ public:
 	void run();
 	boost::asio::io_context& get_io_context();
 
-	// Administrative commands
+	// Administrative commands and configurations
 	void add_user(std::string_view username, Password&& password, std::function<void(std::error_code)> complete);
 	std::string https_root() const;
+	std::size_t upload_limit() const;
 
 private:
 	http::response<SplitBuffers> static_file_request(const EmptyRequest& req);
@@ -148,7 +151,7 @@ private:
 	using EmptyResponseSender  = std::function<void(http::response<http::empty_body>&&)>;
 	using StringResponseSender = std::function<void(http::response<http::string_body>&&)>;
 	using FileResponseSender   = std::function<void(http::response<SplitBuffers>&&)>;
-	using BlobResponseSender   = std::function<void(http::response<http::file_body>&&)>;
+	using BlobResponseSender   = std::function<void(http::response<MMapResponseBody>&&)>;
 
 	void on_login(const StringRequest& req, EmptyResponseSender&& send);
 	void on_logout(const EmptyRequest& req, const Authentication& auth, EmptyResponseSender&& send);
@@ -166,6 +169,7 @@ private:
 	redis::Pool     m_db;
 	WebResources    m_lib;
 	BlobDatabase    m_blob_db;
+	Magic           m_magic;
 };
 
 } // end of namespace
