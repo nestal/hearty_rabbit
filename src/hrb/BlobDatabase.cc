@@ -114,6 +114,9 @@ BlobDatabase::BlobResponse BlobDatabase::response(
 			Log(LOG_WARNING, "no orientation");
 	}
 
+	// Advice the kernel that we only read the memory in one pass
+	mmap.cache();
+
 	BlobResponse res{
 		std::piecewise_construct,
 		std::make_tuple(std::move(mmap)),

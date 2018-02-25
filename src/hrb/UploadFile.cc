@@ -105,6 +105,14 @@ void UploadFile::linkat(const fs::path& dest, std::error_code& ec) const
 		ec.assign(errno, std::generic_category());
 }
 
+std::size_t UploadFile::pread(void *buffer, std::size_t n, std::streamoff pos, std::error_code& ec) const
+{
+	auto r = ::pread(m_file.native_handle(), buffer, n, pos);
+	if (r < 0)
+		ec.assign(errno, std::generic_category());
+	return static_cast<std::size_t>(r);
+}
+
 void UploadRequestBody::reader::init(const boost::optional<std::uint64_t>&, boost::system::error_code& ec)
 {
 	if (!m_body.is_open())
