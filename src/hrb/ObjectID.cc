@@ -33,9 +33,9 @@ std::string to_hex(const ObjectID& id)
 	return result;
 }
 
-std::string to_quoted_hex(const ObjectID& id)
+std::string to_quoted_hex(const ObjectID& id, char quote)
 {
-	std::string result(id.size()*2 + 2, '\"');
+	std::string result(id.size()*2 + 2, quote);
 	boost::algorithm::hex_lower(id.begin(), id.end(), result.begin()+1);
 	return result;
 }
