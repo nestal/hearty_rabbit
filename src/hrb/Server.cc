@@ -225,7 +225,7 @@ void Server::serve_home(FileResponseSender&& send, unsigned version, const Authe
 
 		rapidjson::OStreamWrapper osw{script_tag};
 		rapidjson::Writer<rapidjson::OStreamWrapper> writer{osw};
-		cond.serialize().Accept(writer);
+		cond.serialize(m_blob_db).Accept(writer);
 		script_tag << ";</script>";
 
 		auto res = m_lib.find_dynamic("index.html", version);

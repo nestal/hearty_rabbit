@@ -15,6 +15,7 @@
 #include "crypto/Random.hh"
 
 #include "hrb/Container.hh"
+#include "hrb/BlobDatabase.hh"
 
 using namespace hrb;
 
@@ -49,7 +50,9 @@ TEST_CASE("Container tests", "[normal]")
 
 			REQUIRE(std::find(container.begin(), container.end(), testid) != container.end());
 
-			auto json = container.serialize();
+			BlobDatabase blobdb{"/tmp"};
+
+			auto json = container.serialize(blobdb);
 			REQUIRE(json.IsObject());
 
 			tested++;

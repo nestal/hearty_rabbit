@@ -11,6 +11,8 @@
 //
 
 #include "Container.hh"
+#include "BlobDatabase.hh"
+#include "util/Exif.hh"
 
 namespace hrb {
 
@@ -20,21 +22,27 @@ Container::Container(std::string_view name) : m_name{name}
 {
 }
 
-rapidjson::Document Container::serialize() const
+rapidjson::Document Container::serialize(const BlobDatabase& db) const
 {
 	using namespace rapidjson;
 	Document json;
 	json.SetObject();
 	json.AddMember("name", Value().SetString(m_name.c_str(), m_name.size(), json.GetAllocator()), json.GetAllocator());
 
-	Value elements{kArrayType};
+	Value elements{kObjectType};
 	for (auto&& blob : m_blobs)
 	{
 		Value e{kObjectType};
-		auto bs = to_hex(blob);
-		e.AddMember("blob", Value{bs, json.GetAllocator()}, json.GetAllocator());
 
-		elements.PushBack(std::move(e), json.GetAllocator());
+		auto exif = Exif::load(db.dest(blob));
+		if (exif && exif->orientation())
+			e.AddMember("orientation", *exif->orientation(), json.GetAllocator());
+
+		elements.AddMember(
+			Value{to_hex(blob), json.GetAllocator()},
+			std::move(e),
+			json.GetAllocator()
+		);
 	}
 	json.AddMember("elements", std::move(elements), json.GetAllocator());
 

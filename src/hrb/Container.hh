@@ -23,6 +23,8 @@
 
 namespace hrb {
 
+class BlobDatabase;
+
 /// A set of blob objects represented by a redis set.
 class Container
 {
@@ -95,7 +97,7 @@ public:
 	std::size_t size() const {return m_blobs.size();}
 	bool empty() const {return m_blobs.empty();}
 
-	rapidjson::Document serialize() const;
+	rapidjson::Document serialize(const BlobDatabase& db) const;
 
 private:
 	std::string             m_name;
