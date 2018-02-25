@@ -10,6 +10,7 @@ RUN yum install -y centos-release-scl epel-release \
 		hiredis-devel file-devel libicu-devel zlib-devel bzip2-devel xz-devel \
 		libunwind-devel autoconf automake libtool libexif-devel \
 	&& source scl_source enable devtoolset-7 \
+	&& yum update -y \
 	&& mkdir /build
 
 # Set PATH, because "scl enable" does not have any effects to "docker build"
