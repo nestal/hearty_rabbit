@@ -110,15 +110,14 @@ BlobDatabase::BlobResponse BlobDatabase::response(
 	if (ec)
 		return BlobResponse{http::status::not_found, version};
 
-	auto mime = m_magic.mime(mmap.blob());
-	Log(LOG_NOTICE, "blob %1% is %2%", path.filename(), mime);
-	if (mime == "image/jpeg")
+	auto meta = load_meta(id);
+	if (!meta)
+		meta = deduce_meta(mmap.blob());
+
+	if (!meta)
 	{
-		auto exif = Exif::load(mmap.data(), mmap.size());
-		if (exif && exif->orientation())
-			Log(LOG_NOTICE, "orientation is %1%", *exif->orientation());
-		else
-			Log(LOG_WARNING, "no orientation");
+		Log(LOG_WARNING, "cannot load metadata from file %1%", path);
+		meta.emplace(Meta{});
 	}
 
 	// Advice the kernel that we only read the memory in one pass
@@ -129,7 +128,7 @@ BlobDatabase::BlobResponse BlobDatabase::response(
 		std::make_tuple(std::move(mmap)),
 		std::make_tuple(http::status::ok, version)
 	};
-	res.set(http::field::content_type, mime);
+	res.set(http::field::content_type, meta->mime);
 	set_cache_control(res, id);
 	return res;
 
@@ -141,47 +140,57 @@ void BlobDatabase::set_cache_control(BlobResponse& res, const ObjectID& id)
 	res.set(http::field::etag, to_quoted_hex(id));
 }
 
-rapidjson::Document BlobDatabase::deduce_meta(const UploadFile& tmp) const
+std::optional<BlobDatabase::Meta> BlobDatabase::deduce_meta(const UploadFile& tmp) const
 {
 	// Deduce mime type and orientation (if it is a JPEG)
 	std::error_code ec;
 	auto mmap = MMap::open(tmp.native_handle(), ec);
 	if (ec)
-		return {};
+		return std::nullopt;
 
-	auto mime = m_magic.mime(mmap.blob());
-	rapidjson::Document meta;
-	meta.SetObject();
-	meta.AddMember("mime", rapidjson::StringRef(mime.data(), mime.size()), meta.GetAllocator());
+	return deduce_meta(mmap.blob());
+}
 
-	if (mime == "image/jpeg")
-		if (auto exif = Exif::load_from_data(mmap); exif)
+std::optional<BlobDatabase::Meta> BlobDatabase::deduce_meta(boost::asio::const_buffer blob) const
+{
+	Meta meta;
+	meta.mime = m_magic.mime(blob);
+
+	if (meta.mime == "image/jpeg")
+		if (auto exif = Exif::load_from_data(blob); exif)
 			if (auto orientation = exif->orientation(); orientation)
-				meta.AddMember("orientation", *orientation, meta.GetAllocator());
+				meta.orientation = *orientation;
 
 	return meta;
 }
 
-rapidjson::Document BlobDatabase::save_meta(const fs::path& dest_path, const UploadFile& tmp) const
+std::optional<BlobDatabase::Meta> BlobDatabase::save_meta(const fs::path& dest_path, const UploadFile& tmp) const
 {
-	auto json = deduce_meta(tmp);
-	if (json.IsObject())
+	auto meta = deduce_meta(tmp);
+	if (meta)
 	{
-		std::ofstream meta{(dest_path.parent_path() / std::string{metafile}).string()};
-		rapidjson::OStreamWrapper osw{meta};
+		rapidjson::Document json;
+		json.SetObject();
+		json.AddMember("mime", rapidjson::StringRef(meta->mime.data(), meta->mime.size()), json.GetAllocator());
+
+		if (meta->mime == "image/jpeg")
+			json.AddMember("orientation", meta->orientation, json.GetAllocator());
+
+		std::ofstream file{(dest_path.parent_path() / std::string{metafile}).string()};
+		rapidjson::OStreamWrapper osw{file};
 		rapidjson::Writer<rapidjson::OStreamWrapper> writer{osw};
 
 		json.Accept(writer);
 	}
-	return json;
+	return meta;
 }
 
-BlobDatabase::Meta BlobDatabase::load_meta(const ObjectID& id) const
+std::optional<BlobDatabase::Meta> BlobDatabase::load_meta(const fs::path& dest_path) const
 {
 	std::error_code ec;
-	auto meta = MMap::open((dest(id).parent_path() / std::string{metafile}).string(), ec);
+	auto meta = MMap::open(dest_path, ec);
 	if (ec)
-		return {};
+		return std::nullopt;
 
 	rapidjson::Document json;
 	json.Parse(static_cast<const char*>(meta.data()), meta.size());

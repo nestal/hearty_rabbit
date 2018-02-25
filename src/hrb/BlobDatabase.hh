@@ -19,6 +19,8 @@
 #include <boost/beast/http/message.hpp>
 #include <rapidjson/document.h>
 
+#include <optional>
+
 namespace hrb {
 
 class ObjectID;
@@ -45,7 +47,7 @@ public:
 	ObjectID save(const UploadFile& tmp, std::error_code& ec);
 
 	fs::path dest(const ObjectID& id, std::string_view rendition = {}) const;
-	Meta load_meta(const ObjectID& id) const;
+	std::optional<Meta> load_meta(const ObjectID& id) const {return load_meta(dest(id));}
 
 	BlobResponse response(
 		ObjectID id,
@@ -56,8 +58,10 @@ public:
 
 private:
 	static void set_cache_control(BlobResponse& res, const ObjectID& id);
-	rapidjson::Document deduce_meta(const UploadFile& tmp) const;
-	rapidjson::Document save_meta(const fs::path& dest_path, const UploadFile& tmp) const;
+	std::optional<Meta> deduce_meta(const UploadFile& tmp) const;
+	std::optional<Meta> deduce_meta(boost::asio::const_buffer blob) const;
+	std::optional<Meta> save_meta(const fs::path& dest_path, const UploadFile& tmp) const;
+	std::optional<Meta> load_meta(const fs::path& dest_path) const;
 
 private:
 	fs::path    m_base;
