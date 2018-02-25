@@ -175,6 +175,7 @@ void Session::send_response(Response&& response)
 	auto sp = std::make_shared<std::remove_reference_t<decltype(response)>>(std::forward<decltype(response)>(response));
 	sp->set(http::field::server, BOOST_BEAST_VERSION_STRING);
 	sp->keep_alive(m_keep_alive);
+	sp->prepare_payload();
 
 	async_write(m_stream, *sp, boost::asio::bind_executor(
 		m_strand,

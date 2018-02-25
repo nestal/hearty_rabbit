@@ -189,7 +189,6 @@ http::response<http::string_body> Server::bad_request(boost::beast::string_view 
 		std::make_tuple(http::status::bad_request, version)
 	};
 	res.set(http::field::content_type, "text/html");
-	res.prepare_payload();
 	return res;
 }
 
@@ -203,7 +202,6 @@ http::response<http::string_body> Server::not_found(boost::string_view target, u
 		std::make_tuple(http::status::not_found, version)
 	};
 	res.set(http::field::content_type, "text/plain");
-	res.prepare_payload();
 	return res;
 }
 
@@ -215,7 +213,6 @@ http::response<http::string_body> Server::server_error(boost::beast::string_view
 		std::make_tuple(http::status::internal_server_error, version)
 	};
 	res.set(http::field::content_type, "text/plain");
-	res.prepare_payload();
 	return res;
 }
 
@@ -233,7 +230,6 @@ void Server::serve_home(FileResponseSender&& send, unsigned version, const Authe
 
 		auto res = m_lib.find_dynamic("index.html", version);
 		res.body().extra("<meta charset=\"utf-8\">", script_tag.str());
-		res.prepare_payload();
 		send(std::move(res));
 	});
 }

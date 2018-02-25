@@ -110,7 +110,6 @@ BlobDatabase::BlobResponse BlobDatabase::response(
 		std::make_tuple(http::status::ok, version)
 	};
 	res.set(http::field::content_type, mime);
-	res.prepare_payload();
 	set_cache_control(res, id);
 	return res;
 
