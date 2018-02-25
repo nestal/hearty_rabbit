@@ -107,11 +107,11 @@ BlobDatabase::BlobResponse BlobDatabase::response(
 	Log(LOG_NOTICE, "blob %1% is %2%", path.filename(), mime);
 	if (mime == "image/jpeg")
 	{
-		Exif exif{mmap.data(), mmap.size()};
-		if (exif.orientation())
-			Log(LOG_NOTICE, "orientation is %1%", *exif.orientation());
+		auto exif = Exif::load(mmap.data(), mmap.size());
+		if (exif && exif->orientation())
+			Log(LOG_NOTICE, "orientation is %1%", *exif->orientation());
 		else
-			Log(LOG_WARNING, "no orientation", *exif.orientation());
+			Log(LOG_WARNING, "no orientation");
 	}
 
 	BlobResponse res{

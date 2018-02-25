@@ -24,8 +24,7 @@ namespace hrb {
 class Exif
 {
 public:
-	explicit Exif(const fs::path& path);
-	Exif(const void *data, std::size_t size);
+	Exif() = default;
 	Exif(const Exif&) = delete;
 	Exif(Exif&&) = default;
 	~Exif();
@@ -33,11 +32,17 @@ public:
 	Exif& operator=(const Exif&) = delete;
 	Exif& operator=(Exif&&) = default;
 
+	static std::optional<Exif> load(const fs::path& path);
+	static std::optional<Exif> load(const void *raw, std::size_t size);
+
 	std::optional<int> orientation() const;
 
 	int ISO() const;
 	std::chrono::system_clock::time_point datetime() const;
 	std::string datetime_str() const;
+
+private:
+	Exif(ExifData *data);
 
 private:
 	ExifData    *m_exif{};

@@ -11,42 +11,52 @@
 //
 
 #include "Exif.hh"
-#include <libexif/exif-data.h>
 
 namespace hrb {
 
-Exif::Exif(const fs::path& path) :
-	m_exif{::exif_data_new_from_file(path.string().c_str())}
+std::optional<Exif> Exif::load(const fs::path& path)
 {
+	std::optional<Exif> result;
+
+	auto data = ::exif_data_new_from_file(path.string().c_str());
+	if (data)
+		result.emplace(Exif{data});
+
+	return result;
 }
 
-Exif::Exif(const void *data, std::size_t size) :
-	m_exif{::exif_data_new_from_data(static_cast<const unsigned char*>(data), static_cast<unsigned>(size))}
+std::optional<Exif> Exif::load(const void *raw, std::size_t size)
 {
+	std::optional<Exif> result;
+
+	auto data = ::exif_data_new_from_data(static_cast<const unsigned char*>(raw), static_cast<unsigned>(size));
+	if (data)
+		result.emplace(Exif{data});
+
+	return result;
 }
 
+Exif::Exif(ExifData *data) :
+	m_exif{data}
+{
+	assert(m_exif);
+}
 
 Exif::~Exif()
 {
-	if (m_exif)
-		::exif_data_unref(m_exif);
+	::exif_data_unref(m_exif);
 }
 
 int Exif::ISO() const
 {
-	if (m_exif)
-	{
-		auto entry = ::exif_content_get_entry(m_exif->ifd[EXIF_IFD_EXIF], EXIF_TAG_ISO_SPEED_RATINGS);
-		if (!entry)
-			throw std::runtime_error("error: cannot load ISO speed ratings from image");
+	auto entry = ::exif_content_get_entry(m_exif->ifd[EXIF_IFD_EXIF], EXIF_TAG_ISO_SPEED_RATINGS);
+	if (!entry)
+		throw std::runtime_error("error: cannot load ISO speed ratings from image");
 
-		char buf[1024] = {};
-		exif_entry_get_value(entry, buf, sizeof(buf));
+	char buf[1024] = {};
+	exif_entry_get_value(entry, buf, sizeof(buf));
 
-		return std::stoi(buf);
-	}
-	else
-		return 100;
+	return std::stoi(buf);
 }
 
 std::chrono::system_clock::time_point Exif::datetime() const
@@ -62,33 +72,23 @@ std::chrono::system_clock::time_point Exif::datetime() const
 
 std::string Exif::datetime_str() const
 {
-	if (m_exif)
-	{
-		auto entry = ::exif_content_get_entry(m_exif->ifd[EXIF_IFD_0], EXIF_TAG_DATE_TIME);
-		if (!entry)
-			throw std::runtime_error("error: cannot load date/time from image");
+	auto entry = ::exif_content_get_entry(m_exif->ifd[EXIF_IFD_0], EXIF_TAG_DATE_TIME);
+	if (!entry)
+		throw std::runtime_error("error: cannot load date/time from image");
 
-		char buf[1024] = {};
-		exif_entry_get_value(entry, buf, sizeof(buf));
-		return buf;
-	}
-	else
-		return {};
+	char buf[1024] = {};
+	exif_entry_get_value(entry, buf, sizeof(buf));
+	return buf;
 }
 
 std::optional<int> Exif::orientation() const
 {
-	if (m_exif)
-	{
-		auto entry = exif_data_get_entry(m_exif, EXIF_TAG_ORIENTATION);
-		if (!entry)
-			return std::nullopt;
-
-		auto order = exif_data_get_byte_order(m_exif);
-		return exif_get_short(entry->data, order);
-	}
-	else
+	auto entry = exif_data_get_entry(m_exif, EXIF_TAG_ORIENTATION);
+	if (!entry)
 		return std::nullopt;
+
+	auto order = exif_data_get_byte_order(m_exif);
+	return exif_get_short(entry->data, order);
 }
 
 } // end of namespace hrb
