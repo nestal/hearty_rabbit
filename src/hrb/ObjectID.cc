@@ -33,6 +33,13 @@ std::string to_hex(const ObjectID& id)
 	return result;
 }
 
+std::string to_quoted_hex(const ObjectID& id)
+{
+	std::string result(id.size()*2 + 2, '\"');
+	boost::algorithm::hex_lower(id.begin(), id.end(), result.begin()+1);
+	return result;
+}
+
 ObjectID hex_to_object_id(std::string_view hex)
 {
 	ObjectID result{};

@@ -119,7 +119,7 @@ BlobDatabase::BlobResponse BlobDatabase::response(
 void BlobDatabase::set_cache_control(BlobResponse& res, const ObjectID& id)
 {
 	res.set(http::field::cache_control, "private, max-age=31536000, immutable");
-	res.set(http::field::etag, to_hex(id));
+	res.set(http::field::etag, to_quoted_hex(id));
 }
 
 } // end of namespace hrb

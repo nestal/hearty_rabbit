@@ -13,7 +13,6 @@
 #include <catch.hpp>
 
 #include "hrb/WebResources.hh"
-
 #include "CheckResource.hh"
 
 #include <boost/filesystem/path.hpp>
@@ -32,7 +31,6 @@ TEST_CASE("web resource", "[normal]")
 		REQUIRE(res.version() == 11);
 		REQUIRE(res.result() == http::status::ok);
 		REQUIRE(res[http::field::content_type] == "text/html");
-//		REQUIRE(res[http::field::cache_control] == "no-cache, no-store, must-revalidate");
 		REQUIRE(check_resource_content(web_root / "dynamic/index.html", std::move(res)));
 	}
 	SECTION("static resource")
@@ -41,11 +39,15 @@ TEST_CASE("web resource", "[normal]")
 		REQUIRE(res.version() == 11);
 		REQUIRE(res.result() == http::status::ok);
 		REQUIRE(res[http::field::content_type] == "image/svg+xml");
-//		REQUIRE(res[http::field::cache_control] == "no-cache, must-revalidate");
 		REQUIRE(check_resource_content(web_root / "static/logo.svg", std::move(res)));
 
+		// check etag is quoted
 		auto etag = res[http::field::etag];
+		REQUIRE(!etag.empty());
+		REQUIRE(etag.front() == '\"');
+		REQUIRE(etag.back() == '\"');
 
+		// request with the right etag will give 304
 		auto reres = lib.find_static("logo.svg", etag, 11);
 		REQUIRE(reres.result() == http::status::not_modified);
 	}

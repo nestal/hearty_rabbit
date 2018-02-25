@@ -41,7 +41,7 @@ auto WebResources::load(const boost::filesystem::path& base, Iterator first, Ite
 
 		Blake2 hasher;
 		hasher.update(mmap.data(), mmap.size());
-		auto etag = '\"' + to_hex(ObjectID{hasher.finalize()}) + '\"';
+		auto etag = to_quoted_hex(ObjectID{hasher.finalize()});
 
 		result.emplace(
 			std::piecewise_construct,
@@ -96,7 +96,7 @@ WebResources::Response WebResources::Resource::get(int version, bool dynamic) co
 	};
 	result.set(http::field::content_type, m_mime);
 	result.set(http::field::cache_control,
-		dynamic ? "no-cache, no-store, must-revalidate" : "private, max-age=0, must-revalidate"
+		dynamic ? "no-cache, no-store, must-revalidate" : "public, max-age=0, must-revalidate"
 	);
 	result.set(http::field::etag, m_etag);
 	result.prepare_payload();
