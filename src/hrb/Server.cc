@@ -233,13 +233,14 @@ void Server::serve_home(FileResponseSender&& send, unsigned version, const Authe
 
 		auto res = m_lib.find_dynamic("index.html", version);
 		res.body().extra("<meta charset=\"utf-8\">", script_tag.str());
+		res.prepare_payload();
 		send(std::move(res));
 	});
 }
 
 http::response<SplitBuffers> Server::static_file_request(const EmptyRequest& req)
 {
-	Log(LOG_NOTICE, "requesting path %1%", req.target());
+	Log(LOG_NOTICE, "requesting path %1% %2%", req.target(), req[http::field::if_none_match]);
 
 	auto filepath = req.target();
 	filepath.remove_prefix(1);
