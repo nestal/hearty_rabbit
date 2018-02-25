@@ -17,6 +17,7 @@
 
 #include "util/Log.hh"
 #include "util/Magic.hh"
+#include "util/Exif.hh"
 
 #include <sstream>
 
@@ -103,6 +104,15 @@ BlobDatabase::BlobResponse BlobDatabase::response(
 		return BlobResponse{http::status::not_found, version};
 
 	auto mime = magic.mime(mmap.blob());
+	Log(LOG_NOTICE, "blob %1% is %2%", path.filename(), mime);
+	if (mime == "image/jpeg")
+	{
+		Exif exif{mmap.data(), mmap.size()};
+		if (exif.orientation())
+			Log(LOG_NOTICE, "orientation is %1%", *exif.orientation());
+		else
+			Log(LOG_WARNING, "no orientation", *exif.orientation());
+	}
 
 	BlobResponse res{
 		std::piecewise_construct,

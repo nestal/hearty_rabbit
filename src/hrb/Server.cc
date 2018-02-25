@@ -145,9 +145,6 @@ void Server::on_upload(UploadRequest&& req, EmptyResponseSender&& send, const Au
 	// It will be used for authorizing the user's request on these blob later.
 	Container::add(*m_db.alloc(), auth.user(), id, [send=std::move(send), id, version=req.version(), this](auto ec) mutable
 	{
-//		using namespace std::chrono_literals;
-//		std::this_thread::sleep_for(30s);
-
 		http::response<http::empty_body> res{
 			ec ? http::status::internal_server_error : http::status::created,
 			version
