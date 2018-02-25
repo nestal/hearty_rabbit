@@ -13,17 +13,17 @@ div.login {
 	line-height: 0;
 
 	-webkit-column-count: 5;
-	-webkit-column-gap: 0px;
+	-webkit-column-gap: 0;
 	-moz-column-count: 5;
-	-moz-column-gap: 0px;
+	-moz-column-gap: 0;
 	column-count: 5;
-	column-gap: 0px;
+	column-gap: 0;
 }
 
 #hrb-entry-root img {
 	/* Just in case there are inline attributes */
-	width: 100% !important;
-	height: auto !important;
+	width: 100%;
+	height: auto;
 }
 
 #hrb-entry-root img:hover,
