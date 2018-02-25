@@ -35,6 +35,13 @@ public:
 	static std::optional<Exif> load(const fs::path& path);
 	static std::optional<Exif> load(const void *raw, std::size_t size);
 
+	// Data can be string_view, string, MMap, boost::asio::const_buffer
+	template <typename Data>
+	static auto load_from_data(Data&& data)
+	{
+		return load(data.data(), data.size());
+	}
+
 	std::optional<int> orientation() const;
 
 	int ISO() const;

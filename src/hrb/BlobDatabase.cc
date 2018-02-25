@@ -19,7 +19,11 @@
 #include "util/Magic.hh"
 #include "util/Exif.hh"
 
+#include <rapidjson/ostreamwrapper.h>
+#include <rapidjson/writer.h>
+
 #include <sstream>
+#include <fstream>
 
 namespace hrb {
 namespace {
@@ -56,6 +60,12 @@ ObjectID BlobDatabase::save(const UploadFile& tmp, std::error_code& ec)
 		Log(LOG_WARNING, "create directory %1% %2%", bec, bec.message());
 
 	ec.assign(bec.value(), bec.category());
+
+	std::ofstream meta{(dest_path.parent_path() / "meta").string()};
+	rapidjson::OStreamWrapper osw{meta};
+	rapidjson::Writer<rapidjson::OStreamWrapper> writer{osw};
+
+	deduce_meta(id, tmp).Accept(writer);
 
 	if (!ec)
 	{
@@ -133,10 +143,25 @@ void BlobDatabase::set_cache_control(BlobResponse& res, const ObjectID& id)
 	res.set(http::field::etag, to_quoted_hex(id));
 }
 
-void BlobDatabase::save_meta(const ObjectID& id, const UploadFile& tmp)
+rapidjson::Document BlobDatabase::deduce_meta(const ObjectID& id, const UploadFile& tmp) const
 {
 	// Deduce mime type and orientation (if it is a JPEG)
+	std::error_code ec;
+	auto mmap = MMap::open(tmp.native_handle(), ec);
+	if (ec)
+		return {};
 
+	auto mime = m_magic.mime(mmap.blob());
+	rapidjson::Document meta;
+	meta.SetObject();
+	meta.AddMember("mime", rapidjson::StringRef(mime.data(), mime.size()), meta.GetAllocator());
+
+	if (mime == "image/jpeg")
+		if (auto exif = Exif::load_from_data(mmap); exif)
+			if (auto orientation = exif->orientation(); orientation)
+				meta.AddMember("orientation", *orientation, meta.GetAllocator());
+
+	return meta;
 }
 
 } // end of namespace hrb

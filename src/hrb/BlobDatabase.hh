@@ -17,6 +17,7 @@
 #include "util/Magic.hh"
 
 #include <boost/beast/http/message.hpp>
+#include <rapidjson/document.h>
 
 namespace hrb {
 
@@ -48,7 +49,7 @@ public:
 
 private:
 	static void set_cache_control(BlobResponse& res, const ObjectID& id);
-	void save_meta(const ObjectID& id, const UploadFile& tmp);
+	rapidjson::Document deduce_meta(const ObjectID& id, const UploadFile& tmp) const;
 
 private:
 	fs::path    m_base;

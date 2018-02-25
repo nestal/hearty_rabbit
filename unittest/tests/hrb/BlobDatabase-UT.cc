@@ -58,3 +58,34 @@ TEST_CASE("Open temp file", "[normal]")
 	auto res = subject.response(tmpid, 11, "");
 	REQUIRE(res[http::field::etag] != boost::string_view{});
 }
+
+TEST_CASE("Upload JPEG file to BlobDatabase", "[normal]")
+{
+	std::error_code ec;
+	auto black = MMap::open(fs::path{__FILE__}.parent_path() / "black.jpg", ec);
+	REQUIRE(!ec);
+
+	BlobDatabase subject{"/tmp/BlobDatabase-UT"};
+	UploadFile tmp;
+	subject.prepare_upload(tmp, ec);
+	REQUIRE(!ec);
+
+	boost::system::error_code bec;
+	tmp.write(black.data(), black.size(), bec);
+	REQUIRE(!bec);
+
+	auto id = subject.save(tmp, ec);
+	REQUIRE(!ec);
+
+	auto meta = MMap::open(subject.dest(id).parent_path()/"meta", ec);
+	REQUIRE(!ec);
+
+	rapidjson::MemoryStream ms{static_cast<const char*>(meta.data()), meta.size()};
+	rapidjson::Document json;
+	json.ParseStream(ms);
+
+	auto&& mime_node = json["mime"];
+	REQUIRE(
+		std::string_view{mime_node.GetString(), mime_node.GetStringLength()} == "image/jpeg"
+	);
+}
