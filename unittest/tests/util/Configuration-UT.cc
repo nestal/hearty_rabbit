@@ -55,6 +55,7 @@ TEST_CASE( "Load normal.json", "[normal]" )
 	REQUIRE(cfg.listen_http().port() == 8080);
 	REQUIRE(cfg.redis().address() == boost::asio::ip::make_address("192.168.1.1"));
 	REQUIRE(cfg.redis().port() == 9181);
+	REQUIRE(cfg.upload_limit() == 10*1024*1024);
 }
 
 TEST_CASE( "Missing server name", "[error]" )
@@ -93,4 +94,13 @@ TEST_CASE( "Absolute path for certs", "[normal]" )
 	REQUIRE(subject.web_root() == current_src);
 	REQUIRE(subject.cert_chain() == "/etc/certificate.pem");
 	REQUIRE(subject.private_key() == "/etc/key.pem");
+}
+
+TEST_CASE( "Set upload limit to 1.5MB", "[normal]" )
+{
+	auto upload_1_5mb = (current_src / "upload_limit_1.5mb.json").string();
+
+	const char *argv[] = {"hearty_rabbit", "--cfg", upload_1_5mb.c_str()};
+	Configuration subject{sizeof(argv)/sizeof(argv[1]), argv, nullptr};
+	REQUIRE(subject.upload_limit() == 1.5*1024*1024);
 }

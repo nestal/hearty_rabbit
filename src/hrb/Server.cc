@@ -345,6 +345,11 @@ std::string Server::https_root() const
 		+ (m_cfg.listen_https().port() == 443 ? ""s : (":"s + std::to_string(m_cfg.listen_https().port())));
 }
 
+std::size_t Server::upload_limit() const
+{
+	return m_cfg.upload_limit();
+}
+
 /// \arg    header      The header we just received. This reference must be valid
 ///						until \a complete() is called.
 /// \arg    src         The request_parser that produce \a header. It will be moved

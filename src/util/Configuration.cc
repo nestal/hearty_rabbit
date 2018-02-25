@@ -102,6 +102,10 @@ void Configuration::load_config(const boost::filesystem::path& path)
 		m_blob_path     = weakly_canonical(absolute(string(required(json, "/blob_path")),   path.parent_path()));
 		m_server_name   = string(required(json, "/server_name"));
 		m_thread_count  = GetValueByPointerWithDefault(json, "/thread_count", m_thread_count).GetUint64();
+		m_upload_limit  = static_cast<std::size_t>(
+			GetValueByPointerWithDefault(json, "/upload_limit_mb", m_upload_limit/1024.0/1024.0).GetDouble() *
+				1024 * 1024
+		);
 
 		m_listen_http   = parse_endpoint(required(json, "/http"));
 		m_listen_https  = parse_endpoint(required(json, "/https"));

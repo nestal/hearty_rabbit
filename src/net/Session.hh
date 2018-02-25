@@ -38,8 +38,8 @@ class Session : public std::enable_shared_from_this<Session>
 public:
 	// Take ownership of the socket
 	explicit Session(
-		boost::asio::ip::tcp::socket socket,
 		Server& server,
+		boost::asio::ip::tcp::socket socket,
 		boost::asio::ssl::context& ssl_ctx,
 		std::size_t nth
 	);
@@ -65,7 +65,7 @@ private:
 	template <class Response>
 	void send_response(Response&& response);
 
-	void handle_read_error(boost::system::error_code ec);
+	void handle_read_error(std::string_view where, boost::system::error_code ec);
 
 private:
 	tcp::socket		                                            m_socket;
