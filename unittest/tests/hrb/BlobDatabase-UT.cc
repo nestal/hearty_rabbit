@@ -14,6 +14,8 @@
 
 #include "hrb/BlobDatabase.hh"
 #include "hrb/UploadFile.hh"
+#include "net/MMapResponseBody.hh"
+#include "util/Magic.hh"
 
 using namespace hrb;
 
@@ -52,4 +54,8 @@ TEST_CASE("Open temp file", "[normal]")
 	REQUIRE(!sec);
 	REQUIRE(exists(dest));
 	REQUIRE(file_size(dest) == sizeof(test));
+
+	Magic magic;
+	auto res = subject.response(tmpid, magic, 11, "");
+	REQUIRE(res[http::field::etag] != boost::string_view{});
 }
