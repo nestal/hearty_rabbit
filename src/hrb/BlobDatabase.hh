@@ -49,7 +49,8 @@ public:
 
 private:
 	static void set_cache_control(BlobResponse& res, const ObjectID& id);
-	rapidjson::Document deduce_meta(const ObjectID& id, const UploadFile& tmp) const;
+	rapidjson::Document deduce_meta(const UploadFile& tmp) const;
+	rapidjson::Document save_meta(const fs::path& dest_path, const UploadFile& tmp) const;
 
 private:
 	fs::path    m_base;

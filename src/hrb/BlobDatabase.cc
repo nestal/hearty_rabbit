@@ -61,11 +61,7 @@ ObjectID BlobDatabase::save(const UploadFile& tmp, std::error_code& ec)
 
 	ec.assign(bec.value(), bec.category());
 
-	std::ofstream meta{(dest_path.parent_path() / "meta").string()};
-	rapidjson::OStreamWrapper osw{meta};
-	rapidjson::Writer<rapidjson::OStreamWrapper> writer{osw};
-
-	deduce_meta(id, tmp).Accept(writer);
+	save_meta(dest_path, tmp);
 
 	if (!ec)
 	{
@@ -143,7 +139,7 @@ void BlobDatabase::set_cache_control(BlobResponse& res, const ObjectID& id)
 	res.set(http::field::etag, to_quoted_hex(id));
 }
 
-rapidjson::Document BlobDatabase::deduce_meta(const ObjectID& id, const UploadFile& tmp) const
+rapidjson::Document BlobDatabase::deduce_meta(const UploadFile& tmp) const
 {
 	// Deduce mime type and orientation (if it is a JPEG)
 	std::error_code ec;
@@ -162,6 +158,20 @@ rapidjson::Document BlobDatabase::deduce_meta(const ObjectID& id, const UploadFi
 				meta.AddMember("orientation", *orientation, meta.GetAllocator());
 
 	return meta;
+}
+
+rapidjson::Document BlobDatabase::save_meta(const fs::path& dest_path, const UploadFile& tmp) const
+{
+	auto json = deduce_meta(tmp);
+	if (json.IsObject())
+	{
+		std::ofstream meta{(dest_path.parent_path() / "meta").string()};
+		rapidjson::OStreamWrapper osw{meta};
+		rapidjson::Writer<rapidjson::OStreamWrapper> writer{osw};
+
+		json.Accept(writer);
+	}
+	return json;
 }
 
 } // end of namespace hrb
