@@ -91,7 +91,7 @@ WebResources::Response WebResources::Resource::get(int version, bool dynamic) co
 	};
 	result.set(http::field::content_type, m_mime);
 	result.set(http::field::cache_control,
-		dynamic ? "no-cache, no-store, must-revalidate" : "max-age=30, must-revalidate"
+		dynamic ? "no-cache, no-store, must-revalidate" : "public, max-age=0, must-revalidate"
 	);
 	result.set(http::field::etag, m_etag);
 	return result;
