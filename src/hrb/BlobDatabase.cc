@@ -88,7 +88,7 @@ BlobDatabase::BlobResponse BlobDatabase::response(
 	std::string_view rendition
 ) const
 {
-	if (etag == to_hex(id))
+	if (etag == to_quoted_hex(id))
 	{
 		http::response<MMapResponseBody> res{http::status::not_modified, version};
 		set_cache_control(res, id);
