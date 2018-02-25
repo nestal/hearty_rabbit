@@ -31,6 +31,10 @@ div.login {
 	cursor: pointer;
 }
 
+#hrb-entry-prototype {
+	display: none;
+}
+
 /* Add a black background color to the top navigation */
 .topnav {
 	background-color: #333;
