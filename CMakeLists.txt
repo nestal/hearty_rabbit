@@ -16,6 +16,7 @@ message(STATUS "found libb2 at ${LIBB2_LIBRARY} ${LIBB2_INCLUDE}")
 
 pkg_check_modules(RapidJSON REQUIRED RapidJSON)
 pkg_check_modules(HIREDIS REQUIRED hiredis)
+pkg_check_modules(LIBEXIF libexif)
 pkg_check_modules(LIBUNWIND libunwind)
 
 set(CMAKE_CXX_STANDARD 17)
@@ -30,6 +31,7 @@ include_directories(
 	${SYSTEMD_INCLUDE_DIRS}
 	${HIREDIS_INCLUDE_DIRS}
 	${LIBUNWIND_INCLUDE_DIRS}
+	${LIBEXIF_INCLUDE_DIRS}
 	${LIBB2_INCLUDE}
 	${CMAKE_BINARY_DIR}
 	${PROJECT_SOURCE_DIR}/src
@@ -70,6 +72,7 @@ target_link_libraries(
 	OpenSSL::SSL
 	OpenSSL::Crypto
 	${LIBUNWIND_LIBRARIES}
+	${LIBEXIF_LIBRARIES}
 	${LIBB2_LIBRARY}
 	${SYSTEMD_LIBRARIES}
 	${CMAKE_THREAD_LIBS_INIT}

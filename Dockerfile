@@ -46,6 +46,7 @@ COPY --from=builder \
 	/lib64/libpcre.so.1  \
 	/lib64/libunwind.so.8 \
 	/lib64/libtinfo.so.5  \
+	/lib64/libexif.so.12  \
 		/lib64/
 
 # Use environment to specify config file location.
