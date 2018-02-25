@@ -44,12 +44,15 @@ Exif::Exif(ExifData *data) :
 
 Exif::~Exif()
 {
-	::exif_data_unref(m_exif);
+	// default constructed will be null
+	if (m_exif)
+		::exif_data_unref(m_exif);
 }
 
 int Exif::ISO() const
 {
-	auto entry = ::exif_content_get_entry(m_exif->ifd[EXIF_IFD_EXIF], EXIF_TAG_ISO_SPEED_RATINGS);
+	assert(m_exif);
+	auto entry = exif_data_get_entry(m_exif, EXIF_TAG_ISO_SPEED_RATINGS);
 	if (!entry)
 		throw std::runtime_error("error: cannot load ISO speed ratings from image");
 
@@ -61,9 +64,10 @@ int Exif::ISO() const
 
 std::chrono::system_clock::time_point Exif::datetime() const
 {
+	assert(m_exif);
 	auto str = datetime_str();
 
-	struct tm tm;
+	struct tm tm{};
 	strptime(str.c_str(), "%Y:%m:%d %H:%M:%S", &tm);
 
 	// mktime() assume local time-zone. assume the camera also set to local timezone
@@ -72,7 +76,8 @@ std::chrono::system_clock::time_point Exif::datetime() const
 
 std::string Exif::datetime_str() const
 {
-	auto entry = ::exif_content_get_entry(m_exif->ifd[EXIF_IFD_0], EXIF_TAG_DATE_TIME);
+	assert(m_exif);
+	auto entry = exif_data_get_entry(m_exif, EXIF_TAG_DATE_TIME);
 	if (!entry)
 		throw std::runtime_error("error: cannot load date/time from image");
 
@@ -83,12 +88,26 @@ std::string Exif::datetime_str() const
 
 std::optional<int> Exif::orientation() const
 {
+	assert(m_exif);
 	auto entry = exif_data_get_entry(m_exif, EXIF_TAG_ORIENTATION);
 	if (!entry)
 		return std::nullopt;
 
 	auto order = exif_data_get_byte_order(m_exif);
 	return exif_get_short(entry->data, order);
+}
+
+Exif::Exif(Exif&& other)
+{
+	std::swap(m_exif, other.m_exif);
+	assert(!other.m_exif);
+}
+
+Exif& Exif::operator=(Exif&& other)
+{
+	auto copy{std::move(other)};
+	std::swap(m_exif, copy.m_exif);
+	return *this;
 }
 
 } // end of namespace hrb

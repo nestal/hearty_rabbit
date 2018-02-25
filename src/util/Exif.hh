@@ -26,11 +26,11 @@ class Exif
 public:
 	Exif() = default;
 	Exif(const Exif&) = delete;
-	Exif(Exif&&) = default;
+	Exif(Exif&& other);
 	~Exif();
 
 	Exif& operator=(const Exif&) = delete;
-	Exif& operator=(Exif&&) = default;
+	Exif& operator=(Exif&& other);
 
 	static std::optional<Exif> load(const fs::path& path);
 	static std::optional<Exif> load(const void *raw, std::size_t size);

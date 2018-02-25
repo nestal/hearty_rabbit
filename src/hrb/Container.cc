@@ -27,11 +27,14 @@ rapidjson::Document Container::serialize() const
 	json.SetObject();
 	json.AddMember("name", Value().SetString(m_name.c_str(), m_name.size(), json.GetAllocator()), json.GetAllocator());
 
-	Value elements(kArrayType);
+	Value elements{kArrayType};
 	for (auto&& blob : m_blobs)
 	{
+		Value e{kObjectType};
 		auto bs = to_hex(blob);
-		elements.PushBack(Value{bs, json.GetAllocator()}, json.GetAllocator());
+		e.AddMember("blob", Value{bs, json.GetAllocator()}, json.GetAllocator());
+
+		elements.PushBack(std::move(e), json.GetAllocator());
 	}
 	json.AddMember("elements", std::move(elements), json.GetAllocator());
 
