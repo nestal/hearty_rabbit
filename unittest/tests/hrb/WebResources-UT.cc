@@ -21,15 +21,32 @@
 
 using namespace hrb;
 
-TEST_CASE("static resource", "[normal]")
+TEST_CASE("web resource", "[normal]")
 {
 	auto web_root = boost::filesystem::path{__FILE__}.parent_path()/"../../../lib";
 	WebResources lib{web_root};
 
-	auto res = lib.find_dynamic("index.html", 11);
-	REQUIRE(res.version() == 11);
-	REQUIRE(res.result() == http::status::ok);
-	REQUIRE(res[http::field::content_type] == "text/html");
-	REQUIRE(res[http::field::cache_control] == "no-cache, no-store, must-revalidate");
-	REQUIRE(check_resource_content(web_root / "dynamic/index.html", std::move(res)));
+	SECTION("dynamic resource")
+	{
+		auto res = lib.find_dynamic("index.html", 11);
+		REQUIRE(res.version() == 11);
+		REQUIRE(res.result() == http::status::ok);
+		REQUIRE(res[http::field::content_type] == "text/html");
+//		REQUIRE(res[http::field::cache_control] == "no-cache, no-store, must-revalidate");
+		REQUIRE(check_resource_content(web_root / "dynamic/index.html", std::move(res)));
+	}
+	SECTION("static resource")
+	{
+		auto res = lib.find_static("logo.svg", "", 11);
+		REQUIRE(res.version() == 11);
+		REQUIRE(res.result() == http::status::ok);
+		REQUIRE(res[http::field::content_type] == "image/svg+xml");
+//		REQUIRE(res[http::field::cache_control] == "no-cache, must-revalidate");
+		REQUIRE(check_resource_content(web_root / "static/logo.svg", std::move(res)));
+
+		auto etag = res[http::field::etag];
+
+		auto reres = lib.find_static("logo.svg", etag, 11);
+		REQUIRE(reres.result() == http::status::not_modified);
+	}
 }

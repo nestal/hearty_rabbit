@@ -244,7 +244,7 @@ http::response<SplitBuffers> Server::static_file_request(const EmptyRequest& req
 	auto filepath = req.target();
 	filepath.remove_prefix(1);
 
-	return m_lib.find_static(std::string{filepath}, req.version());
+	return m_lib.find_static(std::string{filepath}, req[http::field::if_none_match], req.version());
 }
 
 void Server::run()
