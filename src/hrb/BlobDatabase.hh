@@ -14,6 +14,7 @@
 
 #include "ObjectID.hh"
 #include "util/FS.hh"
+#include "util/Magic.hh"
 
 #include <boost/beast/http/message.hpp>
 
@@ -40,7 +41,6 @@ public:
 
 	BlobResponse response(
 		ObjectID id,
-		const Magic& magic,
 		unsigned version,
 		std::string_view etag,
 		std::string_view rendition = {}
@@ -48,9 +48,11 @@ public:
 
 private:
 	static void set_cache_control(BlobResponse& res, const ObjectID& id);
+	void save_meta(const ObjectID& id, const UploadFile& tmp);
 
 private:
 	fs::path    m_base;
+	Magic       m_magic;
 };
 
 } // end of namespace hrb

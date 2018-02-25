@@ -83,7 +83,6 @@ fs::path BlobDatabase::dest(ObjectID id, std::string_view) const
 
 BlobDatabase::BlobResponse BlobDatabase::response(
 	ObjectID id,
-	const Magic& magic,
 	unsigned version,
 	std::string_view etag,
 	std::string_view rendition
@@ -103,7 +102,7 @@ BlobDatabase::BlobResponse BlobDatabase::response(
 	if (ec)
 		return BlobResponse{http::status::not_found, version};
 
-	auto mime = magic.mime(mmap.blob());
+	auto mime = m_magic.mime(mmap.blob());
 	Log(LOG_NOTICE, "blob %1% is %2%", path.filename(), mime);
 	if (mime == "image/jpeg")
 	{
@@ -132,6 +131,12 @@ void BlobDatabase::set_cache_control(BlobResponse& res, const ObjectID& id)
 {
 	res.set(http::field::cache_control, "private, max-age=31536000, immutable");
 	res.set(http::field::etag, to_quoted_hex(id));
+}
+
+void BlobDatabase::save_meta(const ObjectID& id, const UploadFile& tmp)
+{
+	// Deduce mime type and orientation (if it is a JPEG)
+
 }
 
 } // end of namespace hrb

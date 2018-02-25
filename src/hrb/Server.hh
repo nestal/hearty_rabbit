@@ -21,7 +21,6 @@
 #include "net/Request.hh"
 #include "net/Redis.hh"
 #include "net/MMapResponseBody.hh"
-#include "util/Magic.hh"
 
 #include <boost/filesystem/path.hpp>
 #include <boost/beast/http/fields.hpp>
@@ -169,7 +168,6 @@ private:
 	redis::Pool     m_db;
 	WebResources    m_lib;
 	BlobDatabase    m_blob_db;
-	Magic           m_magic;
 };
 
 } // end of namespace

@@ -123,7 +123,7 @@ void Server::get_blob(const EmptyRequest& req, BlobResponseSender&& send, const 
 			if (!is_member)
 				return send(http::response<MMapResponseBody>{http::status::forbidden, version});
 
-			return send(m_blob_db.response(object_id, m_magic, version, etag));
+			return send(m_blob_db.response(object_id, version, etag));
 		}
 	);
 }

@@ -55,7 +55,6 @@ TEST_CASE("Open temp file", "[normal]")
 	REQUIRE(exists(dest));
 	REQUIRE(file_size(dest) == sizeof(test));
 
-	Magic magic;
-	auto res = subject.response(tmpid, magic, 11, "");
+	auto res = subject.response(tmpid, 11, "");
 	REQUIRE(res[http::field::etag] != boost::string_view{});
 }
