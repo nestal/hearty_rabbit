@@ -80,9 +80,8 @@ TEST_CASE("Upload JPEG file to BlobDatabase", "[normal]")
 	auto meta = MMap::open(subject.dest(id).parent_path()/"meta", ec);
 	REQUIRE(!ec);
 
-	rapidjson::MemoryStream ms{static_cast<const char*>(meta.data()), meta.size()};
 	rapidjson::Document json;
-	json.ParseStream(ms);
+	json.Parse(static_cast<const char*>(meta.data()), meta.size());
 
 	auto&& mime_node = json["mime"];
 	REQUIRE(

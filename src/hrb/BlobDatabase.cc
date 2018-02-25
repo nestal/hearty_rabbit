@@ -21,6 +21,7 @@
 
 #include <rapidjson/ostreamwrapper.h>
 #include <rapidjson/writer.h>
+#include <rapidjson/pointer.h>
 
 #include <sstream>
 #include <fstream>
@@ -28,6 +29,7 @@
 namespace hrb {
 namespace {
 const std::string_view default_rendition = "master";
+const std::string_view metafile = "meta";
 }
 
 BlobDatabase::BlobDatabase(const fs::path& base) : m_base{base}
@@ -79,7 +81,7 @@ ObjectID BlobDatabase::save(const UploadFile& tmp, std::error_code& ec)
 	return id;
 }
 
-fs::path BlobDatabase::dest(ObjectID id, std::string_view) const
+fs::path BlobDatabase::dest(const ObjectID& id, std::string_view) const
 {
 	auto hex = to_hex(id);
 	assert(hex.size() > 2);
@@ -165,13 +167,29 @@ rapidjson::Document BlobDatabase::save_meta(const fs::path& dest_path, const Upl
 	auto json = deduce_meta(tmp);
 	if (json.IsObject())
 	{
-		std::ofstream meta{(dest_path.parent_path() / "meta").string()};
+		std::ofstream meta{(dest_path.parent_path() / std::string{metafile}).string()};
 		rapidjson::OStreamWrapper osw{meta};
 		rapidjson::Writer<rapidjson::OStreamWrapper> writer{osw};
 
 		json.Accept(writer);
 	}
 	return json;
+}
+
+BlobDatabase::Meta BlobDatabase::load_meta(const ObjectID& id) const
+{
+	std::error_code ec;
+	auto meta = MMap::open((dest(id).parent_path() / std::string{metafile}).string(), ec);
+	if (ec)
+		return {};
+
+	rapidjson::Document json;
+	json.Parse(static_cast<const char*>(meta.data()), meta.size());
+
+	Meta result;
+	result.mime = GetValueByPointerWithDefault(json, "/mime", result.mime).GetString();
+	result.orientation = GetValueByPointerWithDefault(json, "/orientation", result.orientation).GetInt();
+	return result;
 }
 
 } // end of namespace hrb

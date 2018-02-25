@@ -32,13 +32,20 @@ class BlobDatabase
 public:
 	using BlobResponse = boost::beast::http::response<MMapResponseBody>;
 
+	struct Meta
+	{
+		std::string mime{"application/octet-stream"};
+		int orientation{1};
+	};
+
 public:
 	explicit BlobDatabase(const fs::path& base);
 
 	void prepare_upload(UploadFile& result, std::error_code& ec) const;
 	ObjectID save(const UploadFile& tmp, std::error_code& ec);
 
-	fs::path dest(ObjectID id, std::string_view rendition = {}) const;
+	fs::path dest(const ObjectID& id, std::string_view rendition = {}) const;
+	Meta load_meta(const ObjectID& id) const;
 
 	BlobResponse response(
 		ObjectID id,
