@@ -12,11 +12,12 @@
 
 #include <catch.hpp>
 #include <iostream>
-#include "crypto/Random.hh"
 
 #include "hrb/Container.hh"
 #include "hrb/BlobDatabase.hh"
 #include "hrb/UploadFile.hh"
+
+#include <rapidjson/document.h>
 
 using namespace hrb;
 
@@ -66,6 +67,10 @@ TEST_CASE("Container tests", "[normal]")
 //			REQUIRE(json.IsObject());
 			INFO("container json: " << json);
 			REQUIRE(json.size() > 0);
+
+			rapidjson::Document doc;
+			doc.Parse(json.c_str(), json.size());
+			REQUIRE(doc["name"].GetString() == std::string{"test"});
 
 			tested++;
 		});
