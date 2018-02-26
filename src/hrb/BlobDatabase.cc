@@ -12,12 +12,12 @@
 
 #include "BlobDatabase.hh"
 #include "UploadFile.hh"
+#include "BlobMeta.hh"
 
 #include "net/MMapResponseBody.hh"
 
 #include "util/Log.hh"
 #include "util/Magic.hh"
-#include "util/Exif.hh"
 
 #include <rapidjson/ostreamwrapper.h>
 #include <rapidjson/writer.h>
@@ -64,7 +64,7 @@ ObjectID BlobDatabase::save(const UploadFile& tmp, std::string_view filename, st
 	ec.assign(bec.value(), bec.category());
 
 	auto meta = deduce_meta(tmp);
-	meta.filename = filename;
+	meta.filename(filename);
 	save_meta(dest_path, meta);
 
 	if (!ec)
@@ -115,11 +115,11 @@ BlobDatabase::BlobResponse BlobDatabase::response(
 	auto meta = load_meta(id);
 	if (!meta)
 	{
-		meta = deduce_meta(mmap.blob());
+		meta = BlobMeta::deduce_meta(mmap.blob(), m_magic);
 		if (!meta)
 		{
 			Log(LOG_WARNING, "cannot load metadata from file %1%", path);
-			meta.emplace(Meta{});
+			meta.emplace(BlobMeta{});
 		}
 
 		save_meta(path.parent_path()/std::string{metafile}, *meta);
@@ -133,7 +133,7 @@ BlobDatabase::BlobResponse BlobDatabase::response(
 		std::make_tuple(std::move(mmap)),
 		std::make_tuple(http::status::ok, version)
 	};
-	res.set(http::field::content_type, meta->mime);
+	res.set(http::field::content_type, meta->mime());
 	set_cache_control(res, id);
 	return res;
 
@@ -145,7 +145,7 @@ void BlobDatabase::set_cache_control(BlobResponse& res, const ObjectID& id)
 	res.set(http::field::etag, to_quoted_hex(id));
 }
 
-BlobDatabase::Meta BlobDatabase::deduce_meta(const UploadFile& tmp) const
+BlobMeta BlobDatabase::deduce_meta(const UploadFile& tmp) const
 {
 	// Deduce mime type and orientation (if it is a JPEG)
 	std::error_code ec;
@@ -156,23 +156,10 @@ BlobDatabase::Meta BlobDatabase::deduce_meta(const UploadFile& tmp) const
 		return {};
 	}
 
-	return deduce_meta(mmap.blob());
+	return BlobMeta::deduce_meta(mmap.blob(), m_magic);
 }
 
-BlobDatabase::Meta BlobDatabase::deduce_meta(boost::asio::const_buffer blob) const
-{
-	Meta meta;
-	meta.mime = m_magic.mime(blob);
-
-	if (meta.mime == "image/jpeg")
-		if (auto exif = Exif::load_from_data(blob); exif)
-			if (auto orientation = exif->orientation(); orientation)
-				meta.orientation = *orientation;
-
-	return meta;
-}
-
-void BlobDatabase::save_meta(const fs::path& dest_path, const Meta& meta) const
+void BlobDatabase::save_meta(const fs::path& dest_path, const BlobMeta& meta) const
 {
 	std::ofstream file{(dest_path.parent_path() / std::string{metafile}).string()};
 	rapidjson::OStreamWrapper osw{file};
@@ -181,12 +168,12 @@ void BlobDatabase::save_meta(const fs::path& dest_path, const Meta& meta) const
 	meta.serialize().Accept(writer);
 }
 
-std::optional<BlobDatabase::Meta> BlobDatabase::load_meta(const ObjectID& id) const
+std::optional<BlobMeta> BlobDatabase::load_meta(const ObjectID& id) const
 {
 	return load_meta(dest(id).parent_path() / std::string{metafile});
 }
 
-std::optional<BlobDatabase::Meta> BlobDatabase::load_meta(const fs::path& dest_path) const
+std::optional<BlobMeta> BlobDatabase::load_meta(const fs::path& dest_path) const
 {
 	std::error_code ec;
 	auto meta = MMap::open(dest_path, ec);
@@ -196,9 +183,7 @@ std::optional<BlobDatabase::Meta> BlobDatabase::load_meta(const fs::path& dest_p
 	rapidjson::Document json;
 	json.Parse(static_cast<const char*>(meta.data()), meta.size());
 
-	Meta result;
-	result.load(json);
-	return result;
+	return BlobMeta::load(json);
 }
 
 std::optional<std::string> BlobDatabase::load_meta_json(const ObjectID& id) const
@@ -218,7 +203,7 @@ std::optional<std::string> BlobDatabase::load_meta_json(const ObjectID& id) cons
 			Log(LOG_WARNING, "cannot open blob %1% (%2% %3%)", dest_path, ec, ec.message());
 			return std::nullopt;
 		}
-		save_meta(dest_path, deduce_meta(blob.blob()));
+		save_meta(dest_path, BlobMeta::deduce_meta(blob.blob(), m_magic));
 
 		mmap = MMap::open(dest_path.parent_path() / std::string{metafile}, ec);
 	}
@@ -232,25 +217,4 @@ std::optional<std::string> BlobDatabase::load_meta_json(const ObjectID& id) cons
 	return std::string{mmap.string()};
 }
 
-rapidjson::Document BlobDatabase::Meta::serialize() const
-{
-	rapidjson::Document json;
-	json.SetObject();
-	json.AddMember("mime", rapidjson::StringRef(mime.data(), mime.size()), json.GetAllocator());
-
-	if (mime == "image/jpeg")
-		json.AddMember("orientation", orientation, json.GetAllocator());
-
-	if (!filename.empty())
-		json.AddMember("filename", rapidjson::StringRef(filename.data(), filename.size()), json.GetAllocator());
-
-	return json;
-}
-
-void BlobDatabase::Meta::load(rapidjson::Document& json)
-{
-	mime = GetValueByPointerWithDefault(json, "/mime", mime).GetString();
-	orientation = GetValueByPointerWithDefault(json, "/orientation", orientation).GetInt();
-	filename = GetValueByPointerWithDefault(json, "/mime", filename).GetString();
-}
 } // end of namespace hrb

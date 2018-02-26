@@ -28,21 +28,12 @@ class BlobObject;
 class UploadFile;
 class MMapResponseBody;
 class Magic;
+class BlobMeta;
 
 class BlobDatabase
 {
 public:
 	using BlobResponse = boost::beast::http::response<MMapResponseBody>;
-
-	struct Meta
-	{
-		std::string mime{"application/octet-stream"};
-		int orientation{1};
-		std::string filename;
-
-		rapidjson::Document serialize() const;
-		void load(rapidjson::Document& json);
-	};
 
 public:
 	explicit BlobDatabase(const fs::path& base);
@@ -51,7 +42,7 @@ public:
 	ObjectID save(const UploadFile& tmp, std::string_view filename, std::error_code& ec);
 
 	fs::path dest(const ObjectID& id, std::string_view rendition = {}) const;
-	std::optional<Meta> load_meta(const ObjectID& id) const;
+	std::optional<BlobMeta> load_meta(const ObjectID& id) const;
 	std::optional<std::string> load_meta_json(const ObjectID& id) const;
 
 	BlobResponse response(
@@ -63,10 +54,9 @@ public:
 
 private:
 	static void set_cache_control(BlobResponse& res, const ObjectID& id);
-	Meta deduce_meta(const UploadFile& tmp) const;
-	Meta deduce_meta(boost::asio::const_buffer blob) const;
-	void save_meta(const fs::path& dest_path, const Meta& meta) const;
-	std::optional<Meta> load_meta(const fs::path& dest_path) const;
+	BlobMeta deduce_meta(const UploadFile& tmp) const;
+	void save_meta(const fs::path& dest_path, const BlobMeta& meta) const;
+	std::optional<BlobMeta> load_meta(const fs::path& dest_path) const;
 
 private:
 	fs::path    m_base;

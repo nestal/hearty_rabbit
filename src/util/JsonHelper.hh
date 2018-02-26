@@ -15,6 +15,7 @@
 #include "Exception.hh"
 
 #include <rapidjson/document.h>
+#include <rapidjson/stringbuffer.h>
 
 #include <string_view>
 #include <string>
@@ -29,5 +30,11 @@ using MissingField = boost::error_info<struct tag_missing_field, std::string>;
 std::string_view string_view(const rapidjson::Value& value);
 std::string string(const rapidjson::Value& value);
 const rapidjson::Value& required(const rapidjson::Value& object, std::string_view field);
+
+template <typename Ch>
+rapidjson::GenericStringRef<Ch> string_ref(std::basic_string_view<Ch> sv)
+{
+	return {sv.data(), static_cast<unsigned>(sv.size())};
+}
 
 }} // end of namespace
