@@ -101,6 +101,9 @@ public:
 		if (allow_anonymous(req.target()))
 			return send(static_file_request(req));
 
+		if (req.target() == "/login_incorrect.html")
+			return send(on_login_incorrect(req));
+
 		// Everything else require a valid session.
 		return auth.valid() ?
 			on_valid_session(std::move(req), std::forward<decltype(send)>(send), auth) :
@@ -122,6 +125,7 @@ public:
 
 private:
 	http::response<SplitBuffers> static_file_request(const EmptyRequest& req);
+	http::response<SplitBuffers> on_login_incorrect(const EmptyRequest& req);
 
 	template <class Send>
 	void on_valid_session(EmptyRequest&& req, Send&& send, const Authentication& auth)

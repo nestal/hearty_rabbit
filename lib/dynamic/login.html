@@ -1,45 +1,50 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Hearty Rabbit photo gallery">
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<meta name="description" content="Hearty Rabbit photo gallery">
 
-    <title>Hearty Rabbit</title>
+	<title>Hearty Rabbit</title>
 
-    <link rel="stylesheet" type="text/css" href="hearty_rabbit.css">
-    <link rel="icon" href="logo.svg" type="image/svg+xml">
+	<link rel="stylesheet" type="text/css" href="hearty_rabbit.css">
+	<link rel="icon" href="logo.svg" type="image/svg+xml">
 </head>
 <body>
 
 <div>
-    <div class="login">
-    <h1>Welcome to HeartyRabbit!</h1>
+	<div class="login">
+		<h1>Welcome to HeartyRabbit!</h1>
 
-    <div class="logo">
-        <img class="pure-img" src="logo.svg">
-    </div>
+		<div class="logo">
+			<img src="logo.svg">
+		</div>
 
-    <form class="pure-form-aligned" action="/login" method="post">
-        <fieldset>
-            <legend>Login:</legend>
-            <div class="pure-control-group">
-                <label for="username">Username</label>
-                <input id="username" name="username" type="text" placeholder="Username">
-                <span class="pure-form-message-inline">This is a required field.</span>
-            </div>
-            <div class="pure-control-group">
-                <label for="password">Password</label>
-                <input id="password" name="password" type="password" placeholder="Password">
-            </div>
+		<div id="login-message">Please login:</div>
+		<form action="/login" method="post">
+			<fieldset>
+				<div>
+					<label for="username">Username</label>
+					<input id="username" name="username" type="text" placeholder="Username">
+					<span>This is a required field.</span>
+				</div>
+				<div>
+					<label for="password">Password</label>
+					<input id="password" name="password" type="password" placeholder="Password">
+				</div>
 
-            <div class="pure-controls">
-                <button type="submit" class="pure-button pure-button-primary">Login</button>
-            </div>
-        </fieldset>
-    </form>
-    </div>
+				<div>
+					<button type="submit">Login</button>
+				</div>
+			</fieldset>
+		</form>
+	</div>
 </div>
+
+<script>
+	if (message !== null)
+		document.getElementById("login-message").textContent = message;
+</script>
 
 </body>
 </html>

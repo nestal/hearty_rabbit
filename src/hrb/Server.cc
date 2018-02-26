@@ -42,6 +42,16 @@ Server::Server(const Configuration& cfg) :
 	OpenSSL_add_all_digests();
 }
 
+http::response<SplitBuffers> Server::on_login_incorrect(const EmptyRequest& req)
+{
+	auto res = m_lib.find_dynamic("login.html", req.version());
+	res.body().extra(
+		R"_(<meta charset="UTF-8">)_",
+		R"_(<script>const message = "Login incorrect... Try again?";</script>)_"
+	);
+	return res;
+}
+
 void Server::on_login(const StringRequest& req, EmptyResponseSender&& send)
 {
 	auto&& body = req.body();
