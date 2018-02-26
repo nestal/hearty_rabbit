@@ -323,7 +323,7 @@ boost::asio::io_context& Server::get_io_context()
 	return m_ioc;
 }
 
-bool Server::allow_anonymous(boost::string_view target)
+bool Server::is_static_resource(boost::string_view target)
 {
 	assert(!target.empty());
 	assert(target.front() == '/');
@@ -378,7 +378,7 @@ void Server::on_request_header(
 		return complete(Authentication{});
 	}
 
-	if (allow_anonymous(header.target()))
+	if (is_static_resource(header.target()))
 	{
 		dest.emplace<EmptyRequestParser>(std::move(src));
 		return complete(Authentication{});

@@ -98,7 +98,7 @@ public:
 	template <class Send>
 	void handle_https(EmptyRequest&& req, Send&& send, const Authentication& auth)
 	{
-		if (allow_anonymous(req.target()))
+		if (is_static_resource(req.target()))
 			return send(static_file_request(req));
 
 		if (req.target() == "/login_incorrect.html")
@@ -162,7 +162,7 @@ private:
 	void on_upload(UploadRequest&& req, EmptyResponseSender&& send, const Authentication& auth);
 	void get_blob(const EmptyRequest& req, BlobResponseSender&& send, const Authentication& auth);
 	http::response<http::string_body> get_dir(const EmptyRequest& req);
-	static bool allow_anonymous(boost::string_view target);
+	static bool is_static_resource(boost::string_view target);
 	void serve_home(FileResponseSender&& send, unsigned version, const Authentication& auth);
 
 private:
