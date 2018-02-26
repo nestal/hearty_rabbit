@@ -12,10 +12,12 @@
 
 #include <catch.hpp>
 #include <iostream>
-#include "crypto/Random.hh"
 
 #include "hrb/Container.hh"
 #include "hrb/BlobDatabase.hh"
+#include "hrb/UploadFile.hh"
+
+#include <rapidjson/document.h>
 
 using namespace hrb;
 
@@ -26,11 +28,22 @@ TEST_CASE("Container tests", "[normal]")
 	boost::asio::io_context ioc;
 	auto redis = redis::connect(ioc);
 
-	ObjectID testid;
-	insecure_random(&testid[0], testid.size());
+	std::error_code sec;
+	BlobDatabase blobdb{"/tmp/BlobDatabase-UT"};
+	UploadFile tmp;
+	blobdb.prepare_upload(tmp, sec);
+
+	boost::system::error_code ec;
+
+	char test[] = "hello world!!";
+	auto count = tmp.write(test, sizeof(test), ec);
+	REQUIRE(count == sizeof(test));
+	REQUIRE(ec == boost::system::error_code{});
+
+	auto testid = blobdb.save(tmp, sec);
 
 	int tested = 0;
-	Container::add(*redis, "test", testid, [&tested, redis, testid](std::error_code ec)
+	Container::add(*redis, "test", testid, [&tested, redis, testid, &blobdb](std::error_code ec)
 	{
 		REQUIRE(!ec);
 
@@ -41,7 +54,7 @@ TEST_CASE("Container tests", "[normal]")
 			tested++;
 		});
 
-		Container::load(*redis, "test", [&tested, testid](std::error_code ec, Container&& container)
+		Container::load(*redis, "test", [&tested, testid, &blobdb](std::error_code ec, Container&& container)
 		{
 			REQUIRE(!ec);
 			REQUIRE(container.name() == "test");
@@ -50,10 +63,14 @@ TEST_CASE("Container tests", "[normal]")
 
 			REQUIRE(std::find(container.begin(), container.end(), testid) != container.end());
 
-			BlobDatabase blobdb{"/tmp"};
-
 			auto json = container.serialize(blobdb);
-			REQUIRE(json.IsObject());
+//			REQUIRE(json.IsObject());
+			INFO("container json: " << json);
+			REQUIRE(json.size() > 0);
+
+			rapidjson::Document doc;
+			doc.Parse(json.c_str(), json.size());
+			REQUIRE(doc["name"].GetString() == std::string{"test"});
 
 			tested++;
 		});

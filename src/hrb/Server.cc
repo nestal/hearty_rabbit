@@ -223,9 +223,10 @@ void Server::serve_home(FileResponseSender&& send, unsigned version, const Authe
 		std::ostringstream script_tag;
 		script_tag << "<script>var dir = ";
 
-		rapidjson::OStreamWrapper osw{script_tag};
-		rapidjson::Writer<rapidjson::OStreamWrapper> writer{osw};
-		cond.serialize(m_blob_db).Accept(writer);
+//		rapidjson::OStreamWrapper osw{script_tag};
+//		rapidjson::Writer<rapidjson::OStreamWrapper> writer{osw};
+//		cond.serialize(m_blob_db).Accept(writer);
+		script_tag << cond.serialize(m_blob_db);
 		script_tag << ";</script>";
 
 		auto res = m_lib.find_dynamic("index.html", version);

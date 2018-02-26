@@ -47,7 +47,8 @@ public:
 	ObjectID save(const UploadFile& tmp, std::error_code& ec);
 
 	fs::path dest(const ObjectID& id, std::string_view rendition = {}) const;
-	std::optional<Meta> load_meta(const ObjectID& id) const {return load_meta(dest(id));}
+	std::optional<Meta> load_meta(const ObjectID& id) const;
+	std::optional<std::string> load_meta_json(const ObjectID& id) const;
 
 	BlobResponse response(
 		ObjectID id,

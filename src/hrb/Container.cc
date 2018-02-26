@@ -12,7 +12,8 @@
 
 #include "Container.hh"
 #include "BlobDatabase.hh"
-#include "util/Exif.hh"
+
+#include <sstream>
 
 namespace hrb {
 
@@ -22,31 +23,27 @@ Container::Container(std::string_view name) : m_name{name}
 {
 }
 
-rapidjson::Document Container::serialize(const BlobDatabase& db) const
+std::string Container::serialize(const BlobDatabase& db) const
 {
-	using namespace rapidjson;
-	Document json;
-	json.SetObject();
-	json.AddMember("name", Value().SetString(m_name.c_str(), m_name.size(), json.GetAllocator()), json.GetAllocator());
-
-	Value elements{kObjectType};
+	bool first = true;
+	std::ostringstream json;
+	json << R"({"name":")" << m_name << R"(", "elements":{)";
 	for (auto&& blob : m_blobs)
 	{
-		Value e{kObjectType};
+		auto meta = db.load_meta_json(blob);
+		if (meta)
+		{
+			if (first)
+				first = false;
+			else
+				json << ",\n";
 
-		auto exif = Exif::load(db.dest(blob));
-		if (exif && exif->orientation())
-			e.AddMember("orientation", *exif->orientation(), json.GetAllocator());
-
-		elements.AddMember(
-			Value{to_hex(blob), json.GetAllocator()},
-			std::move(e),
-			json.GetAllocator()
-		);
+			json << '\"' << blob << R"(": )" << *meta;
+		}
 	}
-	json.AddMember("elements", std::move(elements), json.GetAllocator());
+	json << "}}";
 
-	return json;
+	return json.str();
 }
 
 } // end of namespace hrb
