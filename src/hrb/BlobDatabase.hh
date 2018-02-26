@@ -38,6 +38,7 @@ public:
 	{
 		std::string mime{"application/octet-stream"};
 		int orientation{1};
+		std::string filename;
 
 		rapidjson::Document serialize() const;
 		void load(rapidjson::Document& json);
@@ -47,7 +48,7 @@ public:
 	explicit BlobDatabase(const fs::path& base);
 
 	void prepare_upload(UploadFile& result, std::error_code& ec) const;
-	ObjectID save(const UploadFile& tmp, std::error_code& ec);
+	ObjectID save(const UploadFile& tmp, std::string_view filename, std::error_code& ec);
 
 	fs::path dest(const ObjectID& id, std::string_view rendition = {}) const;
 	std::optional<Meta> load_meta(const ObjectID& id) const;

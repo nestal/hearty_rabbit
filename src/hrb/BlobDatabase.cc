@@ -50,7 +50,7 @@ void BlobDatabase::prepare_upload(UploadFile& result, std::error_code& ec) const
 		ec.assign(err.value(), err.category());
 }
 
-ObjectID BlobDatabase::save(const UploadFile& tmp, std::error_code& ec)
+ObjectID BlobDatabase::save(const UploadFile& tmp, std::string_view filename, std::error_code& ec)
 {
 	auto id = tmp.ID();
 	auto dest_path = dest(id);
@@ -63,7 +63,9 @@ ObjectID BlobDatabase::save(const UploadFile& tmp, std::error_code& ec)
 
 	ec.assign(bec.value(), bec.category());
 
-	save_meta(dest_path, deduce_meta(tmp));
+	auto meta = deduce_meta(tmp);
+	meta.filename = filename;
+	save_meta(dest_path, meta);
 
 	if (!ec)
 	{
@@ -239,6 +241,9 @@ rapidjson::Document BlobDatabase::Meta::serialize() const
 	if (mime == "image/jpeg")
 		json.AddMember("orientation", orientation, json.GetAllocator());
 
+	if (!filename.empty())
+		json.AddMember("filename", rapidjson::StringRef(filename.data(), filename.size()), json.GetAllocator());
+
 	return json;
 }
 
@@ -246,5 +251,6 @@ void BlobDatabase::Meta::load(rapidjson::Document& json)
 {
 	mime = GetValueByPointerWithDefault(json, "/mime", mime).GetString();
 	orientation = GetValueByPointerWithDefault(json, "/orientation", orientation).GetInt();
+	filename = GetValueByPointerWithDefault(json, "/mime", filename).GetString();
 }
 } // end of namespace hrb

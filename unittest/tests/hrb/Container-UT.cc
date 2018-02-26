@@ -40,7 +40,7 @@ TEST_CASE("Container tests", "[normal]")
 	REQUIRE(count == sizeof(test));
 	REQUIRE(ec == boost::system::error_code{});
 
-	auto testid = blobdb.save(tmp, sec);
+	auto testid = blobdb.save(tmp, "hello.world", sec);
 
 	int tested = 0;
 	Container::add(*redis, "test", testid, [&tested, redis, testid, &blobdb](std::error_code ec)
