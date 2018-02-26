@@ -97,6 +97,18 @@ std::optional<int> Exif::orientation() const
 	return exif_get_short(entry->data, order);
 }
 
+std::optional<std::string> Exif::document_name() const
+{
+	assert(m_exif);
+	auto entry = exif_data_get_entry(m_exif, EXIF_TAG_DOCUMENT_NAME);
+	if (!entry)
+		return std::nullopt;
+
+	char buf[1024] = {};
+	exif_entry_get_value(entry, buf, sizeof(buf));
+	return std::string{buf};
+}
+
 Exif::Exif(Exif&& other)
 {
 	std::swap(m_exif, other.m_exif);

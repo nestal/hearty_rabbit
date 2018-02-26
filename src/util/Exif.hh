@@ -44,6 +44,8 @@ public:
 
 	std::optional<int> orientation() const;
 
+	std::optional<std::string> document_name() const;
+
 	int ISO() const;
 	std::chrono::system_clock::time_point datetime() const;
 	std::string datetime_str() const;

@@ -15,6 +15,8 @@
 #include "util/Exif.hh"
 #include "util/JsonHelper.hh"
 
+#include "util/Log.hh"
+
 #include <rapidjson/pointer.h>
 
 namespace hrb {
@@ -49,10 +51,19 @@ BlobMeta BlobMeta::deduce_meta(boost::asio::const_buffer blob, const Magic& magi
 	meta.m_mime = magic.mime(blob);
 
 	if (meta.m_mime == "image/jpeg")
-		if (auto exif = Exif::load_from_data(blob); exif)
-			if (auto orientation = exif->orientation(); orientation)
+	{
+		if (auto exif = Exif::load_from_data(blob))
+		{
+			if (auto orientation = exif->orientation())
 				meta.m_orientation = *orientation;
 
+			if (auto doc_name = exif->document_name())
+			{
+				Log(LOG_NOTICE, "detected filename %1%", *doc_name);
+				meta.m_filename = std::move(*doc_name);
+			}
+		}
+	}
 	return meta;
 }
 
