@@ -185,6 +185,11 @@ std::optional<BlobDatabase::Meta> BlobDatabase::save_meta(const fs::path& dest_p
 	return meta;
 }
 
+std::optional<BlobDatabase::Meta> BlobDatabase::load_meta(const ObjectID& id) const
+{
+	return load_meta(dest(id).parent_path() / std::string{metafile});
+}
+
 std::optional<BlobDatabase::Meta> BlobDatabase::load_meta(const fs::path& dest_path) const
 {
 	std::error_code ec;
@@ -199,6 +204,17 @@ std::optional<BlobDatabase::Meta> BlobDatabase::load_meta(const fs::path& dest_p
 	result.mime = GetValueByPointerWithDefault(json, "/mime", result.mime).GetString();
 	result.orientation = GetValueByPointerWithDefault(json, "/orientation", result.orientation).GetInt();
 	return result;
+}
+
+std::optional<std::string> BlobDatabase::load_meta_json(const ObjectID& id) const
+{
+	// Assume the size of the metadata file is small enough to fit in std::string
+	std::error_code ec;
+	auto mmap = MMap::open((dest(id).parent_path() / std::string{metafile}).string(), ec);
+	if (ec)
+		return std::nullopt;
+
+	return std::string{mmap.string()};
 }
 
 } // end of namespace hrb
