@@ -38,6 +38,9 @@ public:
 	{
 		std::string mime{"application/octet-stream"};
 		int orientation{1};
+
+		rapidjson::Document serialize() const;
+		void load(rapidjson::Document& json);
 	};
 
 public:
@@ -59,9 +62,9 @@ public:
 
 private:
 	static void set_cache_control(BlobResponse& res, const ObjectID& id);
-	std::optional<Meta> deduce_meta(const UploadFile& tmp) const;
-	std::optional<Meta> deduce_meta(boost::asio::const_buffer blob) const;
-	std::optional<Meta> save_meta(const fs::path& dest_path, const UploadFile& tmp) const;
+	Meta deduce_meta(const UploadFile& tmp) const;
+	Meta deduce_meta(boost::asio::const_buffer blob) const;
+	void save_meta(const fs::path& dest_path, const Meta& meta) const;
 	std::optional<Meta> load_meta(const fs::path& dest_path) const;
 
 private:

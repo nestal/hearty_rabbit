@@ -64,7 +64,6 @@ TEST_CASE("Container tests", "[normal]")
 			REQUIRE(std::find(container.begin(), container.end(), testid) != container.end());
 
 			auto json = container.serialize(blobdb);
-//			REQUIRE(json.IsObject());
 			INFO("container json: " << json);
 			REQUIRE(json.size() > 0);
 
