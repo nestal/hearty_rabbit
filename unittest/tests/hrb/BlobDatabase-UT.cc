@@ -49,13 +49,42 @@ TEST_CASE("Open temp file", "[normal]")
 	REQUIRE(tmpid != ObjectID{});
 	REQUIRE(tmpid == tmp.ID());
 
-	auto dest = subject.dest(subject.save(std::move(tmp), sec));
+	auto dest = subject.dest(subject.save(std::move(tmp), "testfile", sec));
 	INFO("save() error_code = " << sec << " " << sec.message());
 	REQUIRE(!sec);
 	REQUIRE(exists(dest));
 	REQUIRE(file_size(dest) == sizeof(test));
 
-	Magic magic;
-	auto res = subject.response(tmpid, magic, 11, "");
+	auto res = subject.response(tmpid, 11, "");
 	REQUIRE(res[http::field::etag] != boost::string_view{});
+}
+
+TEST_CASE("Upload JPEG file to BlobDatabase", "[normal]")
+{
+	std::error_code ec;
+	auto black = MMap::open(fs::path{__FILE__}.parent_path() / "black.jpg", ec);
+	REQUIRE(!ec);
+
+	BlobDatabase subject{"/tmp/BlobDatabase-UT"};
+	UploadFile tmp;
+	subject.prepare_upload(tmp, ec);
+	REQUIRE(!ec);
+
+	boost::system::error_code bec;
+	tmp.write(black.data(), black.size(), bec);
+	REQUIRE(!bec);
+
+	auto id = subject.save(tmp, "black.jpg", ec);
+	REQUIRE(!ec);
+
+	auto meta = MMap::open(subject.dest(id).parent_path()/"meta", ec);
+	REQUIRE(!ec);
+
+	rapidjson::Document json;
+	json.Parse(static_cast<const char*>(meta.data()), meta.size());
+
+	auto&& mime_node = json["mime"];
+	REQUIRE(
+		std::string_view{mime_node.GetString(), mime_node.GetStringLength()} == "image/jpeg"
+	);
 }

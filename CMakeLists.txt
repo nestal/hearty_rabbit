@@ -17,6 +17,14 @@ message(STATUS "found libb2 at ${LIBB2_LIBRARY} ${LIBB2_INCLUDE}")
 pkg_check_modules(RapidJSON REQUIRED RapidJSON)
 pkg_check_modules(HIREDIS REQUIRED hiredis)
 pkg_check_modules(LIBUNWIND libunwind)
+pkg_check_modules(TURBOJPEG libturbojpeg)
+pkg_check_modules(EXIV2 exiv2)
+
+# CentOS 7 has no pc file for libturbojpeg
+if (NOT TURBOJPEG_LIBRARIES)
+	find_library(TURBOJPEG_LIBRARIES turbojpeg)
+	message(STATUS "found turbojpeg library in ${TURBOJPEG_LIBRARIES}")
+endif()
 
 set(CMAKE_CXX_STANDARD 17)
 set(VERSION "0.1")
@@ -30,6 +38,8 @@ include_directories(
 	${SYSTEMD_INCLUDE_DIRS}
 	${HIREDIS_INCLUDE_DIRS}
 	${LIBUNWIND_INCLUDE_DIRS}
+	${TURBOJPEG_INCLUDE_DIRS}
+	${EXIV2_INCLUDE_DIRS}
 	${LIBB2_INCLUDE}
 	${CMAKE_BINARY_DIR}
 	${PROJECT_SOURCE_DIR}/src
@@ -70,16 +80,10 @@ target_link_libraries(
 	OpenSSL::SSL
 	OpenSSL::Crypto
 	${LIBUNWIND_LIBRARIES}
+	${TURBOJPEG_LIBRARIES}
+	${EXIV2_LIBRARIES}
 	${LIBB2_LIBRARY}
-	${SYSTEMD_LIBRARIES}
 	${CMAKE_THREAD_LIBS_INIT}
-)
-
-# Main executable
-add_executable(hearty_rabbit src/main.cc)
-target_link_libraries(
-	hearty_rabbit
-	hrblib
 )
 
 # Unit tests
@@ -102,6 +106,14 @@ add_custom_command(
 	WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
 	COMMAND unittest
 )
+
+# Main executable
+add_executable(hearty_rabbit src/main.cc)
+target_link_libraries(
+	hearty_rabbit
+	hrblib
+)
+add_dependencies(hearty_rabbit unittest)
 
 if (DOXYGEN_FOUND)
 	configure_file(doc/Doxyfile.in Doxyfile @ONLY)

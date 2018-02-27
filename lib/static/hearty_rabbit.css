@@ -8,6 +8,7 @@ div.login {
 	transform: translateX(-50%) translateY(-50%);
 }
 
+/* Refer to: https://css-tricks.com/seamless-responsive-photo-grid/ */
 #hrb-entry-root {
 	/* Prevent vertical gaps */
 	line-height: 0;
@@ -24,6 +25,28 @@ div.login {
 	/* Just in case there are inline attributes */
 	width: 100%;
 	height: auto;
+
+	transform-origin: top left;
+	-webkit-transform-origin: top left;
+	-ms-transform-origin: top left;
+}
+
+#hrb-entry-root img.rotate90 {
+	transform: rotate(90deg) translateY(-100%);
+	-webkit-transform: rotate(90deg) translateY(-100%);
+	-ms-transform: rotate(90deg) translateY(-100%);
+}
+
+#hrb-entry-root img.rotate180 {
+	transform: rotate(180deg) translate(-100%, -100%);
+	-webkit-transform: rotate(180deg) translate(-100%, -100%);
+	-ms-transform: rotate(180deg) translateX(-100%, -100%);
+}
+
+#hrb-entry-root img.rotate270 {
+	transform: rotate(270deg) translateX(-100%);
+	-webkit-transform: rotate(270deg) translateX(-100%);
+	-ms-transform: rotate(270deg) translateX(-100%);
 }
 
 #hrb-entry-root img:hover,
@@ -33,6 +56,38 @@ div.login {
 
 #hrb-entry-prototype {
 	display: none;
+}
+
+@media (max-width: 2000px) {
+	#hrb-entry-root {
+		-moz-column-count: 4;
+		-webkit-column-count: 4;
+		column-count: 4;
+	}
+}
+
+@media (max-width: 1600px) {
+	#hrb-entry-root {
+		-moz-column-count: 3;
+		-webkit-column-count: 3;
+		column-count: 3;
+	}
+}
+
+@media (max-width: 1200px) {
+	#hrb-entry-root {
+		-moz-column-count: 2;
+		-webkit-column-count: 2;
+		column-count: 2;
+	}
+}
+
+@media (max-width: 800px) {
+	#hrb-entry-root {
+		-moz-column-count: 1;
+		-webkit-column-count: 1;
+		column-count: 1;
+	}
 }
 
 /* Add a black background color to the top navigation */

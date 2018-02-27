@@ -11,6 +11,9 @@
 //
 
 #include "Container.hh"
+#include "BlobDatabase.hh"
+
+#include <sstream>
 
 namespace hrb {
 
@@ -20,22 +23,27 @@ Container::Container(std::string_view name) : m_name{name}
 {
 }
 
-rapidjson::Document Container::serialize() const
+std::string Container::serialize(const BlobDatabase& db) const
 {
-	using namespace rapidjson;
-	Document json;
-	json.SetObject();
-	json.AddMember("name", Value().SetString(m_name.c_str(), m_name.size(), json.GetAllocator()), json.GetAllocator());
-
-	Value elements(kArrayType);
+	bool first = true;
+	std::ostringstream json;
+	json << R"({"name":")" << m_name << R"(", "elements":{)";
 	for (auto&& blob : m_blobs)
 	{
-		auto bs = to_hex(blob);
-		elements.PushBack(Value{bs, json.GetAllocator()}, json.GetAllocator());
-	}
-	json.AddMember("elements", std::move(elements), json.GetAllocator());
+		auto meta = db.load_meta_json(blob);
+		if (meta)
+		{
+			if (first)
+				first = false;
+			else
+				json << ",\n";
 
-	return json;
+			json << '\"' << blob << R"(": )" << *meta;
+		}
+	}
+	json << "}}";
+
+	return json.str();
 }
 
 } // end of namespace hrb

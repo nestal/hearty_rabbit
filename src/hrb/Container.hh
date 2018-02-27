@@ -23,6 +23,8 @@
 
 namespace hrb {
 
+class BlobDatabase;
+
 /// A set of blob objects represented by a redis set.
 class Container
 {
@@ -30,7 +32,7 @@ private:
 	static const std::string_view redis_prefix;
 
 public:
-	Container(std::string_view name);
+	explicit Container(std::string_view name);
 
 	template <typename Complete>
 	static void load(
@@ -95,7 +97,7 @@ public:
 	std::size_t size() const {return m_blobs.size();}
 	bool empty() const {return m_blobs.empty();}
 
-	rapidjson::Document serialize() const;
+	std::string serialize(const BlobDatabase& db) const;
 
 private:
 	std::string             m_name;

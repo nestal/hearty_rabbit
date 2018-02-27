@@ -11,7 +11,6 @@
 //
 
 #include "Server.hh"
-#include "Container.hh"
 #include "ResourcesList.hh"
 
 #include "crypto/Password.hh"
@@ -20,7 +19,6 @@
 #include "util/Error.hh"
 #include "util/Configuration.hh"
 #include "util/Exception.hh"
-#include "util/Escape.hh"
 #include "util/Log.hh"
 
 #include <boost/exception/errinfo_api_function.hpp>
@@ -29,6 +27,8 @@
 
 #include <rapidjson/ostreamwrapper.h>
 #include <rapidjson/writer.h>
+
+#include <turbojpeg.h>
 
 namespace hrb {
 
@@ -40,6 +40,16 @@ Server::Server(const Configuration& cfg) :
 	m_blob_db{cfg.blob_path()}
 {
 	OpenSSL_add_all_digests();
+}
+
+http::response<SplitBuffers> Server::on_login_incorrect(const EmptyRequest& req)
+{
+	auto res = m_lib.find_dynamic("login.html", req.version());
+	res.body().extra(
+		R"_(<meta charset="UTF-8">)_",
+		R"_(<script>const message = "Login incorrect... Try again?";</script>)_"
+	);
+	return res;
 }
 
 void Server::on_login(const StringRequest& req, EmptyResponseSender&& send)
@@ -96,45 +106,13 @@ http::response<http::empty_body> Server::see_other(boost::beast::string_view whe
 	return res;
 }
 
-void Server::get_blob(const EmptyRequest& req, BlobResponseSender&& send, const Authentication& auth)
-{
-	auto blob_id = req.target().size() > url::login.size() ?
-		req.target().substr(url::login.size()) :
-		boost::string_view{};
-
-	// Return 404 not_found if the blob ID is invalid
-	auto object_id = hex_to_object_id(std::string_view{blob_id.data(), blob_id.size()});
-	if (object_id == ObjectID{})
-		return send(http::response<MMapResponseBody>{http::status::not_found, req.version()});
-
-	// Check if the user has permission to read the blob
-	Container::is_member(*m_db.alloc(), auth.user(), object_id,
-		[
-			send=std::move(send),
-			object_id,
-			version=req.version(),
-			etag=req[http::field::if_none_match].to_string(),
-			this
-		](auto ec, bool is_member) mutable
-		{
-			if (ec)
-				return send(http::response<MMapResponseBody>{http::status::internal_server_error, version});
-
-			if (!is_member)
-				return send(http::response<MMapResponseBody>{http::status::forbidden, version});
-
-			return send(m_blob_db.response(object_id, m_magic, version, etag));
-		}
-	);
-}
-
 void Server::on_upload(UploadRequest&& req, EmptyResponseSender&& send, const Authentication& auth)
 {
 	boost::system::error_code bec;
 	auto [prefix, filename] = extract_prefix(req);
 
 	std::error_code ec;
-	auto id = m_blob_db.save(req.body(), ec);
+	auto id = m_blob_db.save(req.body(), filename, ec);
 	Log(LOG_INFO, "uploaded %1% bytes to %2% (%3% %4%)", req.body().size(bec), id, ec, ec.message());
 
 	if (ec)
@@ -143,7 +121,12 @@ void Server::on_upload(UploadRequest&& req, EmptyResponseSender&& send, const Au
 	// Add the newly created blob to the user's container.
 	// The user's container contains all the blobs that is owned by the user.
 	// It will be used for authorizing the user's request on these blob later.
-	Container::add(*m_db.alloc(), auth.user(), id, [send=std::move(send), id, version=req.version(), this](auto ec) mutable
+	Container::add(*m_db.alloc(), auth.user(), id, [
+		id,
+		this,
+		send=std::move(send),
+		version=req.version()
+	](auto ec) mutable
 	{
 		http::response<http::empty_body> res{
 			ec ? http::status::internal_server_error : http::status::created,
@@ -220,16 +203,11 @@ void Server::serve_home(FileResponseSender&& send, unsigned version, const Authe
 {
 	Container::load(*m_db.alloc(), auth.user(), [send=std::move(send), version, this](auto ec, Container&& cond)
 	{
-		std::ostringstream script_tag;
-		script_tag << "<script>var dir = ";
-
-		rapidjson::OStreamWrapper osw{script_tag};
-		rapidjson::Writer<rapidjson::OStreamWrapper> writer{osw};
-		cond.serialize().Accept(writer);
-		script_tag << ";</script>";
-
 		auto res = m_lib.find_dynamic("index.html", version);
-		res.body().extra("<meta charset=\"utf-8\">", script_tag.str());
+		res.body().extra(
+			"<meta charset=\"utf-8\">",
+			"<script>var dir = " + cond.serialize(m_blob_db) + ";</script>"
+		);
 		send(std::move(res));
 	});
 }
@@ -312,7 +290,7 @@ boost::asio::io_context& Server::get_io_context()
 	return m_ioc;
 }
 
-bool Server::allow_anonymous(boost::string_view target)
+bool Server::is_static_resource(boost::string_view target)
 {
 	assert(!target.empty());
 	assert(target.front() == '/');
@@ -367,7 +345,7 @@ void Server::on_request_header(
 		return complete(Authentication{});
 	}
 
-	if (allow_anonymous(header.target()))
+	if (is_static_resource(header.target()))
 	{
 		dest.emplace<EmptyRequestParser>(std::move(src));
 		return complete(Authentication{});

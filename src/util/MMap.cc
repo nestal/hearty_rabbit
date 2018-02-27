@@ -36,20 +36,18 @@ MMap::MMap(int fd)
 		throw std::system_error(ec);
 }
 
+void MMap::cache() const
+{
+	::madvise(m_mmap, m_size, MADV_SEQUENTIAL);
+}
+
 MMap MMap::open(int fd, std::error_code& ec)
 {
 	MMap result;
 
 	struct stat s{};
 	if (fstat(fd, &s) == 0)
-	{
 		result.mmap(fd, static_cast<std::size_t>(s.st_size), PROT_READ, MAP_SHARED, ec);
-
-		// Tell the kernel to do aggressive read-ahead and free up memory that we have read once.
-		if (!ec)
-			::madvise(result.m_mmap, result.m_size, MADV_SEQUENTIAL);
-
-	}
 	else
 		ec.assign(errno, std::generic_category());
 

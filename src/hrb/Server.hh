@@ -15,15 +15,17 @@
 #include "BlobDatabase.hh"
 #include "WebResources.hh"
 #include "UploadFile.hh"
+#include "Container.hh"
 
 #include "crypto/Authentication.hh"
 #include "net/SplitBuffers.hh"
 #include "net/Request.hh"
 #include "net/Redis.hh"
 #include "net/MMapResponseBody.hh"
-#include "util/Magic.hh"
+#include "util/Escape.hh"
 
 #include <boost/filesystem/path.hpp>
+#include <boost/format.hpp>
 #include <boost/beast/http/fields.hpp>
 #include <boost/beast/http/message.hpp>
 #include <boost/beast/http/empty_body.hpp>
@@ -99,8 +101,11 @@ public:
 	template <class Send>
 	void handle_https(EmptyRequest&& req, Send&& send, const Authentication& auth)
 	{
-		if (allow_anonymous(req.target()))
+		if (is_static_resource(req.target()))
 			return send(static_file_request(req));
+
+		if (req.target() == "/login_incorrect.html")
+			return send(on_login_incorrect(req));
 
 		// Everything else require a valid session.
 		return auth.valid() ?
@@ -123,6 +128,7 @@ public:
 
 private:
 	http::response<SplitBuffers> static_file_request(const EmptyRequest& req);
+	http::response<SplitBuffers> on_login_incorrect(const EmptyRequest& req);
 
 	template <class Send>
 	void on_valid_session(EmptyRequest&& req, Send&& send, const Authentication& auth)
@@ -157,10 +163,12 @@ private:
 	void on_logout(const EmptyRequest& req, const Authentication& auth, EmptyResponseSender&& send);
 	void on_invalid_session(const RequestHeader& req, FileResponseSender&& send);
 	void on_upload(UploadRequest&& req, EmptyResponseSender&& send, const Authentication& auth);
-	void get_blob(const EmptyRequest& req, BlobResponseSender&& send, const Authentication& auth);
 	http::response<http::string_body> get_dir(const EmptyRequest& req);
-	static bool allow_anonymous(boost::string_view target);
+	static bool is_static_resource(boost::string_view target);
 	void serve_home(FileResponseSender&& send, unsigned version, const Authentication& auth);
+
+	template <typename Send>
+	void get_blob(const EmptyRequest& req, Send&& send, const Authentication& auth);
 
 private:
 	const Configuration&    m_cfg;
@@ -169,7 +177,40 @@ private:
 	redis::Pool     m_db;
 	WebResources    m_lib;
 	BlobDatabase    m_blob_db;
-	Magic           m_magic;
 };
+
+template <typename Send>
+void Server::get_blob(const EmptyRequest& req, Send&& send, const Authentication& auth)
+{
+	// blob ID is fixed size (40 characters, i.e., Blake hash size * 2)
+	auto [empty, blob, blob_id, rendition] = tokenize<4>(req.target(), "/");
+	assert(empty.empty());
+	assert(blob == url::blob.substr(1).to_string());
+
+	// Return 404 not_found if the blob ID is invalid
+	auto object_id = hex_to_object_id(std::string_view{blob_id.data(), blob_id.size()});
+	if (object_id == ObjectID{})
+		return send(http::response<http::empty_body>{http::status::not_found, req.version()});
+
+	// Check if the user has permission to read the blob
+	Container::is_member(*m_db.alloc(), auth.user(), object_id,
+		[
+			object_id,
+			send=std::move(send),
+			version=req.version(),
+			etag=req[http::field::if_none_match].to_string(),
+			this
+		](auto ec, bool is_member) mutable
+		{
+			if (ec)
+				return send(http::response<http::empty_body>{http::status::internal_server_error, version});
+
+			if (!is_member)
+				return send(http::response<http::empty_body>{http::status::forbidden, version});
+
+			return send(m_blob_db.response(object_id, version, etag));
+		}
+	);
+}
 
 } // end of namespace

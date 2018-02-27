@@ -14,8 +14,12 @@
 
 #include "ObjectID.hh"
 #include "util/FS.hh"
+#include "util/Magic.hh"
 
 #include <boost/beast/http/message.hpp>
+#include <rapidjson/document.h>
+
+#include <optional>
 
 namespace hrb {
 
@@ -24,6 +28,7 @@ class BlobObject;
 class UploadFile;
 class MMapResponseBody;
 class Magic;
+class BlobMeta;
 
 class BlobDatabase
 {
@@ -34,13 +39,14 @@ public:
 	explicit BlobDatabase(const fs::path& base);
 
 	void prepare_upload(UploadFile& result, std::error_code& ec) const;
-	ObjectID save(const UploadFile& tmp, std::error_code& ec);
+	ObjectID save(const UploadFile& tmp, std::string_view filename, std::error_code& ec);
 
-	fs::path dest(ObjectID id, std::string_view rendition = {}) const;
+	fs::path dest(const ObjectID& id, std::string_view rendition = {}) const;
+	std::optional<BlobMeta> load_meta(const ObjectID& id) const;
+	std::optional<std::string> load_meta_json(const ObjectID& id) const;
 
 	BlobResponse response(
 		ObjectID id,
-		const Magic& magic,
 		unsigned version,
 		std::string_view etag,
 		std::string_view rendition = {}
@@ -48,9 +54,13 @@ public:
 
 private:
 	static void set_cache_control(BlobResponse& res, const ObjectID& id);
+	BlobMeta deduce_meta(const UploadFile& tmp) const;
+	void save_meta(const fs::path& dest_path, const BlobMeta& meta) const;
+	std::optional<BlobMeta> load_meta(const fs::path& dest_path) const;
 
 private:
 	fs::path    m_base;
+	Magic       m_magic;
 };
 
 } // end of namespace hrb

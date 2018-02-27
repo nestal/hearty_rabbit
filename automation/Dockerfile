@@ -8,7 +8,7 @@ RUN yum install -y centos-release-scl epel-release \
 	&& rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-EPEL-7 \
 	&& yum install -y devtoolset-7 openssl-devel git rapidjson-devel \
 		hiredis-devel file-devel libicu-devel zlib-devel bzip2-devel xz-devel \
-		libunwind-devel autoconf automake libtool libexif-devel \
+		libunwind-devel autoconf automake libtool exiv2-devel turbojpeg-devel \
 	&& source scl_source enable devtoolset-7 \
 	&& yum update -y \
 	&& mkdir /build

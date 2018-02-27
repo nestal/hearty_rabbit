@@ -45,6 +45,7 @@ public:
 	bool is_opened() const {return m_mmap != nullptr;}
 	void clear();
 	void swap(MMap& target);
+	void cache() const;
 
 private:
 	void mmap(int fd, std::size_t size, int prot, int flags, std::error_code& ec);

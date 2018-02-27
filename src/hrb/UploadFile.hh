@@ -56,6 +56,8 @@ public:
 	/// Read from the open file
 	std::size_t read(void* buffer, std::size_t n, boost::system::error_code& ec) const;
 
+	std::size_t pread(void* buffer, std::size_t n, std::streamoff pos, std::error_code& ec) const;
+
 	/// Write to the open file
 	std::size_t write(void const* buffer, std::size_t n, boost::system::error_code& ec);
 

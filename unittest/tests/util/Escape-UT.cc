@@ -89,3 +89,21 @@ TEST_CASE("get_fields_from_form_string", "[normal]")
 		REQUIRE(pen == "good");
 	}
 }
+
+TEST_CASE("URL parsing with tokenize()")
+{
+	std::string_view url = "/blob/1234567890123456789012345678901234567890/as_svg";
+	auto [empty, blob, hash, rendition] = tokenize<4>(url, "/");
+	REQUIRE(empty == "");
+	REQUIRE(blob == "blob");
+	REQUIRE(hash == "1234567890123456789012345678901234567890");
+	REQUIRE(rendition == "as_svg");
+
+	// out-of-bound
+	auto [empty2, blob2, hash2, rendition2, what2] = tokenize<5>(url, "/");
+	REQUIRE(empty2 == "");
+	REQUIRE(blob2 == "blob");
+	REQUIRE(hash2 == "1234567890123456789012345678901234567890");
+	REQUIRE(rendition2 == "as_svg");
+	REQUIRE(what2 == "");
+}
