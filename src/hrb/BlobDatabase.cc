@@ -13,6 +13,7 @@
 #include "BlobDatabase.hh"
 #include "UploadFile.hh"
 #include "BlobMeta.hh"
+#include "RotateImage.hh"
 
 #include "net/MMapResponseBody.hh"
 
@@ -22,8 +23,6 @@
 #include <rapidjson/ostreamwrapper.h>
 #include <rapidjson/writer.h>
 #include <rapidjson/pointer.h>
-
-#include <turbojpeg.h>
 
 #include <sstream>
 #include <fstream>
@@ -77,37 +76,17 @@ ObjectID BlobDatabase::save(const UploadFile& tmp, std::string_view filename, st
 		auto mmap = MMap::open(tmp.native_handle(), ec);
 		if (!ec)
 		{
-			tjtransform op{};
-			op.op = TJXOP_ROT270;
-			op.options = TJXOPT_PERFECT;
+			RotateImage trnasform;
+			trnasform.auto_rotate(mmap.data(), mmap.size(), dest_path.parent_path() / "rotated.jpeg", ec);
 
-			auto tj = tjInitTransform();
-			unsigned char *out_jpeg{};
-			unsigned long out_size{};
-			auto transform_result = tjTransform(
-				tj, static_cast<const unsigned char *>(mmap.data()), mmap.size(),
-				1, &out_jpeg, &out_size, &op, 0
-			);
-
-			Log(LOG_NOTICE, "transforming image %1%, result %2%", meta.orientation(), transform_result);
-
-			if (transform_result == 0)
+			// Auto-rotation error is not fatal.
+			if (!ec)
 			{
-				boost::system::error_code bec;
-				boost::beast::file rendition;
-				rendition.open(
-					(dest_path.parent_path() / "rotated.jpeg").string().c_str(),
-					boost::beast::file_mode::write,
-					bec
-				);
-				if (!bec)
-					rendition.write(out_jpeg, out_size, bec);
+				Log(LOG_WARNING, "cannot rotate image %1%. Sizes not divisible by 16?", filename);
+				ec.clear();
 			}
-
-			tjDestroy(tj);
 		}
 	}
-
 
 	if (!ec)
 	{
