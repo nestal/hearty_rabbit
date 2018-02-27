@@ -23,6 +23,8 @@
 #include <rapidjson/writer.h>
 #include <rapidjson/pointer.h>
 
+#include <turbojpeg.h>
+
 #include <sstream>
 #include <fstream>
 
@@ -124,6 +126,15 @@ BlobDatabase::BlobResponse BlobDatabase::response(
 
 		save_meta(path.parent_path()/std::string{metafile}, *meta);
 	}
+
+	auto tj = tjInitDecompress();
+
+	int width, height, subsampl, colorspace;
+	tjDecompressHeader3(tj, static_cast<const unsigned char*>(mmap.data()), mmap.size(),
+		&width, &height, &subsampl, &colorspace
+	);
+	Log(LOG_NOTICE, "%3%: width = %1% height = %2%", width, height, path);
+	tjDestroy(tj);
 
 	// Advice the kernel that we only read the memory in one pass
 	mmap.cache();

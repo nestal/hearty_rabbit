@@ -169,6 +169,7 @@ private:
 
 	template <typename Send>
 	void get_blob(const EmptyRequest& req, Send&& send, const Authentication& auth);
+	static http::response<http::string_body> get_blob_as_svg(const ObjectID& object_id, unsigned version);
 
 private:
 	const Configuration&    m_cfg;
@@ -210,24 +211,7 @@ void Server::get_blob(const EmptyRequest& req, Send&& send, const Authentication
 				return send(http::response<http::empty_body>{http::status::forbidden, version});
 
 			if (rendition == "as_svg")
-			{
-				static const boost::format svg{R"___(<?xml version="1.0" standalone="no"?>
-					<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
-					  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
-					<svg version="1.1"
-					     xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
-					    <image xlink:href="/blob/%1%" x="0" y="0" height="100%%" width="100%%"/>
-					</svg>)___"
-				};
-
-				http::response<http::string_body> res{
-					std::piecewise_construct,
-					std::make_tuple((boost::format{svg} % to_hex(object_id)).str()),
-					std::make_tuple(http::status::ok, version)
-				};
-				res.set(http::field::content_type, "image/svg+xml");
-				return send(std::move(res));
-			}
+				return send(get_blob_as_svg(object_id, version));
 
 			return send(m_blob_db.response(object_id, version, etag));
 		}

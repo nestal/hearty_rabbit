@@ -11,11 +11,13 @@
 //
 
 #include "BlobMeta.hh"
+
 #include "util/Magic.hh"
 #include "util/Exif.hh"
 #include "util/JsonHelper.hh"
-
 #include "util/Log.hh"
+
+#include <turbojpeg.h>
 
 #include <rapidjson/pointer.h>
 

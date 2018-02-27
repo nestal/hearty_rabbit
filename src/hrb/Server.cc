@@ -201,17 +201,11 @@ void Server::serve_home(FileResponseSender&& send, unsigned version, const Authe
 {
 	Container::load(*m_db.alloc(), auth.user(), [send=std::move(send), version, this](auto ec, Container&& cond)
 	{
-		std::ostringstream script_tag;
-		script_tag << "<script>var dir = ";
-
-//		rapidjson::OStreamWrapper osw{script_tag};
-//		rapidjson::Writer<rapidjson::OStreamWrapper> writer{osw};
-//		cond.serialize(m_blob_db).Accept(writer);
-		script_tag << cond.serialize(m_blob_db);
-		script_tag << ";</script>";
-
 		auto res = m_lib.find_dynamic("index.html", version);
-		res.body().extra("<meta charset=\"utf-8\">", script_tag.str());
+		res.body().extra(
+			"<meta charset=\"utf-8\">",
+			"<script>var dir = " + cond.serialize(m_blob_db) + ";</script>"
+		);
 		send(std::move(res));
 	});
 }
@@ -403,6 +397,26 @@ bool Server::is_upload(const RequestHeader& header)
 bool Server::is_login(const RequestHeader& header)
 {
 	return header.target() == hrb::url::login && header.method() == http::verb::post;
+}
+
+http::response<http::string_body> Server::get_blob_as_svg(const ObjectID& object_id, unsigned version)
+{
+	static const boost::format svg{R"___(<?xml version="1.0" standalone="no"?>
+		<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+		  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+		<svg version="1.1"
+		     xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+		    <image xlink:href="/blob/%1%" x="0" y="0" height="100%%" width="100%%"/>
+		</svg>)___"
+	};
+
+	http::response<http::string_body> res{
+		std::piecewise_construct,
+		std::make_tuple((boost::format{svg} % to_hex(object_id)).str()),
+		std::make_tuple(http::status::ok, version)
+	};
+	res.set(http::field::content_type, "image/svg+xml");
+	return res;
 }
 
 } // end of namespace

@@ -16,8 +16,9 @@ message(STATUS "found libb2 at ${LIBB2_LIBRARY} ${LIBB2_INCLUDE}")
 
 pkg_check_modules(RapidJSON REQUIRED RapidJSON)
 pkg_check_modules(HIREDIS REQUIRED hiredis)
-pkg_check_modules(LIBEXIF libexif)
+pkg_check_modules(LIBEXIF REQUIRED libexif)
 pkg_check_modules(LIBUNWIND libunwind)
+pkg_check_modules(TURBOJPEG libturbojpeg)
 
 set(CMAKE_CXX_STANDARD 17)
 set(VERSION "0.1")
@@ -32,6 +33,7 @@ include_directories(
 	${HIREDIS_INCLUDE_DIRS}
 	${LIBUNWIND_INCLUDE_DIRS}
 	${LIBEXIF_INCLUDE_DIRS}
+	${TURBOJPEG_INCLUDE_DIRS}
 	${LIBB2_INCLUDE}
 	${CMAKE_BINARY_DIR}
 	${PROJECT_SOURCE_DIR}/src
@@ -73,8 +75,8 @@ target_link_libraries(
 	OpenSSL::Crypto
 	${LIBUNWIND_LIBRARIES}
 	${LIBEXIF_LIBRARIES}
+	${TURBOJPEG_LIBRARIES}
 	${LIBB2_LIBRARY}
-	${SYSTEMD_LIBRARIES}
 	${CMAKE_THREAD_LIBS_INIT}
 )
 
