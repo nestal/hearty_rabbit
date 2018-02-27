@@ -169,7 +169,6 @@ private:
 
 	template <typename Send>
 	void get_blob(const EmptyRequest& req, Send&& send, const Authentication& auth);
-	http::response<http::string_body> get_blob_as_svg(const ObjectID& object_id, unsigned version);
 
 private:
 	const Configuration&    m_cfg;
@@ -197,7 +196,6 @@ void Server::get_blob(const EmptyRequest& req, Send&& send, const Authentication
 	Container::is_member(*m_db.alloc(), auth.user(), object_id,
 		[
 			object_id,
-			rendition=std::string{rendition},
 			send=std::move(send),
 			version=req.version(),
 			etag=req[http::field::if_none_match].to_string(),
@@ -209,9 +207,6 @@ void Server::get_blob(const EmptyRequest& req, Send&& send, const Authentication
 
 			if (!is_member)
 				return send(http::response<http::empty_body>{http::status::forbidden, version});
-
-			if (rendition == "as_svg")
-				return send(get_blob_as_svg(object_id, version));
 
 			return send(m_blob_db.response(object_id, version, etag));
 		}

@@ -40,10 +40,12 @@ std::tuple<
 		op.op = map_op(orientation);
 		op.options = TJXOPT_PERFECT;
 
+		// The input buffer is not const in the 1.4x API, so need a const_cast.
+		// The documentation say it won't modify the buffer.
+		// https://cdn.rawgit.com/libjpeg-turbo/libjpeg-turbo/1.4.x/doc/html/group___turbo_j_p_e_g.html#gae403193ceb4aafb7e0f56ab587b48616
 		auto transform_result = tjTransform(
-			m_transform, in ? in : static_cast<const unsigned char*>(data),  in_size,
-			1, &out, &out_size,
-			&op, 0
+			m_transform, const_cast<unsigned char*>(in ? in : static_cast<const unsigned char*>(data)),
+			in_size, 1, &out, &out_size, &op, 0
 		);
 		if (in)
 			tjFree(in);

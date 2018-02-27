@@ -20,6 +20,12 @@ pkg_check_modules(LIBUNWIND libunwind)
 pkg_check_modules(TURBOJPEG libturbojpeg)
 pkg_check_modules(EXIV2 exiv2)
 
+# CentOS 7 has no pc file for libturbojpeg
+if (NOT TURBOJPEG_LIBRARIES)
+	find_library(TURBOJPEG_LIBRARIES turbojpeg)
+	message(STATUS "found turbojpeg library in ${TURBOJPEG_LIBRARIES}")
+endif()
+
 set(CMAKE_CXX_STANDARD 17)
 set(VERSION "0.1")
 set(CONFIG_FILENAME "hearty_rabbit.json")
