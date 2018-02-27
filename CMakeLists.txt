@@ -19,6 +19,7 @@ pkg_check_modules(HIREDIS REQUIRED hiredis)
 pkg_check_modules(LIBEXIF REQUIRED libexif)
 pkg_check_modules(LIBUNWIND libunwind)
 pkg_check_modules(TURBOJPEG libturbojpeg)
+pkg_check_modules(EXIV2 exiv2)
 
 set(CMAKE_CXX_STANDARD 17)
 set(VERSION "0.1")
@@ -34,6 +35,7 @@ include_directories(
 	${LIBUNWIND_INCLUDE_DIRS}
 	${LIBEXIF_INCLUDE_DIRS}
 	${TURBOJPEG_INCLUDE_DIRS}
+	${EXIV2_INCLUDE_DIRS}
 	${LIBB2_INCLUDE}
 	${CMAKE_BINARY_DIR}
 	${PROJECT_SOURCE_DIR}/src
@@ -76,6 +78,7 @@ target_link_libraries(
 	${LIBUNWIND_LIBRARIES}
 	${LIBEXIF_LIBRARIES}
 	${TURBOJPEG_LIBRARIES}
+	${EXIV2_LIBRARIES}
 	${LIBB2_LIBRARY}
 	${CMAKE_THREAD_LIBS_INIT}
 )
