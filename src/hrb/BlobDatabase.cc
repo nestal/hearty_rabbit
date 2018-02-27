@@ -80,12 +80,14 @@ ObjectID BlobDatabase::save(const UploadFile& tmp, std::string_view filename, st
 			trnasform.auto_rotate(mmap.data(), mmap.size(), dest_path.parent_path() / "rotated.jpeg", ec);
 
 			// Auto-rotation error is not fatal.
-			if (!ec)
+			if (ec)
 			{
 				Log(LOG_WARNING, "cannot rotate image %1%. Sizes not divisible by 16?", filename);
 				ec.clear();
 			}
 		}
+		else
+			Log(LOG_NOTICE, "cannot open image %1% to rotate", tmp.native_handle());
 	}
 
 	if (!ec)

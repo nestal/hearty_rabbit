@@ -31,6 +31,7 @@ TEST_CASE("get orientation from exiv2", "[normal]")
 	std::error_code ec;
 	auto rot90 = MMap::open(fs::path{__FILE__}.parent_path()/"up_f_rot90.jpg", ec);
 	REQUIRE(!ec);
+	REQUIRE(BlobMeta::deduce_meta(rot90.blob(), Magic{}).orientation() == 8);
 
 	RotateImage subject;
 	REQUIRE_NOTHROW(subject.auto_rotate(rot90.data(), rot90.size(), out, ec));
@@ -43,21 +44,34 @@ TEST_CASE("get orientation from exiv2", "[normal]")
 	REQUIRE(meta.orientation() == 1);
 }
 
-TEST_CASE("20x20 image cannot be auto-rotated", "[error]")
+TEST_CASE("20x20 image can be auto-rotated but cropped", "[error]")
 {
-	const fs::path out = "not_exist.jpeg";
+	const fs::path out = "imperfect.jpeg";
 	remove(out);
 
 	std::error_code ec;
 	auto rot90 = MMap::open(fs::path{__FILE__}.parent_path()/"black_20x20_orient6.jpg", ec);
 	REQUIRE(!ec);
-
 	REQUIRE(BlobMeta::deduce_meta(rot90.blob(), Magic{}).orientation() == 6);
 
 	RotateImage subject;
 	REQUIRE_NOTHROW(subject.auto_rotate(rot90.data(), rot90.size(), out, ec));
-	REQUIRE(ec);
-	REQUIRE(!exists(out));
+	REQUIRE(!ec);
+	REQUIRE(exists(out));
+
+	auto cropped = MMap::open(out, ec);
+	REQUIRE(!ec);
+
+	int width=0, height=0, subsamp=0, colorspace=0;
+	auto decomp = tjInitDecompress();
+	REQUIRE(
+		tjDecompressHeader3(decomp, static_cast<const unsigned char*>(cropped.data()), cropped.size(),
+		&width, &height, &subsamp, &colorspace)
+		== 0
+	);
+	tjDestroy(decomp);
+	REQUIRE(width < 20);
+	REQUIRE(height == 20);
 }
 
 TEST_CASE("png image cannot be auto-rotated", "[error]")

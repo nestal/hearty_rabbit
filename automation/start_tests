@@ -14,7 +14,7 @@ docker run -t --detach --rm \
     nestal/hearty_rabbit
 
 # Run all tests
-pushd automation
-source ./run_tests
+#pushd automation
+#source ./run_tests
 
-docker stop hb_test
+#docker stop hb_test
