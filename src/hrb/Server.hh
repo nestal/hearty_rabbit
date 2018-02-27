@@ -169,7 +169,7 @@ private:
 
 	template <typename Send>
 	void get_blob(const EmptyRequest& req, Send&& send, const Authentication& auth);
-	static http::response<http::string_body> get_blob_as_svg(const ObjectID& object_id, unsigned version);
+	http::response<http::string_body> get_blob_as_svg(const ObjectID& object_id, unsigned version);
 
 private:
 	const Configuration&    m_cfg;

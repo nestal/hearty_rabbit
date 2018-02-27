@@ -28,6 +28,8 @@
 #include <rapidjson/ostreamwrapper.h>
 #include <rapidjson/writer.h>
 
+#include <turbojpeg.h>
+
 namespace hrb {
 
 Server::Server(const Configuration& cfg) :
@@ -401,18 +403,35 @@ bool Server::is_login(const RequestHeader& header)
 
 http::response<http::string_body> Server::get_blob_as_svg(const ObjectID& object_id, unsigned version)
 {
-	static const boost::format svg{R"___(<?xml version="1.0" standalone="no"?>
-		<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
-		  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
-		<svg version="1.1"
+	static const boost::format svg{R"___(<?xml version="1.0" encoding="UTF-8"?>
+		<svg version="1.1" width="%2%" height="%3%" viewBox="0 0 %2% %3%"
 		     xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
-		    <image xlink:href="/blob/%1%" x="0" y="0" height="100%%" width="100%%"/>
+		    <image xlink:href="/blob/%1%" x="0" y="0" width="%2%" height="%3%"/>
 		</svg>)___"
 	};
 
+	std::string width_str{"100%"};
+	std::string height_str{"100%"};
+
+	std::error_code ec;
+	auto mmap = MMap::open(m_blob_db.dest(object_id), ec);
+	if (!ec)
+	{
+		auto tj = tjInitDecompress();
+		int width, height, subsampl, colorspace;
+		tjDecompressHeader3(tj, static_cast<const unsigned char*>(mmap.data()), mmap.size(),
+			&width, &height, &subsampl, &colorspace
+		);
+		Log(LOG_NOTICE, "%3%: width = %1% height = %2%", width, height, object_id);
+		tjDestroy(tj);
+
+		width_str = std::to_string(width);
+		height_str = std::to_string(height);
+	}
+
 	http::response<http::string_body> res{
 		std::piecewise_construct,
-		std::make_tuple((boost::format{svg} % to_hex(object_id)).str()),
+		std::make_tuple((boost::format{svg} % to_hex(object_id) % width_str % height_str).str()),
 		std::make_tuple(http::status::ok, version)
 	};
 	res.set(http::field::content_type, "image/svg+xml");
