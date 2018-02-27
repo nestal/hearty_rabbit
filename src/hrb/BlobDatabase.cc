@@ -61,13 +61,53 @@ ObjectID BlobDatabase::save(const UploadFile& tmp, std::string_view filename, st
 	if (!exists(dest_path.parent_path()))
 		create_directories(dest_path.parent_path(), bec);
 	if (bec)
-		Log(LOG_WARNING, "create directory %1% %2%", bec, bec.message());
+		Log(LOG_WARNING, "create directory error %1% %2%", bec, bec.message());
 
 	ec.assign(bec.value(), bec.category());
 
 	auto meta = deduce_meta(tmp);
 	meta.filename(filename);
 	save_meta(dest_path, meta);
+
+	Log(LOG_NOTICE, "upload image orientation %1%", meta.orientation());
+
+	// creates a rendition of auto-rotated image if the orientation isn't 1
+	if (meta.mime() == "image/jpeg" && meta.orientation() != 1)
+	{
+		auto mmap = MMap::open(tmp.native_handle(), ec);
+		if (!ec)
+		{
+			tjtransform op{};
+			op.op = TJXOP_ROT270;
+			op.options = TJXOPT_PERFECT;
+
+			auto tj = tjInitTransform();
+			unsigned char *out_jpeg{};
+			unsigned long out_size{};
+			auto transform_result = tjTransform(
+				tj, static_cast<const unsigned char *>(mmap.data()), mmap.size(),
+				1, &out_jpeg, &out_size, &op, 0
+			);
+
+			Log(LOG_NOTICE, "transforming image %1%, result %2%", meta.orientation(), transform_result);
+
+			if (transform_result == 0)
+			{
+				boost::system::error_code bec;
+				boost::beast::file rendition;
+				rendition.open(
+					(dest_path.parent_path() / "rotated.jpeg").string().c_str(),
+					boost::beast::file_mode::write,
+					bec
+				);
+				if (!bec)
+					rendition.write(out_jpeg, out_size, bec);
+			}
+
+			tjDestroy(tj);
+		}
+	}
+
 
 	if (!ec)
 	{
@@ -125,6 +165,14 @@ BlobDatabase::BlobResponse BlobDatabase::response(
 		}
 
 		save_meta(path.parent_path()/std::string{metafile}, *meta);
+	}
+
+	// Serve the rotated image if it exists
+	if (meta->mime() == "image/jpeg" && meta->orientation() != 1 && exists(path.parent_path()/"rotated.jpeg"))
+	{
+		auto rotated = MMap::open(path.parent_path() / "rotated.jpeg", ec);
+		if (!ec)
+			mmap = std::move(rotated);
 	}
 
 	// Advice the kernel that we only read the memory in one pass
