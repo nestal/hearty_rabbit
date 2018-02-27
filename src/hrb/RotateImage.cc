@@ -36,6 +36,9 @@ std::tuple<
 
 	while (orientation != 1)
 	{
+		// Allow imperfect transform and trim the residual pixels that cannot
+		// be transformed perfectly. It will reduce the image size by a bit,
+		// but all sizes of images can be rotated this way.
 		tjtransform op{};
 		op.op = map_op(orientation);
 		op.options = TJXOPT_TRIM;

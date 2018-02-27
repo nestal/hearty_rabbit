@@ -58,6 +58,20 @@ TEST_CASE("20x20 image can be auto-rotated but cropped", "[error]")
 	REQUIRE_NOTHROW(subject.auto_rotate(rot90.data(), rot90.size(), out, ec));
 	REQUIRE(!ec);
 	REQUIRE(exists(out));
+
+	auto cropped = MMap::open(out, ec);
+	REQUIRE(!ec);
+
+	int width=0, height=0, subsamp=0, colorspace=0;
+	auto decomp = tjInitDecompress();
+	REQUIRE(
+		tjDecompressHeader3(decomp, static_cast<const unsigned char*>(cropped.data()), cropped.size(),
+		&width, &height, &subsamp, &colorspace)
+		== 0
+	);
+	tjDestroy(decomp);
+	REQUIRE(width < 20);
+	REQUIRE(height == 20);
 }
 
 TEST_CASE("png image cannot be auto-rotated", "[error]")
@@ -74,12 +88,3 @@ TEST_CASE("png image cannot be auto-rotated", "[error]")
 	REQUIRE(!ec);
 	REQUIRE(!exists(out));
 }
-/*
-TEST_CASE("sony", "[error]")
-{
-	std::error_code ec;
-	auto sony = MMap::open("/home/nestal/0941c8ba9b0906aaae9048a411c513470b67b395.jpg", ec);
-	REQUIRE(!ec);
-	REQUIRE(BlobMeta::deduce_meta(sony.blob(), Magic{}).orientation() == 6);
-}
-*/
