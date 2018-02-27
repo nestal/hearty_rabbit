@@ -16,7 +16,6 @@ message(STATUS "found libb2 at ${LIBB2_LIBRARY} ${LIBB2_INCLUDE}")
 
 pkg_check_modules(RapidJSON REQUIRED RapidJSON)
 pkg_check_modules(HIREDIS REQUIRED hiredis)
-pkg_check_modules(LIBEXIF REQUIRED libexif)
 pkg_check_modules(LIBUNWIND libunwind)
 pkg_check_modules(TURBOJPEG libturbojpeg)
 pkg_check_modules(EXIV2 exiv2)
@@ -33,7 +32,6 @@ include_directories(
 	${SYSTEMD_INCLUDE_DIRS}
 	${HIREDIS_INCLUDE_DIRS}
 	${LIBUNWIND_INCLUDE_DIRS}
-	${LIBEXIF_INCLUDE_DIRS}
 	${TURBOJPEG_INCLUDE_DIRS}
 	${EXIV2_INCLUDE_DIRS}
 	${LIBB2_INCLUDE}
@@ -76,7 +74,6 @@ target_link_libraries(
 	OpenSSL::SSL
 	OpenSSL::Crypto
 	${LIBUNWIND_LIBRARIES}
-	${LIBEXIF_LIBRARIES}
 	${TURBOJPEG_LIBRARIES}
 	${EXIV2_LIBRARIES}
 	${LIBB2_LIBRARY}

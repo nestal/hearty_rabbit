@@ -13,31 +13,31 @@
 #include <catch.hpp>
 
 #include "hrb/RotateImage.hh"
+#include "hrb/BlobMeta.hh"
 #include "util/MMap.hh"
 #include "util/FS.hh"
+#include "util/Magic.hh"
 
 #include <exiv2/exiv2.hpp>
 #include <boost/beast/core/file.hpp>
 
 using namespace hrb;
 
-TEST_CASE("rotate by 90 degree", "[normal]")
+TEST_CASE("get orientation from exiv2", "[normal]")
 {
 	std::error_code ec;
-	auto upright = MMap::open(fs::path{__FILE__}.parent_path()/"up_f_upright.jpg", ec);
+	auto rot90 = MMap::open(fs::path{__FILE__}.parent_path()/"up_f_rot90.jpg", ec);
 	REQUIRE(!ec);
 
-	RotateImage subject;
-	auto [buf, size] = subject.rotate(8, upright.data(), upright.size());
-	auto [original, size2] = subject.rotate(6, buf.get(), size);
+	auto meta = BlobMeta::deduce_meta(rot90.blob(), Magic{});
+	REQUIRE(meta.orientation() == 8);
 
+	RotateImage subject;
+	auto [buf, size] = subject.rotate(meta.orientation(), rot90.data(), rot90.size());
 
 	boost::system::error_code bec;
 	boost::beast::file rendition;
 	rendition.open("rotated.jpeg", boost::beast::file_mode::write, bec);
 	if (!bec)
-		rendition.write(original.get(), size2, bec);
-
-//	REQUIRE(size2 == upright.size());
-//	REQUIRE(std::memcmp(upright.data(), original.get(), size2) == 0);
+		rendition.write(buf.get(), size, bec);
 }

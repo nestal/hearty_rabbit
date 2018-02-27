@@ -13,11 +13,11 @@
 #include "BlobMeta.hh"
 
 #include "util/Magic.hh"
-#include "util/Exif.hh"
 #include "util/JsonHelper.hh"
 #include "util/Log.hh"
 
 #include <turbojpeg.h>
+#include <exiv2/exiv2.hpp>
 
 #include <rapidjson/pointer.h>
 
@@ -54,7 +54,13 @@ BlobMeta BlobMeta::deduce_meta(boost::asio::const_buffer blob, const Magic& magi
 
 	if (meta.m_mime == "image/jpeg")
 	{
-		if (auto exif = Exif::load_from_data(blob))
+		auto ev2 = Exiv2::ImageFactory::open(static_cast<const unsigned char*>(blob.data()), blob.size());
+	    ev2->readMetadata();
+		auto& exif = ev2->exifData();
+		auto orientation = exif.findKey(Exiv2::ExifKey{"Exif.Image.Orientation"});
+		if (orientation != exif.end())
+			meta.m_orientation = orientation->toLong();
+/*		if (auto exif = Exif::load_from_data(blob))
 		{
 			if (auto orientation = exif->orientation())
 				meta.m_orientation = *orientation;
@@ -64,7 +70,7 @@ BlobMeta BlobMeta::deduce_meta(boost::asio::const_buffer blob, const Magic& magi
 				Log(LOG_NOTICE, "detected filename %1%", *doc_name);
 				meta.m_filename = std::move(*doc_name);
 			}
-		}
+		}*/
 	}
 	return meta;
 }
