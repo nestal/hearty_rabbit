@@ -36,6 +36,11 @@ public:
 private:
 	static int map_op(long& orientation);
 
+	std::tuple<
+		unsigned char*,
+		std::size_t
+	> crop(const void *data, std::size_t size);
+
 private:
 	tjhandle m_transform{tjInitTransform()};
 };

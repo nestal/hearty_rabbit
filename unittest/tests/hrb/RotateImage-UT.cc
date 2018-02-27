@@ -44,7 +44,7 @@ TEST_CASE("get orientation from exiv2", "[normal]")
 	REQUIRE(meta.orientation() == 1);
 }
 
-TEST_CASE("20x20 image can be auto-rotated", "[error]")
+TEST_CASE("20x20 image can be auto-rotated but cropped", "[error]")
 {
 	const fs::path out = "imperfect.jpeg";
 	remove(out);

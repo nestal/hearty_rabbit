@@ -38,7 +38,7 @@ std::tuple<
 	{
 		tjtransform op{};
 		op.op = map_op(orientation);
-//		op.options = TJXOPT_PERFECT;
+		op.options = TJXOPT_TRIM;
 
 		auto transform_result = tjTransform(
 			m_transform, in ? in : static_cast<const unsigned char*>(data),
@@ -128,6 +128,44 @@ void RotateImage::auto_rotate(const void *jpeg, std::size_t size, const fs::path
 		Log(LOG_WARNING, "exiv2 error %1% (%2%", e.code(), e.what());
 		ec.assign(e.code(), std::system_category());
 	}
+}
+
+std::tuple<
+	unsigned char*,
+	std::size_t
+> RotateImage::crop(const void *data, std::size_t size)
+{
+	int width, height, subsamp, colorspace;
+	auto decomp = tjInitDecompress();
+	auto decomp_result = tjDecompressHeader3(decomp, static_cast<const unsigned char*>(data), size,
+		&width, &height, &subsamp, &colorspace);
+	Log(LOG_NOTICE, "decompress result: %1% %2%", decomp_result, tjGetErrorStr());
+	if (decomp_result != 0 || subsamp < 0 || subsamp >= TJ_NUMSAMP)
+		return std::make_tuple(nullptr, 0);
+	tjDestroy(decomp);
+
+	tjtransform op{};
+	op.op = TJXOP_NONE;
+	op.options = TJXOPT_PERFECT;
+
+	// Crop away the pixels to fit in MCU
+	op.r.w = width  - width  % tjMCUWidth[subsamp];
+	op.r.h = height - height % tjMCUHeight[subsamp];
+	Log(LOG_NOTICE, "width  = %1% become %2%", width,  op.r.w);
+	Log(LOG_NOTICE, "height = %1% become %2%", height, op.r.h);
+
+	if (op.r.w < width || op.r.h < height)
+	{
+		unsigned char *out{};
+		unsigned long out_size{};
+		auto transform_result = tjTransform(
+			m_transform,static_cast<const unsigned char*>(data), size, 1, &out, &out_size, &op, TJXOPT_CROP
+		);
+
+		if (transform_result == 0)
+			return std::make_tuple(out, out_size);
+	}
+	return {nullptr, 0};
 }
 
 } // end of namespace hrb
