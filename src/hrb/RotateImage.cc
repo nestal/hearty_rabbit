@@ -38,7 +38,7 @@ std::tuple<
 	{
 		tjtransform op{};
 		op.op = map_op(orientation);
-		op.options = TJXOPT_PERFECT;
+//		op.options = TJXOPT_PERFECT;
 
 		auto transform_result = tjTransform(
 			m_transform, in ? in : static_cast<const unsigned char*>(data),
@@ -98,7 +98,10 @@ void RotateImage::auto_rotate(const void *jpeg, std::size_t size, const fs::path
 		{
 			auto[out_buf, out_size] = rotate(orientation->toLong(), jpeg, size);
 			if (!out_buf || out_size == 0)
+			{
+				Log(LOG_NOTICE, "cannot rotate image %1%", tjGetErrorStr());
 				return ec.assign(-1, std::system_category());
+			}
 
 			// Write to output file and read it back... Exiv2 does not support writing
 			// tag in memory.
@@ -122,6 +125,7 @@ void RotateImage::auto_rotate(const void *jpeg, std::size_t size, const fs::path
 	}
 	catch (Exiv2::AnyError& e)
 	{
+		Log(LOG_WARNING, "exiv2 error %1% (%2%", e.code(), e.what());
 		ec.assign(e.code(), std::system_category());
 	}
 }
