@@ -8,6 +8,8 @@
 
 #include "RepeatingTuple.hh"
 
+#include <boost/utility/string_view.hpp>
+
 #include <string>
 #include <string_view>
 #include <tuple>
@@ -37,6 +39,36 @@ auto find_fields(std::string_view remain, Fields... fields)
 		match_field(result, name, value, fields...);
 	}
 	return result;
+}
+
+template <std::size_t index, typename ResultTuple>
+void parse_token(std::string_view& remain, std::string_view value, ResultTuple& tuple)
+{
+	static_assert(index < std::tuple_size<ResultTuple>::value);
+	static_assert(std::is_same<std::tuple_element_t<index, ResultTuple>, std::string_view>::value);
+	std::get<index>(tuple) = std::get<0>(split_front(remain, value));
+
+	if constexpr (index + 1 < std::tuple_size<ResultTuple>::value)
+		parse_token<index+1>(remain, value, tuple);
+}
+
+template <std::size_t count>
+auto tokenize(std::string_view remain, std::string_view value)
+{
+	static_assert(count > 0);
+
+	typename RepeatingTuple<std::string_view, count>::type result;
+	parse_token<0>(remain, value, result);
+	return result;
+}
+
+template <std::size_t count>
+auto tokenize(boost::string_view remain, boost::string_view value)
+{
+	return tokenize<count>(
+		std::string_view{remain.data(), remain.size()},
+		std::string_view{value.data(), value.size()}
+	);
 }
 
 } // end of namespace

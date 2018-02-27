@@ -25,6 +25,28 @@ div.login {
 	/* Just in case there are inline attributes */
 	width: 100%;
 	height: auto;
+
+	transform-origin: top left;
+	-webkit-transform-origin: top left;
+	-ms-transform-origin: top left;
+}
+
+#hrb-entry-root img.rotate90 {
+	transform: rotate(90deg) translateY(-100%);
+	-webkit-transform: rotate(90deg) translateY(-100%);
+	-ms-transform: rotate(90deg) translateY(-100%);
+}
+
+#hrb-entry-root img.rotate180 {
+	transform: rotate(180deg) translate(-100%, -100%);
+	-webkit-transform: rotate(180deg) translate(-100%, -100%);
+	-ms-transform: rotate(180deg) translateX(-100%, -100%);
+}
+
+#hrb-entry-root img.rotate270 {
+	transform: rotate(270deg) translateX(-100%);
+	-webkit-transform: rotate(270deg) translateX(-100%);
+	-ms-transform: rotate(270deg) translateX(-100%);
 }
 
 #hrb-entry-root img:hover,
@@ -161,29 +183,4 @@ div.login {
 	color: #999;
 	text-decoration: none;
 	cursor: pointer;
-}
-
-.hrb-blob-image {
-  transform-origin: top left;
-  /* IE 10+, Firefox, etc. */
-  -webkit-transform-origin: top left;
-  /* Chrome */
-  -ms-transform-origin: top left;
-  /* IE 9 */
-}
-
-.hrb-blob-image.rotate90 {
-  transform: rotate(90deg) translateY(-100%);
-  -webkit-transform: rotate(90deg) translateY(-100%);
-  -ms-transform: rotate(90deg) translateY(-100%);
-}
-.hrb-blob-image.rotate180 {
-  transform: rotate(180deg) translate(-100%, -100%);
-  -webkit-transform: rotate(180deg) translate(-100%, -100%);
-  -ms-transform: rotate(180deg) translateX(-100%, -100%);
-}
-.hrb-blob-image.rotate270 {
-  transform: rotate(270deg) translateX(-100%);
-  -webkit-transform: rotate(270deg) translateX(-100%);
-  -ms-transform: rotate(270deg) translateX(-100%);
 }

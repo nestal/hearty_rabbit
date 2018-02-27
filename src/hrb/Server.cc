@@ -106,11 +106,13 @@ http::response<http::empty_body> Server::see_other(boost::beast::string_view whe
 	return res;
 }
 
+
 void Server::get_blob(const EmptyRequest& req, BlobResponseSender&& send, const Authentication& auth)
 {
-	auto blob_id = req.target().size() > url::login.size() ?
-		req.target().substr(url::login.size()) :
-		boost::string_view{};
+	// blob ID is fixed size (40 characters, i.e., Blake hash size * 2)
+	auto [empty, blob, blob_id, rendition] = tokenize<4>(req.target(), "/");
+	assert(empty.empty());
+	assert(blob == url::blob.substr(1).to_string());
 
 	// Return 404 not_found if the blob ID is invalid
 	auto object_id = hex_to_object_id(std::string_view{blob_id.data(), blob_id.size()});
@@ -120,8 +122,9 @@ void Server::get_blob(const EmptyRequest& req, BlobResponseSender&& send, const 
 	// Check if the user has permission to read the blob
 	Container::is_member(*m_db.alloc(), auth.user(), object_id,
 		[
-			send=std::move(send),
 			object_id,
+			rendition=std::string{rendition}
+			send=std::move(send),
 			version=req.version(),
 			etag=req[http::field::if_none_match].to_string(),
 			this
