@@ -15,14 +15,17 @@
 #include "BlobDatabase.hh"
 #include "WebResources.hh"
 #include "UploadFile.hh"
+#include "Container.hh"
 
 #include "crypto/Authentication.hh"
 #include "net/SplitBuffers.hh"
 #include "net/Request.hh"
 #include "net/Redis.hh"
 #include "net/MMapResponseBody.hh"
+#include "util/Escape.hh"
 
 #include <boost/filesystem/path.hpp>
+#include <boost/format.hpp>
 #include <boost/beast/http/fields.hpp>
 #include <boost/beast/http/message.hpp>
 #include <boost/beast/http/empty_body.hpp>
@@ -160,10 +163,12 @@ private:
 	void on_logout(const EmptyRequest& req, const Authentication& auth, EmptyResponseSender&& send);
 	void on_invalid_session(const RequestHeader& req, FileResponseSender&& send);
 	void on_upload(UploadRequest&& req, EmptyResponseSender&& send, const Authentication& auth);
-	void get_blob(const EmptyRequest& req, BlobResponseSender&& send, const Authentication& auth);
 	http::response<http::string_body> get_dir(const EmptyRequest& req);
 	static bool is_static_resource(boost::string_view target);
 	void serve_home(FileResponseSender&& send, unsigned version, const Authentication& auth);
+
+	template <typename Send>
+	void get_blob(const EmptyRequest& req, Send&& send, const Authentication& auth);
 
 private:
 	const Configuration&    m_cfg;
@@ -173,5 +178,60 @@ private:
 	WebResources    m_lib;
 	BlobDatabase    m_blob_db;
 };
+
+template <typename Send>
+void Server::get_blob(const EmptyRequest& req, Send&& send, const Authentication& auth)
+{
+	// blob ID is fixed size (40 characters, i.e., Blake hash size * 2)
+	auto [empty, blob, blob_id, rendition] = tokenize<4>(req.target(), "/");
+	assert(empty.empty());
+	assert(blob == url::blob.substr(1).to_string());
+
+	// Return 404 not_found if the blob ID is invalid
+	auto object_id = hex_to_object_id(std::string_view{blob_id.data(), blob_id.size()});
+	if (object_id == ObjectID{})
+		return send(http::response<http::empty_body>{http::status::not_found, req.version()});
+
+	// Check if the user has permission to read the blob
+	Container::is_member(*m_db.alloc(), auth.user(), object_id,
+		[
+			object_id,
+			rendition=std::string{rendition},
+			send=std::move(send),
+			version=req.version(),
+			etag=req[http::field::if_none_match].to_string(),
+			this
+		](auto ec, bool is_member) mutable
+		{
+			if (ec)
+				return send(http::response<http::empty_body>{http::status::internal_server_error, version});
+
+			if (!is_member)
+				return send(http::response<http::empty_body>{http::status::forbidden, version});
+
+			if (rendition == "as_svg")
+			{
+				static const boost::format svg{R"___(<?xml version="1.0" standalone="no"?>
+					<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+					  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+					<svg version="1.1"
+					     xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+					    <image xlink:href="/blob/%1%" x="0" y="0" height="100%%" width="100%%"/>
+					</svg>)___"
+				};
+
+				http::response<http::string_body> res{
+					std::piecewise_construct,
+					std::make_tuple((boost::format{svg} % to_hex(object_id)).str()),
+					std::make_tuple(http::status::ok, version)
+				};
+				res.set(http::field::content_type, "image/svg+xml");
+				return send(std::move(res));
+			}
+
+			return send(m_blob_db.response(object_id, version, etag));
+		}
+	);
+}
 
 } // end of namespace

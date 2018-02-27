@@ -11,7 +11,6 @@
 //
 
 #include "Server.hh"
-#include "Container.hh"
 #include "ResourcesList.hh"
 
 #include "crypto/Password.hh"
@@ -20,7 +19,6 @@
 #include "util/Error.hh"
 #include "util/Configuration.hh"
 #include "util/Exception.hh"
-#include "util/Escape.hh"
 #include "util/Log.hh"
 
 #include <boost/exception/errinfo_api_function.hpp>
@@ -104,41 +102,6 @@ http::response<http::empty_body> Server::see_other(boost::beast::string_view whe
 	http::response<http::empty_body> res{http::status::see_other, version};
 	res.set(http::field::location, where);
 	return res;
-}
-
-
-void Server::get_blob(const EmptyRequest& req, BlobResponseSender&& send, const Authentication& auth)
-{
-	// blob ID is fixed size (40 characters, i.e., Blake hash size * 2)
-	auto [empty, blob, blob_id, rendition] = tokenize<4>(req.target(), "/");
-	assert(empty.empty());
-	assert(blob == url::blob.substr(1).to_string());
-
-	// Return 404 not_found if the blob ID is invalid
-	auto object_id = hex_to_object_id(std::string_view{blob_id.data(), blob_id.size()});
-	if (object_id == ObjectID{})
-		return send(http::response<MMapResponseBody>{http::status::not_found, req.version()});
-
-	// Check if the user has permission to read the blob
-	Container::is_member(*m_db.alloc(), auth.user(), object_id,
-		[
-			object_id,
-			rendition=std::string{rendition}
-			send=std::move(send),
-			version=req.version(),
-			etag=req[http::field::if_none_match].to_string(),
-			this
-		](auto ec, bool is_member) mutable
-		{
-			if (ec)
-				return send(http::response<MMapResponseBody>{http::status::internal_server_error, version});
-
-			if (!is_member)
-				return send(http::response<MMapResponseBody>{http::status::forbidden, version});
-
-			return send(m_blob_db.response(object_id, version, etag));
-		}
-	);
 }
 
 void Server::on_upload(UploadRequest&& req, EmptyResponseSender&& send, const Authentication& auth)
