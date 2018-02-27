@@ -44,9 +44,9 @@ TEST_CASE("get orientation from exiv2", "[normal]")
 	REQUIRE(meta.orientation() == 1);
 }
 
-TEST_CASE("20x20 image cannot be auto-rotated", "[error]")
+TEST_CASE("20x20 image can be auto-rotated", "[error]")
 {
-	const fs::path out = "not_exist.jpeg";
+	const fs::path out = "imperfect.jpeg";
 	remove(out);
 
 	std::error_code ec;
@@ -56,8 +56,8 @@ TEST_CASE("20x20 image cannot be auto-rotated", "[error]")
 
 	RotateImage subject;
 	REQUIRE_NOTHROW(subject.auto_rotate(rot90.data(), rot90.size(), out, ec));
-	REQUIRE(ec);
-	REQUIRE(!exists(out));
+	REQUIRE(!ec);
+	REQUIRE(exists(out));
 }
 
 TEST_CASE("png image cannot be auto-rotated", "[error]")
