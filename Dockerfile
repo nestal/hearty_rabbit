@@ -3,6 +3,7 @@ MAINTAINER [Nestal Wan <me@nestal.net>]
 ENV container docker
 
 ENV PATH $PATH:/opt/rh/devtoolset-7/root/usr/bin:/build/cmake-3.10.2/bin
+ENV PKG_CONFIG_PATH=/opt/libjpeg-turbo/lib64/pkgconfig/
 
 # Copy source code. Not using git clone because the code may not be committed
 # yet in development builds
@@ -48,7 +49,8 @@ COPY --from=builder \
 	/lib64/libtinfo.so.5  \
 	/lib64/libexiv2.so.12  \
 	/lib64/libexpat.so.1  \
-	/lib64/libturbojpeg.so.0  \
+	/opt/libjpeg-turbo/lib64/libturbojpeg.so.0  \
+	/opt/libjpeg-turbo/lib64/libjpeg.so.62  \
 		/lib64/
 
 # Copy the magic cookie file for libmagic

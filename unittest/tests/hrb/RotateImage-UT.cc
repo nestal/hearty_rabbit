@@ -31,6 +31,7 @@ TEST_CASE("get orientation from exiv2", "[normal]")
 	std::error_code ec;
 	auto rot90 = MMap::open(fs::path{__FILE__}.parent_path()/"up_f_rot90.jpg", ec);
 	REQUIRE(!ec);
+	REQUIRE(BlobMeta::deduce_meta(rot90.blob(), Magic{}).orientation() == 8);
 
 	RotateImage subject;
 	REQUIRE_NOTHROW(subject.auto_rotate(rot90.data(), rot90.size(), out, ec));
@@ -51,7 +52,6 @@ TEST_CASE("20x20 image cannot be auto-rotated", "[error]")
 	std::error_code ec;
 	auto rot90 = MMap::open(fs::path{__FILE__}.parent_path()/"black_20x20_orient6.jpg", ec);
 	REQUIRE(!ec);
-
 	REQUIRE(BlobMeta::deduce_meta(rot90.blob(), Magic{}).orientation() == 6);
 
 	RotateImage subject;
@@ -74,3 +74,12 @@ TEST_CASE("png image cannot be auto-rotated", "[error]")
 	REQUIRE(!ec);
 	REQUIRE(!exists(out));
 }
+/*
+TEST_CASE("sony", "[error]")
+{
+	std::error_code ec;
+	auto sony = MMap::open("/home/nestal/0941c8ba9b0906aaae9048a411c513470b67b395.jpg", ec);
+	REQUIRE(!ec);
+	REQUIRE(BlobMeta::deduce_meta(sony.blob(), Magic{}).orientation() == 6);
+}
+*/

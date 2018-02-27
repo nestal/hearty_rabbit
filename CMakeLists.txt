@@ -17,14 +17,8 @@ message(STATUS "found libb2 at ${LIBB2_LIBRARY} ${LIBB2_INCLUDE}")
 pkg_check_modules(RapidJSON REQUIRED RapidJSON)
 pkg_check_modules(HIREDIS REQUIRED hiredis)
 pkg_check_modules(LIBUNWIND libunwind)
-pkg_check_modules(TURBOJPEG libturbojpeg)
+pkg_check_modules(TURBOJPEG REQUIRED libturbojpeg)
 pkg_check_modules(EXIV2 exiv2)
-
-# CentOS 7 has no pc file for libturbojpeg
-if (NOT TURBOJPEG_LIBRARIES)
-	find_library(TURBOJPEG_LIBRARIES turbojpeg)
-	message(STATUS "found turbojpeg library in ${TURBOJPEG_LIBRARIES}")
-endif()
 
 set(CMAKE_CXX_STANDARD 17)
 set(VERSION "0.1")
@@ -80,7 +74,7 @@ target_link_libraries(
 	OpenSSL::SSL
 	OpenSSL::Crypto
 	${LIBUNWIND_LIBRARIES}
-	${TURBOJPEG_LIBRARIES}
+	${TURBOJPEG_LDFLAGS}        # libjpeg-turbo may not be installed in default paths
 	${EXIV2_LIBRARIES}
 	${LIBB2_LIBRARY}
 	${CMAKE_THREAD_LIBS_INIT}

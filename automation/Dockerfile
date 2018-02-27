@@ -3,12 +3,12 @@ MAINTAINER [Nestal Wan <me@nestal.net>]
 ENV container docker
 
 # install development tools
-RUN yum install -y centos-release-scl epel-release \
+RUN yum install -y deltarpm centos-release-scl epel-release \
 	&& rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-SIG-SCLo \
 	&& rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-EPEL-7 \
 	&& yum install -y devtoolset-7 openssl-devel git rapidjson-devel \
 		hiredis-devel file-devel libicu-devel zlib-devel bzip2-devel xz-devel \
-		libunwind-devel autoconf automake libtool exiv2-devel turbojpeg-devel \
+		libunwind-devel autoconf automake libtool exiv2-devel nasm \
 	&& source scl_source enable devtoolset-7 \
 	&& yum update -y \
 	&& mkdir /build
@@ -18,6 +18,14 @@ RUN yum install -y centos-release-scl epel-release \
 ENV PATH $PATH:/opt/rh/devtoolset-7/root/usr/bin:/build/cmake-3.10.2/bin
 
 WORKDIR /build
+
+# libjpeg-turbo
+ADD https://github.com/libjpeg-turbo/libjpeg-turbo/archive/1.5.3.tar.gz /build
+RUN tar zxf 1.5.3.tar.gz \
+	&& cd libjpeg-turbo-1.5.3 \
+	&& autoreconf -fiv \
+	&& ./configure --prefix=/opt/libjpeg-turbo \
+	&& make -j8 install
 
 # build boost (>1.65 to support boost beast)
 ADD https://dl.bintray.com/boostorg/release/1.66.0/source/boost_1_66_0.tar.gz /build
