@@ -45,12 +45,11 @@ std::tuple<
 			1, &out, &out_size,
 			&op, 0
 		);
-
-		if (transform_result != 0)
-			throw -1;
-
 		if (in)
 			tjFree(in);
+
+		if (transform_result != 0)
+			return std::make_tuple(std::shared_ptr<unsigned char>{}, 0ULL);
 
 		// Next round
 		in      = out;
@@ -89,16 +88,17 @@ int RotateImage::map_op(long& orientation)
 
 void RotateImage::auto_rotate(const void *data, std::size_t size, const fs::path& out, std::error_code& ec)
 {
-	auto ev2 = Exiv2::ImageFactory::open(static_cast<const unsigned char*>(data), size);
-    ev2->readMetadata();
-	auto& exif = ev2->exifData();
-	auto orientation = exif.findKey(Exiv2::ExifKey{"Exif.Image.Orientation"});
-	if (orientation != exif.end() && orientation->count() > 0)
+	try
 	{
-		try
+		auto ev2 = Exiv2::ImageFactory::open(static_cast<const unsigned char *>(data), size);
+		ev2->readMetadata();
+		auto& exif = ev2->exifData();
+		auto orientation = exif.findKey(Exiv2::ExifKey{"Exif.Image.Orientation"});
+		if (orientation != exif.end() && orientation->count() > 0)
 		{
 			auto[out_buf, out_size] = rotate(orientation->toLong(), data, size);
-			*orientation = int16_t{1};
+			if (!out_buf || out_size == 0)
+				return ec.assign(-1, std::system_category());
 
 			// Write to output file and read it back... Exiv2 does not support writing
 			// tag in memory.
@@ -111,15 +111,18 @@ void RotateImage::auto_rotate(const void *data, std::size_t size, const fs::path
 				ec.assign(bec.value(), std::generic_category());
 			out_file.close(bec);
 
+			// Update orientation tag
+			*orientation = int16_t{1};
+
+			// Write the new tags to the newly rotated file
 			auto out_ev2 = Exiv2::ImageFactory::open(out.string());
 			out_ev2->setExifData(exif);
 			out_ev2->writeMetadata();
 		}
-		catch (int v)
-		{
-			assert(v != 0);
-			ec.assign(v, std::system_category());
-		}
+	}
+	catch (Exiv2::AnyError& e)
+	{
+		ec.assign(e.code(), std::system_category());
 	}
 }
 
