@@ -51,6 +51,9 @@ COPY --from=builder \
 	/lib64/libturbojpeg.so.0  \
 		/lib64/
 
+# Copy the magic cookie file for libmagic
+COPY --from=builder /usr/share/misc/magic /usr/share/misc/magic
+
 # Use environment to specify config file location.
 # It works even when we run --add-user
 ENV HEART_RABBIT_CONFIG /etc/hearty_rabbit/hearty_rabbit.json

@@ -88,17 +88,18 @@ int RotateImage::map_op(long& orientation)
 	}
 }
 
-void RotateImage::auto_rotate(const void *data, std::size_t size, const fs::path& out, std::error_code& ec)
+/// Rotate the image according to the Exif.Image.Orientation tag.
+void RotateImage::auto_rotate(const void *jpeg, std::size_t size, const fs::path& out, std::error_code& ec)
 {
 	try
 	{
-		auto ev2 = Exiv2::ImageFactory::open(static_cast<const unsigned char *>(data), size);
+		auto ev2 = Exiv2::ImageFactory::open(static_cast<const unsigned char *>(jpeg), size);
 		ev2->readMetadata();
 		auto& exif = ev2->exifData();
 		auto orientation = exif.findKey(Exiv2::ExifKey{"Exif.Image.Orientation"});
 		if (orientation != exif.end() && orientation->count() > 0)
 		{
-			auto[out_buf, out_size] = rotate(orientation->toLong(), data, size);
+			auto[out_buf, out_size] = rotate(orientation->toLong(), jpeg, size);
 			if (!out_buf || out_size == 0)
 				return ec.assign(-1, std::system_category());
 
