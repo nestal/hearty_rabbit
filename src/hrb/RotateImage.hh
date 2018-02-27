@@ -12,6 +12,8 @@
 
 #pragma once
 
+#include "util/FS.hh"
+
 #include <turbojpeg.h>
 #include <memory>
 #include <tuple>
@@ -27,10 +29,12 @@ public:
 	std::tuple<
 		std::shared_ptr<unsigned char>,
 		std::size_t
-	> rotate(int orientation, const void *data, std::size_t size);
+	> rotate(long orientation, const void *data, std::size_t size);
+
+	void auto_rotate(const void *data, std::size_t size, const fs::path& out, std::error_code& ec);
 
 private:
-	static int map_op(int& orientation);
+	static int map_op(long& orientation);
 
 private:
 	tjhandle m_transform{tjInitTransform()};

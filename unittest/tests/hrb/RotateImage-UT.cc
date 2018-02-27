@@ -25,19 +25,20 @@ using namespace hrb;
 
 TEST_CASE("get orientation from exiv2", "[normal]")
 {
+	const fs::path out = "rotated.jpeg";
+	remove(out);
+
 	std::error_code ec;
 	auto rot90 = MMap::open(fs::path{__FILE__}.parent_path()/"up_f_rot90.jpg", ec);
 	REQUIRE(!ec);
 
-	auto meta = BlobMeta::deduce_meta(rot90.blob(), Magic{});
-	REQUIRE(meta.orientation() == 8);
-
 	RotateImage subject;
-	auto [buf, size] = subject.rotate(meta.orientation(), rot90.data(), rot90.size());
+	REQUIRE_NOTHROW(subject.auto_rotate(rot90.data(), rot90.size(), out, ec));
+	REQUIRE(!ec);
+	REQUIRE(exists(out));
 
-	boost::system::error_code bec;
-	boost::beast::file rendition;
-	rendition.open("rotated.jpeg", boost::beast::file_mode::write, bec);
-	if (!bec)
-		rendition.write(buf.get(), size, bec);
+	auto out_map = MMap::open(out, ec);
+	REQUIRE(!ec);
+	auto meta = BlobMeta::deduce_meta(out_map.blob(), Magic{});
+	REQUIRE(meta.orientation() == 1);
 }
