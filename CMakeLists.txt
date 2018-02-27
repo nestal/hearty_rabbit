@@ -78,13 +78,6 @@ target_link_libraries(
 	${CMAKE_THREAD_LIBS_INIT}
 )
 
-# Main executable
-add_executable(hearty_rabbit src/main.cc)
-target_link_libraries(
-	hearty_rabbit
-	hrblib
-)
-
 # Unit tests
 file(GLOB UNITTEST_SRC unittest/tests/unittest.cc unittest/tests/*/*.cc unittest/tests/*/*.hh)
 add_executable(unittest ${UNITTEST_SRC})
@@ -105,6 +98,14 @@ add_custom_command(
 	WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
 	COMMAND unittest
 )
+
+# Main executable
+add_executable(hearty_rabbit src/main.cc)
+target_link_libraries(
+	hearty_rabbit
+	hrblib
+)
+add_dependencies(hearty_rabbit unittest)
 
 if (DOXYGEN_FOUND)
 	configure_file(doc/Doxyfile.in Doxyfile @ONLY)
