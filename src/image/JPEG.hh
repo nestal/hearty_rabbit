@@ -43,6 +43,7 @@ public:
 	int width() const {return m_width;}
 	int height() const {return m_height;}
 
+
 private:
 	void select_scaling_factor(int max_width, int max_height, int& width, int& height);
 

@@ -11,6 +11,7 @@
 //
 
 #include "RotateImage.hh"
+#include "TurboBuffer.hh"
 
 #include "util/Log.hh"
 
@@ -25,14 +26,9 @@ RotateImage::~RotateImage()
 	tjDestroy(m_transform);
 }
 
-std::tuple<
-	std::shared_ptr<unsigned char>,
-	std::size_t
-> RotateImage::rotate(long orientation, const void *data, std::size_t size)
+TurboBuffer RotateImage::rotate(long orientation, const void *data, std::size_t size)
 {
-	unsigned char *in{};
-	unsigned char *out{};
-	unsigned long in_size{size}, out_size{};
+	TurboBuffer buf;
 
 	while (orientation != 1)
 	{
@@ -43,25 +39,21 @@ std::tuple<
 		op.op = map_op(orientation);
 		op.options = TJXOPT_TRIM;
 
+		unsigned char *out{};
+		unsigned long out_size{};
 		auto transform_result = tjTransform(
-			m_transform, in ? in : static_cast<const unsigned char*>(data),
-			in_size, 1, &out, &out_size, &op, 0
+			m_transform,
+			buf.empty() ? static_cast<const unsigned char*>(data) : buf.data(),
+			buf.empty() ? size : buf.size(),
+			1, &out, &out_size, &op, 0
 		);
-		if (in)
-			tjFree(in);
+		buf = TurboBuffer{out, out_size};
 
 		if (transform_result != 0)
-			return std::make_tuple(std::shared_ptr<unsigned char>{}, 0ULL);
-
-		// Next round
-		in      = out;
-		in_size = out_size;
+			return {};
 	}
 
-	return std::make_tuple(
-		std::shared_ptr<unsigned char>(in, [](unsigned char* p){tjFree(p);}),
-		out_size
-	);
+	return buf;
 }
 
 int RotateImage::map_op(long& orientation)
@@ -99,8 +91,8 @@ void RotateImage::auto_rotate(const void *jpeg, std::size_t size, const fs::path
 		auto orientation = exif.findKey(Exiv2::ExifKey{"Exif.Image.Orientation"});
 		if (orientation != exif.end() && orientation->count() > 0)
 		{
-			auto[out_buf, out_size] = rotate(orientation->toLong(), jpeg, size);
-			if (!out_buf || out_size == 0)
+			auto buf = rotate(orientation->toLong(), jpeg, size);
+			if (buf.empty())
 			{
 				Log(LOG_NOTICE, "cannot rotate image %1%", tjGetErrorStr());
 				return ec.assign(-1, std::system_category());
@@ -112,7 +104,7 @@ void RotateImage::auto_rotate(const void *jpeg, std::size_t size, const fs::path
 			boost::beast::file out_file;
 			out_file.open(out.string().c_str(), boost::beast::file_mode::write, bec);
 			if (!bec)
-				out_file.write(out_buf.get(), out_size, bec);
+				out_file.write(buf.data(), buf.size(), bec);
 			if (bec)
 				ec.assign(bec.value(), std::generic_category());
 			out_file.close(bec);
