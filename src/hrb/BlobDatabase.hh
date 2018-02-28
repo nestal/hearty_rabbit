@@ -58,6 +58,8 @@ private:
 	void save_meta(const fs::path& dest_path, const BlobMeta& meta) const;
 	std::optional<BlobMeta> load_meta(const fs::path& dest_path) const;
 
+	void resize(const void *jpeg, std::size_t size, int width, int height, const fs::path& dir);
+
 private:
 	fs::path    m_base;
 	Magic       m_magic;

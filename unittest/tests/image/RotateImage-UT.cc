@@ -108,7 +108,7 @@ TEST_CASE("resize image")
 
 	boost::beast::file out;
 	boost::system::error_code bec;
-	out.open("smaller.jpg", boost::beast::file_mode::write_new, bec);
+	out.open("smaller.jpg", boost::beast::file_mode::write, bec);
 	REQUIRE(!bec);
 	out.write(smaller.data(), smaller.size(), bec);
 	REQUIRE(!bec);
