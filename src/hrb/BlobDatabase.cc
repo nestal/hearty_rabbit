@@ -161,7 +161,13 @@ BlobDatabase::BlobResponse BlobDatabase::response(
 	}
 
 	// Serve the rotated image if it exists
-	if (meta->mime() == "image/jpeg" && meta->orientation() != 1 && exists(path.parent_path()/"rotated.jpeg"))
+	if (meta->mime() == "image/jpeg" && exists(path.parent_path()/"2048x2048"))
+	{
+		auto small = MMap::open(path.parent_path() / "2048x2048", ec);
+		if (!ec)
+			mmap = std::move(small);
+	}
+	else if (meta->mime() == "image/jpeg" && meta->orientation() != 1 && exists(path.parent_path()/"rotated.jpeg"))
 	{
 		auto rotated = MMap::open(path.parent_path() / "rotated.jpeg", ec);
 		if (!ec)
