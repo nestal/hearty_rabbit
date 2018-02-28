@@ -10,35 +10,33 @@
 	<link rel="stylesheet" type="text/css" href="hearty_rabbit.css">
 	<link rel="icon" href="logo.svg" type="image/svg+xml">
 </head>
-<body>
+<body class="login-body">
 
-<div>
-	<div class="login">
-		<h1>Welcome to HeartyRabbit!</h1>
+<div class="login">
+	<h1>Welcome to HeartyRabbit!</h1>
 
-		<div class="logo">
-			<img src="logo.svg">
-		</div>
-
-		<div id="login-message">Please login:</div>
-		<form action="/login" method="post">
-			<fieldset>
-				<div>
-					<label for="username">Username</label>
-					<input id="username" name="username" type="text" placeholder="Username">
-					<span>This is a required field.</span>
-				</div>
-				<div>
-					<label for="password">Password</label>
-					<input id="password" name="password" type="password" placeholder="Password">
-				</div>
-
-				<div>
-					<button type="submit">Login</button>
-				</div>
-			</fieldset>
-		</form>
+	<div class="logo">
+		<img src="logo.svg">
 	</div>
+
+	<div id="login-message">Please login:</div>
+	<form action="/login" method="post">
+		<fieldset>
+			<div>
+				<label for="username">Username</label>
+				<input id="username" name="username" type="text" placeholder="Username">
+				<span>This is a required field.</span>
+			</div>
+			<div>
+				<label for="password">Password</label>
+				<input id="password" name="password" type="password" placeholder="Password">
+			</div>
+
+			<div>
+				<button type="submit">Login</button>
+			</div>
+		</fieldset>
+	</form>
 </div>
 
 <script>
