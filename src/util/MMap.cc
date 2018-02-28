@@ -111,7 +111,7 @@ MMap MMap::create(int fd, const void *data, std::size_t size, std::error_code& e
 	return result;
 }
 
-void MMap::swap(MMap& target)
+void MMap::swap(MMap& target) noexcept
 {
 	std::swap(m_mmap, target.m_mmap);
 	std::swap(m_size, target.m_size);

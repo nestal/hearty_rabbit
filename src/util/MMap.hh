@@ -44,7 +44,7 @@ public:
 
 	bool is_opened() const {return m_mmap != nullptr;}
 	void clear();
-	void swap(MMap& target);
+	void swap(MMap& target) noexcept ;
 	void cache() const;
 
 private:

@@ -13,7 +13,7 @@
 #include "BlobDatabase.hh"
 #include "UploadFile.hh"
 #include "BlobMeta.hh"
-#include "RotateImage.hh"
+#include "image/RotateImage.hh"
 
 #include "net/MMapResponseBody.hh"
 

@@ -12,7 +12,9 @@
 
 #include <catch.hpp>
 
-#include "hrb/RotateImage.hh"
+#include "image/RotateImage.hh"
+#include "image/JPEG.hh"
+
 #include "hrb/BlobMeta.hh"
 #include "util/MMap.hh"
 #include "util/FS.hh"
@@ -87,4 +89,17 @@ TEST_CASE("png image cannot be auto-rotated", "[error]")
 	REQUIRE_NOTHROW(subject.auto_rotate(png.data(), png.size(), out, ec));
 	REQUIRE(!ec);
 	REQUIRE(!exists(out));
+}
+
+TEST_CASE("resize image")
+{
+	std::error_code ec;
+	auto img = MMap::open(fs::path{__FILE__}.parent_path()/"up_f_upright.jpg", ec);
+	REQUIRE(!ec);
+
+	JPEG subject{img.data(), img.size(), 100, 100};
+	REQUIRE(subject.width() <= 100);
+	REQUIRE(subject.height() <= 100);
+	INFO("new width = " << subject.width());
+	INFO("new height = " << subject.height());
 }

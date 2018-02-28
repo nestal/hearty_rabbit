@@ -62,7 +62,7 @@ TEST_CASE("Open temp file", "[normal]")
 TEST_CASE("Upload JPEG file to BlobDatabase", "[normal]")
 {
 	std::error_code ec;
-	auto black = MMap::open(fs::path{__FILE__}.parent_path() / "black.jpg", ec);
+	auto black = MMap::open(fs::path{__FILE__}.parent_path().parent_path() / "image" / "black.jpg", ec);
 	REQUIRE(!ec);
 
 	BlobDatabase subject{"/tmp/BlobDatabase-UT"};
