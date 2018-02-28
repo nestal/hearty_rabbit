@@ -22,6 +22,7 @@
 
 #include <exiv2/exiv2.hpp>
 #include <boost/beast/core/file.hpp>
+#include <image/TurboBuffer.hh>
 
 using namespace hrb;
 
@@ -102,4 +103,17 @@ TEST_CASE("resize image")
 	REQUIRE(subject.height() <= 100);
 	INFO("new width = " << subject.width());
 	INFO("new height = " << subject.height());
+
+	auto smaller = subject.compress(50);
+
+	boost::beast::file out;
+	boost::system::error_code bec;
+	out.open("smaller.jpg", boost::beast::file_mode::write_new, bec);
+	REQUIRE(!bec);
+	out.write(smaller.data(), smaller.size(), bec);
+	REQUIRE(!bec);
+
+	JPEG sjpeg{smaller.data(), smaller.size(), 100, 100};
+	REQUIRE(sjpeg.width() == subject.width());
+	REQUIRE(sjpeg.height() == subject.height());
 }

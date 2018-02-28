@@ -11,6 +11,7 @@
 //
 
 #include "JPEG.hh"
+#include "TurboBuffer.hh"
 
 #include <turbojpeg.h>
 
@@ -18,9 +19,11 @@
 
 namespace hrb {
 
+using Handle = std::unique_ptr<void, decltype(&tjDestroy)>;
+
 JPEG::JPEG(const void *data, std::size_t size, int max_width, int max_height)
 {
-	std::unique_ptr<void, decltype(&tjDestroy)> handle{tjInitDecompress(), &tjDestroy};
+	Handle handle{tjInitDecompress(), &tjDestroy};
 	auto result = tjDecompressHeader3(
 		handle.get(), static_cast<const unsigned char*>(data), size,
 		&m_width, &m_height, &m_subsample, &m_colorspace
@@ -73,6 +76,22 @@ void JPEG::select_scaling_factor(int max_width, int max_height, int& width, int&
 			}
 		}
 	}
+}
+
+TurboBuffer JPEG::compress(int quality) const
+{
+	Handle handle{tjInitCompress(), &tjDestroy};
+
+	unsigned char *jpeg{};
+	std::size_t size{};
+	auto result = tjCompress2(
+		handle.get(), &m_pixels[0], m_width, 0, m_height, TJPF_RGB, &jpeg, &size,
+		m_subsample, quality, TJFLAG_FASTDCT
+	);
+	if (result != 0)
+		throw JPEGException(tjGetErrorStr());
+
+	return {jpeg, size};
 }
 
 } // end of namespace hrb
