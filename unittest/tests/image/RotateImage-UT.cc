@@ -14,6 +14,7 @@
 
 #include "image/RotateImage.hh"
 #include "image/JPEG.hh"
+#include "image/Exif2.hh"
 
 #include "hrb/BlobMeta.hh"
 #include "util/MMap.hh"
@@ -92,7 +93,7 @@ TEST_CASE("png image cannot be auto-rotated", "[error]")
 	REQUIRE(!exists(out));
 }
 
-TEST_CASE("resize image")
+TEST_CASE("resize image", "[normal]")
 {
 	std::error_code ec;
 	auto img = MMap::open(fs::path{__FILE__}.parent_path()/"up_f_upright.jpg", ec);
@@ -116,4 +117,13 @@ TEST_CASE("resize image")
 	JPEG sjpeg{smaller.data(), smaller.size(), 100, 100};
 	REQUIRE(sjpeg.width() == subject.width());
 	REQUIRE(sjpeg.height() == subject.height());
+}
+
+TEST_CASE("read exif", "[normal]")
+{
+	std::error_code ec;
+	auto img = MMap::open(fs::path{__FILE__}.parent_path()/"up_f_upright.jpg", ec);
+	REQUIRE(!ec);
+
+	Exif2 subject{static_cast<const unsigned char*>(img.data()), img.size()};
 }
