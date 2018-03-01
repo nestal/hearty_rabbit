@@ -153,9 +153,6 @@ Exif2::Exif2(unsigned char *jpeg, std::size_t size)
 	if (!read_EXIF_and_TIFF_header(buffer, m_byte_order))
 		return;
 
-	if (size < 2)
-		return;
-
 	std::cout << "everything OK so far" << std::endl;
 	std::uint16_t tag_count{};
 	if (!read(buffer, tag_count)) return;

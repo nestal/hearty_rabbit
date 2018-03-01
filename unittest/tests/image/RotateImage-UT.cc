@@ -122,11 +122,24 @@ TEST_CASE("resize image", "[normal]")
 TEST_CASE("read exif", "[normal]")
 {
 	std::error_code ec;
-	auto img = MMap::open(fs::path{__FILE__}.parent_path()/"up_f_upright.jpg", ec);
+	auto mmap = MMap::open(fs::path{__FILE__}.parent_path()/"up_f_upright.jpg", ec);
 	REQUIRE(!ec);
 
-	Exif2 subject{static_cast<unsigned char*>(img.data()), img.size()};
+	// copy the memory as the mmap is read-only
+	std::vector<unsigned char> img(
+		static_cast<const unsigned char*>(mmap.data()),
+		static_cast<const unsigned char*>(mmap.data()) + mmap.size()
+	);
+
+	Exif2 subject{&img[0], img.size()};
 	auto orientation = subject.get(0x0112);
 	REQUIRE(orientation);
 	REQUIRE(orientation->value_offset == 1);
+
+	// set orientation to 8
+	orientation->value_offset = 8;
+	subject.set(*orientation);
+
+	auto meta = BlobMeta::deduce_meta({&img[0], img.size()}, Magic{});
+	REQUIRE(meta.orientation() == 8);
 }
