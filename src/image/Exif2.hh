@@ -36,6 +36,7 @@ public:
 	Exif2(unsigned char *jpeg, std::size_t size);
 
 	std::optional<IFD> get(std::uint16_t tag) const;
+	void set(const IFD& native);
 
 private:
 	void to_native(IFD& field) const;

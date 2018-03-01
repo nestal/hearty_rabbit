@@ -34,6 +34,17 @@ T to_native(T value, order end)
 		return value;
 }
 
+template <typename T>
+T from_native(T value, order end)
+{
+	if (end == order::little)
+		return native_to_little(value);
+	else if (end == order::big)
+		return native_to_big(value);
+	else
+		return value;
+}
+
 template <typename POD>
 bool read(std::string_view& buffer, POD& out)
 {
@@ -185,6 +196,21 @@ void Exif2::to_native(Exif2::IFD& field) const
 	field.type = hrb::to_native(field.type, m_byte_order);
 	field.count = hrb::to_native(field.count, m_byte_order);
 	field.value_offset = hrb::to_native(field.value_offset, m_byte_order);
+}
+
+void Exif2::set(const IFD& native)
+{
+	auto it = m_tags.find(native.tag);
+	if (it != m_tags.end())
+	{
+		IFD ordered_field;
+		ordered_field.tag = hrb::from_native(native.tag, m_byte_order);
+		ordered_field.type = hrb::from_native(native.type, m_byte_order);
+		ordered_field.count = hrb::from_native(native.count, m_byte_order);
+		ordered_field.value_offset = hrb::from_native(native.value_offset, m_byte_order);
+
+		std::memcpy(it->second, &ordered_field, sizeof(ordered_field));
+	}
 }
 
 } // end of namespace
