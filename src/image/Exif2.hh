@@ -12,19 +12,37 @@
 
 #pragma once
 
-#include <boost/endian/buffers.hpp>
+#include <boost/endian/conversion.hpp>
 
 #include <cstddef>
+#include <cstdint>
+#include <unordered_map>
+#include <optional>
 
 namespace hrb {
 
 class Exif2
 {
 public:
-	Exif2(const unsigned char *jpeg, std::size_t size);
+	struct IFD
+	{
+		std::uint16_t tag;
+		std::uint16_t type;
+		std::uint32_t count;
+		std::uint32_t value_offset;
+	};
+
+public:
+	Exif2(unsigned char *jpeg, std::size_t size);
+
+	std::optional<IFD> get(std::uint16_t tag) const;
 
 private:
+	void to_native(IFD& field) const;
 
+private:
+	std::unordered_map<std::uint16_t, unsigned char*> m_tags;
+	boost::endian::order m_byte_order{};
 };
 
 } // end o namespace

@@ -125,5 +125,8 @@ TEST_CASE("read exif", "[normal]")
 	auto img = MMap::open(fs::path{__FILE__}.parent_path()/"up_f_upright.jpg", ec);
 	REQUIRE(!ec);
 
-	Exif2 subject{static_cast<const unsigned char*>(img.data()), img.size()};
+	Exif2 subject{static_cast<unsigned char*>(img.data()), img.size()};
+	auto orientation = subject.get(0x0112);
+	REQUIRE(orientation);
+	REQUIRE(orientation->value_offset == 1);
 }

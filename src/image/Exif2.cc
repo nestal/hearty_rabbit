@@ -12,7 +12,8 @@
 
 #include "Exif2.hh"
 
-#include <string_view>
+#include <boost/endian/buffers.hpp>
+
 #include <iostream>
 #include <array>
 
@@ -125,7 +126,7 @@ bool read_EXIF_and_TIFF_header(std::string_view& buffer, order& byte_order)
 
 } // end of anonymous namespace
 
-Exif2::Exif2(const unsigned char *jpeg, std::size_t size)
+Exif2::Exif2(unsigned char *jpeg, std::size_t size)
 {
 	if (jpeg[0] != 0xFF ||
 		jpeg[1] != 0xD8 )
@@ -138,8 +139,7 @@ Exif2::Exif2(const unsigned char *jpeg, std::size_t size)
 	if (!find_app1(buffer))
 		return;
 
-	order byte_order{order::native};
-	if (!read_EXIF_and_TIFF_header(buffer, byte_order))
+	if (!read_EXIF_and_TIFF_header(buffer, m_byte_order))
 		return;
 
 	if (size < 2)
@@ -148,29 +148,43 @@ Exif2::Exif2(const unsigned char *jpeg, std::size_t size)
 	std::cout << "everything OK so far" << std::endl;
 	std::uint16_t tag_count{};
 	if (!read(buffer, tag_count)) return;
-	tag_count = to_native(tag_count, byte_order);
+	tag_count = hrb::to_native(tag_count, m_byte_order);
 
 	std::cout << tag_count << " tags in file " << std::endl;
 
-	struct IFD
-	{
-		std::uint16_t tag;
-		std::uint16_t type;
-		std::uint32_t count;
-		std::uint32_t value_offset;
-	};
 	for (std::uint16_t i = 0 ; i < tag_count ; i++)
 	{
+		auto ptags = jpeg + (reinterpret_cast<const unsigned char*>(buffer.data()) - jpeg);
+
 		IFD tag;
 		if (!read(buffer, tag)) return;
 
-		tag.tag = to_native(tag.tag, byte_order);
-		tag.type = to_native(tag.type, byte_order);
-		tag.count = to_native(tag.count, byte_order);
-		tag.value_offset = to_native(tag.value_offset, byte_order);
+		to_native(tag);
+		m_tags.emplace(tag.tag, ptags);
 
 		std::cout << "tag " << std::hex << tag.tag << std::dec << " " << tag.type << " " << tag.count << " " << tag.value_offset << std::endl;
 	}
+}
+
+std::optional<Exif2::IFD> Exif2::get(std::uint16_t tag) const
+{
+	auto it = m_tags.find(tag);
+	if (it != m_tags.end())
+	{
+		IFD field{};
+		std::memcpy(&field, it->second, sizeof(field));
+		to_native(field);
+		return field;
+	}
+	return std::nullopt;
+}
+
+void Exif2::to_native(Exif2::IFD& field) const
+{
+	field.tag = hrb::to_native(field.tag, m_byte_order);
+	field.type = hrb::to_native(field.type, m_byte_order);
+	field.count = hrb::to_native(field.count, m_byte_order);
+	field.value_offset = hrb::to_native(field.value_offset, m_byte_order);
 }
 
 } // end of namespace
