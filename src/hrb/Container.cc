@@ -17,13 +17,13 @@
 
 namespace hrb {
 
-const std::string_view Container::redis_prefix{"dir:"};
+const std::string_view Container1::redis_prefix{"dir:"};
 
-Container::Container(std::string_view name) : m_name{name}
+Container1::Container1(std::string_view name) : m_name{name}
 {
 }
 
-std::string Container::serialize(const BlobDatabase& db) const
+std::string Container1::serialize(const BlobDatabase& db) const
 {
 	bool first = true;
 	std::ostringstream json;

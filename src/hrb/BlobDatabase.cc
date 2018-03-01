@@ -285,7 +285,7 @@ void BlobDatabase::resize(const void *jpeg, std::size_t size, int width, int hei
 
 		dest.write(smaller.data(), smaller.size(), bec);
 	}
-	catch (JPEG::JPEGException& e)
+	catch (JPEG::Exception& e)
 	{
 		Log(LOG_WARNING, "JPEG resize error: %1%", e.what());
 	}

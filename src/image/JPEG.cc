@@ -30,7 +30,7 @@ JPEG::JPEG(const void *data, std::size_t size, int max_width, int max_height)
 	);
 
 	if (result != 0)
-		throw JPEGException(tjGetErrorStr());
+		throw Exception(tjGetErrorStr());
 
 	int width = m_width, height = m_height;
 	select_scaling_factor(m_width, max_height, width, height);
@@ -44,7 +44,7 @@ JPEG::JPEG(const void *data, std::size_t size, int max_width, int max_height)
 		&pixels[0], width, 0, height, TJPF_RGB, TJFLAG_FASTDCT
 	);
 	if (result != 0)
-		throw JPEGException(tjGetErrorStr());
+		throw Exception(tjGetErrorStr());
 
 	// commit result
 	m_pixels = std::move(pixels);
@@ -89,7 +89,7 @@ TurboBuffer JPEG::compress(int quality) const
 		m_subsample, quality, TJFLAG_FASTDCT
 	);
 	if (result != 0)
-		throw JPEGException(tjGetErrorStr());
+		throw Exception(tjGetErrorStr());
 
 	return {jpeg, size};
 }

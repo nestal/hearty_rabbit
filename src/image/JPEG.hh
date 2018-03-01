@@ -23,10 +23,10 @@ class TurboBuffer;
 class JPEG
 {
 public:
-	class JPEGException : public std::exception
+	class Exception : public std::exception
 	{
 	public:
-		explicit JPEGException(const char *msg) : m_msg{msg} {}
+		explicit Exception(const char *msg) : m_msg{msg} {}
 		const char* what() const noexcept override {return m_msg;}
 
 	private:
