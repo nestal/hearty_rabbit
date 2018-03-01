@@ -162,9 +162,10 @@ Exif2::Exif2(unsigned char *jpeg, std::size_t size)
 
 	for (std::uint16_t i = 0 ; i < tag_count ; i++)
 	{
+		// convert to non-const pointer
 		auto ptags = jpeg + (reinterpret_cast<const unsigned char*>(buffer.data()) - jpeg);
 
-		IFD tag;
+		IFD tag{};
 		if (!read(buffer, tag)) return;
 
 		to_native(tag);
@@ -200,7 +201,7 @@ void Exif2::set(const IFD& native)
 	auto it = m_tags.find(native.tag);
 	if (it != m_tags.end())
 	{
-		IFD ordered_field;
+		IFD ordered_field{};
 		ordered_field.tag = hrb::from_native(native.tag, m_byte_order);
 		ordered_field.type = hrb::from_native(native.type, m_byte_order);
 		ordered_field.count = hrb::from_native(native.count, m_byte_order);
