@@ -14,7 +14,7 @@
 
 #include "image/RotateImage.hh"
 #include "image/JPEG.hh"
-#include "image/Exif2.hh"
+#include "image/EXIF2.hh"
 
 #include "hrb/BlobMeta.hh"
 #include "util/MMap.hh"
@@ -122,7 +122,8 @@ TEST_CASE("resize image", "[normal]")
 TEST_CASE("read exif", "[normal]")
 {
 	std::error_code ec;
-	auto mmap = MMap::open(fs::path{__FILE__}.parent_path()/"up_f_upright.jpg", ec);
+//	auto mmap = MMap::open(fs::path{__FILE__}.parent_path()/"up_f_upright.jpg", ec);
+	auto mmap = MMap::open("/home/nestal/nestal2.jpeg", ec);
 	REQUIRE(!ec);
 
 	// copy the memory as the mmap is read-only
@@ -131,7 +132,7 @@ TEST_CASE("read exif", "[normal]")
 		static_cast<const unsigned char*>(mmap.data()) + mmap.size()
 	);
 
-	Exif2 subject{&img[0], img.size()};
+	EXIF2 subject{&img[0], img.size()};
 	auto orientation = subject.get(0x0112);
 	REQUIRE(orientation);
 	REQUIRE(orientation->tag == 0x0112);

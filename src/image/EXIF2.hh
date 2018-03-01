@@ -21,7 +21,7 @@
 
 namespace hrb {
 
-class Exif2
+class EXIF2
 {
 public:
 	struct IFD
@@ -32,8 +32,10 @@ public:
 		std::uint32_t value_offset;
 	};
 
+	enum class Error {ok, too_small, invalid_header};
+
 public:
-	Exif2(unsigned char *jpeg, std::size_t size);
+	EXIF2(unsigned char *jpeg, std::size_t size);
 
 	std::optional<IFD> get(std::uint16_t tag) const;
 	void set(const IFD& native);

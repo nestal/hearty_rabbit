@@ -10,11 +10,10 @@
 // Created by nestal on 1/Mar/18.
 //
 
-#include "Exif2.hh"
+#include "EXIF2.hh"
 
 #include <boost/endian/buffers.hpp>
 
-#include <iostream>
 #include <array>
 
 namespace hrb {
@@ -46,7 +45,7 @@ T from_native(T value, order end)
 }
 
 template <typename POD>
-bool read(std::string_view& buffer, POD& out)
+bool read(std::string_view& buffer, POD& out, EXIF2::Error& error)
 {
 	if (buffer.size() > sizeof(out))
 	{
@@ -54,10 +53,11 @@ bool read(std::string_view& buffer, POD& out)
 		buffer.remove_prefix(sizeof(out));
 		return true;
 	}
+	error = EXIF2::Error::too_small;
 	return false;
 }
 
-bool find_app1(std::string_view& buffer)
+bool find_app1(std::string_view& buffer, EXIF2::Error& error)
 {
 	struct App
 	{
@@ -69,21 +69,31 @@ bool find_app1(std::string_view& buffer)
 
 	while (true)
 	{
-		App seg;
-		if (!read(buffer, seg))
+		App seg{};
+		if (!read(buffer, seg, error))
 			return false;
 
-		std::cout << (int)seg.marker[0] << " " << (int)seg.marker[1] << " length = " << seg.length.value() << std::endl;
-
 		// invalid segment marker
-		if (seg.marker[0] != 0xFF) return false;
+		if (seg.marker[0] != 0xFF)
+		{
+			error = EXIF2::Error::invalid_header;
+			return false;
+		}
 
 		// length too short
-		if (seg.length.value() <= 2) return false;
+		if (seg.length.value() <= 2)
+		{
+			error = EXIF2::Error::invalid_header;
+			return false;
+		}
 
 		// check if whole segment within the buffer
 		auto seg_remain = seg.length.value() - 2U;
-		if (buffer.size() < seg_remain) return false;
+		if (buffer.size() < seg_remain)
+		{
+			error = EXIF2::Error::too_small;
+			return false;
+		}
 
 		// found APP1
 		if (seg.marker[1] == 0xE1)
@@ -96,18 +106,21 @@ bool find_app1(std::string_view& buffer)
 	}
 }
 
-bool read_EXIF_and_TIFF_header(std::string_view& buffer, order& byte_order)
+bool read_EXIF_and_TIFF_header(std::string_view& buffer, order& byte_order, EXIF2::Error& error)
 {
 	// "Exif" header
-	std::array<unsigned char, 6> exif;
-	if (!read(buffer, exif)) return false;
+	std::array<unsigned char, 6> exif{};
+	if (!read(buffer, exif, error)) return false;
 	if (exif[0] != 0x45 ||
 		exif[1] != 0x78 ||
 		exif[2] != 0x69 ||
 		exif[3] != 0x66 ||
 		exif[4] != 0 ||
 		exif[5] != 0)
+	{
+		error = EXIF2::Error::invalid_header;
 		return false;
+	}
 
 	// TIFF header
 	struct TIFF
@@ -115,8 +128,9 @@ bool read_EXIF_and_TIFF_header(std::string_view& buffer, order& byte_order)
 		char byte_order[2];
 		std::uint16_t four_two;
 		std::uint32_t ifd_offset;
-	} tiff;
-	if (!read(buffer, tiff)) return false;
+	};
+	TIFF tiff{};
+	if (!read(buffer, tiff, error)) return false;
 
 	// check byte order
 	if (tiff.byte_order[0] == 0x49 && tiff.byte_order[1] == 0x49)
@@ -137,28 +151,26 @@ bool read_EXIF_and_TIFF_header(std::string_view& buffer, order& byte_order)
 
 } // end of anonymous namespace
 
-Exif2::Exif2(unsigned char *jpeg, std::size_t size)
+EXIF2::EXIF2(unsigned char *jpeg, std::size_t size)
 {
+	Error error = Error::ok;
 	if (jpeg[0] != 0xFF ||
 		jpeg[1] != 0xD8 )
 	{
-		std::cout << "invalid header" << std::endl;
+		error = Error::invalid_header;
 		return;
 	}
 
 	std::string_view buffer{reinterpret_cast<const char*>(jpeg+2), size-2};
-	if (!find_app1(buffer))
+	if (!find_app1(buffer, error))
 		return;
 
-	if (!read_EXIF_and_TIFF_header(buffer, m_byte_order))
+	if (!read_EXIF_and_TIFF_header(buffer, m_byte_order, error))
 		return;
 
-	std::cout << "everything OK so far" << std::endl;
 	std::uint16_t tag_count{};
-	if (!read(buffer, tag_count)) return;
+	if (!read(buffer, tag_count, error)) return;
 	tag_count = hrb::to_native(tag_count, m_byte_order);
-
-	std::cout << tag_count << " tags in file " << std::endl;
 
 	for (std::uint16_t i = 0 ; i < tag_count ; i++)
 	{
@@ -166,16 +178,14 @@ Exif2::Exif2(unsigned char *jpeg, std::size_t size)
 		auto ptags = jpeg + (reinterpret_cast<const unsigned char*>(buffer.data()) - jpeg);
 
 		IFD tag{};
-		if (!read(buffer, tag)) return;
+		if (!read(buffer, tag, error)) return;
 
 		to_native(tag);
 		m_tags.emplace(tag.tag, ptags);
-
-		std::cout << "tag " << std::hex << tag.tag << std::dec << " " << tag.type << " " << tag.count << " " << tag.value_offset << std::endl;
 	}
 }
 
-std::optional<Exif2::IFD> Exif2::get(std::uint16_t tag) const
+std::optional<EXIF2::IFD> EXIF2::get(std::uint16_t tag) const
 {
 	auto it = m_tags.find(tag);
 	if (it != m_tags.end())
@@ -188,7 +198,7 @@ std::optional<Exif2::IFD> Exif2::get(std::uint16_t tag) const
 	return std::nullopt;
 }
 
-void Exif2::to_native(Exif2::IFD& field) const
+void EXIF2::to_native(EXIF2::IFD& field) const
 {
 	field.tag = hrb::to_native(field.tag, m_byte_order);
 	field.type = hrb::to_native(field.type, m_byte_order);
@@ -196,7 +206,7 @@ void Exif2::to_native(Exif2::IFD& field) const
 	field.value_offset = hrb::to_native(field.value_offset, m_byte_order);
 }
 
-void Exif2::set(const IFD& native)
+void EXIF2::set(const IFD& native)
 {
 	auto it = m_tags.find(native.tag);
 	if (it != m_tags.end())
