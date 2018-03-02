@@ -163,7 +163,7 @@ const char* read_EXIF_and_TIFF_header(std::string_view& buffer, order& byte_orde
 
 } // end of anonymous namespace
 
-EXIF2::EXIF2(unsigned char *jpeg, std::size_t size, std::error_code& error)
+EXIF2::EXIF2(const unsigned char *jpeg, std::size_t size, std::error_code& error)
 {
 	if (jpeg[0] != 0xFF ||
 		jpeg[1] != 0xD8 )
@@ -177,11 +177,13 @@ EXIF2::EXIF2(unsigned char *jpeg, std::size_t size, std::error_code& error)
 	if (error)
 		return;
 
-	auto header = reinterpret_cast<const unsigned char*>(read_EXIF_and_TIFF_header(buffer, m_byte_order, error));
+	auto tiff = reinterpret_cast<const unsigned char*>(read_EXIF_and_TIFF_header(buffer, m_byte_order, error));
 	if (error)
 		return;
 
-	m_tiff_start = jpeg + (jpeg-header);
+	assert(tiff);
+	m_tiff_offset = tiff-jpeg;
+	assert(m_tiff_offset > 0);
 
 	std::uint16_t tag_count{};
 	read(buffer, tag_count, error);
@@ -192,7 +194,8 @@ EXIF2::EXIF2(unsigned char *jpeg, std::size_t size, std::error_code& error)
 	for (std::uint16_t i = 0 ; i < tag_count ; i++)
 	{
 		// convert to non-const pointer
-		auto ptags = jpeg + (reinterpret_cast<const unsigned char*>(buffer.data()) - jpeg);
+		auto offset = reinterpret_cast<const unsigned char*>(buffer.data()) - jpeg;
+		assert(offset > 0);
 
 		IFD tag{};
 		read(buffer, tag, error);
@@ -200,17 +203,19 @@ EXIF2::EXIF2(unsigned char *jpeg, std::size_t size, std::error_code& error)
 			return;
 
 		to_native(tag);
-		m_tags.emplace(tag.tag, ptags);
+		m_tags.emplace(tag.tag, offset);
 	}
 }
 
-std::optional<EXIF2::IFD> EXIF2::get(std::uint16_t tag) const
+std::optional<EXIF2::IFD> EXIF2::get(const unsigned char *jpeg, std::uint16_t tag) const
 {
 	auto it = m_tags.find(tag);
 	if (it != m_tags.end())
 	{
+		assert(it->second > 0);
+
 		IFD field{};
-		std::memcpy(&field, it->second, sizeof(field));
+		std::memcpy(&field, jpeg+it->second, sizeof(field));
 		return to_native(field);
 	}
 	return std::nullopt;
@@ -225,18 +230,20 @@ EXIF2::IFD& EXIF2::to_native(EXIF2::IFD& field) const
 	return field;
 }
 
-bool EXIF2::set(const IFD& native)
+bool EXIF2::set(unsigned char *jpeg, const IFD& native)
 {
 	auto it = m_tags.find(native.tag);
 	if (it != m_tags.end())
 	{
+		assert(it->second > 0);
+
 		IFD ordered_field{};
 		ordered_field.tag = hrb::from_native(native.tag, m_byte_order);
 		ordered_field.type = hrb::from_native(native.type, m_byte_order);
 		ordered_field.count = hrb::from_native(native.count, m_byte_order);
 		ordered_field.value_offset = hrb::from_native(native.value_offset, m_byte_order);
 
-		std::memcpy(it->second, &ordered_field, sizeof(ordered_field));
+		std::memcpy(jpeg + it->second, &ordered_field, sizeof(ordered_field));
 
 		return true;
 	}

@@ -39,18 +39,18 @@ public:
 
 public:
 	EXIF2() = default;
-	EXIF2(unsigned char *jpeg, std::size_t size, std::error_code& ec);
+	EXIF2(const unsigned char *jpeg, std::size_t size, std::error_code& ec);
 
-	std::optional<IFD> get(std::uint16_t tag) const;
-	bool set(const IFD& native);
+	std::optional<IFD> get(const unsigned char *jpeg, std::uint16_t tag) const;
+	bool set(unsigned char *jpeg, const IFD& native);
 
 private:
 	IFD& to_native(IFD& field) const;
 
 private:
-	unsigned char *m_tiff_start{};
+	std::ptrdiff_t m_tiff_offset{};
 
-	std::unordered_map<std::uint16_t, unsigned char*> m_tags;
+	std::unordered_map<std::uint16_t, std::ptrdiff_t> m_tags;
 	boost::endian::order m_byte_order{};
 };
 

@@ -54,6 +54,7 @@ BlobMeta BlobMeta::deduce_meta(boost::asio::const_buffer blob, const Magic& magi
 
 	if (meta.m_mime == "image/jpeg")
 	{
+
 		auto ev2 = Exiv2::ImageFactory::open(static_cast<const unsigned char*>(blob.data()), blob.size());
 	    ev2->readMetadata();
 		auto& exif = ev2->exifData();

@@ -134,14 +134,14 @@ TEST_CASE("read exif", "[normal]")
 	EXIF2 subject{&img[0], img.size(), ec};
 	REQUIRE(!ec);
 
-	auto orientation = subject.get(0x0112);
+	auto orientation = subject.get(&img[0], 0x0112);
 	REQUIRE(orientation);
 	REQUIRE(orientation->tag == 0x0112);
 	REQUIRE(orientation->value_offset == 1);
 
 	// set orientation to 8
 	orientation->value_offset = 8;
-	REQUIRE(subject.set(*orientation));
+	REQUIRE(subject.set(&img[0], *orientation));
 
 	auto meta = BlobMeta::deduce_meta({&img[0], img.size()}, Magic{});
 	REQUIRE(meta.orientation() == 8);
