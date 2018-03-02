@@ -21,61 +21,62 @@ namespace hrb {
 
 using Handle = std::unique_ptr<void, decltype(&tjDestroy)>;
 
-JPEG::JPEG(const void *data, std::size_t size, int max_width, int max_height)
+JPEG::JPEG(const void *data, std::size_t size, const Size& max_dim)
 {
 	Handle handle{tjInitDecompress(), &tjDestroy};
 	auto result = tjDecompressHeader3(
 		handle.get(), static_cast<const unsigned char*>(data), size,
-		&m_width, &m_height, &m_subsample, &m_colorspace
+		&m_size.width(), &m_size.height(), &m_subsample, &m_colorspace
 	);
 
 	if (result != 0)
 		throw Exception(tjGetErrorStr());
 
-	int width = m_width, height = m_height;
-	select_scaling_factor(max_width, max_height, width, height);
+	auto selected_size = select_scaling_factor(max_dim, m_size);
 
 	// allocate pixels
-	auto pixel_size = static_cast<std::size_t>(height * width * tjPixelSize[TJPF_RGB]);
+	auto pixel_size = static_cast<std::size_t>(selected_size.height() * selected_size.width() * tjPixelSize[TJPF_RGB]);
 	std::vector<unsigned char> pixels(pixel_size);
 
 	result = tjDecompress2(
 		handle.get(), static_cast<const unsigned char*>(data), size,
-		&pixels[0], width, 0, height, TJPF_RGB, TJFLAG_FASTDCT
+		&pixels[0], selected_size.width(), 0, selected_size.height(), TJPF_RGB, TJFLAG_FASTDCT
 	);
 	if (result != 0)
 		throw Exception(tjGetErrorStr());
 
 	// commit result
 	m_pixels = std::move(pixels);
-	m_width = width;
-	m_height = height;
+	m_size = selected_size;
 }
 
 // width, height: target size of the image.
-void JPEG::select_scaling_factor(int max_width, int max_height, int& width, int& height) const
+Size JPEG::select_scaling_factor(const Size& max, const Size& actual)
 {
-	if (m_width > max_width || m_height > max_height)
+	if (actual.width() > max.width() || actual.height() > max.height())
 	{
-		width  = 0;
-		height = 0;
+		Size selected;
 
 		int count{};
 		auto factors = tjGetScalingFactors(&count);
 		for (int i = 0; i < count; i++)
 		{
-			auto w = TJSCALED(m_width,  factors[i]);
-			auto h = TJSCALED(m_height, factors[i]);
+			auto w = TJSCALED(actual.width(),  factors[i]);
+			auto h = TJSCALED(actual.height(), factors[i]);
 
 			// width and height within limits, and total area larger
 			// than precious accepted values
-			if (w < max_width && h < max_height && w*h > width * height)
+			if (w < max.width() && h < max.height() && w*h > selected.width() * selected.height())
 			{
 				// remember this scaling factor
-				width = w;
-				height = h;
+				selected.assign(w, h);
 			}
 		}
+		return selected;
+	}
+	else
+	{
+		return actual;
 	}
 }
 
@@ -86,7 +87,7 @@ TurboBuffer JPEG::compress(int quality) const
 	unsigned char *jpeg{};
 	std::size_t size{};
 	auto result = tjCompress2(
-		handle.get(), &m_pixels[0], m_width, 0, m_height, TJPF_RGB, &jpeg, &size,
+		handle.get(), &m_pixels[0], m_size.width(), 0, m_size.height(), TJPF_RGB, &jpeg, &size,
 		m_subsample, quality, TJFLAG_FASTDCT
 	);
 	if (result != 0)

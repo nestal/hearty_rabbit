@@ -77,7 +77,7 @@ ObjectID BlobDatabase::save(const UploadFile& tmp, std::string_view filename, st
 	{
 		auto mmap = MMap::open(tmp.native_handle(), ec);
 		if (!ec)
-			resize(mmap.data(), mmap.size(), 2048, 2048, dest_path.parent_path());
+			resize(mmap.data(), mmap.size(), {2048, 2048}, dest_path.parent_path());
 	}
 
 	if (!ec)
@@ -238,22 +238,24 @@ std::optional<std::string> BlobDatabase::load_meta_json(const ObjectID& id) cons
 	return std::string{mmap.string()};
 }
 
-void BlobDatabase::resize(const void *jpeg, std::size_t size, int width, int height, const fs::path& dir)
+void BlobDatabase::resize(const void *jpeg, std::size_t size, const Size& max_dim, const fs::path& dir)
 {
 	try
 	{
-		Log(LOG_NOTICE, "resizing image %1% %2%", width, height);
-		JPEG img{jpeg, size, width, height};
-		if (width == img.width() && height == img.height())
+		Log(LOG_NOTICE, "resizing image %1% %2%", max_dim.width(), max_dim.height());
+		JPEG img{jpeg, size, max_dim};
+		if (max_dim == img.size())
 			return;
 		auto smaller = img.compress(70);
 
 		std::error_code ec;
 		RotateImage transform;
 		auto rotated = transform.auto_rotate(smaller.data(), smaller.size(), ec);
+		if (ec)
+			Log(LOG_WARNING, "cannot rotate image %1% %2%", ec, ec.message());
 
 		std::ostringstream fn;
-		fn << width << "x" << height;
+		fn << max_dim.width() << "x" << max_dim.height();
 
 		boost::system::error_code bec;
 		boost::beast::file dest;

@@ -15,6 +15,7 @@
 #include "ObjectID.hh"
 #include "util/FS.hh"
 #include "util/Magic.hh"
+#include "util/Size.hh"
 
 #include <boost/beast/http/message.hpp>
 #include <rapidjson/document.h>
@@ -58,7 +59,7 @@ private:
 	void save_meta(const fs::path& dest_path, const BlobMeta& meta) const;
 	std::optional<BlobMeta> load_meta(const fs::path& dest_path) const;
 
-	void resize(const void *jpeg, std::size_t size, int width, int height, const fs::path& dir);
+	void resize(const void *jpeg, std::size_t size, const Size& max_dim, const fs::path& dir);
 
 private:
 	fs::path    m_base;

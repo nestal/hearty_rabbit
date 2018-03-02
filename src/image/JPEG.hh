@@ -12,6 +12,8 @@
 
 #pragma once
 
+#include "util/Size.hh"
+
 #include <string_view>
 #include <exception>
 #include <vector>
@@ -34,7 +36,7 @@ public:
 	};
 
 public:
-	JPEG(const void *data, std::size_t size, int max_width, int max_height);
+	JPEG(const void *data, std::size_t size, const Size& max_dim);
 	JPEG(JPEG&&) = default;
 	JPEG(const JPEG&) noexcept = default;
 	~JPEG() = default;
@@ -42,19 +44,16 @@ public:
 	JPEG& operator=(JPEG&&) noexcept = default;
 	JPEG& operator=(const JPEG&) = default;
 
-	int width() const {return m_width;}
-	int height() const {return m_height;}
-
+	Size size() const {return m_size;}
 	TurboBuffer compress(int quality) const;
 
 private:
-	void select_scaling_factor(int max_width, int max_height, int& width, int& height) const;
+	static Size select_scaling_factor(const Size& max, const Size& actual);
 
 private:
 	std::vector<unsigned char> m_pixels;
 
-	int m_width{};
-	int m_height{};
+	Size m_size;
 	int m_subsample{};
 	int m_colorspace{};
 };

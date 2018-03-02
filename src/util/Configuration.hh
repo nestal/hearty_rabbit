@@ -13,6 +13,7 @@
 #pragma once
 
 #include "Exception.hh"
+#include "Size.hh"
 
 #include <boost/program_options/variables_map.hpp>
 #include <boost/program_options/options_description.hpp>
@@ -50,6 +51,7 @@ public:
 	std::size_t thread_count() const {return m_thread_count;}
 	std::size_t upload_limit() const {return m_upload_limit;}
 	const std::string& server_name() const {return m_server_name;}
+	Size image_dimension() const {return m_img_dim;}
 
 	bool help() const {return m_args.count("help") > 0;}
 
@@ -89,6 +91,8 @@ private:
 	std::string m_server_name;
 	std::size_t m_thread_count{1};
 	std::size_t m_upload_limit{10 * 1024 * 1024};
+
+	Size m_img_dim{2048, 2048};
 };
 
 } // end of namespace

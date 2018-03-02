@@ -84,11 +84,11 @@ TEST_CASE("resize image", "[normal]")
 	auto img = MMap::open(fs::path{__FILE__}.parent_path()/"up_f_upright.jpg", ec);
 	REQUIRE(!ec);
 
-	JPEG subject{img.data(), img.size(), 100, 100};
-	REQUIRE(subject.width() <= 100);
-	REQUIRE(subject.height() <= 100);
-	INFO("new width = " << subject.width());
-	INFO("new height = " << subject.height());
+	JPEG subject{img.data(), img.size(), {100, 100}};
+	REQUIRE(subject.size().width() <= 100);
+	REQUIRE(subject.size().height() <= 100);
+	INFO("new width = " << subject.size().width());
+	INFO("new height = " << subject.size().height());
 
 	auto smaller = subject.compress(50);
 
@@ -99,9 +99,8 @@ TEST_CASE("resize image", "[normal]")
 	out.write(smaller.data(), smaller.size(), bec);
 	REQUIRE(!bec);
 
-	JPEG sjpeg{smaller.data(), smaller.size(), 100, 100};
-	REQUIRE(sjpeg.width() == subject.width());
-	REQUIRE(sjpeg.height() == subject.height());
+	JPEG sjpeg{smaller.data(), smaller.size(), {100, 100}};
+	REQUIRE(sjpeg.size() == subject.size());
 }
 
 TEST_CASE("read exif", "[normal]")
