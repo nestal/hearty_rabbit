@@ -13,7 +13,9 @@
 #include "TurboBuffer.hh"
 
 #include <turbojpeg.h>
+
 #include <utility>
+#include <cstring>
 
 namespace hrb {
 

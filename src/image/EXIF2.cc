@@ -196,7 +196,7 @@ EXIF2::EXIF2(const unsigned char *jpeg, std::size_t size, std::error_code& error
 	for (std::uint16_t i = 0 ; i < tag_count ; i++)
 	{
 		// convert to non-const pointer
-		auto offset = reinterpret_cast<const unsigned char*>(buffer.data()) - jpeg;
+		auto offset = buffer.data() - jpeg;
 		assert(offset > 0);
 
 		Field tag{};
