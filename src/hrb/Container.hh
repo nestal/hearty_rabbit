@@ -26,13 +26,13 @@ namespace hrb {
 class BlobDatabase;
 
 /// A set of blob objects represented by a redis set.
-class Container
+class Container1
 {
 private:
 	static const std::string_view redis_prefix;
 
 public:
-	explicit Container(std::string_view name);
+	explicit Container1(std::string_view name);
 
 	template <typename Complete>
 	static void load(
@@ -43,7 +43,7 @@ public:
 	{
 		db.command([comp=std::forward<Complete>(complete), name=std::string{container}](auto&& reply, std::error_code&& ec) mutable
 		{
-			Container result{name};
+			Container1 result{name};
 			for (auto&& element : reply)
 			{
 				if (ObjectID oid = raw_to_object_id(element.as_string()); oid != ObjectID{})

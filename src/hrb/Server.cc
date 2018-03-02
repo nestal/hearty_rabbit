@@ -37,7 +37,7 @@ Server::Server(const Configuration& cfg) :
 	m_ioc{static_cast<int>(std::max(1UL, cfg.thread_count()))},
 	m_db{m_ioc, cfg.redis()},
 	m_lib{cfg.web_root()},
-	m_blob_db{cfg.blob_path()}
+	m_blob_db{cfg.blob_path(), cfg.image_dimension()}
 {
 	OpenSSL_add_all_digests();
 }
@@ -110,6 +110,7 @@ void Server::on_upload(UploadRequest&& req, EmptyResponseSender&& send, const Au
 {
 	boost::system::error_code bec;
 	auto [prefix, filename] = extract_prefix(req);
+	Log(LOG_INFO, "uploading %1% bytes to %2%", req.body().size(bec), filename);
 
 	std::error_code ec;
 	auto id = m_blob_db.save(req.body(), filename, ec);
@@ -121,7 +122,7 @@ void Server::on_upload(UploadRequest&& req, EmptyResponseSender&& send, const Au
 	// Add the newly created blob to the user's container.
 	// The user's container contains all the blobs that is owned by the user.
 	// It will be used for authorizing the user's request on these blob later.
-	Container::add(*m_db.alloc(), auth.user(), id, [
+	Container1::add(*m_db.alloc(), auth.user(), id, [
 		id,
 		this,
 		send=std::move(send),
@@ -201,7 +202,7 @@ http::response<http::string_body> Server::server_error(boost::beast::string_view
 
 void Server::serve_home(FileResponseSender&& send, unsigned version, const Authentication& auth)
 {
-	Container::load(*m_db.alloc(), auth.user(), [send=std::move(send), version, this](auto ec, Container&& cond)
+	Container1::load(*m_db.alloc(), auth.user(), [send=std::move(send), version, this](auto ec, Container1&& cond)
 	{
 		auto res = m_lib.find_dynamic("index.html", version);
 		res.body().extra(

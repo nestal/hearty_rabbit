@@ -106,6 +106,10 @@ void Configuration::load_config(const boost::filesystem::path& path)
 			GetValueByPointerWithDefault(json, "/upload_limit_mb", m_upload_limit/1024.0/1024.0).GetDouble() *
 				1024 * 1024
 		);
+		m_img_dim.assign(
+			GetValueByPointerWithDefault(json, "/image_dimension/width", m_img_dim.width()).GetInt(),
+			GetValueByPointerWithDefault(json, "/image_dimension/height", m_img_dim.height()).GetInt()
+		);
 
 		m_listen_http   = parse_endpoint(required(json, "/http"));
 		m_listen_https  = parse_endpoint(required(json, "/https"));

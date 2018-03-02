@@ -203,8 +203,8 @@ void Session::on_write(
 	std::size_t,
 	bool close)
 {
-	if (ec)
-		Log(LOG_WARNING, "write error: %1%", ec);
+//	if (ec)
+//		Log(LOG_WARNING, "write error: %1%", ec);
 
 	if (close)
 	{

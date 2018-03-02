@@ -29,7 +29,7 @@ TEST_CASE("Container tests", "[normal]")
 	auto redis = redis::connect(ioc);
 
 	std::error_code sec;
-	BlobDatabase blobdb{"/tmp/BlobDatabase-UT"};
+	BlobDatabase blobdb{"/tmp/BlobDatabase-UT", {2048,2048}};
 	UploadFile tmp;
 	blobdb.prepare_upload(tmp, sec);
 
@@ -43,18 +43,18 @@ TEST_CASE("Container tests", "[normal]")
 	auto testid = blobdb.save(tmp, "hello.world", sec);
 
 	int tested = 0;
-	Container::add(*redis, "test", testid, [&tested, redis, testid, &blobdb](std::error_code ec)
+	Container1::add(*redis, "test", testid, [&tested, redis, testid, &blobdb](std::error_code ec)
 	{
 		REQUIRE(!ec);
 
-		Container::is_member(*redis, "test", testid, [&tested](std::error_code ec, bool added)
+		Container1::is_member(*redis, "test", testid, [&tested](std::error_code ec, bool added)
 		{
 			REQUIRE(!ec);
 			REQUIRE(added);
 			tested++;
 		});
 
-		Container::load(*redis, "test", [&tested, testid, &blobdb](std::error_code ec, Container&& container)
+		Container1::load(*redis, "test", [&tested, testid, &blobdb](std::error_code ec, Container1&& container)
 		{
 			REQUIRE(!ec);
 			REQUIRE(container.name() == "test");

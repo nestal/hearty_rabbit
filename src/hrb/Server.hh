@@ -193,7 +193,7 @@ void Server::get_blob(const EmptyRequest& req, Send&& send, const Authentication
 		return send(http::response<http::empty_body>{http::status::not_found, req.version()});
 
 	// Check if the user has permission to read the blob
-	Container::is_member(*m_db.alloc(), auth.user(), object_id,
+	Container1::is_member(*m_db.alloc(), auth.user(), object_id,
 		[
 			object_id,
 			send=std::move(send),

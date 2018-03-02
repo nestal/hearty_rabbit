@@ -20,18 +20,17 @@
 
 namespace hrb {
 
+class TurboBuffer;
+
 class RotateImage
 {
 public:
 	RotateImage() = default;
 	~RotateImage();
 
-	std::tuple<
-		std::shared_ptr<unsigned char>,
-		std::size_t
-	> rotate(long orientation, const void *data, std::size_t size);
+	TurboBuffer rotate(long orientation, const void *data, std::size_t size);
 
-	void auto_rotate(const void *data, std::size_t size, const fs::path& out, std::error_code& ec);
+	TurboBuffer auto_rotate(const void *data, std::size_t size, std::error_code& ec);
 
 private:
 	static int map_op(long& orientation);

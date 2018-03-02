@@ -15,6 +15,7 @@
 #include "ObjectID.hh"
 #include "util/FS.hh"
 #include "util/Magic.hh"
+#include "util/Size.hh"
 
 #include <boost/beast/http/message.hpp>
 #include <rapidjson/document.h>
@@ -36,7 +37,7 @@ public:
 	using BlobResponse = boost::beast::http::response<MMapResponseBody>;
 
 public:
-	explicit BlobDatabase(const fs::path& base);
+	explicit BlobDatabase(const fs::path& base, const Size& resize_img);
 
 	void prepare_upload(UploadFile& result, std::error_code& ec) const;
 	ObjectID save(const UploadFile& tmp, std::string_view filename, std::error_code& ec);
@@ -58,9 +59,12 @@ private:
 	void save_meta(const fs::path& dest_path, const BlobMeta& meta) const;
 	std::optional<BlobMeta> load_meta(const fs::path& dest_path) const;
 
+	void resize(const void *jpeg, std::size_t size, const Size& max_dim, const fs::path& dir);
+
 private:
 	fs::path    m_base;
 	Magic       m_magic;
+	Size        m_resize_img;
 };
 
 } // end of namespace hrb

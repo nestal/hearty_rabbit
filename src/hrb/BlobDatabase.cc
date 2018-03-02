@@ -13,7 +13,9 @@
 #include "BlobDatabase.hh"
 #include "UploadFile.hh"
 #include "BlobMeta.hh"
-#include "RotateImage.hh"
+#include "image/RotateImage.hh"
+#include "image/JPEG.hh"
+#include "image/TurboBuffer.hh"
 
 #include "net/MMapResponseBody.hh"
 
@@ -33,7 +35,7 @@ const std::string_view default_rendition = "master";
 const std::string_view metafile = "meta";
 }
 
-BlobDatabase::BlobDatabase(const fs::path& base) : m_base{base}
+BlobDatabase::BlobDatabase(const fs::path& base, const Size& img_resize) : m_base{base}, m_resize_img{img_resize}
 {
 	if (exists(base) && !is_directory(base))
 		throw std::system_error(std::make_error_code(std::errc::file_exists));
@@ -71,23 +73,11 @@ ObjectID BlobDatabase::save(const UploadFile& tmp, std::string_view filename, st
 	Log(LOG_NOTICE, "upload image orientation %1%", meta.orientation());
 
 	// creates a rendition of auto-rotated image if the orientation isn't 1
-	if (meta.mime() == "image/jpeg" && meta.orientation() != 1)
+	if (meta.mime() == "image/jpeg")
 	{
 		auto mmap = MMap::open(tmp.native_handle(), ec);
 		if (!ec)
-		{
-			RotateImage trnasform;
-			trnasform.auto_rotate(mmap.data(), mmap.size(), dest_path.parent_path() / "rotated.jpeg", ec);
-
-			// Auto-rotation error is not fatal.
-			if (ec)
-			{
-				Log(LOG_WARNING, "cannot rotate image %1%. Sizes not divisible by 16?", filename);
-				ec.clear();
-			}
-		}
-		else
-			Log(LOG_NOTICE, "cannot open image %1% to rotate", tmp.native_handle());
+			resize(mmap.data(), mmap.size(), {2048, 2048}, dest_path.parent_path());
 	}
 
 	if (!ec)
@@ -148,12 +138,12 @@ BlobDatabase::BlobResponse BlobDatabase::response(
 		save_meta(path.parent_path()/std::string{metafile}, *meta);
 	}
 
-	// Serve the rotated image if it exists
-	if (meta->mime() == "image/jpeg" && meta->orientation() != 1 && exists(path.parent_path()/"rotated.jpeg"))
+	// Serve the resized image if it exists
+	if (meta->mime() == "image/jpeg" && exists(path.parent_path()/"2048x2048"))
 	{
-		auto rotated = MMap::open(path.parent_path() / "rotated.jpeg", ec);
+		auto small = MMap::open(path.parent_path() / "2048x2048", ec);
 		if (!ec)
-			mmap = std::move(rotated);
+			mmap = std::move(small);
 	}
 
 	// Advice the kernel that we only read the memory in one pass
@@ -246,6 +236,44 @@ std::optional<std::string> BlobDatabase::load_meta_json(const ObjectID& id) cons
 	}
 
 	return std::string{mmap.string()};
+}
+
+void BlobDatabase::resize(const void *jpeg, std::size_t size, const Size& max_dim, const fs::path& dir)
+{
+	try
+	{
+		Log(LOG_NOTICE, "resizing image %1% %2%", max_dim.width(), max_dim.height());
+
+		std::error_code ec;
+		RotateImage transform;
+		auto rotated = transform.auto_rotate(jpeg, size, ec);
+		if (ec)
+		{
+			Log(LOG_WARNING, "BlobDatabase::resize(): cannot rotate image %1% %2%", ec, ec.message());
+			return;
+		}
+
+		JPEG img{
+			rotated.empty() ? static_cast<const unsigned char*>(jpeg) : rotated.data(),
+			rotated.empty() ? size                                    : rotated.size(),
+			max_dim
+		};
+		if (max_dim != img.size())
+			rotated = img.compress(70);
+
+		std::ostringstream fn;
+		fn << max_dim.width() << "x" << max_dim.height();
+
+		boost::system::error_code bec;
+		boost::beast::file dest;
+		dest.open((dir/fn.str()).string().c_str(), boost::beast::file_mode::write, bec);
+
+		dest.write(rotated.data(), rotated.size(), bec);
+	}
+	catch (JPEG::Exception& e)
+	{
+		Log(LOG_WARNING, "JPEG resize error: %1%", e.what());
+	}
 }
 
 } // end of namespace hrb

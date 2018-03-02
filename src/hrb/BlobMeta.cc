@@ -16,8 +16,7 @@
 #include "util/JsonHelper.hh"
 #include "util/Log.hh"
 
-#include <turbojpeg.h>
-#include <exiv2/exiv2.hpp>
+#include "image/EXIF2.hh"
 
 #include <rapidjson/pointer.h>
 
@@ -54,12 +53,15 @@ BlobMeta BlobMeta::deduce_meta(boost::asio::const_buffer blob, const Magic& magi
 
 	if (meta.m_mime == "image/jpeg")
 	{
-		auto ev2 = Exiv2::ImageFactory::open(static_cast<const unsigned char*>(blob.data()), blob.size());
-	    ev2->readMetadata();
-		auto& exif = ev2->exifData();
-		auto orientation = exif.findKey(Exiv2::ExifKey{"Exif.Image.Orientation"});
-		if (orientation != exif.end())
-			meta.m_orientation = orientation->toLong();
+		auto jpeg = boost::asio::buffer_cast<const unsigned char*>(blob);
+
+		std::error_code ec;
+		EXIF2 exif2{jpeg, blob.size(), ec};
+		if (!ec)
+		{
+			if (auto field = exif2.get(jpeg, EXIF2::Tag::orientation))
+				meta.m_orientation = field->value_offset;
+		}
 	}
 	return meta;
 }

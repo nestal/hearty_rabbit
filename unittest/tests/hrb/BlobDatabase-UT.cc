@@ -24,7 +24,7 @@ TEST_CASE("Open temp file", "[normal]")
 	fs::remove_all("/tmp/BlobDatabase-UT");
 
 	std::error_code sec;
-	BlobDatabase subject{"/tmp/BlobDatabase-UT"};
+	BlobDatabase subject{"/tmp/BlobDatabase-UT", {2048, 2048}};
 	UploadFile tmp;
 	subject.prepare_upload(tmp, sec);
 
@@ -62,10 +62,10 @@ TEST_CASE("Open temp file", "[normal]")
 TEST_CASE("Upload JPEG file to BlobDatabase", "[normal]")
 {
 	std::error_code ec;
-	auto black = MMap::open(fs::path{__FILE__}.parent_path() / "black.jpg", ec);
+	auto black = MMap::open(fs::path{__FILE__}.parent_path().parent_path() / "image" / "black.jpg", ec);
 	REQUIRE(!ec);
 
-	BlobDatabase subject{"/tmp/BlobDatabase-UT"};
+	BlobDatabase subject{"/tmp/BlobDatabase-UT", {2048,2048}};
 	UploadFile tmp;
 	subject.prepare_upload(tmp, ec);
 	REQUIRE(!ec);
