@@ -77,29 +77,7 @@ ObjectID BlobDatabase::save(const UploadFile& tmp, std::string_view filename, st
 	{
 		auto mmap = MMap::open(tmp.native_handle(), ec);
 		if (!ec)
-		{
-			if (meta.orientation() != 1)
-			{
-				auto rotated = dest_path.parent_path() / "rotated.jpeg";
-
-				RotateImage trnasform;
-				trnasform.auto_rotate(mmap.data(), mmap.size(), rotated, ec);
-
-				// Auto-rotation error is not fatal.
-				if (ec)
-				{
-					Log(LOG_WARNING, "cannot rotate image %1%. Sizes not divisible by 16?", filename);
-					ec.clear();
-				}
-				else
-					mmap = MMap::open(rotated, ec);
-			}
-
-			// resize it
 			resize(mmap.data(), mmap.size(), 2048, 2048, dest_path.parent_path());
-		}
-		else
-			Log(LOG_NOTICE, "cannot open image %1% to rotate", tmp.native_handle());
 	}
 
 	if (!ec)
@@ -160,18 +138,12 @@ BlobDatabase::BlobResponse BlobDatabase::response(
 		save_meta(path.parent_path()/std::string{metafile}, *meta);
 	}
 
-	// Serve the rotated image if it exists
+	// Serve the resized image if it exists
 	if (meta->mime() == "image/jpeg" && exists(path.parent_path()/"2048x2048"))
 	{
 		auto small = MMap::open(path.parent_path() / "2048x2048", ec);
 		if (!ec)
 			mmap = std::move(small);
-	}
-	else if (meta->mime() == "image/jpeg" && meta->orientation() != 1 && exists(path.parent_path()/"rotated.jpeg"))
-	{
-		auto rotated = MMap::open(path.parent_path() / "rotated.jpeg", ec);
-		if (!ec)
-			mmap = std::move(rotated);
 	}
 
 	// Advice the kernel that we only read the memory in one pass
@@ -276,6 +248,10 @@ void BlobDatabase::resize(const void *jpeg, std::size_t size, int width, int hei
 			return;
 		auto smaller = img.compress(70);
 
+		std::error_code ec;
+		RotateImage transform;
+		auto rotated = transform.auto_rotate(smaller.data(), smaller.size(), ec);
+
 		std::ostringstream fn;
 		fn << width << "x" << height;
 
@@ -283,7 +259,10 @@ void BlobDatabase::resize(const void *jpeg, std::size_t size, int width, int hei
 		boost::beast::file dest;
 		dest.open((dir/fn.str()).string().c_str(), boost::beast::file_mode::write, bec);
 
-		dest.write(smaller.data(), smaller.size(), bec);
+		if (!ec && !rotated.empty())
+			dest.write(rotated.data(), rotated.size(), bec);
+		else
+			dest.write(smaller.data(), smaller.size(), bec);
 	}
 	catch (JPEG::Exception& e)
 	{
