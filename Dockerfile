@@ -48,8 +48,6 @@ COPY --from=builder \
 	/lib64/libpcre.so.1  \
 	/lib64/libunwind.so.8 \
 	/lib64/libtinfo.so.5  \
-	/lib64/libexiv2.so.12  \
-	/lib64/libexpat.so.1  \
 	/opt/libjpeg-turbo/lib64/libturbojpeg.so.0  \
 		/lib64/
 

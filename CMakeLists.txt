@@ -75,7 +75,6 @@ target_link_libraries(
 	OpenSSL::Crypto
 	${LIBUNWIND_LIBRARIES}
 	${TURBOJPEG_LDFLAGS}        # libjpeg-turbo may not be installed in default paths
-	${EXIV2_LIBRARIES}
 	${LIBB2_LIBRARY}
 	${CMAKE_THREAD_LIBS_INIT}
 )
@@ -87,6 +86,7 @@ target_include_directories(unittest PRIVATE unittest/Catch2/single_include)
 target_link_libraries(
 	unittest
 	hrblib
+	${EXIV2_LIBRARIES}		# exiv2 is used to verify the EXIF decoder
 )
 
 # Automatically run unit tests after the build
