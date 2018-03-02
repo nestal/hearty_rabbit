@@ -12,12 +12,11 @@
 
 #include "RotateImage.hh"
 #include "TurboBuffer.hh"
+#include "EXIF2.hh"
 
 #include "util/Log.hh"
 
 #include <boost/beast/core/file.hpp>
-
-#include <exiv2/exiv2.hpp>
 
 namespace hrb {
 
@@ -83,45 +82,36 @@ int RotateImage::map_op(long& orientation)
 /// Rotate the image according to the Exif.Image.Orientation tag.
 void RotateImage::auto_rotate(const void *jpeg, std::size_t size, const fs::path& out, std::error_code& ec)
 {
-	try
+	EXIF2 exif2{static_cast<const unsigned char *>(jpeg), size, ec};
+	if (ec)
+		return;
+
+	if (auto orientation = exif2.get(static_cast<const unsigned char *>(jpeg), EXIF2::Tag::orientation))
 	{
-		auto ev2 = Exiv2::ImageFactory::open(static_cast<const unsigned char *>(jpeg), size);
-		ev2->readMetadata();
-		auto& exif = ev2->exifData();
-		auto orientation = exif.findKey(Exiv2::ExifKey{"Exif.Image.Orientation"});
-		if (orientation != exif.end() && orientation->count() > 0)
+		auto buf = rotate(orientation->value_offset, jpeg, size);
+		if (buf.empty())
 		{
-			auto buf = rotate(orientation->toLong(), jpeg, size);
-			if (buf.empty())
-			{
-				Log(LOG_NOTICE, "cannot rotate image %1%", tjGetErrorStr());
-				return ec.assign(-1, std::system_category());
-			}
-
-			// Write to output file and read it back... Exiv2 does not support writing
-			// tag in memory.
-			boost::system::error_code bec;
-			boost::beast::file out_file;
-			out_file.open(out.string().c_str(), boost::beast::file_mode::write, bec);
-			if (!bec)
-				out_file.write(buf.data(), buf.size(), bec);
-			if (bec)
-				ec.assign(bec.value(), std::generic_category());
-			out_file.close(bec);
-
-			// Update orientation tag
-			*orientation = int16_t{1};
-
-			// Write the new tags to the newly rotated file
-			auto out_ev2 = Exiv2::ImageFactory::open(out.string());
-			out_ev2->setExifData(exif);
-			out_ev2->writeMetadata();
+			Log(LOG_NOTICE, "cannot rotate image %1%", tjGetErrorStr());
+			return ec.assign(-1, std::system_category());
 		}
-	}
-	catch (Exiv2::AnyError& e)
-	{
-		Log(LOG_WARNING, "exiv2 error %1% (%2%", e.code(), e.what());
-		ec.assign(e.code(), std::system_category());
+
+		// Update orientation tag
+		orientation->value_offset = 1;
+
+		// Write the new tags to the newly rotated file
+		EXIF2 out_exif2{buf.data(), buf.size(), ec};
+		out_exif2.set(buf.data(), *orientation);
+
+		// Write to output file and read it back... Exiv2 does not support writing
+		// tag in memory.
+		boost::system::error_code bec;
+		boost::beast::file out_file;
+		out_file.open(out.string().c_str(), boost::beast::file_mode::write, bec);
+		if (!bec)
+			out_file.write(buf.data(), buf.size(), bec);
+		if (bec)
+			ec.assign(bec.value(), std::generic_category());
+		out_file.close(bec);
 	}
 }
 

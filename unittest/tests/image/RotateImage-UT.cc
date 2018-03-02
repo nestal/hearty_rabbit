@@ -89,7 +89,7 @@ TEST_CASE("png image cannot be auto-rotated", "[error]")
 
 	RotateImage subject;
 	REQUIRE_NOTHROW(subject.auto_rotate(png.data(), png.size(), out, ec));
-	REQUIRE(!ec);
+	REQUIRE(ec);
 	REQUIRE(!exists(out));
 }
 
