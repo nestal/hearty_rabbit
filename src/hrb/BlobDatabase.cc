@@ -243,16 +243,23 @@ void BlobDatabase::resize(const void *jpeg, std::size_t size, const Size& max_di
 	try
 	{
 		Log(LOG_NOTICE, "resizing image %1% %2%", max_dim.width(), max_dim.height());
-		JPEG img{jpeg, size, max_dim};
-		if (max_dim == img.size())
-			return;
-		auto smaller = img.compress(70);
 
 		std::error_code ec;
 		RotateImage transform;
-		auto rotated = transform.auto_rotate(smaller.data(), smaller.size(), ec);
+		auto rotated = transform.auto_rotate(jpeg, size, ec);
 		if (ec)
-			Log(LOG_WARNING, "cannot rotate image %1% %2%", ec, ec.message());
+		{
+			Log(LOG_WARNING, "BlobDatabase::resize(): cannot rotate image %1% %2%", ec, ec.message());
+			return;
+		}
+
+		JPEG img{
+			rotated.empty() ? static_cast<const unsigned char*>(jpeg) : rotated.data(),
+			rotated.empty() ? size                                    : rotated.size(),
+			max_dim
+		};
+		if (max_dim != img.size())
+			rotated = img.compress(70);
 
 		std::ostringstream fn;
 		fn << max_dim.width() << "x" << max_dim.height();
@@ -261,10 +268,7 @@ void BlobDatabase::resize(const void *jpeg, std::size_t size, const Size& max_di
 		boost::beast::file dest;
 		dest.open((dir/fn.str()).string().c_str(), boost::beast::file_mode::write, bec);
 
-		if (!ec && !rotated.empty())
-			dest.write(rotated.data(), rotated.size(), bec);
-		else
-			dest.write(smaller.data(), smaller.size(), bec);
+		dest.write(rotated.data(), rotated.size(), bec);
 	}
 	catch (JPEG::Exception& e)
 	{

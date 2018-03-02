@@ -193,7 +193,7 @@ void Session::handle_read_error(std::string_view where, boost::system::error_cod
 
 	else if (ec)
 	{
-//		Log(LOG_WARNING, "read error @ %3%: %1% (%2%) closing connection", ec, ec.message(), where);
+		Log(LOG_WARNING, "read error @ %3%: %1% (%2%)", ec, ec.message(), where);
 		return send_response(m_server.bad_request(ec.message(), 11));
 	}
 }

@@ -110,6 +110,7 @@ void Server::on_upload(UploadRequest&& req, EmptyResponseSender&& send, const Au
 {
 	boost::system::error_code bec;
 	auto [prefix, filename] = extract_prefix(req);
+	Log(LOG_INFO, "uploading %1% bytes to %2%", req.body().size(bec), filename);
 
 	std::error_code ec;
 	auto id = m_blob_db.save(req.body(), filename, ec);
