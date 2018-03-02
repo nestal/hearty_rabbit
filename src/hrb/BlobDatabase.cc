@@ -35,7 +35,7 @@ const std::string_view default_rendition = "master";
 const std::string_view metafile = "meta";
 }
 
-BlobDatabase::BlobDatabase(const fs::path& base) : m_base{base}
+BlobDatabase::BlobDatabase(const fs::path& base, const Size& img_resize) : m_base{base}, m_resize_img{img_resize}
 {
 	if (exists(base) && !is_directory(base))
 		throw std::system_error(std::make_error_code(std::errc::file_exists));

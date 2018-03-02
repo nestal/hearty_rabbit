@@ -37,7 +37,7 @@ public:
 	using BlobResponse = boost::beast::http::response<MMapResponseBody>;
 
 public:
-	explicit BlobDatabase(const fs::path& base);
+	explicit BlobDatabase(const fs::path& base, const Size& resize_img);
 
 	void prepare_upload(UploadFile& result, std::error_code& ec) const;
 	ObjectID save(const UploadFile& tmp, std::string_view filename, std::error_code& ec);
@@ -64,6 +64,7 @@ private:
 private:
 	fs::path    m_base;
 	Magic       m_magic;
+	Size        m_resize_img;
 };
 
 } // end of namespace hrb
