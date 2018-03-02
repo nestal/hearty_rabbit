@@ -122,8 +122,7 @@ TEST_CASE("resize image", "[normal]")
 TEST_CASE("read exif", "[normal]")
 {
 	std::error_code ec;
-//	auto mmap = MMap::open(fs::path{__FILE__}.parent_path()/"up_f_upright.jpg", ec);
-	auto mmap = MMap::open("/home/nestal/nestal2.jpeg", ec);
+	auto mmap = MMap::open(fs::path{__FILE__}.parent_path()/"up_f_upright.jpg", ec);
 	REQUIRE(!ec);
 
 	// copy the memory as the mmap is read-only
