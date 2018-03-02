@@ -33,10 +33,10 @@ JPEG::JPEG(const void *data, std::size_t size, int max_width, int max_height)
 		throw Exception(tjGetErrorStr());
 
 	int width = m_width, height = m_height;
-	select_scaling_factor(m_width, max_height, width, height);
+	select_scaling_factor(max_width, max_height, width, height);
 
 	// allocate pixels
-	auto pixel_size = height * width * tjPixelSize[TJPF_RGB];
+	auto pixel_size = static_cast<std::size_t>(height * width * tjPixelSize[TJPF_RGB]);
 	std::vector<unsigned char> pixels(pixel_size);
 
 	result = tjDecompress2(
@@ -52,9 +52,10 @@ JPEG::JPEG(const void *data, std::size_t size, int max_width, int max_height)
 	m_height = height;
 }
 
-void JPEG::select_scaling_factor(int max_width, int max_height, int& width, int& height)
+// width, height: target size of the image.
+void JPEG::select_scaling_factor(int max_width, int max_height, int& width, int& height) const
 {
-	if (width > max_width || height > max_height)
+	if (m_width > max_width || m_height > max_height)
 	{
 		width  = 0;
 		height = 0;

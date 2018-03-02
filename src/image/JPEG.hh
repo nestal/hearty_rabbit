@@ -48,7 +48,7 @@ public:
 	TurboBuffer compress(int quality) const;
 
 private:
-	void select_scaling_factor(int max_width, int max_height, int& width, int& height);
+	void select_scaling_factor(int max_width, int max_height, int& width, int& height) const;
 
 private:
 	std::vector<unsigned char> m_pixels;

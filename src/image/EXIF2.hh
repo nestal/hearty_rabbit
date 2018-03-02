@@ -22,10 +22,11 @@
 
 namespace hrb {
 
+// http://www.exif.org/Exif2-2.PDF
 class EXIF2
 {
 public:
-	struct IFD
+	struct Field
 	{
 		std::uint16_t tag;
 		std::uint16_t type;
@@ -43,11 +44,11 @@ public:
 	EXIF2() = default;
 	EXIF2(const unsigned char *jpeg, std::size_t size, std::error_code& ec);
 
-	std::optional<IFD> get(const unsigned char *jpeg, Tag tag) const;
-	bool set(unsigned char *jpeg, const IFD& native);
+	std::optional<Field> get(const unsigned char *jpeg, Tag tag) const;
+	bool set(unsigned char *jpeg, const Field& native) const;
 
 private:
-	IFD& to_native(IFD& field) const;
+	Field& to_native(Field& field) const;
 
 private:
 	std::ptrdiff_t m_tiff_offset{};

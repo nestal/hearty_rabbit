@@ -199,7 +199,7 @@ EXIF2::EXIF2(const unsigned char *jpeg, std::size_t size, std::error_code& error
 		auto offset = reinterpret_cast<const unsigned char*>(buffer.data()) - jpeg;
 		assert(offset > 0);
 
-		IFD tag{};
+		Field tag{};
 		read(buffer, tag, error);
 		if (error)
 			return;
@@ -209,21 +209,21 @@ EXIF2::EXIF2(const unsigned char *jpeg, std::size_t size, std::error_code& error
 	}
 }
 
-std::optional<EXIF2::IFD> EXIF2::get(const unsigned char *jpeg, Tag tag) const
+std::optional<EXIF2::Field> EXIF2::get(const unsigned char *jpeg, Tag tag) const
 {
 	auto it = m_tags.find(tag);
 	if (it != m_tags.end())
 	{
 		assert(it->second > 0);
 
-		IFD field{};
+		Field field{};
 		std::memcpy(&field, jpeg+it->second, sizeof(field));
 		return to_native(field);
 	}
 	return std::nullopt;
 }
 
-EXIF2::IFD& EXIF2::to_native(EXIF2::IFD& field) const
+EXIF2::Field& EXIF2::to_native(EXIF2::Field& field) const
 {
 	field.tag = hrb::to_native(field.tag, m_byte_order);
 	field.type = hrb::to_native(field.type, m_byte_order);
@@ -232,14 +232,14 @@ EXIF2::IFD& EXIF2::to_native(EXIF2::IFD& field) const
 	return field;
 }
 
-bool EXIF2::set(unsigned char *jpeg, const IFD& native)
+bool EXIF2::set(unsigned char *jpeg, const Field& native) const
 {
 	auto it = m_tags.find(static_cast<Tag>(native.tag));
 	if (it != m_tags.end())
 	{
 		assert(it->second > 0);
 
-		IFD ordered_field{};
+		Field ordered_field{};
 		ordered_field.tag = hrb::from_native(native.tag, m_byte_order);
 		ordered_field.type = hrb::from_native(native.type, m_byte_order);
 		ordered_field.count = hrb::from_native(native.count, m_byte_order);
