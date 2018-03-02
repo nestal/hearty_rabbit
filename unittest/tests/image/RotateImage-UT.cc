@@ -131,7 +131,9 @@ TEST_CASE("read exif", "[normal]")
 		static_cast<const unsigned char*>(mmap.data()) + mmap.size()
 	);
 
-	EXIF2 subject{&img[0], img.size()};
+	EXIF2 subject{&img[0], img.size(), ec};
+	REQUIRE(!ec);
+
 	auto orientation = subject.get(0x0112);
 	REQUIRE(orientation);
 	REQUIRE(orientation->tag == 0x0112);
@@ -139,7 +141,7 @@ TEST_CASE("read exif", "[normal]")
 
 	// set orientation to 8
 	orientation->value_offset = 8;
-	subject.set(*orientation);
+	REQUIRE(subject.set(*orientation));
 
 	auto meta = BlobMeta::deduce_meta({&img[0], img.size()}, Magic{});
 	REQUIRE(meta.orientation() == 8);

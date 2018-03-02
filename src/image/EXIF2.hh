@@ -18,6 +18,7 @@
 #include <cstdint>
 #include <unordered_map>
 #include <optional>
+#include <system_error>
 
 namespace hrb {
 
@@ -34,18 +35,30 @@ public:
 
 	enum class Error {ok, too_small, invalid_header};
 
+	static const std::error_category& error_category();
+
 public:
-	EXIF2(unsigned char *jpeg, std::size_t size);
+	EXIF2() = default;
+	EXIF2(unsigned char *jpeg, std::size_t size, std::error_code& ec);
 
 	std::optional<IFD> get(std::uint16_t tag) const;
-	void set(const IFD& native);
+	bool set(const IFD& native);
 
 private:
-	void to_native(IFD& field) const;
+	IFD& to_native(IFD& field) const;
 
 private:
+	unsigned char *m_tiff_start{};
+
 	std::unordered_map<std::uint16_t, unsigned char*> m_tags;
 	boost::endian::order m_byte_order{};
 };
 
-} // end o namespace
+std::error_code make_error_code(EXIF2::Error error);
+
+} // end of namespace
+
+namespace std
+{
+	template <> struct is_error_code_enum<hrb::EXIF2::Error> : true_type {};
+}

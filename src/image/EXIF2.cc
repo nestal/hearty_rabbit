@@ -15,6 +15,7 @@
 #include <boost/endian/buffers.hpp>
 
 #include <array>
+#include <iostream>
 
 namespace hrb {
 
@@ -45,19 +46,20 @@ T from_native(T value, order end)
 }
 
 template <typename POD>
-bool read(std::string_view& buffer, POD& out, EXIF2::Error& error)
+void read(std::string_view& buffer, POD& out, std::error_code& error)
 {
 	if (buffer.size() > sizeof(out))
 	{
 		std::memcpy(&out, buffer.data(), sizeof(out));
 		buffer.remove_prefix(sizeof(out));
-		return true;
+		error = EXIF2::Error::ok;
+		assert(!error);
 	}
-	error = EXIF2::Error::too_small;
-	return false;
+	else
+		error = EXIF2::Error::too_small;
 }
 
-bool find_app1(std::string_view& buffer, EXIF2::Error& error)
+void find_app1(std::string_view& buffer, std::error_code& error)
 {
 	struct App
 	{
@@ -70,21 +72,21 @@ bool find_app1(std::string_view& buffer, EXIF2::Error& error)
 	while (true)
 	{
 		App seg{};
-		if (!read(buffer, seg, error))
-			return false;
+		read(buffer, seg, error);
+		if (error) return;
 
 		// invalid segment marker
 		if (seg.marker[0] != 0xFF)
 		{
 			error = EXIF2::Error::invalid_header;
-			return false;
+			break;
 		}
 
 		// length too short
 		if (seg.length.value() <= 2)
 		{
 			error = EXIF2::Error::invalid_header;
-			return false;
+			break;
 		}
 
 		// check if whole segment within the buffer
@@ -92,7 +94,7 @@ bool find_app1(std::string_view& buffer, EXIF2::Error& error)
 		if (buffer.size() < seg_remain)
 		{
 			error = EXIF2::Error::too_small;
-			return false;
+			break;
 		}
 
 		// found APP1
@@ -100,17 +102,21 @@ bool find_app1(std::string_view& buffer, EXIF2::Error& error)
 		{
 			// limit the size to APP1 segment
 			buffer = std::string_view{buffer.data(), seg_remain};
-			return true;
+			error = EXIF2::Error::ok;
+			break;
 		}
 		buffer.remove_prefix(seg_remain);
 	}
 }
 
-bool read_EXIF_and_TIFF_header(std::string_view& buffer, order& byte_order, EXIF2::Error& error)
+const char* read_EXIF_and_TIFF_header(std::string_view& buffer, order& byte_order, std::error_code& error)
 {
 	// "Exif" header
 	std::array<unsigned char, 6> exif{};
-	if (!read(buffer, exif, error)) return false;
+	read(buffer, exif, error);
+	if (error)
+		return nullptr;
+
 	if (exif[0] != 0x45 ||
 		exif[1] != 0x78 ||
 		exif[2] != 0x69 ||
@@ -119,7 +125,7 @@ bool read_EXIF_and_TIFF_header(std::string_view& buffer, order& byte_order, EXIF
 		exif[5] != 0)
 	{
 		error = EXIF2::Error::invalid_header;
-		return false;
+		return nullptr;
 	}
 
 	// TIFF header
@@ -129,8 +135,14 @@ bool read_EXIF_and_TIFF_header(std::string_view& buffer, order& byte_order, EXIF
 		std::uint16_t four_two;
 		std::uint32_t ifd_offset;
 	};
+
+	// record the TIFF header to locate tag value by offset later
+	auto tiff_start = buffer.data();
+
 	TIFF tiff{};
-	if (!read(buffer, tiff, error)) return false;
+	read(buffer, tiff, error);
+	if (error)
+		return tiff_start;
 
 	// check byte order
 	if (tiff.byte_order[0] == 0x49 && tiff.byte_order[1] == 0x49)
@@ -138,22 +150,21 @@ bool read_EXIF_and_TIFF_header(std::string_view& buffer, order& byte_order, EXIF
 	else if (tiff.byte_order[0] == 0x4D && tiff.byte_order[1] == 0x4D)
 		byte_order = order::big;
 	else
-		return false;
+		return nullptr;
 
 	if (to_native(tiff.four_two, byte_order) != 0x2A)
-		return false;
+		return nullptr;
 
 	tiff.ifd_offset = to_native(tiff.ifd_offset, byte_order);
 	buffer.remove_prefix(tiff.ifd_offset - sizeof(TIFF));
 
-	return true;
+	return tiff_start;
 }
 
 } // end of anonymous namespace
 
-EXIF2::EXIF2(unsigned char *jpeg, std::size_t size)
+EXIF2::EXIF2(unsigned char *jpeg, std::size_t size, std::error_code& error)
 {
-	Error error = Error::ok;
 	if (jpeg[0] != 0xFF ||
 		jpeg[1] != 0xD8 )
 	{
@@ -162,14 +173,20 @@ EXIF2::EXIF2(unsigned char *jpeg, std::size_t size)
 	}
 
 	std::string_view buffer{reinterpret_cast<const char*>(jpeg+2), size-2};
-	if (!find_app1(buffer, error))
+	find_app1(buffer, error);
+	if (error)
 		return;
 
-	if (!read_EXIF_and_TIFF_header(buffer, m_byte_order, error))
+	auto header = reinterpret_cast<const unsigned char*>(read_EXIF_and_TIFF_header(buffer, m_byte_order, error));
+	if (error)
 		return;
+
+	m_tiff_start = jpeg + (jpeg-header);
 
 	std::uint16_t tag_count{};
-	if (!read(buffer, tag_count, error)) return;
+	read(buffer, tag_count, error);
+	if (error)
+		return;
 	tag_count = hrb::to_native(tag_count, m_byte_order);
 
 	for (std::uint16_t i = 0 ; i < tag_count ; i++)
@@ -178,7 +195,9 @@ EXIF2::EXIF2(unsigned char *jpeg, std::size_t size)
 		auto ptags = jpeg + (reinterpret_cast<const unsigned char*>(buffer.data()) - jpeg);
 
 		IFD tag{};
-		if (!read(buffer, tag, error)) return;
+		read(buffer, tag, error);
+		if (error)
+			return;
 
 		to_native(tag);
 		m_tags.emplace(tag.tag, ptags);
@@ -192,21 +211,21 @@ std::optional<EXIF2::IFD> EXIF2::get(std::uint16_t tag) const
 	{
 		IFD field{};
 		std::memcpy(&field, it->second, sizeof(field));
-		to_native(field);
-		return field;
+		return to_native(field);
 	}
 	return std::nullopt;
 }
 
-void EXIF2::to_native(EXIF2::IFD& field) const
+EXIF2::IFD& EXIF2::to_native(EXIF2::IFD& field) const
 {
 	field.tag = hrb::to_native(field.tag, m_byte_order);
 	field.type = hrb::to_native(field.type, m_byte_order);
 	field.count = hrb::to_native(field.count, m_byte_order);
 	field.value_offset = hrb::to_native(field.value_offset, m_byte_order);
+	return field;
 }
 
-void EXIF2::set(const IFD& native)
+bool EXIF2::set(const IFD& native)
 {
 	auto it = m_tags.find(native.tag);
 	if (it != m_tags.end())
@@ -218,7 +237,35 @@ void EXIF2::set(const IFD& native)
 		ordered_field.value_offset = hrb::from_native(native.value_offset, m_byte_order);
 
 		std::memcpy(it->second, &ordered_field, sizeof(ordered_field));
+
+		return true;
 	}
+	return false;
+}
+
+const std::error_category& EXIF2::error_category()
+{
+	struct cat : std::error_category
+	{
+		const char* name() const noexcept override {return "EXIF";}
+		std::string message(int code) const override
+		{
+			switch (static_cast<Error>(code))
+			{
+				case Error::ok: return "Success";
+				case Error::invalid_header: return "Invalid header";
+				case Error::too_small: return "Not enough data";
+				default: return "Unknown";
+			}
+		}
+	};
+	static const cat c{};
+	return c;
+}
+
+std::error_code make_error_code(EXIF2::Error error)
+{
+	return std::error_code{static_cast<int>(error), EXIF2::error_category()};
 }
 
 } // end of namespace
