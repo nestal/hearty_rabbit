@@ -35,13 +35,15 @@ public:
 
 	enum class Error {ok, too_small, invalid_header};
 
+	enum class Tag {orientation = 0x112};
+
 	static const std::error_category& error_category();
 
 public:
 	EXIF2() = default;
 	EXIF2(const unsigned char *jpeg, std::size_t size, std::error_code& ec);
 
-	std::optional<IFD> get(const unsigned char *jpeg, std::uint16_t tag) const;
+	std::optional<IFD> get(const unsigned char *jpeg, Tag tag) const;
 	bool set(unsigned char *jpeg, const IFD& native);
 
 private:
@@ -50,7 +52,7 @@ private:
 private:
 	std::ptrdiff_t m_tiff_offset{};
 
-	std::unordered_map<std::uint16_t, std::ptrdiff_t> m_tags;
+	std::unordered_map<Tag, std::ptrdiff_t> m_tags;
 	boost::endian::order m_byte_order{};
 };
 

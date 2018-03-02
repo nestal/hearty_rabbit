@@ -205,11 +205,11 @@ EXIF2::EXIF2(const unsigned char *jpeg, std::size_t size, std::error_code& error
 			return;
 
 		to_native(tag);
-		m_tags.emplace(tag.tag, offset);
+		m_tags.emplace(static_cast<Tag>(tag.tag), offset);
 	}
 }
 
-std::optional<EXIF2::IFD> EXIF2::get(const unsigned char *jpeg, std::uint16_t tag) const
+std::optional<EXIF2::IFD> EXIF2::get(const unsigned char *jpeg, Tag tag) const
 {
 	auto it = m_tags.find(tag);
 	if (it != m_tags.end())
@@ -234,7 +234,7 @@ EXIF2::IFD& EXIF2::to_native(EXIF2::IFD& field) const
 
 bool EXIF2::set(unsigned char *jpeg, const IFD& native)
 {
-	auto it = m_tags.find(native.tag);
+	auto it = m_tags.find(static_cast<Tag>(native.tag));
 	if (it != m_tags.end())
 	{
 		assert(it->second > 0);

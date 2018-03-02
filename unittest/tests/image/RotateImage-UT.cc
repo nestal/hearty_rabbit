@@ -134,7 +134,7 @@ TEST_CASE("read exif", "[normal]")
 	EXIF2 subject{&img[0], img.size(), ec};
 	REQUIRE(!ec);
 
-	auto orientation = subject.get(&img[0], 0x0112);
+	auto orientation = subject.get(&img[0], EXIF2::Tag::orientation);
 	REQUIRE(orientation);
 	REQUIRE(orientation->tag == 0x0112);
 	REQUIRE(orientation->value_offset == 1);
