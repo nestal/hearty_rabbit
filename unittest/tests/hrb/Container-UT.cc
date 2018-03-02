@@ -29,7 +29,7 @@ TEST_CASE("Container tests", "[normal]")
 	auto redis = redis::connect(ioc);
 
 	std::error_code sec;
-	BlobDatabase blobdb{"/tmp/BlobDatabase-UT"};
+	BlobDatabase blobdb{"/tmp/BlobDatabase-UT", {2048,2048}};
 	UploadFile tmp;
 	blobdb.prepare_upload(tmp, sec);
 

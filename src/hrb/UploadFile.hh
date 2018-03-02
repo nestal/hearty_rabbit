@@ -68,9 +68,9 @@ public:
 	void linkat(const fs::path& dest, std::error_code& ec) const;
 
 private:
-	boost::beast::file_posix m_file;
-	std::string m_path;
-	Blake2      m_hash;
+	boost::beast::file_posix m_file{};
+	std::string m_tmp_path{};
+	Blake2      m_hash{};
 };
 
 class UploadRequestBody

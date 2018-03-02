@@ -16,8 +16,8 @@ namespace hrb {
 
 UploadFile::~UploadFile()
 {
-	if (!m_path.empty())
-		fs::remove(m_path);
+	if (!m_tmp_path.empty() && fs::exists(m_tmp_path))
+		fs::remove(m_tmp_path);
 }
 
 bool UploadFile::is_open() const
@@ -32,26 +32,11 @@ void UploadFile::close(boost::system::error_code& ec)
 
 void UploadFile::open(const fs::path& parent_directory, boost::system::error_code& ec)
 {
-	auto glibc_mkstemp = [parent_directory, this]
-	{
-		m_path = (parent_directory / "blob-XXXXXX").string();
-		return ::mkstemp(&m_path[0]);
-	};
-
-#ifdef O_TMPFILE
-	// Note that O_TMPFILE requires the "path" to be a directory.
-	// See http://man7.org/linux/man-pages/man2/open.2.html
-	auto fd = ::open(parent_directory.string().c_str(), O_TMPFILE | O_RDWR, S_IRUSR | S_IWUSR);
-
-	// Fallback to glibc mkstemp() if O_TMPFILE is not supported
-	// by the Linux kernel.
-	if (fd < 0 && errno == EISDIR)
-		fd = glibc_mkstemp();
-#else
-	// CentOS 7 (i.e. Linux 3.10) does not support O_TMPFILE, so
-	// don't bother even trying.
-	auto fd = glibc_mkstemp();
-#endif
+	// The code used to call open(O_TMPFILE)/linkat(/proc/self/fd/) when the kernel supports
+	// it, but it doesn't work when the parent_directory is a samba mount. Therefore we use
+	// the old mkstemp()/rename() which should work everywhere.
+	m_tmp_path = (parent_directory / "blob-XXXXXX").string();
+	int fd = ::mkstemp(&m_tmp_path[0]);
 
 	if (fd < 0)
 		ec.assign(errno, boost::system::generic_category());
@@ -98,11 +83,17 @@ UploadFile::native_handle_type UploadFile::native_handle() const
 
 void UploadFile::linkat(const fs::path& dest, std::error_code& ec) const
 {
-	std::ostringstream proc;
-	proc << "/proc/self/fd/" << m_file.native_handle();
-
-	if (::linkat(AT_FDCWD, proc.str().c_str(), AT_FDCWD, dest.string().c_str(), AT_SYMLINK_FOLLOW) != 0)
-		ec.assign(errno, std::generic_category());
+	// Note that linkat() does not work in samba mount drive.
+	if (!m_tmp_path.empty())
+	{
+		// try moving the file instead of linking
+		boost::system::error_code bec;
+		fs::rename(m_tmp_path, dest, bec);
+		if (!bec)
+			ec.assign(bec.value(), bec.category());
+	}
+	else
+		ec.assign(ENOENT, std::generic_category());
 }
 
 std::size_t UploadFile::pread(void *buffer, std::size_t n, std::streamoff pos, std::error_code& ec) const
