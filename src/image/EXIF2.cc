@@ -45,8 +45,10 @@ T from_native(T value, order end)
 		return value;
 }
 
+using buffer_view = std::basic_string_view<unsigned char>;
+
 template <typename POD>
-void read(std::string_view& buffer, POD& out, std::error_code& error)
+void read(buffer_view& buffer, POD& out, std::error_code& error)
 {
 	if (buffer.size() > sizeof(out))
 	{
@@ -59,7 +61,7 @@ void read(std::string_view& buffer, POD& out, std::error_code& error)
 		error = EXIF2::Error::too_small;
 }
 
-void find_app1(std::string_view& buffer, std::error_code& error)
+void find_app1(buffer_view& buffer, std::error_code& error)
 {
 	struct App
 	{
@@ -101,7 +103,7 @@ void find_app1(std::string_view& buffer, std::error_code& error)
 		if (seg.marker[1] == 0xE1)
 		{
 			// limit the size to APP1 segment
-			buffer = std::string_view{buffer.data(), seg_remain};
+			buffer = buffer_view{buffer.data(), seg_remain};
 			error = EXIF2::Error::ok;
 			break;
 		}
@@ -109,7 +111,7 @@ void find_app1(std::string_view& buffer, std::error_code& error)
 	}
 }
 
-const char* read_EXIF_and_TIFF_header(std::string_view& buffer, order& byte_order, std::error_code& error)
+const unsigned char* read_EXIF_and_TIFF_header(buffer_view& buffer, order& byte_order, std::error_code& error)
 {
 	// "Exif" header
 	std::array<unsigned char, 6> exif{};
@@ -172,12 +174,12 @@ EXIF2::EXIF2(const unsigned char *jpeg, std::size_t size, std::error_code& error
 		return;
 	}
 
-	std::string_view buffer{reinterpret_cast<const char*>(jpeg+2), size-2};
+	buffer_view buffer{jpeg+2, size-2};
 	find_app1(buffer, error);
 	if (error)
 		return;
 
-	auto tiff = reinterpret_cast<const unsigned char*>(read_EXIF_and_TIFF_header(buffer, m_byte_order, error));
+	auto tiff = read_EXIF_and_TIFF_header(buffer, m_byte_order, error);
 	if (error)
 		return;
 
