@@ -22,7 +22,10 @@
 
 namespace hrb {
 
+// Reference:
 // http://www.exif.org/Exif2-2.PDF
+// https://www.media.mit.edu/pia/Research/deepview/exif.html
+// http://vip.sugovica.hu/Sardi/kepnezo/JPEG%20File%20Layout%20and%20Format.htm
 class EXIF2
 {
 public:
