@@ -31,14 +31,14 @@ std::string Container1::serialize(const BlobDatabase& db) const
 	for (auto&& blob : m_blobs)
 	{
 		auto meta = db.load_meta_json(blob);
-		if (meta)
+		if (!meta.empty())
 		{
 			if (first)
 				first = false;
 			else
 				json << ",\n";
 
-			json << '\"' << blob << R"(": )" << *meta;
+			json << '\"' << blob << R"(": )" << meta;
 		}
 	}
 	json << "}}";

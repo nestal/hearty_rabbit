@@ -103,44 +103,9 @@ void BlobDatabase::set_cache_control(BlobResponse& res, const ObjectID& id)
 	res.set(http::field::etag, to_quoted_hex(id));
 }
 
-void BlobDatabase::save_meta(const fs::path& dest_path, const BlobMeta& meta) const
+std::string BlobDatabase::load_meta_json(const ObjectID& id) const
 {
-	std::ofstream file{(dest_path.parent_path() / std::string{"meta"}).string()};
-	rapidjson::OStreamWrapper osw{file};
-	rapidjson::Writer<rapidjson::OStreamWrapper> writer{osw};
-
-	meta.serialize().Accept(writer);
-}
-
-std::optional<std::string> BlobDatabase::load_meta_json(const ObjectID& id) const
-{
-	auto dest_path = dest(id);
-
-	// Assume the size of the metadata file is small enough to fit in std::string
-	std::error_code ec;
-	auto mmap = MMap::open(dest_path / std::string{"meta"}, ec);
-	if (ec == std::errc::no_such_file_or_directory)
-	{
-		// Metafile not exists yet. This is not an error.
-		// Just deduce it from the blob
-		auto blob = MMap::open(dest_path, ec);
-		if (ec)
-		{
-			Log(LOG_WARNING, "cannot open blob %1% (%2% %3%)", dest_path, ec, ec.message());
-			return std::nullopt;
-		}
-		save_meta(dest_path, BlobMeta::deduce_meta(blob.blob(), m_magic));
-
-		mmap = MMap::open(dest_path.parent_path() / std::string{"meta"}, ec);
-	}
-
-	if (ec)
-	{
-		Log(LOG_WARNING, "cannot open metadata file for blob %1% (%2% %3%)", id, ec, ec.message());
-		return std::nullopt;
-	}
-
-	return std::string{mmap.string()};
+	return BlobObject::meta_string(dest(id));
 }
 
 } // end of namespace hrb

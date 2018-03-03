@@ -42,6 +42,7 @@ public:
 		std::string_view filename,
 		std::error_code& ec
 	);
+	static std::string meta_string(const fs::path& dir);
 
 	BlobMeta meta() const;
 	const std::string& meta_string() const {return m_meta;}
