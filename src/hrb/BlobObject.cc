@@ -40,7 +40,10 @@ BlobObject BlobObject::upload(UploadFile&& tmp, const Magic& magic, const Size& 
 
 	auto master = MMap::open(tmp.native_handle(), ec);
 	if (ec)
+	{
+		Log(LOG_WARNING, "BlobObject::upload(): cannot mmap temporary file %1% %2%", ec, ec.message());
 		return result;
+	}
 
 	auto meta = BlobMeta::deduce_meta(master.blob(), magic);
 	if (meta.mime() == "image/jpeg")
@@ -49,7 +52,7 @@ BlobObject BlobObject::upload(UploadFile&& tmp, const Magic& magic, const Size& 
 		auto rotated = transform.auto_rotate(master.data(), master.size(), ec);
 		if (ec)
 		{
-			Log(LOG_WARNING, "BlobDatabase::resize(): cannot rotate image %1% %2%", ec, ec.message());
+			Log(LOG_WARNING, "BlobObject::upload(): cannot rotate image %1% %2%", ec, ec.message());
 			return result;
 		}
 
@@ -62,7 +65,6 @@ BlobObject BlobObject::upload(UploadFile&& tmp, const Magic& magic, const Size& 
 		if (resize_img != img.size())
 			rotated = img.compress(70);
 
-//		result.m_rotated = std::move(rotated);
 		std::ostringstream fn;
 		fn << resize_img.width() << "x" << resize_img.height();
 

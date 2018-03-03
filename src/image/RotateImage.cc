@@ -84,7 +84,13 @@ TurboBuffer RotateImage::auto_rotate(const void *jpeg, std::size_t size, std::er
 {
 	EXIF2 exif2{static_cast<const unsigned char *>(jpeg), size, ec};
 	if (ec)
+	{
+		// nothing to do if no EXIF tag
+		if (ec == EXIF2::Error::not_found)
+			ec.assign(0, ec.category());
+
 		return {};
+	}
 
 	if (auto orientation = exif2.get(static_cast<const unsigned char *>(jpeg), EXIF2::Tag::orientation))
 	{

@@ -42,7 +42,7 @@ public:
 		std::uint32_t value_offset;
 	};
 
-	enum class Error {ok, too_small, invalid_header};
+	enum class Error {ok, too_small, invalid_header, not_found};
 
 	enum class Tag {orientation = 0x112};
 

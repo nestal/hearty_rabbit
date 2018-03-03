@@ -107,6 +107,15 @@ void find_app1(buffer_view& buffer, std::error_code& error)
 			error = EXIF2::Error::ok;
 			break;
 		}
+
+		// found DQT/DHT/DRI/SOF, which must be after APP1 segment
+		else if (seg.marker[1] == 0xDB || seg.marker[1] == 0xC4 || seg.marker[1] == 0xDD || seg.marker[1] == 0xC0)
+		{
+			// limit the size to APP1 segment
+			error = EXIF2::Error::not_found;
+			break;
+
+		}
 		buffer.remove_prefix(seg_remain);
 	}
 }
