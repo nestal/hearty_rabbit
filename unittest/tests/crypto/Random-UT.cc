@@ -25,6 +25,9 @@ TEST_CASE("Test random number", "[normal]")
 {
 	auto rand = secure_random_array<std::uint64_t, 2>();
 	REQUIRE_NOTHROW(rand[0] > 0 && rand[1] > 0);
+
+	REQUIRE_NOTHROW(rand = insecure_random_array<std::uint64_t, 2>());
+	REQUIRE_NOTHROW(rand[0] > 0 && rand[1] > 0);
 }
 
 TEST_CASE("Blake2x is faster than urandom", "[normal]")
@@ -41,7 +44,7 @@ TEST_CASE("Blake2x is faster than urandom", "[normal]")
 
 	auto urand_start = system_clock::now();
 	for (auto i = 0 ; i < trial; i++)
-		secure_random<Blake2x::result_type>();
+		secure_random<std::uint64_t>();
 	auto urand_elapse = system_clock::now() - urand_start;
 
 	INFO("blake2x x " << trial << ": " << duration_cast<milliseconds>(blake_elapse).count() << "ms");

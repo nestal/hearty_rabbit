@@ -45,12 +45,6 @@ void secure_random(void *buf, std::size_t size)
 		throw std::system_error(errno, std::generic_category());
 }
 
-template <>
-void fill_buffer(void *buf, std::size_t size, std::random_device&&)
-{
-	secure_random(buf, size);
-}
-
 // Blake2x random number generator: https://blake2.net/blake2x.pdf
 Blake2x::Blake2x() noexcept
 {
@@ -66,12 +60,6 @@ Blake2x::Blake2x() noexcept
 	// leave personalization as zero
 
 	reseed();
-}
-
-void Blake2x::reseed()
-{
-	secure_random(m_param.salt, sizeof(m_param.salt));
-	secure_random(m_h0);
 }
 
 Blake2x::result_type Blake2x::operator()()
@@ -103,9 +91,9 @@ Blake2x& Blake2x::instance()
 	return inst;
 }
 
-void insecure_random(void *buf, std::size_t size)
+void Blake2x::reseed()
 {
-	return fill_buffer(buf, size, std::move(Blake2x::instance()));
+	reseed(SecureRandom<std::uint64_t>{});
 }
 
 } // end of namespace hrb

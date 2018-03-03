@@ -21,8 +21,6 @@
 #include <boost/asio/io_context.hpp>
 #include <boost/algorithm/hex.hpp>
 
-#include <random>
-
 using namespace hrb;
 
 TEST_CASE("Test password init", "[normal]")
@@ -92,8 +90,7 @@ TEST_CASE("Test normal user login", "[normal]")
 		}
 		SECTION("verify random session ID")
 		{
-			Authentication::Cookie cookie{};
-			hrb::insecure_random(&cookie[0], cookie.size());
+			auto cookie = insecure_random<Authentication::Cookie>();
 
 			Authentication::verify_session(cookie, *redis, [&tested](std::error_code ec, auto&& session)
 				{
@@ -127,9 +124,7 @@ TEST_CASE("Parsing cookie", "[normal]")
 	REQUIRE(*session == Authentication::Cookie{0x01,0x23,0x45, 0x67, 0x89,0xAB,0xCD,0xEF,0x01,0x23,0x45,0x67,0x89,0xAB,0xCD,0xEF});
 
 	// Random round-trip
-	std::mt19937_64 salt_generator{secure_random<std::uint64_t>()};
-	Authentication::Cookie rand{};
-	std::generate(rand.begin(), rand.end(), std::ref(salt_generator));
+	auto rand = insecure_random<Authentication::Cookie>();
 	auto cookie = Authentication{rand, "test"}.set_cookie();
 	INFO("cookie for random session ID is " << cookie);
 	session = parse_cookie(cookie);
