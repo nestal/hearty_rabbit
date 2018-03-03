@@ -35,8 +35,8 @@ rapidjson::Document BlobMeta::serialize() const
 BlobMeta BlobMeta::load(rapidjson::Document& json)
 {
 	BlobMeta meta;
-	meta.m_mime         = GetValueByPointerWithDefault(json, "/mime",        meta.m_mime).GetString();
-	meta.m_filename     = GetValueByPointerWithDefault(json, "/mime",        meta.m_filename).GetString();
+	meta.m_mime         = GetValueByPointerWithDefault(json, "/mime",     meta.m_mime).GetString();
+	meta.m_filename     = GetValueByPointerWithDefault(json, "/filename", meta.m_filename).GetString();
 	return meta;
 }
 

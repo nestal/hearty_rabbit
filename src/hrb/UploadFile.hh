@@ -65,7 +65,6 @@ public:
 
 	native_handle_type native_handle() const;
 
-	void linkat(const fs::path& dest, std::error_code& ec) const;
 	void move(const fs::path& dest, std::error_code& ec);
 
 private:

@@ -13,7 +13,6 @@
 #pragma once
 
 #include "ObjectID.hh"
-#include "BlobMeta.hh"
 #include "UploadFile.hh"
 
 #include "image/TurboBuffer.hh"
@@ -27,19 +26,28 @@
 namespace hrb {
 
 class UploadFile;
+class BlobMeta;
 class Magic;
 
 class BlobObject
 {
 public:
 	BlobObject() = default;
-	BlobObject(const fs::path& dir, const ObjectID& id);
+	BlobObject(const fs::path& dir, const ObjectID& id, const Size& resize_img, std::error_code& ec);
 
-	static BlobObject upload(UploadFile&& tmp, const Magic& magic, const Size& resize_img, std::error_code& ec);
+	static BlobObject upload(
+		UploadFile&& tmp,
+		const Magic& magic,
+		const Size& resize_img,
+		std::string_view filename,
+		std::error_code& ec
+	);
 
-	const BlobMeta& meta() const;
+	BlobMeta meta() const;
+	const std::string& meta_string() const {return m_meta;}
 
 	BufferView blob() const;
+	MMap& master() {return m_master;}
 
 	const ObjectID& ID() const {return m_id;}
 
@@ -47,10 +55,10 @@ public:
 
 private:
 	ObjectID    m_id{};
-	BlobMeta    m_meta;
+	std::string m_meta;
 
 	mutable UploadFile  m_tmp;
-	MMap        m_master;
+	MMap                m_master;
 	std::unordered_map<std::string, TurboBuffer> m_rend;
 };
 

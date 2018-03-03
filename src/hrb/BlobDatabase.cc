@@ -13,6 +13,8 @@
 #include "BlobDatabase.hh"
 #include "UploadFile.hh"
 #include "BlobMeta.hh"
+#include "BlobObject.hh"
+
 #include "image/RotateImage.hh"
 #include "image/JPEG.hh"
 #include "image/TurboBuffer.hh"
@@ -53,45 +55,13 @@ void BlobDatabase::prepare_upload(UploadFile& result, std::error_code& ec) const
 		ec.assign(err.value(), err.category());
 }
 
-ObjectID BlobDatabase::save(const UploadFile& tmp, std::string_view filename, std::error_code& ec)
+ObjectID BlobDatabase::save(UploadFile&& tmp, std::string_view filename, std::error_code& ec)
 {
-	auto id = tmp.ID();
-	auto dest_path = dest(id);
-
-	boost::system::error_code bec;
-	if (!exists(dest_path.parent_path()))
-		create_directories(dest_path.parent_path(), bec);
-	if (bec)
-		Log(LOG_WARNING, "create directory error %1% %2%", bec, bec.message());
-
-	ec.assign(bec.value(), bec.category());
-
-	auto meta = deduce_meta(tmp);
-	meta.filename(filename);
-	save_meta(dest_path, meta);
-
-	// creates a rendition of auto-rotated image if the orientation isn't 1
-	if (meta.mime() == "image/jpeg")
-	{
-		auto mmap = MMap::open(tmp.native_handle(), ec);
-		if (!ec)
-			resize(mmap.data(), mmap.size(), m_resize_img, dest_path.parent_path());
-	}
-
+	auto blob_obj = BlobObject::upload(std::move(tmp), m_magic, m_resize_img, filename, ec);
 	if (!ec)
-	{
-		tmp.linkat(dest_path, ec);
-		if (ec == std::errc::file_exists)
-		{
-			// TODO: check file size before accepting
-			Log(LOG_INFO, "linkat() %1% exists", dest_path);
-			ec.clear();
-		}
-		else if (ec)
-			Log(LOG_WARNING, "linkat() %1% %2%", ec, ec.message());
-	}
+		blob_obj.save(dest(blob_obj.ID()).parent_path(), ec);
 
-	return id;
+	return blob_obj.ID();
 }
 
 fs::path BlobDatabase::dest(const ObjectID& id, std::string_view) const
@@ -119,32 +89,13 @@ BlobDatabase::BlobResponse BlobDatabase::response(
 	auto path = dest(id);
 
 	std::error_code ec;
-	auto mmap = MMap::open(path, ec);
+	BlobObject blob_obj{path.parent_path(), id, m_resize_img, ec};
+
 	if (ec)
 		return BlobResponse{http::status::not_found, version};
 
-	auto meta = load_meta(id);
-	if (!meta)
-	{
-		meta = BlobMeta::deduce_meta(mmap.blob(), m_magic);
-		if (!meta)
-		{
-			Log(LOG_WARNING, "cannot load metadata from file %1%", path);
-			meta.emplace(BlobMeta{});
-		}
-
-		save_meta(path.parent_path()/std::string{metafile}, *meta);
-	}
-
-	// Serve the resized image if it exists
-	if (meta->mime() == "image/jpeg" && exists(path.parent_path()/"2048x2048"))
-	{
-		auto small = MMap::open(path.parent_path() / "2048x2048", ec);
-		if (!ec)
-			mmap = std::move(small);
-	}
-
 	// Advice the kernel that we only read the memory in one pass
+	auto mmap{std::move(blob_obj.master())};
 	mmap.cache();
 
 	BlobResponse res{
@@ -152,7 +103,7 @@ BlobDatabase::BlobResponse BlobDatabase::response(
 		std::make_tuple(std::move(mmap)),
 		std::make_tuple(http::status::ok, version)
 	};
-	res.set(http::field::content_type, meta->mime());
+	res.set(http::field::content_type, blob_obj.meta().mime());
 	set_cache_control(res, id);
 	return res;
 

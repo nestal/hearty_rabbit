@@ -37,14 +37,12 @@ public:
 	rapidjson::Document serialize() const;
 
 	const std::string& mime() const {return m_mime;}
-//	long orientation() const {return m_orientation;}
 	const std::string& filename() const {return m_filename;}
 
 	void filename(std::string_view fn) {m_filename = fn;}
 
 private:
 	std::string m_mime{"application/octet-stream"};
-//	long m_orientation{1};
 	std::string m_filename;
 };
 
