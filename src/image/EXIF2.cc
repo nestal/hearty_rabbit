@@ -114,8 +114,16 @@ void find_app1(buffer_view& buffer, std::error_code& error)
 			// limit the size to APP1 segment
 			error = EXIF2::Error::not_found;
 			break;
-
 		}
+
+		// 0xFE is comment
+		else if (seg.marker[1] != 0xE0 && seg.marker[1] != 0xFE)
+		{
+			std::cout << "invalid marker " << std::hex << (int)seg.marker[1] << std::endl;
+			error = EXIF2::Error::invalid_header;
+			break;
+		}
+
 		buffer.remove_prefix(seg_remain);
 	}
 }
