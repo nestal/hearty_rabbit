@@ -27,12 +27,21 @@
 
 using namespace hrb;
 
-TEST_CASE("get orientation from exiv2", "[normal]")
+long exiv2_orientation(boost::asio::const_buffer blob)
+{
+	auto ev2 = Exiv2::ImageFactory::open(static_cast<const unsigned char*>(blob.data()), blob.size());
+    ev2->readMetadata();
+	auto& exif = ev2->exifData();
+	auto orientation = exif.findKey(Exiv2::ExifKey{"Exif.Image.Orientation"});
+	return orientation != exif.end() ? orientation->toLong() : 1L;
+}
+
+TEST_CASE("auto rotate will change orientation=8 images to orientation=1", "[normal]")
 {
 	std::error_code ec;
 	auto rot90 = MMap::open(fs::path{__FILE__}.parent_path()/"up_f_rot90.jpg", ec);
 	REQUIRE(!ec);
-	REQUIRE(BlobMeta::deduce_meta(rot90.blob(), Magic{}).orientation() == 8);
+	REQUIRE(exiv2_orientation(rot90.blob()) == 8);
 
 	RotateImage subject;
 	auto rotated = (subject.auto_rotate(rot90.data(), rot90.size(), ec));
@@ -40,7 +49,7 @@ TEST_CASE("get orientation from exiv2", "[normal]")
 
 	REQUIRE(!ec);
 	auto meta = BlobMeta::deduce_meta({rotated.data(), rotated.size()}, Magic{});
-	REQUIRE(meta.orientation() == 1);
+	REQUIRE(exiv2_orientation({rotated.data(), rotated.size()}) == 1);
 }
 
 TEST_CASE("20x20 image can be auto-rotated but cropped", "[error]")
@@ -48,7 +57,7 @@ TEST_CASE("20x20 image can be auto-rotated but cropped", "[error]")
 	std::error_code ec;
 	auto rot90 = MMap::open(fs::path{__FILE__}.parent_path()/"black_20x20_orient6.jpg", ec);
 	REQUIRE(!ec);
-	REQUIRE(BlobMeta::deduce_meta(rot90.blob(), Magic{}).orientation() == 6);
+	REQUIRE(exiv2_orientation(rot90.blob()) == 6);
 
 	RotateImage subject;
 	auto rotated = subject.auto_rotate(rot90.data(), rot90.size(), ec);
@@ -127,6 +136,5 @@ TEST_CASE("read exif", "[normal]")
 	orientation->value_offset = 8;
 	REQUIRE(subject.set(&img[0], *orientation));
 
-	auto meta = BlobMeta::deduce_meta({&img[0], img.size()}, Magic{});
-	REQUIRE(meta.orientation() == 8);
+	REQUIRE(exiv2_orientation({&img[0], img.size()}) == 8);
 }
