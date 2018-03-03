@@ -40,7 +40,7 @@ div.login {
 	display: none;
 }
 
-@media (max-width: 2000px) {
+@media (max-width: 1280px) {
 	#hrb-entry-root {
 		-moz-column-count: 4;
 		-webkit-column-count: 4;
@@ -48,7 +48,7 @@ div.login {
 	}
 }
 
-@media (max-width: 1600px) {
+@media (max-width: 1000px) {
 	#hrb-entry-root {
 		-moz-column-count: 3;
 		-webkit-column-count: 3;
@@ -56,7 +56,7 @@ div.login {
 	}
 }
 
-@media (max-width: 1200px) {
+@media (max-width: 800px) {
 	#hrb-entry-root {
 		-moz-column-count: 2;
 		-webkit-column-count: 2;
@@ -64,7 +64,7 @@ div.login {
 	}
 }
 
-@media (max-width: 800px) {
+@media (max-width: 500px) {
 	#hrb-entry-root {
 		-moz-column-count: 1;
 		-webkit-column-count: 1;
