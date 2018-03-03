@@ -60,15 +60,43 @@ public:
 	template <typename Complete>
 	static void add(
 		redis::Connection& db,
-		std::string_view container,
+		std::string_view user,
 		const ObjectID& blob,
 		Complete&& complete
 	)
 	{
-		db.command([comp=std::forward<Complete>(complete)](auto&&, std::error_code&& ec) mutable
-		{
-			comp(std::move(ec));
-		}, "SADD %b%b %b", redis_prefix.data(), redis_prefix.size(), container.data(), container.size(), blob.data(), blob.size());
+		db.command([
+				comp=std::forward<Complete>(complete)
+			](auto&&, std::error_code&& ec) mutable
+			{
+				comp(std::move(ec));
+			},
+			"SADD %b%b %b",
+			redis_prefix.data(), redis_prefix.size(),
+			user.data(), user.size(),
+			blob.data(), blob.size()
+		);
+	}
+
+	template <typename Complete>
+	static void remove(
+		redis::Connection& db,
+		std::string_view user,
+		const ObjectID& blob,
+		Complete&& complete
+	)
+	{
+		db.command([
+				comp=std::forward<Complete>(complete)
+			](auto&&, std::error_code&& ec) mutable
+			{
+				comp(std::move(ec));
+			},
+			"SREM %b%b %b",
+			redis_prefix.data(), redis_prefix.size(),
+			user.data(), user.size(),
+			blob.data(), blob.size()
+		);
 	}
 
 	template <typename Complete>

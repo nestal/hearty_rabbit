@@ -54,7 +54,7 @@ TEST_CASE("Container tests", "[normal]")
 			tested++;
 		});
 
-		OwnedBlobs::load(*redis, "test", [&tested, testid, &blobdb](std::error_code ec, OwnedBlobs&& container)
+		OwnedBlobs::load(*redis, "test", [&tested, testid, &blobdb, redis](std::error_code ec, OwnedBlobs&& container)
 		{
 			REQUIRE(!ec);
 			REQUIRE(container.name() == "test");
@@ -71,7 +71,16 @@ TEST_CASE("Container tests", "[normal]")
 			doc.Parse(json.c_str(), json.size());
 			REQUIRE(doc["name"].GetString() == std::string{"test"});
 
-			tested++;
+			OwnedBlobs::remove(*redis, "test", testid, [&tested, testid, redis](std::error_code ec)
+			{
+				REQUIRE(!ec);
+				OwnedBlobs::is_owned(*redis, "test", testid, [&tested](std::error_code ec, bool present)
+				{
+					REQUIRE(!ec);
+					REQUIRE(!present);
+					tested++;
+				});
+			});
 		});
 	});
 	REQUIRE(ioc.run_for(10s) > 0);
