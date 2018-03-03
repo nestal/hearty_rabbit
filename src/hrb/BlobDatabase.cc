@@ -15,27 +15,15 @@
 #include "BlobMeta.hh"
 #include "BlobObject.hh"
 
-#include "image/RotateImage.hh"
-#include "image/JPEG.hh"
-#include "image/TurboBuffer.hh"
-
 #include "net/MMapResponseBody.hh"
 
 #include "util/Log.hh"
-#include "util/Magic.hh"
 
 #include <rapidjson/ostreamwrapper.h>
 #include <rapidjson/writer.h>
 #include <rapidjson/pointer.h>
 
-#include <sstream>
-#include <fstream>
-
 namespace hrb {
-namespace {
-const std::string_view default_rendition = "master";
-const std::string_view metafile = "meta";
-}
 
 BlobDatabase::BlobDatabase(const fs::path& base, const Size& img_resize) : m_base{base}, m_resize_img{img_resize}
 {
@@ -59,7 +47,7 @@ ObjectID BlobDatabase::save(UploadFile&& tmp, std::string_view filename, std::er
 {
 	auto blob_obj = BlobObject::upload(std::move(tmp), m_magic, m_resize_img, filename, ec);
 	if (!ec)
-		blob_obj.save(dest(blob_obj.ID()).parent_path(), ec);
+		blob_obj.save(dest(blob_obj.ID()), ec);
 
 	return blob_obj.ID();
 }
@@ -69,7 +57,7 @@ fs::path BlobDatabase::dest(const ObjectID& id, std::string_view) const
 	auto hex = to_hex(id);
 	assert(hex.size() > 2);
 
-	return m_base / hex.substr(0, 2) / hex / std::string{default_rendition};
+	return m_base / hex.substr(0, 2) / hex;
 }
 
 BlobDatabase::BlobResponse BlobDatabase::response(
@@ -89,7 +77,7 @@ BlobDatabase::BlobResponse BlobDatabase::response(
 	auto path = dest(id);
 
 	std::error_code ec;
-	BlobObject blob_obj{path.parent_path(), id, m_resize_img, ec};
+	BlobObject blob_obj{path, id, m_resize_img, ec};
 
 	if (ec)
 		return BlobResponse{http::status::not_found, version};
@@ -115,45 +103,13 @@ void BlobDatabase::set_cache_control(BlobResponse& res, const ObjectID& id)
 	res.set(http::field::etag, to_quoted_hex(id));
 }
 
-BlobMeta BlobDatabase::deduce_meta(const UploadFile& tmp) const
-{
-	// Deduce mime type and orientation (if it is a JPEG)
-	std::error_code ec;
-	auto mmap = MMap::open(tmp.native_handle(), ec);
-	if (ec)
-	{
-		Log(LOG_WARNING, "cannot open tmp file to deduce meta");
-		return {};
-	}
-
-	return BlobMeta::deduce_meta(mmap.blob(), m_magic);
-}
-
 void BlobDatabase::save_meta(const fs::path& dest_path, const BlobMeta& meta) const
 {
-	std::ofstream file{(dest_path.parent_path() / std::string{metafile}).string()};
+	std::ofstream file{(dest_path.parent_path() / std::string{"meta"}).string()};
 	rapidjson::OStreamWrapper osw{file};
 	rapidjson::Writer<rapidjson::OStreamWrapper> writer{osw};
 
 	meta.serialize().Accept(writer);
-}
-
-std::optional<BlobMeta> BlobDatabase::load_meta(const ObjectID& id) const
-{
-	return load_meta(dest(id).parent_path() / std::string{metafile});
-}
-
-std::optional<BlobMeta> BlobDatabase::load_meta(const fs::path& dest_path) const
-{
-	std::error_code ec;
-	auto meta = MMap::open(dest_path, ec);
-	if (ec)
-		return std::nullopt;
-
-	rapidjson::Document json;
-	json.Parse(static_cast<const char*>(meta.data()), meta.size());
-
-	return BlobMeta::load(json);
 }
 
 std::optional<std::string> BlobDatabase::load_meta_json(const ObjectID& id) const
@@ -162,7 +118,7 @@ std::optional<std::string> BlobDatabase::load_meta_json(const ObjectID& id) cons
 
 	// Assume the size of the metadata file is small enough to fit in std::string
 	std::error_code ec;
-	auto mmap = MMap::open(dest_path.parent_path() / std::string{metafile}, ec);
+	auto mmap = MMap::open(dest_path / std::string{"meta"}, ec);
 	if (ec == std::errc::no_such_file_or_directory)
 	{
 		// Metafile not exists yet. This is not an error.
@@ -175,7 +131,7 @@ std::optional<std::string> BlobDatabase::load_meta_json(const ObjectID& id) cons
 		}
 		save_meta(dest_path, BlobMeta::deduce_meta(blob.blob(), m_magic));
 
-		mmap = MMap::open(dest_path.parent_path() / std::string{metafile}, ec);
+		mmap = MMap::open(dest_path.parent_path() / std::string{"meta"}, ec);
 	}
 
 	if (ec)
@@ -185,46 +141,6 @@ std::optional<std::string> BlobDatabase::load_meta_json(const ObjectID& id) cons
 	}
 
 	return std::string{mmap.string()};
-}
-
-void BlobDatabase::resize(const void *pjpeg, std::size_t size, const Size& max_dim, const fs::path& dir)
-{
-	try
-	{
-		BufferView jpeg{static_cast<const unsigned char*>(pjpeg), size};
-
-		Log(LOG_NOTICE, "resizing image %1% %2%", max_dim.width(), max_dim.height());
-
-		std::error_code ec;
-		RotateImage transform;
-		auto rotated = transform.auto_rotate(jpeg, ec);
-		if (ec)
-		{
-			Log(LOG_WARNING, "BlobDatabase::resize(): cannot rotate image %1% %2%", ec, ec.message());
-			return;
-		}
-
-		JPEG img{
-			rotated.empty() ? jpeg.data() : rotated.data(),
-			rotated.empty() ? jpeg.size() : rotated.size(),
-			max_dim
-		};
-		if (max_dim != img.size())
-			rotated = img.compress(70);
-
-		std::ostringstream fn;
-		fn << max_dim.width() << "x" << max_dim.height();
-
-		boost::system::error_code bec;
-		boost::beast::file dest;
-		dest.open((dir/fn.str()).string().c_str(), boost::beast::file_mode::write, bec);
-
-		dest.write(rotated.data(), rotated.size(), bec);
-	}
-	catch (JPEG::Exception& e)
-	{
-		Log(LOG_WARNING, "JPEG resize error: %1%", e.what());
-	}
 }
 
 } // end of namespace hrb

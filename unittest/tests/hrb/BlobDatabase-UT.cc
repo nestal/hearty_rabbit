@@ -52,8 +52,8 @@ TEST_CASE("Open temp file", "[normal]")
 	auto dest = subject.dest(subject.save(std::move(tmp), "testfile", sec));
 	INFO("save() error_code = " << sec << " " << sec.message());
 	REQUIRE(!sec);
-	REQUIRE(exists(dest));
-	REQUIRE(file_size(dest) == sizeof(test));
+	REQUIRE(exists(dest/"master"));
+	REQUIRE(file_size(dest/"master") == sizeof(test));
 
 	auto res = subject.response(tmpid, 11, "");
 	REQUIRE(res.result() == http::status::ok);
@@ -78,7 +78,7 @@ TEST_CASE("Upload JPEG file to BlobDatabase", "[normal]")
 	auto id = subject.save(std::move(tmp), "black.jpg", ec);
 	REQUIRE(!ec);
 
-	auto meta = MMap::open(subject.dest(id).parent_path()/"meta", ec);
+	auto meta = MMap::open(subject.dest(id)/"meta", ec);
 	REQUIRE(!ec);
 
 	rapidjson::Document json;
