@@ -36,4 +36,13 @@ TEST_CASE("upload BlobObject", "[normal]")
 	REQUIRE(!ec);
 	REQUIRE(subject.meta().mime() == "text/x-c");
 	REQUIRE(subject.ID() != ObjectID{});
+
+	subject.save(".", ec);
+	REQUIRE(!ec);
+	REQUIRE(fs::exists("master"));
+
+	auto out = MMap::open("master", ec);
+	REQUIRE(!ec);
+	REQUIRE(out.size() == src.size());
+	REQUIRE(std::memcmp(out.data(), src.data(), out.size()) == 0);
 }

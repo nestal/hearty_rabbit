@@ -14,13 +14,14 @@
 
 #include "ObjectID.hh"
 #include "BlobMeta.hh"
+#include "UploadFile.hh"
 
 #include "image/TurboBuffer.hh"
 #include "util/Size.hh"
 #include "util/FS.hh"
 #include "util/MMap.hh"
 
-#include <variant>
+#include <unordered_map>
 #include <system_error>
 
 namespace hrb {
@@ -32,7 +33,7 @@ class BlobObject
 {
 public:
 	BlobObject() = default;
-	BlobObject(const fs::path& base, const ObjectID& id);
+	BlobObject(const fs::path& dir, const ObjectID& id);
 
 	static BlobObject upload(UploadFile&& tmp, const Magic& magic, const Size& resize_img, std::error_code& ec);
 
@@ -42,12 +43,15 @@ public:
 
 	const ObjectID& ID() const {return m_id;}
 
+	void save(const fs::path& dir, std::error_code& ec) const;
+
 private:
 	ObjectID    m_id{};
 	BlobMeta    m_meta;
 
+	mutable UploadFile  m_tmp;
 	MMap        m_master;
-	TurboBuffer m_rotated;
+	std::unordered_map<std::string, TurboBuffer> m_rend;
 };
 
 } // end of namespace hrb

@@ -96,6 +96,23 @@ void UploadFile::linkat(const fs::path& dest, std::error_code& ec) const
 		ec.assign(ENOENT, std::generic_category());
 }
 
+void UploadFile::move(const fs::path& dest, std::error_code& ec)
+{
+	// Note that linkat() does not work in samba mount drive.
+	if (!m_tmp_path.empty())
+	{
+		// try moving the file instead of linking
+		boost::system::error_code bec;
+		fs::rename(m_tmp_path, dest, bec);
+		if (!bec)
+			ec.assign(bec.value(), bec.category());
+
+		m_tmp_path.clear();
+	}
+	else
+		ec.assign(ENOENT, std::generic_category());
+}
+
 std::size_t UploadFile::pread(void *buffer, std::size_t n, std::streamoff pos, std::error_code& ec) const
 {
 	auto r = ::pread(m_file.native_handle(), buffer, n, pos);
