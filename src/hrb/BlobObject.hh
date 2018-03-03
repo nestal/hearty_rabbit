@@ -13,23 +13,41 @@
 #pragma once
 
 #include "ObjectID.hh"
+#include "BlobMeta.hh"
+
+#include "image/TurboBuffer.hh"
+#include "util/Size.hh"
 #include "util/FS.hh"
+#include "util/MMap.hh"
+
+#include <variant>
+#include <system_error>
 
 namespace hrb {
 
-class BlobMeta;
+class UploadFile;
+class Magic;
 
 class BlobObject
 {
 public:
+	BlobObject() = default;
 	BlobObject(const fs::path& base, const ObjectID& id);
 
-	BlobMeta meta() const;
-	std::string meta_string() const;
+	static BlobObject upload(UploadFile&& tmp, const Magic& magic, const Size& resize_img, std::error_code& ec);
+
+	const BlobMeta& meta() const;
+
+	BufferView blob() const;
+
+	const ObjectID& ID() const {return m_id;}
 
 private:
-	fs::path    m_base;
-	ObjectID    m_id;
+	ObjectID    m_id{};
+	BlobMeta    m_meta;
+
+	MMap        m_master;
+	TurboBuffer m_rotated;
 };
 
 } // end of namespace hrb

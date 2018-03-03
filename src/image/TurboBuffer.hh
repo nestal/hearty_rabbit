@@ -12,7 +12,7 @@
 
 #pragma once
 
-#include <string_view>
+#include "util/BufferView.hh"
 #include <cstddef>
 
 namespace hrb {
@@ -35,7 +35,7 @@ public:
 	      unsigned char* data()       {return m_data;}
 	std::size_t size() const {return m_size;}
 
-	std::basic_string_view<unsigned char> buffer() const {return {m_data, m_size};}
+	BufferView buffer() const {return {m_data, m_size};}
 
 	bool empty() const {return m_size == 0;}
 

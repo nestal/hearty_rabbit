@@ -70,8 +70,6 @@ ObjectID BlobDatabase::save(const UploadFile& tmp, std::string_view filename, st
 	meta.filename(filename);
 	save_meta(dest_path, meta);
 
-//	Log(LOG_NOTICE, "upload image orientation %1%", meta.orientation());
-
 	// creates a rendition of auto-rotated image if the orientation isn't 1
 	if (meta.mime() == "image/jpeg")
 	{
