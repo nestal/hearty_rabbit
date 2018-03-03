@@ -109,15 +109,19 @@ void find_app1(buffer_view& buffer, std::error_code& error)
 		}
 
 		// found DQT/DHT/DRI/SOF, which must be after APP1 segment
-		else if (seg.marker[1] == 0xDB || seg.marker[1] == 0xC4 || seg.marker[1] == 0xDD || seg.marker[1] == 0xC0)
+		else if (
+			seg.marker[1] == 0xDB ||    // DQT
+			seg.marker[1] == 0xC4 ||    // DHT
+			seg.marker[1] == 0xDD ||    // DRI
+			seg.marker[1] == 0xC0 ||    // SOF (baseline DCT)
+			seg.marker[1] == 0xC2)      // SOF (progressive DCT)
 		{
-			// limit the size to APP1 segment
 			error = EXIF2::Error::not_found;
 			break;
 		}
 
 		// 0xFE is comment
-		else if (seg.marker[1] != 0xE0 && seg.marker[1] != 0xFE)
+		else if (seg.marker[1] != 0xE0 && seg.marker[1] != 0xFE && seg.marker[1] != 0xDA)
 		{
 			std::cout << "invalid marker " << std::hex << (int)seg.marker[1] << std::endl;
 			error = EXIF2::Error::invalid_header;
