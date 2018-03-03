@@ -77,7 +77,7 @@ ObjectID BlobDatabase::save(const UploadFile& tmp, std::string_view filename, st
 	{
 		auto mmap = MMap::open(tmp.native_handle(), ec);
 		if (!ec)
-			resize(mmap.data(), mmap.size(), {2048, 2048}, dest_path.parent_path());
+			resize(mmap.data(), mmap.size(), m_resize_img, dest_path.parent_path());
 	}
 
 	if (!ec)

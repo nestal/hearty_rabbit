@@ -11,7 +11,17 @@
 //
 
 #include "BlobObject.hh"
+#include "BlobMeta.hh"
 
 namespace hrb {
 
+BlobObject::BlobObject(const fs::path& base, const ObjectID& id) : m_base{base}, m_id{id}
+{
+
+}
+
+BlobMeta BlobObject::meta() const
+{
+	return BlobMeta();
+}
 } // end of namespace hrb

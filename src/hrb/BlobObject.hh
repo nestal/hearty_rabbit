@@ -17,12 +17,19 @@
 
 namespace hrb {
 
+class BlobMeta;
+
 class BlobObject
 {
 public:
 	BlobObject(const fs::path& base, const ObjectID& id);
 
+	BlobMeta meta() const;
+	std::string meta_string() const;
+
 private:
+	fs::path    m_base;
+	ObjectID    m_id;
 };
 
 } // end of namespace hrb
