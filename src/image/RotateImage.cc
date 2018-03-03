@@ -25,7 +25,7 @@ RotateImage::~RotateImage()
 	tjDestroy(m_transform);
 }
 
-TurboBuffer RotateImage::rotate(long orientation, const void *data, std::size_t size)
+TurboBuffer RotateImage::rotate(long orientation, BufferView jpeg, std::error_code& ec)
 {
 	TurboBuffer buf;
 
@@ -42,14 +42,18 @@ TurboBuffer RotateImage::rotate(long orientation, const void *data, std::size_t 
 		unsigned long out_size{};
 		auto transform_result = tjTransform(
 			m_transform,
-			buf.empty() ? static_cast<const unsigned char*>(data) : buf.data(),
-			buf.empty() ? size : buf.size(),
+			buf.empty() ? jpeg.data() : buf.data(),
+			buf.empty() ? jpeg.size() : buf.size(),
 			1, &out, &out_size, &op, 0
 		);
 		buf = TurboBuffer{out, out_size};
 
 		if (transform_result != 0)
+		{
+			Log(LOG_NOTICE, "cannot rotate image %1%", tjGetErrorStr());
+			ec.assign(-1, std::system_category());
 			return {};
+		}
 	}
 
 	return buf;
@@ -80,9 +84,9 @@ int RotateImage::map_op(long& orientation)
 }
 
 /// Rotate the image according to the Exif.Image.Orientation tag.
-TurboBuffer RotateImage::auto_rotate(const void *jpeg, std::size_t size, std::error_code& ec)
+TurboBuffer RotateImage::auto_rotate(BufferView jpeg, std::error_code& ec)
 {
-	EXIF2 exif2{static_cast<const unsigned char *>(jpeg), size, ec};
+	EXIF2 exif2{jpeg, ec};
 	if (ec)
 	{
 		// nothing to do if no EXIF tag
@@ -92,15 +96,11 @@ TurboBuffer RotateImage::auto_rotate(const void *jpeg, std::size_t size, std::er
 		return {};
 	}
 
-	if (auto orientation = exif2.get(static_cast<const unsigned char *>(jpeg), EXIF2::Tag::orientation))
+	if (auto orientation = exif2.get(jpeg.data(), EXIF2::Tag::orientation))
 	{
-		auto buf = rotate(orientation->value_offset, jpeg, size);
-		if (buf.empty())
-		{
-			Log(LOG_NOTICE, "cannot rotate image %1%", tjGetErrorStr());
-			ec.assign(-1, std::system_category());
+		auto buf = rotate(orientation->value_offset, jpeg, ec);
+		if (ec || buf.empty())
 			return {};
-		}
 
 		// Update orientation tag
 		orientation->value_offset = 1;

@@ -49,7 +49,7 @@ BlobObject BlobObject::upload(UploadFile&& tmp, const Magic& magic, const Size& 
 	if (meta.mime() == "image/jpeg")
 	{
 		RotateImage transform;
-		auto rotated = transform.auto_rotate(master.data(), master.size(), ec);
+		auto rotated = transform.auto_rotate(master.buffer(), ec);
 		if (ec)
 		{
 			Log(LOG_WARNING, "BlobObject::upload(): cannot rotate image %1% %2%", ec, ec.message());
@@ -57,8 +57,8 @@ BlobObject BlobObject::upload(UploadFile&& tmp, const Magic& magic, const Size& 
 		}
 
 		JPEG img{
-			rotated.empty() ? static_cast<const unsigned char*>(master.data()) : rotated.data(),
-			rotated.empty() ? master.size()                                    : rotated.size(),
+			rotated.empty() ? master.buffer().data() : rotated.data(),
+			rotated.empty() ? master.size()          : rotated.size(),
 			resize_img
 		};
 

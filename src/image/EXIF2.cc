@@ -230,6 +230,10 @@ EXIF2::EXIF2(const unsigned char *jpeg, std::size_t size, std::error_code& error
 	}
 }
 
+EXIF2::EXIF2(BufferView blob, std::error_code& ec) : EXIF2{blob.data(), blob.size(), ec}
+{
+}
+
 std::optional<EXIF2::Field> EXIF2::get(const unsigned char *jpeg, Tag tag) const
 {
 	auto it = m_tags.find(tag);

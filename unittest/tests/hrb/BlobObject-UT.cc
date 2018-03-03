@@ -79,3 +79,28 @@ TEST_CASE("upload small image BlobObject", "[normal]")
 	REQUIRE(out.size() == src.size());
 	REQUIRE(std::memcmp(out.data(), src.data(), out.size()) == 0);
 }
+
+TEST_CASE("upload big upright image BlobObject", "[normal]")
+{
+	auto [tmp, src] = upload(image_path()/"up_f_upright.jpg");
+
+	std::error_code ec;
+	auto subject = BlobObject::upload(std::move(tmp), Magic{}, {128, 128}, ec);
+	REQUIRE(!ec);
+	REQUIRE(subject.meta().mime() == "image/jpeg");
+	REQUIRE(subject.ID() != ObjectID{});
+
+	subject.save(".", ec);
+	REQUIRE(!ec);
+	REQUIRE(fs::exists("master"));
+
+	auto out = MMap::open("master", ec);
+	REQUIRE(!ec);
+	REQUIRE(out.size() == src.size());
+	REQUIRE(std::memcmp(out.data(), src.data(), out.size()) == 0);
+
+	auto out128 = MMap::open("128x128", ec);
+	REQUIRE(!ec);
+	REQUIRE(out128.size() < src.size());
+	REQUIRE(std::memcmp(out128.data(), src.data(), out128.size()) != 0);
+}

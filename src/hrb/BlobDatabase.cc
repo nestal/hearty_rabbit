@@ -236,15 +236,17 @@ std::optional<std::string> BlobDatabase::load_meta_json(const ObjectID& id) cons
 	return std::string{mmap.string()};
 }
 
-void BlobDatabase::resize(const void *jpeg, std::size_t size, const Size& max_dim, const fs::path& dir)
+void BlobDatabase::resize(const void *pjpeg, std::size_t size, const Size& max_dim, const fs::path& dir)
 {
 	try
 	{
+		BufferView jpeg{static_cast<const unsigned char*>(pjpeg), size};
+
 		Log(LOG_NOTICE, "resizing image %1% %2%", max_dim.width(), max_dim.height());
 
 		std::error_code ec;
 		RotateImage transform;
-		auto rotated = transform.auto_rotate(jpeg, size, ec);
+		auto rotated = transform.auto_rotate(jpeg, ec);
 		if (ec)
 		{
 			Log(LOG_WARNING, "BlobDatabase::resize(): cannot rotate image %1% %2%", ec, ec.message());
@@ -252,8 +254,8 @@ void BlobDatabase::resize(const void *jpeg, std::size_t size, const Size& max_di
 		}
 
 		JPEG img{
-			rotated.empty() ? static_cast<const unsigned char*>(jpeg) : rotated.data(),
-			rotated.empty() ? size                                    : rotated.size(),
+			rotated.empty() ? jpeg.data() : rotated.data(),
+			rotated.empty() ? jpeg.size() : rotated.size(),
 			max_dim
 		};
 		if (max_dim != img.size())

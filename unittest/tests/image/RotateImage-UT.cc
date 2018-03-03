@@ -44,7 +44,7 @@ TEST_CASE("auto rotate will change orientation=8 images to orientation=1", "[nor
 	REQUIRE(exiv2_orientation(rot90.blob()) == 8);
 
 	RotateImage subject;
-	auto rotated = (subject.auto_rotate(rot90.data(), rot90.size(), ec));
+	auto rotated = (subject.auto_rotate({static_cast<const unsigned char*>(rot90.data()), rot90.size()}, ec));
 	REQUIRE(!ec);
 
 	REQUIRE(!ec);
@@ -60,7 +60,7 @@ TEST_CASE("20x20 image can be auto-rotated but cropped", "[error]")
 	REQUIRE(exiv2_orientation(rot90.blob()) == 6);
 
 	RotateImage subject;
-	auto rotated = subject.auto_rotate(rot90.data(), rot90.size(), ec);
+	auto rotated = subject.auto_rotate({static_cast<const unsigned char*>(rot90.data()), rot90.size()}, ec);
 	REQUIRE(!ec);
 
 	int width=0, height=0, subsamp=0, colorspace=0;
@@ -82,7 +82,7 @@ TEST_CASE("png image cannot be auto-rotated", "[error]")
 	REQUIRE(!ec);
 
 	RotateImage subject;
-	auto empty = subject.auto_rotate(png.data(), png.size(), ec);
+	auto empty = subject.auto_rotate({static_cast<const unsigned char*>(png.data()), png.size()}, ec);
 	REQUIRE(ec);
 	REQUIRE(empty.empty());
 }
