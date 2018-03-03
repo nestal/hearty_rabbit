@@ -32,8 +32,6 @@ const std::string metafile = "meta";
 
 BlobMeta BlobObject::meta() const
 {
-	std::cout << "BlobObject::meta(): " << m_meta << std::endl;
-
 	rapidjson::Document json;
 	json.Parse(m_meta.data(), m_meta.size());
 
@@ -97,8 +95,6 @@ BlobObject BlobObject::upload(
 	meta.serialize().Accept(writer);
 	result.m_meta = ss.str();
 
-	std::cout << "metafile = " << result.m_meta << std::endl;
-
 	return result;
 }
 
@@ -154,8 +150,6 @@ void BlobObject::save(const fs::path& dir, std::error_code& ec) const
 			break;
 		}
 	}
-
-	std::cout << "error so far " << ec << " " << ec.message() << std::endl;
 
 	if (!ec)
 		save_blob(m_meta, dir/metafile, ec);

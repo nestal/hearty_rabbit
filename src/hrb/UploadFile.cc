@@ -86,7 +86,6 @@ void UploadFile::move(const fs::path& dest, std::error_code& ec)
 {
 	assert(!m_tmp_path.empty());
 
-	std::cout << "renaming " << m_tmp_path << " to " << dest << std::endl;
 	// Note that linkat() does not work in samba mount drive.
 	if (!m_tmp_path.empty())
 	{
@@ -97,8 +96,6 @@ void UploadFile::move(const fs::path& dest, std::error_code& ec)
 			fs::rename(m_tmp_path, dest, bec);
 		if (bec)
 			ec.assign(bec.value(), bec.category());
-
-		std::cout << "renamed " << m_tmp_path << " to " << dest << ec << " " << ec.message() << std::endl;
 
 		m_tmp_path.clear();
 	}
