@@ -15,7 +15,7 @@
 #include "BlobDatabase.hh"
 #include "WebResources.hh"
 #include "UploadFile.hh"
-#include "Container.hh"
+#include "OwnedBlobs.hh"
 
 #include "crypto/Authentication.hh"
 #include "net/SplitBuffers.hh"
@@ -193,7 +193,7 @@ void Server::get_blob(const EmptyRequest& req, Send&& send, const Authentication
 		return send(http::response<http::empty_body>{http::status::not_found, req.version()});
 
 	// Check if the user has permission to read the blob
-	Container1::is_member(*m_db.alloc(), auth.user(), object_id,
+	OwnedBlobs::is_owned(*m_db.alloc(), auth.user(), object_id,
 		[
 			object_id,
 			send=std::move(send),

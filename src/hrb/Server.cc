@@ -122,7 +122,7 @@ void Server::on_upload(UploadRequest&& req, EmptyResponseSender&& send, const Au
 	// Add the newly created blob to the user's container.
 	// The user's container contains all the blobs that is owned by the user.
 	// It will be used for authorizing the user's request on these blob later.
-	Container1::add(*m_db.alloc(), auth.user(), id, [
+	OwnedBlobs::add(*m_db.alloc(), auth.user(), id, [
 		id,
 		this,
 		send=std::move(send),
@@ -202,7 +202,7 @@ http::response<http::string_body> Server::server_error(boost::beast::string_view
 
 void Server::serve_home(FileResponseSender&& send, unsigned version, const Authentication& auth)
 {
-	Container1::load(*m_db.alloc(), auth.user(), [send=std::move(send), version, this](auto ec, Container1&& cond)
+	OwnedBlobs::load(*m_db.alloc(), auth.user(), [send=std::move(send), version, this](auto ec, OwnedBlobs&& cond)
 	{
 		auto res = m_lib.find_dynamic("index.html", version);
 		res.body().extra(

@@ -26,24 +26,27 @@ namespace hrb {
 class BlobDatabase;
 
 /// A set of blob objects represented by a redis set.
-class Container1
+class OwnedBlobs
 {
 private:
 	static const std::string_view redis_prefix;
 
 public:
-	explicit Container1(std::string_view name);
+	explicit OwnedBlobs(std::string_view name);
 
 	template <typename Complete>
 	static void load(
 		redis::Connection& db,
-		std::string_view container,
+		std::string_view user,
 		Complete&& complete
 	)
 	{
-		db.command([comp=std::forward<Complete>(complete), name=std::string{container}](auto&& reply, std::error_code&& ec) mutable
+		db.command([
+			comp=std::forward<Complete>(complete),
+			user=std::string{user}
+		](auto&& reply, std::error_code&& ec) mutable
 		{
-			Container1 result{name};
+			OwnedBlobs result{user};
 			for (auto&& element : reply)
 			{
 				if (ObjectID oid = raw_to_object_id(element.as_string()); oid != ObjectID{})
@@ -51,7 +54,7 @@ public:
 			}
 
 			comp(std::move(ec), std::move(result));
-		}, "SMEMBERS %b%b", redis_prefix.data(), redis_prefix.size(), container.data(), container.size());
+		}, "SMEMBERS %b%b", redis_prefix.data(), redis_prefix.size(), user.data(), user.size());
 	}
 
 	template <typename Complete>
@@ -69,9 +72,9 @@ public:
 	}
 
 	template <typename Complete>
-	static void is_member(
+	static void is_owned(
 		redis::Connection& db,
-		std::string_view container,
+		std::string_view user,
 		const ObjectID& blob,
 		Complete&& complete
 	)
@@ -83,7 +86,7 @@ public:
 			},
 			"SISMEMBER %b%b %b",
 			redis_prefix.data(), redis_prefix.size(),
-			container.data(), container.size(),
+			user.data(), user.size(),
 			blob.data(), blob.size()
 		);
 	}

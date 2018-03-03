@@ -13,7 +13,7 @@
 #include <catch.hpp>
 #include <iostream>
 
-#include "hrb/Container.hh"
+#include "hrb/OwnedBlobs.hh"
 #include "hrb/BlobDatabase.hh"
 #include "hrb/UploadFile.hh"
 
@@ -43,18 +43,18 @@ TEST_CASE("Container tests", "[normal]")
 	auto testid = blobdb.save(std::move(tmp), "hello.world", sec);
 
 	int tested = 0;
-	Container1::add(*redis, "test", testid, [&tested, redis, testid, &blobdb](std::error_code ec)
+	OwnedBlobs::add(*redis, "test", testid, [&tested, redis, testid, &blobdb](std::error_code ec)
 	{
 		REQUIRE(!ec);
 
-		Container1::is_member(*redis, "test", testid, [&tested](std::error_code ec, bool added)
+		OwnedBlobs::is_owned(*redis, "test", testid, [&tested](std::error_code ec, bool added)
 		{
 			REQUIRE(!ec);
 			REQUIRE(added);
 			tested++;
 		});
 
-		Container1::load(*redis, "test", [&tested, testid, &blobdb](std::error_code ec, Container1&& container)
+		OwnedBlobs::load(*redis, "test", [&tested, testid, &blobdb](std::error_code ec, OwnedBlobs&& container)
 		{
 			REQUIRE(!ec);
 			REQUIRE(container.name() == "test");
