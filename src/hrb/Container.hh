@@ -15,11 +15,9 @@
 #include "ObjectID.hh"
 #include "net/Redis.hh"
 
-#include <rapidjson/document.h>
-
 #include <string_view>
 #include <functional>
-#include <vector>
+#include <unordered_map>
 
 namespace hrb {
 
@@ -39,6 +37,10 @@ public:
 
 	std::string JSON() const;
 	static std::string JSON(const ObjectID& blob, std::string_view mime);
+
+	const ObjectID& blob() const {return m_blob;}
+	const std::string& filename() const {return m_filename;}
+	const std::string& mime() const {return m_mime;}
 
 private:
 	std::string m_filename;
@@ -135,10 +137,13 @@ public:
 		);
 	}
 
+	std::string find(const std::string& filename) const;
+	std::optional<Entry> find_entry(const std::string& filename) const;
+
 private:
 	std::string                         m_user;
 	std::string                         m_path;
-	std::map<std::string, std::string>  m_jsons;
+	std::unordered_map<std::string, std::string>  m_jsons;
 };
 
 } // end of namespace hrb

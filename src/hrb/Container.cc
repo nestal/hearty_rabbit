@@ -12,6 +12,9 @@
 
 #include "Container.hh"
 
+#include <rapidjson/document.h>
+#include <rapidjson/pointer.h>
+
 namespace hrb {
 
 const std::string_view Container::redis_prefix = "dir:";
@@ -21,6 +24,21 @@ Container::Container(std::string_view user, std::string_view path) :
 	m_path{path}
 {
 
+}
+
+std::string Container::find(const std::string& filename) const
+{
+	auto it = m_jsons.find(filename);
+	return it != m_jsons.end() ? it->second : std::string{};
+}
+
+std::optional<Entry> Container::find_entry(const std::string& filename) const
+{
+	auto json = find(filename);
+	if (!json.empty())
+		return Entry{filename, json};
+	else
+		return std::nullopt;
 }
 
 std::string Entry::JSON(const ObjectID& blob, std::string_view mime)
@@ -39,8 +57,13 @@ std::string Entry::JSON() const
 	return JSON(m_blob, m_mime);
 }
 
-Entry::Entry(std::string_view filename, std::string_view json)
+Entry::Entry(std::string_view filename, std::string_view json) : m_filename{filename}
 {
+	rapidjson::Document doc;
+	doc.Parse(json.data(), json.size());
+
+	m_blob = hex_to_object_id(GetValueByPointerWithDefault(doc, "/blob", "").GetString());
+	m_mime = GetValueByPointerWithDefault(doc, "/mime", "").GetString();
 
 }
 

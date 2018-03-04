@@ -57,9 +57,17 @@ TEST_CASE("Container tests", "[normal]")
 			std::cout << json << std::endl;
 		});
 
-		Container::load(*redis, "testuser", "/", [&tested](auto&& con, auto ec)
+		Container::load(*redis, "testuser", "/", [&tested, blobid](auto&& con, auto ec)
 		{
 			REQUIRE(!ec);
+
+			auto entry = con.find_entry("test.jpg");
+			REQUIRE(entry);
+
+			REQUIRE(entry->filename() == "test.jpg");
+			REQUIRE(entry->mime() == "image/jpeg");
+			REQUIRE(entry->blob() == blobid);
+
 			++tested;
 		});
 	});
