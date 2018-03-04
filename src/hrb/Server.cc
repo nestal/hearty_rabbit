@@ -252,11 +252,7 @@ void Server::serve_view(const EmptyRequest& req, Server::FileResponseSender&& se
 	Container::serialize(*m_db.alloc(), auth.user(), path, [send=std::move(send), version=req.version(), auth, this](auto&& json, auto ec)
 	{
 		std::ostringstream ss;
-		ss  << R"__(<script>var dir = {"name":")__"
-			<< auth.user()
-			<< R"__(", "elements":)__"
-			<< json
-			<< "};</script>";
+		ss  << "<script>var dir = " << json << ";</script>";
 
 		auto res = m_lib.find_dynamic("index.html", version);
 		res.body().extra(index_needle, ss.str());

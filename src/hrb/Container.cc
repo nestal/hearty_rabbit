@@ -40,6 +40,27 @@ std::optional<Entry> Container::find_entry(const std::string& filename) const
 		return std::nullopt;
 }
 
+std::string Container::serialize(std::string&& user, std::string&& path, redis::Reply& reply)
+{
+	std::ostringstream ss;
+	ss  << R"__({"name":")__"      << user
+		<< R"__(", "path":")__"    << path
+		<< R"__(", "elements":)__" << "[";
+
+	bool first = true;
+	reply.foreach_kv_pair([&ss, &first](auto&&, auto&& json)
+	{
+		if (first)
+			first = false;
+		else
+			ss << ",\n";
+
+		ss << json.as_string();
+	});
+	ss << "]}";
+	return ss.str();
+}
+
 std::string Entry::JSON(const ObjectID& blob, std::string_view mime, std::string_view filename)
 {
 	// too simple to bother the json library

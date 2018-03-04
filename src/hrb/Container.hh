@@ -155,22 +155,7 @@ public:
 				path=std::string{path}
 			](auto&& reply, std::error_code&& ec) mutable
 			{
-				std::ostringstream ss;
-				ss << "[";
-
-				bool first = true;
-				reply.foreach_kv_pair([&ss, &first](auto&&, auto&& json)
-				{
-					if (first)
-						first = false;
-					else
-						ss << ",\n";
-
-					ss << json.as_string();
-				});
-				ss << "]";
-
-				comp(ss.str(), std::move(ec));
+				comp(serialize(std::move(user), std::move(path), reply), std::move(ec));
 			},
 			"HGETALL %b%b:%b",
 			redis_prefix.data(), redis_prefix.size(),
@@ -178,6 +163,9 @@ public:
 			path.data(), path.size()
 		);
 	}
+
+private:
+	static std::string serialize(std::string&& user, std::string&& path, redis::Reply& reply);
 
 private:
 	std::string                         m_user;
