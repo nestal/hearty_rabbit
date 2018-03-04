@@ -13,6 +13,7 @@
 #include "Server.hh"
 #include "ResourcesList.hh"
 #include "Container.hh"
+#include "PathURL.hh"
 
 #include "crypto/Password.hh"
 #include "crypto/Authentication.hh"
@@ -241,6 +242,14 @@ void Server::serve_view(const EmptyRequest& req, Server::FileResponseSender&& se
 	if (req.method() != http::verb::get)
 		return send(http::response<SplitBuffers>{http::status::bad_request, req.version()});
 
+	if (req.target().back() != '/')
+	{
+		http::response<SplitBuffers> res{http::status::moved_permanently, req.version()};
+		res.set(http::field::location, req.target().to_string() + "/");
+		return send(std::move(res));
+	}
+
+//	PathURL path_url{req.target()};
 	auto [empty, view, user] = tokenize<3>(req.target(), "/");
 	assert(empty.empty());
 	if (user != auth.user())
