@@ -9,6 +9,7 @@
 	<link rel="stylesheet" href="hearty_rabbit.css">
 	<link rel="icon" href="logo.svg" type="image/svg+xml">
 	<link href="https://fonts.googleapis.com/css?family=Mukta+Mahee" rel="stylesheet">
+	<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 	<script src="hearty_rabbit.js"></script>
 </head>
 <body class="index-body">
@@ -38,10 +39,15 @@
 </div>
 
 <div id="light-box" class="modal">
-	<span class="close cursor" onclick="hide_image();">&times;</span>
+	<span class="close cursor" onclick="hide_image();"><i class="light-box-button material-icons">close</i></span>
+	<span class="close cursor" onclick="delete_image();"><i class="light-box-button material-icons">delete</i></span>
 	<div class="modal-content">
 		<img id="light-box-image" class="hrb-blob-image" src="loading.svg">
 	</div>
+
+	<!-- Next/previous controls -->
+    <a class="prev" onclick="plusSlides(-1)">&#10094;</a>
+    <a class="next" onclick="plusSlides(1)">&#10095;</a>
 </div>
 
 <script>
