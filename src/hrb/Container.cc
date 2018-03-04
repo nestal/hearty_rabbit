@@ -16,6 +16,13 @@ namespace hrb {
 
 const std::string_view Container::redis_prefix = "dir:";
 
+Container::Container(std::string_view user, std::string_view path) :
+	m_user{user},
+	m_path{path}
+{
+
+}
+
 std::string Entry::JSON(const ObjectID& blob, std::string_view mime)
 {
 	// too simple to bother the json library

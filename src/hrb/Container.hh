@@ -53,13 +53,13 @@ private:
 	static const std::string_view redis_prefix;
 
 public:
-	explicit Container(std::string_view user, std::string_view name);
+	explicit Container(std::string_view user, std::string_view path);
 
 	template <typename Complete>
 	static void add(
 		redis::Connection& db,
 		std::string_view user,
-		std::string_view dir,
+		std::string_view path,
 		std::string_view filename,
 		const ObjectID& blob,
 		std::string_view mime,
@@ -76,7 +76,7 @@ public:
 			"HSET %b%b:%b %b %b",
 			redis_prefix.data(), redis_prefix.size(),
 			user.data(), user.size(),
-			dir.data(), dir.size(),
+			path.data(), path.size(),
 			filename.data(), filename.size(),
 			json.data(), json.size()
 		);
@@ -86,7 +86,7 @@ public:
 	static void find_entry(
 		redis::Connection& db,
 		std::string_view user,
-		std::string_view dir,
+		std::string_view path,
 		std::string_view filename,
 		Complete&& complete
 	)
@@ -100,14 +100,45 @@ public:
 			"HGET %b%b:%b %b",
 			redis_prefix.data(), redis_prefix.size(),
 			user.data(), user.size(),
-			dir.data(), dir.size(),
+			path.data(), path.size(),
 			filename.data(), filename.size()
 		);
 	}
 
+	template <typename Complete>
+	static void load(
+		redis::Connection& db,
+		std::string_view user,
+		std::string_view path,
+		Complete&& complete
+	)
+	{
+		db.command([
+				comp=std::forward<Complete>(complete),
+				user=std::string{user},
+				path=std::string{path}
+			](auto&& reply, std::error_code&& ec) mutable
+			{
+				Container con{std::move(user), std::move(path)};
+
+				reply.foreach_kv_pair([&con](auto&& filename, auto&& json)
+				{
+					con.m_jsons.emplace(filename, json.as_string());
+				});
+
+				comp(std::move(con), std::move(ec));
+			},
+			"HGETALL %b%b:%b",
+			redis_prefix.data(), redis_prefix.size(),
+			user.data(), user.size(),
+			path.data(), path.size()
+		);
+	}
+
 private:
-	std::string                 m_name;
-	std::vector<std::string>    m_jsons;
+	std::string                         m_user;
+	std::string                         m_path;
+	std::map<std::string, std::string>  m_jsons;
 };
 
 } // end of namespace hrb

@@ -43,7 +43,7 @@ TEST_CASE("Container tests", "[normal]")
 	boost::asio::io_context ioc;
 	auto redis = redis::connect(ioc);
 
-	bool tested = false;
+	int tested = 0;
 	Container::add(*redis, "testuser", "/", "test.jpg", blobid, "image/jpeg", [&tested, redis, blobid](auto ec)
 	{
 		REQUIRE(!ec);
@@ -51,12 +51,18 @@ TEST_CASE("Container tests", "[normal]")
 		Container::find_entry(*redis, "testuser", "/", "test.jpg", [&tested, blobid](auto&& json, auto ec)
 		{
 			REQUIRE(!ec);
-			tested = true;
+			++tested;
 
 			INFO(json);
 			std::cout << json << std::endl;
 		});
+
+		Container::load(*redis, "testuser", "/", [&tested](auto&& con, auto ec)
+		{
+			REQUIRE(!ec);
+			++tested;
+		});
 	});
 	REQUIRE(ioc.run_for(10s) > 0);
-	REQUIRE(tested);
+	REQUIRE(tested == 2);
 }
