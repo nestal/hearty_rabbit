@@ -161,13 +161,17 @@ div.login {
 	font-size: 3em;
 }
 
-.close {
+.light-box-button-bar {
+	position: absolute;
+	background-color: black;
+	top: 10px;
+	right: 25px;
 	color: white;
-	float: right;
+	z-index: 2;
 }
 
-.close:hover,
-.close:focus {
+.light-box-button.material-icons:hover,
+.light-box-button.material-icons:focus {
 	color: #999;
 	text-decoration: none;
 	cursor: pointer;
