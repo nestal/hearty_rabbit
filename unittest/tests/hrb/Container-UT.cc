@@ -53,7 +53,6 @@ TEST_CASE("Container tests", "[normal]")
 			++tested;
 
 			INFO(json);
-			std::cout << json << std::endl;
 		});
 
 		Container::load(*redis, "testuser", "/", [&tested, blobid](auto&& con, auto ec)
