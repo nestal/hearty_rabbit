@@ -81,7 +81,7 @@ div.login {
 }
 
 /* Style the links inside the navigation bar */
-.topnav a {
+.topnav a, .topnav label {
 	float: left;
 	display: inline-block;
 	color: #f2f2f2;
@@ -92,6 +92,12 @@ div.login {
 	padding-right: 0.5em;
 	font-size: 100%;
 	font-family: 'Mukta Mahee', sans-serif;
+	cursor: pointer;
+}
+
+/* hide the ugly file upload form */
+#file-upload {
+	display:none;
 }
 
 .topnav .nav-logo {
@@ -102,7 +108,7 @@ div.login {
 }
 
 /* Change the color of links on hover */
-.topnav a:hover {
+.topnav a:hover, .topnav label:hover {
 	background-color: #ddd;
 	color: black;
 }
