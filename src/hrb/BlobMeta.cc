@@ -14,7 +14,6 @@
 
 #include "util/Magic.hh"
 #include "util/JsonHelper.hh"
-//#include "util/Log.hh"
 
 #include <rapidjson/pointer.h>
 

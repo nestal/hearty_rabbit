@@ -21,7 +21,7 @@
 
 using namespace hrb;
 
-TEST_CASE("Container tests", "[normal]")
+TEST_CASE("Ownership tests", "[normal]")
 {
 	using namespace std::chrono_literals;
 

@@ -16,4 +16,20 @@ namespace hrb {
 
 const std::string_view Container::redis_prefix = "dir:";
 
+std::string Entry::JSON(const ObjectID& blob, std::string_view mime)
+{
+	// too simple to bother the json library
+	std::ostringstream ss;
+	ss  << "{"
+		<< R"("blob": ")" << to_hex(blob) << "\","
+		<< R"("mime": ")" << mime         << '\"'
+		<< "}";
+	return ss.str();
+}
+
+std::string Entry::JSON() const
+{
+	return JSON(m_blob, m_mime);
+}
+
 } // end of namespace hrb
