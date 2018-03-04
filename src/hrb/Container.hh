@@ -37,7 +37,7 @@ public:
 	}
 
 	std::string JSON() const;
-	static std::string JSON(const ObjectID& blob, std::string_view mime);
+	static std::string JSON(const ObjectID& blob, std::string_view mime, std::string_view filename);
 
 	const ObjectID& blob() const {return m_blob;}
 	const std::string& filename() const {return m_filename;}
@@ -69,7 +69,7 @@ public:
 		Complete&& complete
 	)
 	{
-		auto json = Entry::JSON(blob, mime);
+		auto json = Entry::JSON(blob, mime, filename);
 		db.command([
 				comp=std::forward<Complete>(complete)
 			](auto&&, std::error_code&& ec) mutable
@@ -156,19 +156,19 @@ public:
 			](auto&& reply, std::error_code&& ec) mutable
 			{
 				std::ostringstream ss;
-				ss << "{";
+				ss << "[";
 
 				bool first = true;
-				reply.foreach_kv_pair([&ss, &first](auto&& filename, auto&& json)
+				reply.foreach_kv_pair([&ss, &first](auto&&, auto&& json)
 				{
 					if (first)
 						first = false;
 					else
 						ss << ",\n";
 
-					ss << '\"' << filename << "\": " << json.as_string();
+					ss << json.as_string();
 				});
-				ss << "}";
+				ss << "]";
 
 				comp(ss.str(), std::move(ec));
 			},

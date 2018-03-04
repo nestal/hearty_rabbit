@@ -242,13 +242,17 @@ void Server::serve_view(const EmptyRequest& req, Server::FileResponseSender&& se
 	auto remain = req.target().substr(view.size() + user.size() + 2);
 	auto path   = remain.empty() ? "/" : remain.to_string();
 
-	Container::serialize(*m_db.alloc(), auth.user(), path, [send=std::move(send), version=req.version(), this](auto&& json, auto ec)
+	Container::serialize(*m_db.alloc(), auth.user(), path, [send=std::move(send), version=req.version(), auth, this](auto&& json, auto ec)
 	{
+		std::ostringstream ss;
+		ss  << R"__(<script>var dir = {"name":")__"
+			<< auth.user()
+			<< R"__(", "elements":)__"
+			<< json
+			<< "};</script>";
+
 		auto res = m_lib.find_dynamic("index.html", version);
-		res.body().extra(
-			index_needle,
-			"<script>var dir = " + json + ";</script>"
-		);
+		res.body().extra(index_needle, ss.str());
 		send(std::move(res));
 	});
 }

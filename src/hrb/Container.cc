@@ -23,7 +23,6 @@ Container::Container(std::string_view user, std::string_view path) :
 	m_user{user},
 	m_path{path}
 {
-
 }
 
 std::string Container::find(const std::string& filename) const
@@ -41,20 +40,21 @@ std::optional<Entry> Container::find_entry(const std::string& filename) const
 		return std::nullopt;
 }
 
-std::string Entry::JSON(const ObjectID& blob, std::string_view mime)
+std::string Entry::JSON(const ObjectID& blob, std::string_view mime, std::string_view filename)
 {
 	// too simple to bother the json library
 	std::ostringstream ss;
 	ss  << "{"
-		<< R"("blob": ")" << to_hex(blob) << "\","
-		<< R"("mime": ")" << mime         << '\"'
+		<< R"("blob_id": ")"    << to_hex(blob) << "\","
+		<< R"("mime": ")"       << mime         << "\","
+		<< R"("filename": ")"   << filename     << "\""
 		<< "}";
 	return ss.str();
 }
 
 std::string Entry::JSON() const
 {
-	return JSON(m_blob, m_mime);
+	return JSON(m_blob, m_mime, m_filename);
 }
 
 Entry::Entry(std::string_view filename, std::string_view json) : m_filename{filename}
@@ -62,9 +62,8 @@ Entry::Entry(std::string_view filename, std::string_view json) : m_filename{file
 	rapidjson::Document doc;
 	doc.Parse(json.data(), json.size());
 
-	m_blob = hex_to_object_id(GetValueByPointerWithDefault(doc, "/blob", "").GetString());
+	m_blob = hex_to_object_id(GetValueByPointerWithDefault(doc, "/blob_id", "").GetString());
 	m_mime = GetValueByPointerWithDefault(doc, "/mime", "").GetString();
-
 }
 
 } // end of namespace hrb
