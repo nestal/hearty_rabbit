@@ -26,13 +26,13 @@ namespace hrb {
 class BlobDatabase;
 
 /// A set of blob objects represented by a redis set.
-class OwnedBlobs
+class Ownership
 {
 private:
 	static const std::string_view redis_prefix;
 
 public:
-	explicit OwnedBlobs(std::string_view name);
+	explicit Ownership(std::string_view name);
 
 	template <typename Complete>
 	static void load(
@@ -46,7 +46,7 @@ public:
 			user=std::string{user}
 		](auto&& reply, std::error_code&& ec) mutable
 		{
-			OwnedBlobs result{user};
+			Ownership result{user};
 			for (auto&& element : reply)
 			{
 				if (ObjectID oid = raw_to_object_id(element.as_string()); oid != ObjectID{})

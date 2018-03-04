@@ -15,7 +15,7 @@
 #include "BlobDatabase.hh"
 #include "WebResources.hh"
 #include "UploadFile.hh"
-#include "OwnedBlobs.hh"
+#include "Ownership.hh"
 
 #include "crypto/Authentication.hh"
 #include "net/SplitBuffers.hh"
@@ -195,7 +195,7 @@ void Server::handle_blob(const EmptyRequest& req, Send&& send, const Authenticat
 	auto redis = m_db.alloc();
 
 	// Check if the user owns the blob
-	OwnedBlobs::is_owned(
+	Ownership::is_owned(
 		*redis, auth.user(), object_id,
 		[
 			redis,
@@ -218,7 +218,7 @@ void Server::handle_blob(const EmptyRequest& req, Send&& send, const Authenticat
 
 			else if (req.method() == http::verb::delete_)
 			{
-				OwnedBlobs::remove(
+				Ownership::remove(
 					*redis, auth.user(), object_id,
 					[send=std::move(send), version=req.version()](std::error_code ec)
 					{

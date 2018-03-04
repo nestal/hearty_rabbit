@@ -13,7 +13,7 @@
 #include <catch.hpp>
 #include <iostream>
 
-#include "hrb/OwnedBlobs.hh"
+#include "hrb/Ownership.hh"
 #include "hrb/BlobDatabase.hh"
 #include "hrb/UploadFile.hh"
 
@@ -43,18 +43,18 @@ TEST_CASE("Container tests", "[normal]")
 	auto testid = blobdb.save(std::move(tmp), "hello.world", sec);
 
 	int tested = 0;
-	OwnedBlobs::add(*redis, "test", testid, [&tested, redis, testid, &blobdb](std::error_code ec)
+	Ownership::add(*redis, "test", testid, [&tested, redis, testid, &blobdb](std::error_code ec)
 	{
 		REQUIRE(!ec);
 
-		OwnedBlobs::is_owned(*redis, "test", testid, [&tested](std::error_code ec, bool added)
+		Ownership::is_owned(*redis, "test", testid, [&tested](std::error_code ec, bool added)
 		{
 			REQUIRE(!ec);
 			REQUIRE(added);
 			tested++;
 		});
 
-		OwnedBlobs::load(*redis, "test", [&tested, testid, &blobdb, redis](std::error_code ec, OwnedBlobs&& container)
+		Ownership::load(*redis, "test", [&tested, testid, &blobdb, redis](std::error_code ec, Ownership&& container)
 		{
 			REQUIRE(!ec);
 			REQUIRE(container.name() == "test");
@@ -71,10 +71,10 @@ TEST_CASE("Container tests", "[normal]")
 			doc.Parse(json.c_str(), json.size());
 			REQUIRE(doc["name"].GetString() == std::string{"test"});
 
-			OwnedBlobs::remove(*redis, "test", testid, [&tested, testid, redis](std::error_code ec)
+			Ownership::remove(*redis, "test", testid, [&tested, testid, redis](std::error_code ec)
 			{
 				REQUIRE(!ec);
-				OwnedBlobs::is_owned(*redis, "test", testid, [&tested](std::error_code ec, bool present)
+				Ownership::is_owned(*redis, "test", testid, [&tested](std::error_code ec, bool present)
 				{
 					REQUIRE(!ec);
 					REQUIRE(!present);

@@ -10,20 +10,20 @@
 // Created by nestal on 2/23/18.
 //
 
-#include "OwnedBlobs.hh"
+#include "Ownership.hh"
 #include "BlobDatabase.hh"
 
 #include <sstream>
 
 namespace hrb {
 
-const std::string_view OwnedBlobs::redis_prefix{"dir:"};
+const std::string_view Ownership::redis_prefix{"ownership:"};
 
-OwnedBlobs::OwnedBlobs(std::string_view name) : m_name{name}
+Ownership::Ownership(std::string_view name) : m_name{name}
 {
 }
 
-std::string OwnedBlobs::serialize(const BlobDatabase& db) const
+std::string Ownership::serialize(const BlobDatabase& db) const
 {
 	bool first = true;
 	std::ostringstream json;
