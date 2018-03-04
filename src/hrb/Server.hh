@@ -45,7 +45,7 @@ namespace url {
 const boost::string_view login{"/login"};
 const boost::string_view logout{"/logout"};
 const boost::string_view blob{"/blob"};
-const boost::string_view dir{"/dir"};
+const boost::string_view view{"/view"};
 const boost::string_view upload{"/upload"};
 }
 
@@ -141,8 +141,8 @@ private:
 		if (req.target().starts_with(url::blob))
 			return handle_blob(req, std::forward<decltype(send)>(send), auth);
 
-		if (req.target().starts_with(url::dir))
-			return send(get_dir(req));
+		if (req.target().starts_with(url::view))
+			return serve_view(req, std::forward<decltype(send)>(send), auth);
 
 		if (req.target() == url::logout)
 			return on_logout(req, auth, std::forward<Send>(send));
@@ -166,6 +166,7 @@ private:
 	http::response<http::string_body> get_dir(const EmptyRequest& req);
 	static bool is_static_resource(boost::string_view target);
 	void serve_home(FileResponseSender&& send, unsigned version, const Authentication& auth);
+	void serve_view(const EmptyRequest& req, FileResponseSender&& send, const Authentication& auth);
 
 	template <typename Send>
 	void handle_blob(const EmptyRequest& req, Send&& send, const Authentication& auth);

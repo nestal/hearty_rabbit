@@ -12,6 +12,7 @@
 
 #include "Server.hh"
 #include "ResourcesList.hh"
+#include "Container.hh"
 
 #include "crypto/Password.hh"
 #include "crypto/Authentication.hh"
@@ -31,6 +32,10 @@
 #include <turbojpeg.h>
 
 namespace hrb {
+
+namespace {
+const std::string_view index_needle{"<meta charset=\"utf-8\">"};
+}
 
 Server::Server(const Configuration& cfg) :
 	m_cfg{cfg},
@@ -206,8 +211,32 @@ void Server::serve_home(FileResponseSender&& send, unsigned version, const Authe
 	{
 		auto res = m_lib.find_dynamic("index.html", version);
 		res.body().extra(
-			"<meta charset=\"utf-8\">",
+			index_needle,
 			"<script>var dir = " + ownership.serialize(m_blob_db) + ";</script>"
+		);
+		send(std::move(res));
+	});
+}
+
+void Server::serve_view(const EmptyRequest& req, Server::FileResponseSender&& send, const Authentication& auth)
+{
+	if (req.method() != http::verb::get)
+		return send(http::response<SplitBuffers>{http::status::bad_request, req.version()});
+
+	auto [empty, view, user] = tokenize<3>(req.target(), "/");
+	assert(empty.empty());
+	if (user != auth.user())
+		return send(http::response<SplitBuffers>{http::status::forbidden, req.version()});
+
+	auto remain = req.target().substr(view.size() + user.size() + 2);
+	auto path   = remain.empty() ? "/" : remain.to_string();
+
+	Container::serialize(*m_db.alloc(), auth.user(), path, [send=std::move(send), version=req.version(), this](auto&& json, auto ec)
+	{
+		auto res = m_lib.find_dynamic("index.html", version);
+		res.body().extra(
+			index_needle,
+			"<script>var dir = " + json + ";</script>"
 		);
 		send(std::move(res));
 	});

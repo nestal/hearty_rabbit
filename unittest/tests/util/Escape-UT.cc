@@ -92,6 +92,8 @@ TEST_CASE("get_fields_from_form_string", "[normal]")
 
 TEST_CASE("URL parsing with tokenize()")
 {
+	using namespace std::literals;
+
 	std::string_view url = "/blob/1234567890123456789012345678901234567890/as_svg";
 	auto [empty, blob, hash, rendition] = tokenize<4>(url, "/");
 	REQUIRE(empty == "");
@@ -106,4 +108,24 @@ TEST_CASE("URL parsing with tokenize()")
 	REQUIRE(hash2 == "1234567890123456789012345678901234567890");
 	REQUIRE(rendition2 == "as_svg");
 	REQUIRE(what2 == "");
+
+	// URL too long
+	auto view_url = "/view/someone/path/to/a/valid/folder"sv;
+	auto [empty3, view, user] = tokenize<3>(view_url, "/");
+	REQUIRE(empty3 == "");
+	REQUIRE(view == "view");
+	REQUIRE(user == "someone");
+
+	auto path = view_url.substr(view.size() + user.size() + 2);
+	REQUIRE(path == "/path/to/a/valid/folder");
+
+	// URL too long
+	auto root_view = "/view/another"sv;
+	auto [empty4, view4, user4] = tokenize<3>(root_view, "/");
+	REQUIRE(empty4 == "");
+	REQUIRE(view4 == "view");
+	REQUIRE(user4 == "another");
+
+	auto path4 = root_view.substr(view4.size() + user4.size() + 2);
+	REQUIRE(path4 == "");
 }
