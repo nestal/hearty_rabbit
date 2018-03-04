@@ -75,7 +75,7 @@ void Server::on_login(const StringRequest& req, EmptyResponseSender&& send)
 			{
 				Log(LOG_INFO, "login result: %1% %2%", ec, ec.message());
 
-				auto&& res = see_other(ec ? "/login_incorrect.html" : "/", version);
+				auto&& res = see_other(ec ? "/login_incorrect.html" : user_view(session.user()), version);
 				if (!ec)
 					res.set(http::field::set_cookie, session.set_cookie());
 
@@ -163,6 +163,13 @@ void Server::on_invalid_session(const RequestHeader& req, FileResponseSender&& s
 	// It may also be the first visit of an anonymous user.
 	if (req.target() == "/")
 		return send(m_lib.find_dynamic("login.html", req.version()));
+
+	if (req.target().starts_with(url::view))
+	{
+		http::response<SplitBuffers> res{http::status::see_other, req.version()};
+		res.set(http::field::location, "/");
+		return send(std::move(res));
+	}
 
 	// Introduce a small delay when responsing to requests with invalid session ID.
 	// This is to slow down bruce-force attacks on the session ID.
@@ -444,6 +451,19 @@ bool Server::is_upload(const RequestHeader& header)
 bool Server::is_login(const RequestHeader& header)
 {
 	return header.target() == hrb::url::login && header.method() == http::verb::post;
+}
+
+std::string Server::user_view(std::string_view user, std::string_view path)
+{
+	assert(!user.empty());
+
+	static const auto url_view = std::string{url::view} + "/";
+	auto result = url_view + std::string{user};
+	if (path.empty() || path.front() != '/')
+		result.push_back('/');
+	result.append(path.data(), path.size());
+
+	return result;
 }
 
 } // end of namespace

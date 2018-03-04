@@ -136,7 +136,8 @@ private:
 		const RequestHeader& header = req;
 
 		if (req.target() == "/")
-			return serve_home(std::forward<decltype(send)>(send), req.version(), auth);
+//			return serve_home(std::forward<decltype(send)>(send), req.version(), auth);
+			return send(see_other(user_view(auth.user()), req.version()));
 
 		if (req.target().starts_with(url::blob))
 			return handle_blob(req, std::forward<decltype(send)>(send), auth);
@@ -153,6 +154,7 @@ private:
 	static bool is_upload(const RequestHeader& header);
 	static bool is_login(const RequestHeader& header);
 	static void drop_privileges();
+	static std::string user_view(std::string_view user, std::string_view path = {});
 
 	using EmptyResponseSender  = std::function<void(http::response<http::empty_body>&&)>;
 	using StringResponseSender = std::function<void(http::response<http::string_body>&&)>;
