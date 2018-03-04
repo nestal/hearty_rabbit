@@ -130,18 +130,29 @@ void Server::on_upload(UploadRequest&& req, EmptyResponseSender&& send, const Au
 	Ownership::add(*m_db.alloc(), auth.user(), id, [
 		id,
 		this,
+		auth,
+		filename=std::string{filename},
 		send=std::move(send),
 		version=req.version()
 	](auto ec) mutable
 	{
-		http::response<http::empty_body> res{
-			ec ? http::status::internal_server_error : http::status::created,
-			version
-		};
-		if (!ec)
-			res.set(http::field::location, "/blob/" + to_hex(id));
-		res.set(http::field::cache_control, "no-cache, no-store, must-revalidate");
-		send(std::move(res));
+		if (ec)
+			return send(http::response<http::empty_body>{http::status::internal_server_error,version});
+
+		// add to user's root container
+		Container::add(*m_db.alloc(), auth.user(), "/", filename, id, "image/jpeg",
+			[send=std::move(send), version, id](auto ec)
+			{
+				http::response<http::empty_body> res{
+					ec ? http::status::internal_server_error : http::status::created,
+					version
+				};
+				if (!ec)
+					res.set(http::field::location, "/blob/" + to_hex(id));
+				res.set(http::field::cache_control, "no-cache, no-store, must-revalidate");
+				return send(std::move(res));
+			}
+		);
 	});
 }
 
