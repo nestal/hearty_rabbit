@@ -13,6 +13,8 @@
 #include <iostream>
 #include "PathURL.hh"
 
+#include "util/Escape.hh"
+
 namespace hrb {
 
 PathURL::PathURL(boost::string_view boost_target)
@@ -21,17 +23,28 @@ PathURL::PathURL(boost::string_view boost_target)
 		return;
 
 	std::string_view target{boost_target.data(), boost_target.size()};
-	auto action_end = target.find_first_of('/', 1);
-	auto file_start = action_end == target.npos ? target.npos : target.find_last_of('/', target.size());
+	m_action = target.substr(0, target.find_first_of('/', 1));
+	target.remove_prefix(m_action.size());
 
-	if (file_start != target.npos)
-		file_start++;
+	if (target.empty())
+		return;
 
-	std::cout << "file_start = " << file_start << " " << " action_end = " << action_end << std::endl;
+	m_user   = target.substr(0, target.find_first_of('/', 1));
+	target.remove_prefix(m_user.size());
+	m_user.remove_prefix(1);
 
-	m_action   = target.substr(0, action_end);
-	m_path     = action_end == target.npos ? std::string_view{} : target.substr(action_end, file_start-action_end);
-	m_filename = file_start == target.npos ? std::string_view{} : target.substr(file_start);
+	if (target.empty())
+		return;
+
+	auto file_start = target.find_last_of('/');
+	if (file_start != target.npos) file_start++;
+	m_filename = target.substr(file_start, target.size());
+	target.remove_suffix(m_filename.size());
+
+	if (target.empty())
+		return;
+
+	m_path = target;
 }
 
 } // end of namespace hrb

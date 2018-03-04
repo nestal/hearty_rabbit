@@ -115,11 +115,13 @@ http::response<http::empty_body> Server::see_other(boost::beast::string_view whe
 void Server::on_upload(UploadRequest&& req, EmptyResponseSender&& send, const Authentication& auth)
 {
 	boost::system::error_code bec;
-	auto [prefix, filename] = extract_prefix(req);
-	Log(LOG_INFO, "uploading %1% bytes to %2%", req.body().size(bec), filename);
+
+	PathURL path_url{req.target()};
+
+	Log(LOG_INFO, "uploading %1% bytes to path(%2%) file(%3%)", req.body().size(bec), path_url.path(), path_url.filename());
 
 	std::error_code ec;
-	auto id = m_blob_db.save(std::move(req.body()), filename, ec);
+	auto id = m_blob_db.save(std::move(req.body()), path_url.filename(), ec);
 	Log(LOG_INFO, "uploaded %1% bytes to %2% (%3% %4%)", req.body().size(bec), id, ec, ec.message());
 
 	if (ec)
@@ -132,7 +134,8 @@ void Server::on_upload(UploadRequest&& req, EmptyResponseSender&& send, const Au
 		id,
 		this,
 		auth,
-		filename=std::string{filename},
+		filename=std::string{path_url.filename()},
+		path=std::string{path_url.path()},
 		send=std::move(send),
 		version=req.version()
 	](auto ec) mutable
@@ -141,7 +144,7 @@ void Server::on_upload(UploadRequest&& req, EmptyResponseSender&& send, const Au
 			return send(http::response<http::empty_body>{http::status::internal_server_error,version});
 
 		// add to user's root container
-		Container::add(*m_db.alloc(), auth.user(), "/", filename, id, "image/jpeg",
+		Container::add(*m_db.alloc(), auth.user(), path, filename, id, "image/jpeg",
 			[send=std::move(send), version, id](auto ec)
 			{
 				http::response<http::empty_body> res{
@@ -249,16 +252,12 @@ void Server::serve_view(const EmptyRequest& req, Server::FileResponseSender&& se
 		return send(std::move(res));
 	}
 
-//	PathURL path_url{req.target()};
-	auto [empty, view, user] = tokenize<3>(req.target(), "/");
-	assert(empty.empty());
-	if (user != auth.user())
+	PathURL path_url{req.target()};
+
+	if (path_url.user() != auth.user())
 		return send(http::response<SplitBuffers>{http::status::forbidden, req.version()});
 
-	auto remain = req.target().substr(view.size() + user.size() + 2);
-	auto path   = remain.empty() ? "/" : remain.to_string();
-
-	Container::serialize(*m_db.alloc(), auth.user(), path, [send=std::move(send), version=req.version(), auth, this](auto&& json, auto ec)
+	Container::serialize(*m_db.alloc(), auth.user(), path_url.path(), [send=std::move(send), version=req.version(), auth, this](auto&& json, auto ec)
 	{
 		std::ostringstream ss;
 		ss  << "<script>var dir = " << json << ";</script>";
