@@ -202,6 +202,8 @@ http::response<http::string_body> Server::server_error(boost::beast::string_view
 
 void Server::serve_home(FileResponseSender&& send, unsigned version, const Authentication& auth)
 {
+
+
 	OwnedBlobs::load(*m_db.alloc(), auth.user(), [send=std::move(send), version, this](auto ec, OwnedBlobs&& cond)
 	{
 		auto res = m_lib.find_dynamic("index.html", version);

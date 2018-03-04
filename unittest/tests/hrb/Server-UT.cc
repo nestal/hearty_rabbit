@@ -357,6 +357,7 @@ TEST_CASE("General server tests", "[normal]")
 			INFO("Upload request returned location: " << checker[http::field::location]);
 
 			EmptyRequest get_blob;
+			get_blob.method(http::verb::get);
 			get_blob.target(checker[http::field::location]);
 
 			subject.get_io_context().restart();
