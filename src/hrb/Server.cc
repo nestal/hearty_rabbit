@@ -12,6 +12,8 @@
 
 #include "Server.hh"
 #include "ResourcesList.hh"
+#include "Container.hh"
+#include "PathURL.hh"
 
 #include "crypto/Password.hh"
 #include "crypto/Authentication.hh"
@@ -31,6 +33,10 @@
 #include <turbojpeg.h>
 
 namespace hrb {
+
+namespace {
+const std::string_view index_needle{"<meta charset=\"utf-8\">"};
+}
 
 Server::Server(const Configuration& cfg) :
 	m_cfg{cfg},
@@ -70,7 +76,7 @@ void Server::on_login(const StringRequest& req, EmptyResponseSender&& send)
 			{
 				Log(LOG_INFO, "login result: %1% %2%", ec, ec.message());
 
-				auto&& res = see_other(ec ? "/login_incorrect.html" : "/", version);
+				auto&& res = see_other(ec ? "/login_incorrect.html" : user_view(session.user()), version);
 				if (!ec)
 					res.set(http::field::set_cookie, session.set_cookie());
 
@@ -109,11 +115,13 @@ http::response<http::empty_body> Server::see_other(boost::beast::string_view whe
 void Server::on_upload(UploadRequest&& req, EmptyResponseSender&& send, const Authentication& auth)
 {
 	boost::system::error_code bec;
-	auto [prefix, filename] = extract_prefix(req);
-	Log(LOG_INFO, "uploading %1% bytes to %2%", req.body().size(bec), filename);
+
+	PathURL path_url{req.target()};
+
+	Log(LOG_INFO, "uploading %1% bytes to path(%2%) file(%3%)", req.body().size(bec), path_url.path(), path_url.filename());
 
 	std::error_code ec;
-	auto id = m_blob_db.save(req.body(), filename, ec);
+	auto id = m_blob_db.save(std::move(req.body()), path_url.filename(), ec);
 	Log(LOG_INFO, "uploaded %1% bytes to %2% (%3% %4%)", req.body().size(bec), id, ec, ec.message());
 
 	if (ec)
@@ -122,21 +130,33 @@ void Server::on_upload(UploadRequest&& req, EmptyResponseSender&& send, const Au
 	// Add the newly created blob to the user's container.
 	// The user's container contains all the blobs that is owned by the user.
 	// It will be used for authorizing the user's request on these blob later.
-	Container1::add(*m_db.alloc(), auth.user(), id, [
+	Ownership::add(*m_db.alloc(), auth.user(), id, [
 		id,
 		this,
+		auth,
+		filename=std::string{path_url.filename()},
+		path=std::string{path_url.path()},
 		send=std::move(send),
 		version=req.version()
 	](auto ec) mutable
 	{
-		http::response<http::empty_body> res{
-			ec ? http::status::internal_server_error : http::status::created,
-			version
-		};
-		if (!ec)
-			res.set(http::field::location, "/blob/" + to_hex(id));
-		res.set(http::field::cache_control, "no-cache, no-store, must-revalidate");
-		send(std::move(res));
+		if (ec)
+			return send(http::response<http::empty_body>{http::status::internal_server_error,version});
+
+		// add to user's root container
+		Container::add(*m_db.alloc(), auth.user(), path, filename, id, "image/jpeg",
+			[send=std::move(send), version, id](auto ec)
+			{
+				http::response<http::empty_body> res{
+					ec ? http::status::internal_server_error : http::status::created,
+					version
+				};
+				if (!ec)
+					res.set(http::field::location, "/blob/" + to_hex(id));
+				res.set(http::field::cache_control, "no-cache, no-store, must-revalidate");
+				return send(std::move(res));
+			}
+		);
 	});
 }
 
@@ -147,6 +167,13 @@ void Server::on_invalid_session(const RequestHeader& req, FileResponseSender&& s
 	// It may also be the first visit of an anonymous user.
 	if (req.target() == "/")
 		return send(m_lib.find_dynamic("login.html", req.version()));
+
+	if (req.target().starts_with(url::view))
+	{
+		http::response<SplitBuffers> res{http::status::see_other, req.version()};
+		res.set(http::field::location, "/");
+		return send(std::move(res));
+	}
 
 	// Introduce a small delay when responsing to requests with invalid session ID.
 	// This is to slow down bruce-force attacks on the session ID.
@@ -202,13 +229,41 @@ http::response<http::string_body> Server::server_error(boost::beast::string_view
 
 void Server::serve_home(FileResponseSender&& send, unsigned version, const Authentication& auth)
 {
-	Container1::load(*m_db.alloc(), auth.user(), [send=std::move(send), version, this](auto ec, Container1&& cond)
+	Ownership::load(*m_db.alloc(), auth.user(), [send=std::move(send), version, this](auto ec, auto&& ownership)
 	{
 		auto res = m_lib.find_dynamic("index.html", version);
 		res.body().extra(
-			"<meta charset=\"utf-8\">",
-			"<script>var dir = " + cond.serialize(m_blob_db) + ";</script>"
+			index_needle,
+			"<script>var dir = " + ownership.serialize(m_blob_db) + ";</script>"
 		);
+		send(std::move(res));
+	});
+}
+
+void Server::serve_view(const EmptyRequest& req, Server::FileResponseSender&& send, const Authentication& auth)
+{
+	if (req.method() != http::verb::get)
+		return send(http::response<SplitBuffers>{http::status::bad_request, req.version()});
+
+	if (req.target().back() != '/')
+	{
+		http::response<SplitBuffers> res{http::status::moved_permanently, req.version()};
+		res.set(http::field::location, req.target().to_string() + "/");
+		return send(std::move(res));
+	}
+
+	PathURL path_url{req.target()};
+
+	if (path_url.user() != auth.user())
+		return send(http::response<SplitBuffers>{http::status::forbidden, req.version()});
+
+	Container::serialize(*m_db.alloc(), auth.user(), path_url.path(), [send=std::move(send), version=req.version(), auth, this](auto&& json, auto ec)
+	{
+		std::ostringstream ss;
+		ss  << "<script>var dir = " << json << ";</script>";
+
+		auto res = m_lib.find_dynamic("index.html", version);
+		res.body().extra(index_needle, ss.str());
 		send(std::move(res));
 	});
 }
@@ -400,6 +455,19 @@ bool Server::is_upload(const RequestHeader& header)
 bool Server::is_login(const RequestHeader& header)
 {
 	return header.target() == hrb::url::login && header.method() == http::verb::post;
+}
+
+std::string Server::user_view(std::string_view user, std::string_view path)
+{
+	assert(!user.empty());
+
+	static const auto url_view = std::string{url::view} + "/";
+	auto result = url_view + std::string{user};
+	if (path.empty() || path.front() != '/')
+		result.push_back('/');
+	result.append(path.data(), path.size());
+
+	return result;
 }
 
 } // end of namespace

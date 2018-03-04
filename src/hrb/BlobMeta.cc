@@ -14,9 +14,6 @@
 
 #include "util/Magic.hh"
 #include "util/JsonHelper.hh"
-#include "util/Log.hh"
-
-#include "image/EXIF2.hh"
 
 #include <rapidjson/pointer.h>
 
@@ -28,9 +25,6 @@ rapidjson::Document BlobMeta::serialize() const
 	json.SetObject();
 	json.AddMember("mime", rapidjson::StringRef(m_mime), json.GetAllocator());
 
-	if (m_mime == "image/jpeg")
-		json.AddMember("orientation", m_orientation, json.GetAllocator());
-
 	if (!m_filename.empty())
 		json.AddMember("filename", rapidjson::StringRef(m_filename), json.GetAllocator());
 
@@ -40,9 +34,8 @@ rapidjson::Document BlobMeta::serialize() const
 BlobMeta BlobMeta::load(rapidjson::Document& json)
 {
 	BlobMeta meta;
-	meta.m_mime         = GetValueByPointerWithDefault(json, "/mime",        meta.m_mime).GetString();
-	meta.m_orientation  = GetValueByPointerWithDefault(json, "/orientation", meta.m_orientation).GetInt();
-	meta.m_filename     = GetValueByPointerWithDefault(json, "/mime",        meta.m_filename).GetString();
+	meta.m_mime         = GetValueByPointerWithDefault(json, "/mime",     meta.m_mime).GetString();
+	meta.m_filename     = GetValueByPointerWithDefault(json, "/filename", meta.m_filename).GetString();
 	return meta;
 }
 
@@ -50,19 +43,6 @@ BlobMeta BlobMeta::deduce_meta(boost::asio::const_buffer blob, const Magic& magi
 {
 	BlobMeta meta;
 	meta.m_mime = magic.mime(blob);
-
-	if (meta.m_mime == "image/jpeg")
-	{
-		auto jpeg = boost::asio::buffer_cast<const unsigned char*>(blob);
-
-		std::error_code ec;
-		EXIF2 exif2{jpeg, blob.size(), ec};
-		if (!ec)
-		{
-			if (auto field = exif2.get(jpeg, EXIF2::Tag::orientation))
-				meta.m_orientation = field->value_offset;
-		}
-	}
 	return meta;
 }
 

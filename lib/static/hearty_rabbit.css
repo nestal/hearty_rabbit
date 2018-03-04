@@ -40,7 +40,7 @@ div.login {
 	display: none;
 }
 
-@media (max-width: 2000px) {
+@media (max-width: 1280px) {
 	#hrb-entry-root {
 		-moz-column-count: 4;
 		-webkit-column-count: 4;
@@ -48,7 +48,7 @@ div.login {
 	}
 }
 
-@media (max-width: 1600px) {
+@media (max-width: 1000px) {
 	#hrb-entry-root {
 		-moz-column-count: 3;
 		-webkit-column-count: 3;
@@ -56,7 +56,7 @@ div.login {
 	}
 }
 
-@media (max-width: 1200px) {
+@media (max-width: 800px) {
 	#hrb-entry-root {
 		-moz-column-count: 2;
 		-webkit-column-count: 2;
@@ -64,7 +64,7 @@ div.login {
 	}
 }
 
-@media (max-width: 800px) {
+@media (max-width: 500px) {
 	#hrb-entry-root {
 		-moz-column-count: 1;
 		-webkit-column-count: 1;
@@ -81,7 +81,7 @@ div.login {
 }
 
 /* Style the links inside the navigation bar */
-.topnav a {
+.topnav a, .topnav label {
 	float: left;
 	display: inline-block;
 	color: #f2f2f2;
@@ -92,6 +92,12 @@ div.login {
 	padding-right: 0.5em;
 	font-size: 100%;
 	font-family: 'Mukta Mahee', sans-serif;
+	cursor: pointer;
+}
+
+/* hide the ugly file upload form */
+#file-upload {
+	display:none;
 }
 
 .topnav .nav-logo {
@@ -102,7 +108,7 @@ div.login {
 }
 
 /* Change the color of links on hover */
-.topnav a:hover {
+.topnav a:hover, .topnav label:hover {
 	background-color: #ddd;
 	color: black;
 }
@@ -123,7 +129,7 @@ div.login {
 	display: none;
 	position: fixed;
 	z-index: 1;
-	padding-top: 100px;
+	padding-top: 1vh;
 	left: 0;
 	top: 0;
 	width: 100%;
@@ -150,14 +156,14 @@ div.login {
 	max-height: 100%;
 }
 
-/* The Close Button */
+/* The lightbox buttons*/
+.light-box-button.material-icons {
+	font-size: 3em;
+}
+
 .close {
 	color: white;
-	position: absolute;
-	top: 10px;
-	right: 25px;
-	font-size: 35px;
-	font-weight: bold;
+	float: right;
 }
 
 .close:hover,
@@ -165,4 +171,34 @@ div.login {
 	color: #999;
 	text-decoration: none;
 	cursor: pointer;
+}
+
+/* Next & previous buttons */
+.prev,
+.next {
+	cursor: pointer;
+	position: absolute;
+	top: 50%;
+	width: auto;
+	padding: 16px;
+	margin-top: -50px;
+	color: white;
+	font-weight: bold;
+	font-size: 2em;
+	transition: 0.6s ease;
+	border-radius: 0 3px 3px 0;
+	user-select: none;
+	-webkit-user-select: none;
+}
+
+/* Position the "next button" to the right */
+.next {
+	right: 0;
+	border-radius: 3px 0 0 3px;
+}
+
+/* On hover, add a black background color with a little bit see-through */
+.prev:hover,
+.next:hover {
+	background-color: rgba(0, 0, 0, 0.8);
 }

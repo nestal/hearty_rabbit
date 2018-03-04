@@ -147,6 +147,7 @@ bool Session::validate_request(const Request& req)
 	if (req.method() != http::verb::get  &&
 	    req.method() != http::verb::post &&
 	    req.method() != http::verb::put &&
+		req.method() != http::verb::delete_ &&
 		req.method() != http::verb::head)
 	{
 		send_response(m_server.bad_request("Unknown HTTP-method", req.version()));

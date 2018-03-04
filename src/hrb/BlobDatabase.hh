@@ -40,11 +40,10 @@ public:
 	explicit BlobDatabase(const fs::path& base, const Size& resize_img);
 
 	void prepare_upload(UploadFile& result, std::error_code& ec) const;
-	ObjectID save(const UploadFile& tmp, std::string_view filename, std::error_code& ec);
+	ObjectID save(UploadFile&& tmp, std::string_view filename, std::error_code& ec);
 
 	fs::path dest(const ObjectID& id, std::string_view rendition = {}) const;
-	std::optional<BlobMeta> load_meta(const ObjectID& id) const;
-	std::optional<std::string> load_meta_json(const ObjectID& id) const;
+	std::string load_meta_json(const ObjectID& id) const;
 
 	BlobResponse response(
 		ObjectID id,
@@ -55,11 +54,6 @@ public:
 
 private:
 	static void set_cache_control(BlobResponse& res, const ObjectID& id);
-	BlobMeta deduce_meta(const UploadFile& tmp) const;
-	void save_meta(const fs::path& dest_path, const BlobMeta& meta) const;
-	std::optional<BlobMeta> load_meta(const fs::path& dest_path) const;
-
-	void resize(const void *jpeg, std::size_t size, const Size& max_dim, const fs::path& dir);
 
 private:
 	fs::path    m_base;

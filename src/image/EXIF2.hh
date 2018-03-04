@@ -12,6 +12,8 @@
 
 #pragma once
 
+#include "util/BufferView.hh"
+
 #include <boost/endian/conversion.hpp>
 
 #include <cstddef>
@@ -42,7 +44,7 @@ public:
 		std::uint32_t value_offset;
 	};
 
-	enum class Error {ok, too_small, invalid_header};
+	enum class Error {ok, too_small, invalid_header, not_found};
 
 	enum class Tag {orientation = 0x112};
 
@@ -51,6 +53,7 @@ public:
 public:
 	EXIF2() = default;
 	EXIF2(const unsigned char *jpeg, std::size_t size, std::error_code& ec);
+	EXIF2(BufferView blob, std::error_code& ec);
 
 	std::optional<Field> get(const unsigned char *jpeg, Tag tag) const;
 	bool set(unsigned char *jpeg, const Field& native) const;

@@ -15,7 +15,7 @@
 #include "BlobDatabase.hh"
 #include "WebResources.hh"
 #include "UploadFile.hh"
-#include "Container.hh"
+#include "Ownership.hh"
 
 #include "crypto/Authentication.hh"
 #include "net/SplitBuffers.hh"
@@ -45,7 +45,7 @@ namespace url {
 const boost::string_view login{"/login"};
 const boost::string_view logout{"/logout"};
 const boost::string_view blob{"/blob"};
-const boost::string_view dir{"/dir"};
+const boost::string_view view{"/view"};
 const boost::string_view upload{"/upload"};
 }
 
@@ -136,13 +136,14 @@ private:
 		const RequestHeader& header = req;
 
 		if (req.target() == "/")
-			return serve_home(std::forward<decltype(send)>(send), req.version(), auth);
+//			return serve_home(std::forward<decltype(send)>(send), req.version(), auth);
+			return send(see_other(user_view(auth.user()), req.version()));
 
 		if (req.target().starts_with(url::blob))
-			return get_blob(req, std::forward<decltype(send)>(send), auth);
+			return handle_blob(req, std::forward<decltype(send)>(send), auth);
 
-		if (req.target().starts_with(url::dir))
-			return send(get_dir(req));
+		if (req.target().starts_with(url::view))
+			return serve_view(req, std::forward<decltype(send)>(send), auth);
 
 		if (req.target() == url::logout)
 			return on_logout(req, auth, std::forward<Send>(send));
@@ -153,6 +154,7 @@ private:
 	static bool is_upload(const RequestHeader& header);
 	static bool is_login(const RequestHeader& header);
 	static void drop_privileges();
+	static std::string user_view(std::string_view user, std::string_view path = {});
 
 	using EmptyResponseSender  = std::function<void(http::response<http::empty_body>&&)>;
 	using StringResponseSender = std::function<void(http::response<http::string_body>&&)>;
@@ -166,9 +168,10 @@ private:
 	http::response<http::string_body> get_dir(const EmptyRequest& req);
 	static bool is_static_resource(boost::string_view target);
 	void serve_home(FileResponseSender&& send, unsigned version, const Authentication& auth);
+	void serve_view(const EmptyRequest& req, FileResponseSender&& send, const Authentication& auth);
 
 	template <typename Send>
-	void get_blob(const EmptyRequest& req, Send&& send, const Authentication& auth);
+	void handle_blob(const EmptyRequest& req, Send&& send, const Authentication& auth);
 
 private:
 	const Configuration&    m_cfg;
@@ -180,7 +183,7 @@ private:
 };
 
 template <typename Send>
-void Server::get_blob(const EmptyRequest& req, Send&& send, const Authentication& auth)
+void Server::handle_blob(const EmptyRequest& req, Send&& send, const Authentication& auth)
 {
 	// blob ID is fixed size (40 characters, i.e., Blake hash size * 2)
 	auto [empty, blob, blob_id, rendition] = tokenize<4>(req.target(), "/");
@@ -192,23 +195,45 @@ void Server::get_blob(const EmptyRequest& req, Send&& send, const Authentication
 	if (object_id == ObjectID{})
 		return send(http::response<http::empty_body>{http::status::not_found, req.version()});
 
-	// Check if the user has permission to read the blob
-	Container1::is_member(*m_db.alloc(), auth.user(), object_id,
+	auto redis = m_db.alloc();
+
+	// Check if the user owns the blob
+	Ownership::is_owned(
+		*redis, auth.user(), object_id,
 		[
+			redis,
+			auth,
 			object_id,
-			send=std::move(send),
-			version=req.version(),
-			etag=req[http::field::if_none_match].to_string(),
+			send = std::move(send),
+			req,
 			this
 		](auto ec, bool is_member) mutable
 		{
 			if (ec)
-				return send(http::response<http::empty_body>{http::status::internal_server_error, version});
+				return send(http::response<http::empty_body>{http::status::internal_server_error, req.version()});
 
 			if (!is_member)
-				return send(http::response<http::empty_body>{http::status::forbidden, version});
+				return send(http::response<http::empty_body>{http::status::forbidden, req.version()});
 
-			return send(m_blob_db.response(object_id, version, etag));
+			auto etag = req[http::field::if_none_match];
+			if (req.method() == http::verb::get)
+				return send(m_blob_db.response(object_id, req.version(), {etag.data(), etag.size()}));
+
+			else if (req.method() == http::verb::delete_)
+			{
+				Ownership::remove(
+					*redis, auth.user(), object_id,
+					[send=std::move(send), version=req.version()](std::error_code ec)
+					{
+						return send(http::response<http::empty_body>{
+							ec ? http::status::internal_server_error : http::status::accepted,
+							version
+						});
+					}
+				);
+			}
+			else
+				return send(http::response<http::empty_body>{http::status::bad_request, req.version()});
 		}
 	);
 }

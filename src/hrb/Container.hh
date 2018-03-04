@@ -7,7 +7,7 @@
 */
 
 //
-// Created by nestal on 2/23/18.
+// Created by nestal on 3/4/18.
 //
 
 #pragma once
@@ -15,93 +15,162 @@
 #include "ObjectID.hh"
 #include "net/Redis.hh"
 
-#include <rapidjson/document.h>
-
 #include <string_view>
 #include <functional>
-#include <vector>
+#include <unordered_map>
+#include <sstream>
 
 namespace hrb {
 
 class BlobDatabase;
 
+class Entry
+{
+public:
+	Entry(std::string_view filename, std::string_view json);
+
+	Entry(std::string_view filename, const ObjectID& blob, std::string_view mime) :
+		m_filename{filename},
+		m_blob{blob},
+		m_mime{mime}
+	{
+	}
+
+	std::string JSON() const;
+	static std::string JSON(const ObjectID& blob, std::string_view mime, std::string_view filename);
+
+	const ObjectID& blob() const {return m_blob;}
+	const std::string& filename() const {return m_filename;}
+	const std::string& mime() const {return m_mime;}
+
+private:
+	std::string m_filename;
+	ObjectID    m_blob;
+	std::string m_mime;
+};
+
 /// A set of blob objects represented by a redis set.
-class Container1
+class Container
 {
 private:
 	static const std::string_view redis_prefix;
 
 public:
-	explicit Container1(std::string_view name);
-
-	template <typename Complete>
-	static void load(
-		redis::Connection& db,
-		std::string_view container,
-		Complete&& complete
-	)
-	{
-		db.command([comp=std::forward<Complete>(complete), name=std::string{container}](auto&& reply, std::error_code&& ec) mutable
-		{
-			Container1 result{name};
-			for (auto&& element : reply)
-			{
-				if (ObjectID oid = raw_to_object_id(element.as_string()); oid != ObjectID{})
-					result.m_blobs.push_back(oid);
-			}
-
-			comp(std::move(ec), std::move(result));
-		}, "SMEMBERS %b%b", redis_prefix.data(), redis_prefix.size(), container.data(), container.size());
-	}
+	explicit Container(std::string_view user, std::string_view path);
 
 	template <typename Complete>
 	static void add(
 		redis::Connection& db,
-		std::string_view container,
+		std::string_view user,
+		std::string_view path,
+		std::string_view filename,
 		const ObjectID& blob,
+		std::string_view mime,
 		Complete&& complete
 	)
 	{
-		db.command([comp=std::forward<Complete>(complete)](auto&&, std::error_code&& ec) mutable
-		{
-			comp(std::move(ec));
-		}, "SADD %b%b %b", redis_prefix.data(), redis_prefix.size(), container.data(), container.size(), blob.data(), blob.size());
-	}
-
-	template <typename Complete>
-	static void is_member(
-		redis::Connection& db,
-		std::string_view container,
-		const ObjectID& blob,
-		Complete&& complete
-	)
-	{
-		db.command(
-			[comp=std::forward<Complete>(complete)](auto&& reply, std::error_code&& ec) mutable
+		auto json = Entry::JSON(blob, mime, filename);
+		db.command([
+				comp=std::forward<Complete>(complete)
+			](auto&&, std::error_code&& ec) mutable
 			{
-				comp(std::move(ec), reply.as_int() == 1);
+				comp(std::move(ec));
 			},
-			"SISMEMBER %b%b %b",
+			"HSET %b%b:%b %b %b",
 			redis_prefix.data(), redis_prefix.size(),
-			container.data(), container.size(),
-			blob.data(), blob.size()
+			user.data(), user.size(),
+			path.data(), path.size(),
+			filename.data(), filename.size(),
+			json.data(), json.size()
 		);
 	}
 
-	const std::string& name() const {return m_name;}
+	template <typename Complete>
+	static void find_entry(
+		redis::Connection& db,
+		std::string_view user,
+		std::string_view path,
+		std::string_view filename,
+		Complete&& complete
+	)
+	{
+		db.command([
+				comp=std::forward<Complete>(complete)
+			](auto&& reply, std::error_code&& ec) mutable
+			{
+				comp(reply.as_string(), std::move(ec));
+			},
+			"HGET %b%b:%b %b",
+			redis_prefix.data(), redis_prefix.size(),
+			user.data(), user.size(),
+			path.data(), path.size(),
+			filename.data(), filename.size()
+		);
+	}
 
-	using value_type = ObjectID;
-	using iterator = std::vector<ObjectID>::const_iterator;
-	iterator begin() const {return m_blobs.begin();}
-	iterator end() const {return m_blobs.end();}
-	std::size_t size() const {return m_blobs.size();}
-	bool empty() const {return m_blobs.empty();}
+	template <typename Complete>
+	static void load(
+		redis::Connection& db,
+		std::string_view user,
+		std::string_view path,
+		Complete&& complete
+	)
+	{
+		db.command([
+				comp=std::forward<Complete>(complete),
+				user=std::string{user},
+				path=std::string{path}
+			](auto&& reply, std::error_code&& ec) mutable
+			{
+				Container con{std::move(user), std::move(path)};
 
-	std::string serialize(const BlobDatabase& db) const;
+				reply.foreach_kv_pair([&con](auto&& filename, auto&& json)
+				{
+					con.m_jsons.emplace(filename, json.as_string());
+				});
+
+				comp(std::move(con), std::move(ec));
+			},
+			"HGETALL %b%b:%b",
+			redis_prefix.data(), redis_prefix.size(),
+			user.data(), user.size(),
+			path.data(), path.size()
+		);
+	}
+
+	std::string find(const std::string& filename) const;
+	std::optional<Entry> find_entry(const std::string& filename) const;
+
+	template <typename Complete>
+	static void serialize(
+		redis::Connection& db,
+		std::string_view user,
+		std::string_view path,
+		Complete&& complete
+	)
+	{
+		db.command([
+				comp=std::forward<Complete>(complete),
+				user=std::string{user},
+				path=std::string{path}
+			](auto&& reply, std::error_code&& ec) mutable
+			{
+				comp(serialize(std::move(user), std::move(path), reply), std::move(ec));
+			},
+			"HGETALL %b%b:%b",
+			redis_prefix.data(), redis_prefix.size(),
+			user.data(), user.size(),
+			path.data(), path.size()
+		);
+	}
 
 private:
-	std::string             m_name;
-	std::vector<ObjectID>   m_blobs;
+	static std::string serialize(std::string&& user, std::string&& path, redis::Reply& reply);
+
+private:
+	std::string                         m_user;
+	std::string                         m_path;
+	std::unordered_map<std::string, std::string>  m_jsons;
 };
 
 } // end of namespace hrb

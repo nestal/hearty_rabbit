@@ -13,6 +13,7 @@
 #pragma once
 
 #include "util/FS.hh"
+#include "util/BufferView.hh"
 
 #include <turbojpeg.h>
 #include <memory>
@@ -28,9 +29,9 @@ public:
 	RotateImage() = default;
 	~RotateImage();
 
-	TurboBuffer rotate(long orientation, const void *data, std::size_t size);
+	TurboBuffer rotate(long orientation, BufferView blob, std::error_code& ec);
 
-	TurboBuffer auto_rotate(const void *data, std::size_t size, std::error_code& ec);
+	TurboBuffer auto_rotate(BufferView blob, std::error_code& ec);
 
 private:
 	static int map_op(long& orientation);

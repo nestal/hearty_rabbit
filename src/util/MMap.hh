@@ -12,6 +12,8 @@
 
 #pragma once
 
+#include "BufferView.hh"
+
 #include <boost/filesystem/path.hpp>
 #include <boost/asio/buffer.hpp>
 
@@ -41,6 +43,7 @@ public:
 
 	boost::asio::const_buffer blob() const noexcept {return {m_mmap, m_size};}
 	std::string_view string() const {return {static_cast<const char*>(m_mmap), m_size};}
+	BufferView buffer() const {return {static_cast<const unsigned char*>(m_mmap), m_size};}
 
 	bool is_opened() const {return m_mmap != nullptr;}
 	void clear();

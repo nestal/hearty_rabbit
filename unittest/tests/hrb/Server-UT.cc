@@ -192,12 +192,11 @@ TEST_CASE("General server tests", "[normal]")
 		SECTION("Request index.html success with login")
 		{
 			// TODO: check index.html file content
-			GenericStatusChecker checker{http::status::ok};
+			MovedResponseChecker checker{"/view/testuser/"};
 
 			req.target("/");
 			req.set(boost::beast::http::field::cookie, session.set_cookie());
 			subject.handle_https(std::move(req), std::ref(checker), session);
-			REQUIRE(subject.get_io_context().run_for(10s) > 0);
 			REQUIRE(checker.tested());
 		}
 
@@ -357,6 +356,7 @@ TEST_CASE("General server tests", "[normal]")
 			INFO("Upload request returned location: " << checker[http::field::location]);
 
 			EmptyRequest get_blob;
+			get_blob.method(http::verb::get);
 			get_blob.target(checker[http::field::location]);
 
 			subject.get_io_context().restart();

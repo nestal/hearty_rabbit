@@ -107,6 +107,26 @@ void find_app1(buffer_view& buffer, std::error_code& error)
 			error = EXIF2::Error::ok;
 			break;
 		}
+
+		// found DQT/DHT/DRI/SOF, which must be after APP1 segment
+		else if (
+			seg.marker[1] == 0xDB ||    // DQT
+			seg.marker[1] == 0xC4 ||    // DHT
+			seg.marker[1] == 0xDD ||    // DRI
+			seg.marker[1] == 0xC0 ||    // SOF (baseline DCT)
+			seg.marker[1] == 0xC2)      // SOF (progressive DCT)
+		{
+			error = EXIF2::Error::not_found;
+			break;
+		}
+
+		// 0xFE is comment
+		else if (seg.marker[1] != 0xE0 && seg.marker[1] != 0xFE && seg.marker[1] != 0xDA)
+		{
+			error = EXIF2::Error::invalid_header;
+			break;
+		}
+
 		buffer.remove_prefix(seg_remain);
 	}
 }
@@ -207,6 +227,10 @@ EXIF2::EXIF2(const unsigned char *jpeg, std::size_t size, std::error_code& error
 		to_native(tag);
 		m_tags.emplace(static_cast<Tag>(tag.tag), offset);
 	}
+}
+
+EXIF2::EXIF2(BufferView blob, std::error_code& ec) : EXIF2{blob.data(), blob.size(), ec}
+{
 }
 
 std::optional<EXIF2::Field> EXIF2::get(const unsigned char *jpeg, Tag tag) const

@@ -20,6 +20,8 @@ ENV PATH $PATH:/opt/rh/devtoolset-7/root/usr/bin:/build/cmake-3.10.2/bin
 WORKDIR /build
 
 # libjpeg-turbo
+# The libjpeg-turbo package provided by CentOS 7 uses a different API version than
+# Fedora. For consistency, build the latest version from source and use that.
 ADD https://github.com/libjpeg-turbo/libjpeg-turbo/archive/1.5.3.tar.gz /build
 RUN tar zxf 1.5.3.tar.gz \
 	&& cd libjpeg-turbo-1.5.3 \

@@ -7,73 +7,109 @@
 */
 
 //
-// Created by nestal on 2/23/18.
+// Created by nestal on 3/4/18.
 //
 
 #include <catch.hpp>
-#include <iostream>
 
 #include "hrb/Container.hh"
-#include "hrb/BlobDatabase.hh"
-#include "hrb/UploadFile.hh"
+#include "crypto/Random.hh"
 
+#include <rapidjson/ostreamwrapper.h>
+#include <rapidjson/writer.h>
+#include <rapidjson/pointer.h>
 #include <rapidjson/document.h>
+#include <iostream>
 
 using namespace hrb;
+using namespace std::chrono_literals;
+
+TEST_CASE("Container entries are JSON", "[normal]")
+{
+	Entry subject{"abc.txt", insecure_random<ObjectID>(), "text/plain"};
+
+	auto json = subject.JSON();
+	INFO(json);
+
+	rapidjson::Document doc;
+	doc.Parse(json.data(), json.size());
+}
 
 TEST_CASE("Container tests", "[normal]")
 {
-	using namespace std::chrono_literals;
+	auto blobid = insecure_random<ObjectID>();
 
 	boost::asio::io_context ioc;
 	auto redis = redis::connect(ioc);
 
-	std::error_code sec;
-	BlobDatabase blobdb{"/tmp/BlobDatabase-UT", {2048,2048}};
-	UploadFile tmp;
-	blobdb.prepare_upload(tmp, sec);
-
-	boost::system::error_code ec;
-
-	char test[] = "hello world!!";
-	auto count = tmp.write(test, sizeof(test), ec);
-	REQUIRE(count == sizeof(test));
-	REQUIRE(ec == boost::system::error_code{});
-
-	auto testid = blobdb.save(tmp, "hello.world", sec);
-
 	int tested = 0;
-	Container1::add(*redis, "test", testid, [&tested, redis, testid, &blobdb](std::error_code ec)
+	Container::add(*redis, "testuser", "/", "test.jpg", blobid, "image/jpeg", [&tested, redis, blobid](auto ec)
 	{
 		REQUIRE(!ec);
 
-		Container1::is_member(*redis, "test", testid, [&tested](std::error_code ec, bool added)
+		Container::find_entry(*redis, "testuser", "/", "test.jpg", [&tested, blobid](auto&& json, auto ec)
 		{
 			REQUIRE(!ec);
-			REQUIRE(added);
-			tested++;
+			++tested;
+
+			INFO(json);
+			std::cout << json << std::endl;
 		});
 
-		Container1::load(*redis, "test", [&tested, testid, &blobdb](std::error_code ec, Container1&& container)
+		Container::load(*redis, "testuser", "/", [&tested, blobid](auto&& con, auto ec)
 		{
 			REQUIRE(!ec);
-			REQUIRE(container.name() == "test");
-			REQUIRE(container.size() > 0);
-			REQUIRE(!container.empty());
 
-			REQUIRE(std::find(container.begin(), container.end(), testid) != container.end());
+			auto entry = con.find_entry("test.jpg");
+			REQUIRE(entry);
 
-			auto json = container.serialize(blobdb);
-			INFO("container json: " << json);
-			REQUIRE(json.size() > 0);
+			REQUIRE(entry->filename() == "test.jpg");
+			REQUIRE(entry->mime() == "image/jpeg");
+			REQUIRE(entry->blob() == blobid);
 
-			rapidjson::Document doc;
-			doc.Parse(json.c_str(), json.size());
-			REQUIRE(doc["name"].GetString() == std::string{"test"});
-
-			tested++;
+			++tested;
 		});
 	});
 	REQUIRE(ioc.run_for(10s) > 0);
 	REQUIRE(tested == 2);
+}
+
+TEST_CASE("Load 3 images in json", "[normal]")
+{
+	auto blobids = insecure_random<std::array<ObjectID, 3>>();
+
+	boost::asio::io_context ioc;
+	auto redis = redis::connect(ioc);
+
+	int count = 0;
+	for (auto&& blobid : blobids)
+	{
+		Container::add(*redis, "testuser", "/", to_hex(blobid) + ".jpg", blobid, "image/jpeg", [&count](auto ec)
+		{
+			REQUIRE(!ec);
+			++count;
+		});
+	}
+	REQUIRE(ioc.run_for(10s) > 0);
+	REQUIRE(count == blobids.size());
+
+	ioc.restart();
+
+	bool tested = false;
+	Container::serialize(*redis, "testuser", "/", [&tested](auto&& json, auto ec)
+	{
+		INFO("serialize() error_code: " << ec << " " << ec.message());
+		REQUIRE(!ec);
+		INFO("serialize result = " << json);
+
+		// try parse the JSON
+		rapidjson::Document doc;
+		doc.Parse(json.data(), json.size());
+
+		REQUIRE(!doc.HasParseError());
+
+		tested = true;
+	});
+	REQUIRE(ioc.run_for(10s) > 0);
+	REQUIRE(tested);
 }

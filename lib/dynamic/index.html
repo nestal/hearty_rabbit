@@ -6,18 +6,20 @@
 	<meta name="description" content="Hearty Rabbit photo gallery">
 	<title>Hearty Rabbit</title>
 
-	<link rel="stylesheet" href="hearty_rabbit.css">
-	<link rel="icon" href="logo.svg" type="image/svg+xml">
+	<link rel="stylesheet" href="/hearty_rabbit.css">
+	<link rel="icon" href="/logo.svg" type="image/svg+xml">
 	<link href="https://fonts.googleapis.com/css?family=Mukta+Mahee" rel="stylesheet">
-	<script src="hearty_rabbit.js"></script>
+	<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+	<script src="/hearty_rabbit.js"></script>
 </head>
 <body class="index-body">
 <div class="topnav">
-	<img class="nav-logo" src="logo.svg">
-	<a href="#home" class="active"><span id="username"></span>'s Home</a>
-	<a href="#about">About</a>
+	<img class="nav-logo" src="/logo.svg">
+	<label class="active"><span id="username"></span>'s Home</label>
+	<label for="file-upload">Upload</label>
+	<label>About</label>
 	<a href="/logout">Logout</a>
-	<a href="javascript:void(0);" class="icon" onclick="myFunction()">&#9776;</a>
+	<label class="icon" onclick="myFunction()">&#9776;</label>
 </div>
 
 <section id="hrb-entry-root">
@@ -29,19 +31,18 @@
 	</div>
 </section>
 
-<div class="pure-u-1 form-box">
-	<div class="l-box">
-		<h2>Upload File</h2>
-
-		<input id="file-input" type="file" onchange="upload_file(this.files[0])">
-	</div>
-</div>
+<input id="file-upload" type="file" multiple onchange="upload_file(this.files[0])">
 
 <div id="light-box" class="modal">
-	<span class="close cursor" onclick="hide_image();">&times;</span>
+	<span class="close cursor" onclick="hide_image();"><i class="light-box-button material-icons">close</i></span>
+	<span class="close cursor" onclick="delete_image();"><i class="light-box-button material-icons">delete</i></span>
 	<div class="modal-content">
 		<img id="light-box-image" class="hrb-blob-image" src="loading.svg">
 	</div>
+
+	<!-- Next/previous controls -->
+    <a class="prev" onclick="next_image(-1)">&#10094;</a>
+    <a class="next" onclick="next_image(1)">&#10095;</a>
 </div>
 
 <script>
