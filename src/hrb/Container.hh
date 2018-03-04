@@ -18,6 +18,7 @@
 #include <string_view>
 #include <functional>
 #include <unordered_map>
+#include <sstream>
 
 namespace hrb {
 
@@ -139,6 +140,44 @@ public:
 
 	std::string find(const std::string& filename) const;
 	std::optional<Entry> find_entry(const std::string& filename) const;
+
+	template <typename Complete>
+	static void serialize(
+		redis::Connection& db,
+		std::string_view user,
+		std::string_view path,
+		Complete&& complete
+	)
+	{
+		db.command([
+				comp=std::forward<Complete>(complete),
+				user=std::string{user},
+				path=std::string{path}
+			](auto&& reply, std::error_code&& ec) mutable
+			{
+				std::ostringstream ss;
+				ss << "{";
+
+				bool first = true;
+				reply.foreach_kv_pair([&ss, &first](auto&& filename, auto&& json)
+				{
+					if (first)
+						first = false;
+					else
+						ss << ",\n";
+
+					ss << '\"' << filename << "\": " << json.as_string();
+				});
+				ss << "}";
+
+				comp(ss.str(), std::move(ec));
+			},
+			"HGETALL %b%b:%b",
+			redis_prefix.data(), redis_prefix.size(),
+			user.data(), user.size(),
+			path.data(), path.size()
+		);
+	}
 
 private:
 	std::string                         m_user;

@@ -22,6 +22,7 @@
 #include <iostream>
 
 using namespace hrb;
+using namespace std::chrono_literals;
 
 TEST_CASE("Container entries are JSON", "[normal]")
 {
@@ -37,8 +38,6 @@ TEST_CASE("Container entries are JSON", "[normal]")
 TEST_CASE("Container tests", "[normal]")
 {
 	auto blobid = insecure_random<ObjectID>();
-
-	using namespace std::chrono_literals;
 
 	boost::asio::io_context ioc;
 	auto redis = redis::connect(ioc);
@@ -73,4 +72,44 @@ TEST_CASE("Container tests", "[normal]")
 	});
 	REQUIRE(ioc.run_for(10s) > 0);
 	REQUIRE(tested == 2);
+}
+
+TEST_CASE("Load 3 images in json", "[normal]")
+{
+	auto blobids = insecure_random<std::array<ObjectID, 3>>();
+
+	boost::asio::io_context ioc;
+	auto redis = redis::connect(ioc);
+
+	int count = 0;
+	for (auto&& blobid : blobids)
+	{
+		Container::add(*redis, "testuser", "/", to_hex(blobid) + ".jpg", blobid, "image/jpeg", [&count](auto ec)
+		{
+			REQUIRE(!ec);
+			++count;
+		});
+	}
+	REQUIRE(ioc.run_for(10s) > 0);
+	REQUIRE(count == blobids.size());
+
+	ioc.restart();
+
+	bool tested = false;
+	Container::serialize(*redis, "testuser", "/", [&tested](auto&& json, auto ec)
+	{
+		INFO("serialize() error_code: " << ec << " " << ec.message());
+		REQUIRE(!ec);
+		INFO("serialize result = " << json);
+
+		// try parse the JSON
+		rapidjson::Document doc;
+		doc.Parse(json.data(), json.size());
+
+		REQUIRE(!doc.HasParseError());
+
+		tested = true;
+	});
+	REQUIRE(ioc.run_for(10s) > 0);
+	REQUIRE(tested);
 }
