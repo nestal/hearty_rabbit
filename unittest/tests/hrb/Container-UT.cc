@@ -19,6 +19,7 @@
 #include <rapidjson/writer.h>
 #include <rapidjson/pointer.h>
 #include <rapidjson/document.h>
+#include <iostream>
 
 using namespace hrb;
 
@@ -43,10 +44,18 @@ TEST_CASE("Container tests", "[normal]")
 	auto redis = redis::connect(ioc);
 
 	bool tested = false;
-	Container::add(*redis, "testuser", "/", "test.jpg", blobid, "image/jpeg", [&tested](auto ec)
+	Container::add(*redis, "testuser", "/", "test.jpg", blobid, "image/jpeg", [&tested, redis, blobid](auto ec)
 	{
 		REQUIRE(!ec);
-		tested = true;
+
+		Container::find_entry(*redis, "testuser", "/", "test.jpg", [&tested, blobid](auto&& json, auto ec)
+		{
+			REQUIRE(!ec);
+			tested = true;
+
+			INFO(json);
+			std::cout << json << std::endl;
+		});
 	});
 	REQUIRE(ioc.run_for(10s) > 0);
 	REQUIRE(tested);

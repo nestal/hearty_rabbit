@@ -32,4 +32,9 @@ std::string Entry::JSON() const
 	return JSON(m_blob, m_mime);
 }
 
+Entry::Entry(std::string_view filename, std::string_view json)
+{
+
+}
+
 } // end of namespace hrb

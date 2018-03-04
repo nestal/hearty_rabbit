@@ -28,6 +28,8 @@ class BlobDatabase;
 class Entry
 {
 public:
+	Entry(std::string_view filename, std::string_view json);
+
 	Entry(std::string_view filename, const ObjectID& blob, std::string_view mime) :
 		m_filename{filename},
 		m_blob{blob},
@@ -77,6 +79,29 @@ public:
 			dir.data(), dir.size(),
 			filename.data(), filename.size(),
 			json.data(), json.size()
+		);
+	}
+
+	template <typename Complete>
+	static void find_entry(
+		redis::Connection& db,
+		std::string_view user,
+		std::string_view dir,
+		std::string_view filename,
+		Complete&& complete
+	)
+	{
+		db.command([
+				comp=std::forward<Complete>(complete)
+			](auto&& reply, std::error_code&& ec) mutable
+			{
+				comp(reply.as_string(), std::move(ec));
+			},
+			"HGET %b%b:%b %b",
+			redis_prefix.data(), redis_prefix.size(),
+			user.data(), user.size(),
+			dir.data(), dir.size(),
+			filename.data(), filename.size()
 		);
 	}
 
