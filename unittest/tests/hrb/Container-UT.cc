@@ -118,21 +118,25 @@ TEST_CASE("Scan for all containers from testuser")
 	boost::asio::io_context ioc;
 	auto redis = redis::connect(ioc);
 
+	std::vector<std::string> dirs;
+
 	bool tested = false;
-	Container::scan(*redis, "testuser", 0, [&tested](auto begin, auto end, long cursor, auto ec)
+	Container::scan(*redis, "testuser", 0, [&tested, &dirs](auto begin, auto end, long cursor, auto ec)
 	{
 		INFO("scan() error: " << ec << " " << ec.message());
 		REQUIRE(!ec);
 
 		while (begin != end)
 		{
-			std::cout << "container = " << begin->as_string() << std::endl;
+			dirs.emplace_back(begin->as_string());
 			begin++;
 		};
-		std::cout << "cursor = " << cursor << std::endl;
 
 		tested = true;
+		return true;
 	});
+
 	REQUIRE(ioc.run_for(10s) > 0);
 	REQUIRE(tested);
+	REQUIRE(!dirs.empty());
 }

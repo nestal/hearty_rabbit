@@ -175,18 +175,25 @@ public:
 	{
 		db.command(
 			[
-				comp=std::forward<Complete>(complete)
+				comp=std::forward<Complete>(complete), &db, user=std::string{user}
 			](redis::Reply&& reply, std::error_code&& ec) mutable
 			{
 				if (!ec)
 				{
-					auto [cursor, dirs] = reply.as_tuple<2>(ec);
+					auto [cursor_reply, dirs] = reply.as_tuple<2>(ec);
 					if (!ec)
-						return comp(dirs.begin(), dirs.end(), cursor.to_int(), ec);
+					{
+						// Repeat scanning only when the cycle is not completed yet (i.e.
+						// cursor != 0), and the completion callback return true.
+						auto cursor = cursor_reply.to_int();
+						if (comp(dirs.begin(), dirs.end(), cursor, ec) && cursor != 0)
+							scan(db, user, cursor, std::move(comp));
+						return;
+					}
 				}
 
 				redis::Reply empty{};
-				return comp(empty.begin(), empty.end(), 0, ec);
+				comp(empty.begin(), empty.end(), 0, ec);
 			},
 			"SCAN %d MATCH %b%b:*",
 			cursor,
