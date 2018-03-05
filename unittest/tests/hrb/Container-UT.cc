@@ -112,3 +112,27 @@ TEST_CASE("Load 3 images in json", "[normal]")
 	REQUIRE(ioc.run_for(10s) > 0);
 	REQUIRE(tested);
 }
+
+TEST_CASE("Scan for all containers from testuser")
+{
+	boost::asio::io_context ioc;
+	auto redis = redis::connect(ioc);
+
+	bool tested = false;
+	Container::scan(*redis, "testuser", 0, [&tested](auto begin, auto end, long cursor, auto ec)
+	{
+		INFO("scan() error: " << ec << " " << ec.message());
+		REQUIRE(!ec);
+
+		while (begin != end)
+		{
+			std::cout << "container = " << begin->as_string() << std::endl;
+			begin++;
+		};
+		std::cout << "cursor = " << cursor << std::endl;
+
+		tested = true;
+	});
+	REQUIRE(ioc.run_for(10s) > 0);
+	REQUIRE(tested);
+}

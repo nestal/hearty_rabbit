@@ -149,7 +149,8 @@ public:
 		Complete&& complete
 	)
 	{
-		db.command([
+		db.command(
+			[
 				comp=std::forward<Complete>(complete),
 				user=std::string{user},
 				path=std::string{path}
@@ -161,6 +162,36 @@ public:
 			redis_prefix.data(), redis_prefix.size(),
 			user.data(), user.size(),
 			path.data(), path.size()
+		);
+	}
+
+	template <typename Complete>
+	static void scan(
+		redis::Connection& db,
+		std::string_view user,
+		long cursor,
+		Complete&& complete
+	)
+	{
+		db.command(
+			[
+				comp=std::forward<Complete>(complete)
+			](redis::Reply&& reply, std::error_code&& ec) mutable
+			{
+				if (!ec)
+				{
+					auto [cursor, dirs] = reply.as_tuple<2>(ec);
+					if (!ec)
+						return comp(dirs.begin(), dirs.end(), cursor.to_int(), ec);
+				}
+
+				redis::Reply empty{};
+				return comp(empty.begin(), empty.end(), 0, ec);
+			},
+			"SCAN %d MATCH %b%b:*",
+			cursor,
+			redis_prefix.data(), redis_prefix.size(),
+			user.data(), user.size()
 		);
 	}
 
