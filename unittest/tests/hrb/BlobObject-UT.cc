@@ -49,7 +49,7 @@ TEST_CASE("upload non-image BlobObject", "[normal]")
 	auto [tmp, src] = upload(__FILE__);
 
 	std::error_code ec;
-	auto subject = BlobObject::upload(std::move(tmp), Magic{}, {2048, 2048}, "unittest.cc", ec);
+	auto subject = BlobObject::upload(std::move(tmp), Magic{}, {2048, 2048}, "unittest.cc", 70, ec);
 	REQUIRE(!ec);
 	REQUIRE(subject.ID() != ObjectID{});
 
@@ -75,7 +75,7 @@ TEST_CASE("upload small image BlobObject", "[normal]")
 	auto [tmp, src] = upload(image_path()/"black.jpg");
 
 	std::error_code ec;
-	auto subject = BlobObject::upload(std::move(tmp), Magic{}, {2048, 2048}, "black.jpeg", ec);
+	auto subject = BlobObject::upload(std::move(tmp), Magic{}, {2048, 2048}, "black.jpeg", 70, ec);
 	REQUIRE(!ec);
 	REQUIRE(subject.ID() != ObjectID{});
 
@@ -101,7 +101,7 @@ fs::create_directories("/tmp/BlobObject-UT");
 	auto [tmp, src] = upload(image_path()/"up_f_upright.jpg");
 
 	std::error_code ec;
-	auto subject = BlobObject::upload(std::move(tmp), Magic{}, {128, 128}, "upright.jpeg", ec);
+	auto subject = BlobObject::upload(std::move(tmp), Magic{}, {128, 128}, "upright.jpeg", 70, ec);
 	REQUIRE(!ec);
 	REQUIRE(subject.ID() != ObjectID{});
 

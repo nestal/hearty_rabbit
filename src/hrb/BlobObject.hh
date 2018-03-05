@@ -40,6 +40,7 @@ public:
 		const Magic& magic,
 		const Size& resize_img,
 		std::string_view filename,
+		int quality,
 		std::error_code& ec
 	);
 	static std::string meta_string(const fs::path& dir);
