@@ -244,7 +244,12 @@ void Server::serve_view(const EmptyRequest& req, Server::FileResponseSender&& se
 	if (path_url.user() != auth.user())
 		return send(http::response<SplitBuffers>{http::status::forbidden, req.version()});
 
-	Container::serialize(*m_db.alloc(), auth.user(), path_url.path(), [send=std::move(send), version=req.version(), auth, this](auto&& json, auto ec)
+	Container::serialize(
+		*m_db.alloc(),
+		auth.user(),
+		path_url.path(),
+		m_blob_db,
+		[send=std::move(send), version=req.version(), auth, this](auto&& json, auto ec)
 	{
 		std::ostringstream ss;
 		ss  << "<script>var dir = " << json << ";</script>";

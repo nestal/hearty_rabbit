@@ -47,30 +47,18 @@ TEST_CASE("Container tests", "[normal]")
 	{
 		REQUIRE(!ec);
 
-		Container::find_entry(*redis, "testuser", "/", "test.jpg", [&tested, blobid](auto&& json, auto ec)
-		{
-			REQUIRE(!ec);
-			++tested;
-
-			INFO(json);
-		});
-
 		Container::load(*redis, "testuser", "/", [&tested, blobid](auto&& con, auto ec)
 		{
 			REQUIRE(!ec);
 
-			auto entry = con.find_entry("test.jpg");
-			REQUIRE(entry);
-
-			REQUIRE(entry->filename() == "test.jpg");
-			REQUIRE(entry->mime() == "image/jpeg");
-			REQUIRE(entry->blob() == blobid);
+			auto entry = std::find(con.begin(), con.end(), blobid);
+			REQUIRE(entry != con.end());
 
 			++tested;
 		});
 	});
 	REQUIRE(ioc.run_for(10s) > 0);
-	REQUIRE(tested == 2);
+	REQUIRE(tested == 1);
 }
 
 TEST_CASE("Load 3 images in json", "[normal]")
@@ -94,8 +82,16 @@ TEST_CASE("Load 3 images in json", "[normal]")
 
 	ioc.restart();
 
+	struct MockBlobDb
+	{
+		std::string load_meta_json(const ObjectID& blob) const
+		{
+			return to_quoted_hex(blob);
+		}
+	};
+
 	bool tested = false;
-	Container::serialize(*redis, "testuser", "/", [&tested](auto&& json, auto ec)
+	Container::serialize(*redis, "testuser", "/", MockBlobDb{}, [&tested](auto&& json, auto ec)
 	{
 		INFO("serialize() error_code: " << ec << " " << ec.message());
 		REQUIRE(!ec);

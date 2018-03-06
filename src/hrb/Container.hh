@@ -22,8 +22,6 @@
 
 namespace hrb {
 
-class BlobDatabase;
-
 class Entry
 {
 public:
@@ -69,42 +67,20 @@ public:
 		Complete&& complete
 	)
 	{
-		auto json = Entry::JSON(blob, mime, filename);
+//		auto json = Entry::JSON(blob, mime, filename);
 		db.command([
 				comp=std::forward<Complete>(complete)
 			](auto&&, std::error_code&& ec) mutable
 			{
 				comp(std::move(ec));
 			},
-			"HSET %b%b:%b %b %b",
+			"RPUSH %b%b:%b %b",
 			redis_prefix.data(), redis_prefix.size(),
 			user.data(), user.size(),
 			path.data(), path.size(),
-			filename.data(), filename.size(),
-			json.data(), json.size()
-		);
-	}
-
-	template <typename Complete>
-	static void find_entry(
-		redis::Connection& db,
-		std::string_view user,
-		std::string_view path,
-		std::string_view filename,
-		Complete&& complete
-	)
-	{
-		db.command([
-				comp=std::forward<Complete>(complete)
-			](auto&& reply, std::error_code&& ec) mutable
-			{
-				comp(reply.as_string(), std::move(ec));
-			},
-			"HGET %b%b:%b %b",
-			redis_prefix.data(), redis_prefix.size(),
-			user.data(), user.size(),
-			path.data(), path.size(),
-			filename.data(), filename.size()
+			blob.data(), blob.size()
+//			filename.data(), filename.size(),
+//			json.data(), json.size()
 		);
 	}
 
@@ -124,28 +100,24 @@ public:
 			{
 				Container con{std::move(user), std::move(path)};
 
-				reply.foreach_kv_pair([&con](auto&& filename, auto&& json)
-				{
-					con.m_jsons.emplace(filename, json.as_string());
-				});
+				for (auto&& blob : reply)
+					con.m_blobs.push_back(raw_to_object_id(blob.as_string()));
 
 				comp(std::move(con), std::move(ec));
 			},
-			"HGETALL %b%b:%b",
+			"LRANGE %b%b:%b 0 -1",
 			redis_prefix.data(), redis_prefix.size(),
 			user.data(), user.size(),
 			path.data(), path.size()
 		);
 	}
 
-	std::string find(const std::string& filename) const;
-	std::optional<Entry> find_entry(const std::string& filename) const;
-
-	template <typename Complete>
+	template <typename Complete, typename BlobDb>
 	static void serialize(
 		redis::Connection& db,
 		std::string_view user,
 		std::string_view path,
+		const BlobDb& blobdb,
 		Complete&& complete
 	)
 	{
@@ -153,12 +125,13 @@ public:
 			[
 				comp=std::forward<Complete>(complete),
 				user=std::string{user},
-				path=std::string{path}
+				path=std::string{path},
+				&blobdb
 			](auto&& reply, std::error_code&& ec) mutable
 			{
-				comp(serialize(std::move(user), std::move(path), reply), std::move(ec));
+				comp(serialize(std::move(user), std::move(path), blobdb, reply), std::move(ec));
 			},
-			"HGETALL %b%b:%b",
+			"LRANGE %b%b:%b 0 -1",
 			redis_prefix.data(), redis_prefix.size(),
 			user.data(), user.size(),
 			path.data(), path.size()
@@ -202,13 +175,37 @@ public:
 		);
 	}
 
-private:
-	static std::string serialize(std::string&& user, std::string&& path, redis::Reply& reply);
+	using iterator = std::vector<ObjectID>::const_iterator;
+	iterator begin() const {return m_blobs.begin();}
+	iterator end() const {return m_blobs.end();}
 
 private:
-	std::string                         m_user;
-	std::string                         m_path;
-	std::unordered_map<std::string, std::string>  m_jsons;
+	template <typename BlobDb>
+	static std::string serialize(std::string&& user, std::string&& path, const BlobDb& blobdb, redis::Reply& reply)
+	{
+		std::ostringstream ss;
+		ss  << R"__({"name":")__"      << user
+			<< R"__(", "path":")__"    << path
+			<< R"__(", "elements":)__" << "[";
+
+		bool first = true;
+		for (auto&& blob : reply)
+		{
+			if (first)
+				first = false;
+			else
+				ss << ",\n";
+
+			ss << blobdb.load_meta_json(raw_to_object_id(blob.as_string()));
+		}
+		ss << "]}";
+		return ss.str();
+	}
+
+private:
+	std::string             m_user;
+	std::string             m_path;
+	std::vector<ObjectID>   m_blobs;
 };
 
 } // end of namespace hrb
