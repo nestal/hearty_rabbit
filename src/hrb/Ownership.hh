@@ -42,16 +42,18 @@ public:
 		Complete&& complete
 	)
 	{
+		const char empty_str = '\0';
 		db.command([
 				comp=std::forward<Complete>(complete)
 			](auto&&, std::error_code&& ec) mutable
 			{
 				comp(std::move(ec));
 			},
-			"SADD %b%b %b",
+			"HSET %b%b %b %b",
 			redis_prefix.data(), redis_prefix.size(),
 			user.data(), user.size(),
-			blob.data(), blob.size()
+			blob.data(), blob.size(),
+			&empty_str, 0
 		);
 	}
 
@@ -69,7 +71,7 @@ public:
 			{
 				comp(std::move(ec));
 			},
-			"SREM %b%b %b",
+			"HDEL %b%b %b",
 			redis_prefix.data(), redis_prefix.size(),
 			user.data(), user.size(),
 			blob.data(), blob.size()
@@ -89,7 +91,7 @@ public:
 			{
 				comp(std::move(ec), reply.as_int() == 1);
 			},
-			"SISMEMBER %b%b %b",
+			"HEXISTS %b%b %b",
 			redis_prefix.data(), redis_prefix.size(),
 			user.data(), user.size(),
 			blob.data(), blob.size()
