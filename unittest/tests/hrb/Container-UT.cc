@@ -53,7 +53,6 @@ TEST_CASE("Container tests", "[normal]")
 			++tested;
 
 			INFO(json);
-			std::cout << json << std::endl;
 		});
 
 		Container::load(*redis, "testuser", "/", [&tested, blobid](auto&& con, auto ec)
@@ -112,4 +111,32 @@ TEST_CASE("Load 3 images in json", "[normal]")
 	});
 	REQUIRE(ioc.run_for(10s) > 0);
 	REQUIRE(tested);
+}
+
+TEST_CASE("Scan for all containers from testuser")
+{
+	boost::asio::io_context ioc;
+	auto redis = redis::connect(ioc);
+
+	std::vector<std::string> dirs;
+
+	bool tested = false;
+	Container::scan(*redis, "testuser", 0, [&tested, &dirs](auto begin, auto end, long cursor, auto ec)
+	{
+		INFO("scan() error: " << ec << " " << ec.message());
+		REQUIRE(!ec);
+
+		while (begin != end)
+		{
+			dirs.emplace_back(begin->as_string());
+			begin++;
+		};
+
+		tested = true;
+		return true;
+	});
+
+	REQUIRE(ioc.run_for(10s) > 0);
+	REQUIRE(tested);
+	REQUIRE(!dirs.empty());
 }
