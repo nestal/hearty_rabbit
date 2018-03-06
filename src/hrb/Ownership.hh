@@ -35,29 +35,6 @@ public:
 	explicit Ownership(std::string_view name);
 
 	template <typename Complete>
-	static void load(
-		redis::Connection& db,
-		std::string_view user,
-		Complete&& complete
-	)
-	{
-		db.command([
-			comp=std::forward<Complete>(complete),
-			user=std::string{user}
-		](auto&& reply, std::error_code&& ec) mutable
-		{
-			Ownership result{user};
-			for (auto&& element : reply)
-			{
-				if (ObjectID oid = raw_to_object_id(element.as_string()); oid != ObjectID{})
-					result.m_blobs.push_back(oid);
-			}
-
-			comp(std::move(ec), std::move(result));
-		}, "SMEMBERS %b%b", redis_prefix.data(), redis_prefix.size(), user.data(), user.size());
-	}
-
-	template <typename Complete>
 	static void add(
 		redis::Connection& db,
 		std::string_view user,

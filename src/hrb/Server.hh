@@ -136,7 +136,6 @@ private:
 		const RequestHeader& header = req;
 
 		if (req.target() == "/")
-//			return serve_home(std::forward<decltype(send)>(send), req.version(), auth);
 			return send(see_other(user_view(auth.user()), req.version()));
 
 		if (req.target().starts_with(url::blob))
@@ -167,7 +166,6 @@ private:
 	void on_upload(UploadRequest&& req, EmptyResponseSender&& send, const Authentication& auth);
 	http::response<http::string_body> get_dir(const EmptyRequest& req);
 	static bool is_static_resource(boost::string_view target);
-	void serve_home(FileResponseSender&& send, unsigned version, const Authentication& auth);
 	void serve_view(const EmptyRequest& req, FileResponseSender&& send, const Authentication& auth);
 
 	template <typename Send>

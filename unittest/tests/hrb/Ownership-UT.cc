@@ -54,32 +54,14 @@ TEST_CASE("Ownership tests", "[normal]")
 			tested++;
 		});
 
-		Ownership::load(*redis, "test", [&tested, testid, &blobdb, redis](std::error_code ec, Ownership&& container)
+		Ownership::remove(*redis, "test", testid, [&tested, testid, redis](std::error_code ec)
 		{
 			REQUIRE(!ec);
-			REQUIRE(container.name() == "test");
-			REQUIRE(container.size() > 0);
-			REQUIRE(!container.empty());
-
-			REQUIRE(std::find(container.begin(), container.end(), testid) != container.end());
-
-			auto json = container.serialize(blobdb);
-			INFO("container json: " << json);
-			REQUIRE(json.size() > 0);
-
-			rapidjson::Document doc;
-			doc.Parse(json.c_str(), json.size());
-			REQUIRE(doc["name"].GetString() == std::string{"test"});
-
-			Ownership::remove(*redis, "test", testid, [&tested, testid, redis](std::error_code ec)
+			Ownership::is_owned(*redis, "test", testid, [&tested](std::error_code ec, bool present)
 			{
 				REQUIRE(!ec);
-				Ownership::is_owned(*redis, "test", testid, [&tested](std::error_code ec, bool present)
-				{
-					REQUIRE(!ec);
-					REQUIRE(!present);
-					tested++;
-				});
+				REQUIRE(!present);
+				tested++;
 			});
 		});
 	});

@@ -227,19 +227,6 @@ http::response<http::string_body> Server::server_error(boost::beast::string_view
 	return res;
 }
 
-void Server::serve_home(FileResponseSender&& send, unsigned version, const Authentication& auth)
-{
-	Ownership::load(*m_db.alloc(), auth.user(), [send=std::move(send), version, this](auto ec, auto&& ownership)
-	{
-		auto res = m_lib.find_dynamic("index.html", version);
-		res.body().extra(
-			index_needle,
-			"<script>var dir = " + ownership.serialize(m_blob_db) + ";</script>"
-		);
-		send(std::move(res));
-	});
-}
-
 void Server::serve_view(const EmptyRequest& req, Server::FileResponseSender&& send, const Authentication& auth)
 {
 	if (req.method() != http::verb::get)
