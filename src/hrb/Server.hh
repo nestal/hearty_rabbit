@@ -222,7 +222,7 @@ void Server::handle_blob(const EmptyRequest& req, Send&& send, const Authenticat
 				// Remove the blob from the ownership table, but not remove the physical files
 				// in the filesystem (i.e. via BlobDatabase) because not sure whether other user
 				// are still referring to it
-				Ownership::remove_blob(
+				Ownership::remove(
 					*redis, auth.user(), object_id,
 					[send = std::move(send), version = req.version()](std::error_code ec)
 					{

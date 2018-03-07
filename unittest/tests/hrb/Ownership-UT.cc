@@ -57,7 +57,7 @@ TEST_CASE("Ownership tests", "[normal]")
 				}
 			);
 
-			Ownership::remove_blob(
+			Ownership::remove(
 				*redis, "test", testid, [&tested, testid, redis](std::error_code ec)
 				{
 					REQUIRE(!ec);

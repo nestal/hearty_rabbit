@@ -47,6 +47,23 @@ private:
 	std::string m_mime;
 };
 
+class ContainerName
+{
+public:
+	ContainerName(std::string_view user, std::string_view path) :
+		m_name{std::string{user} + std::string{path}}
+	{
+	}
+
+	const std::string& str() const {return m_name;}
+
+	auto data() const {return m_name.data();}
+	auto size() const {return m_name.size();}
+
+private:
+	std::string m_name;
+};
+
 /// A set of blob objects represented by a redis set.
 class Container
 {

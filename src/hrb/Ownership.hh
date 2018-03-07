@@ -24,6 +24,7 @@
 namespace hrb {
 
 class BlobDatabase;
+class ContainerName;
 
 /// A set of blob objects represented by a redis set.
 class Ownership
@@ -69,11 +70,11 @@ public:
 		);
 	}
 
-	template <typename Complete>
-	static void remove_blob(
+	template <typename Complete, typename BlobOrDir>
+	static void remove(
 		redis::Connection& db,
 		std::string_view user,
-		const ObjectID& blob,
+		const BlobOrDir& blob_or_dir,
 		Complete&& complete
 	)
 	{
@@ -89,16 +90,16 @@ public:
 			user.data(), user.size(),
 
 			// hash field is blob:<blob ID>
-			blob_prefix.data(), blob_prefix.size(),
-			blob.data(), blob.size()
+			Prefix<BlobOrDir>::value.data(), Prefix<BlobOrDir>::value.size(),
+			blob_or_dir.data(), blob_or_dir.size()
 		);
 	}
 
-	template <typename Complete>
+	template <typename Complete, typename BlobOrDir>
 	static void is_owned(
 		redis::Connection& db,
 		std::string_view user,
-		const ObjectID& blob,
+		const BlobOrDir& blob_or_dir,
 		Complete&& complete
 	)
 	{
@@ -113,8 +114,8 @@ public:
 			user.data(), user.size(),
 
 			// hash field is blob:<blob ID>
-			blob_prefix.data(), blob_prefix.size(),
-			blob.data(), blob.size()
+			Prefix<BlobOrDir>::value.data(), Prefix<BlobOrDir>::value.size(),
+			blob_or_dir.data(), blob_or_dir.size()
 		);
 	}
 
@@ -134,8 +135,8 @@ private:
 	std::vector<ObjectID>   m_blobs;
 };
 
-template <> struct Ownership::Prefix<ObjectID> 			{static const std::string_view value;};
-template <> struct Ownership::Prefix<std::string_view>	{static const std::string_view value;};
+template <> struct Ownership::Prefix<ObjectID> 		{static const std::string_view value;};
+template <> struct Ownership::Prefix<ContainerName>	{static const std::string_view value;};
 
 
 } // end of namespace hrb
