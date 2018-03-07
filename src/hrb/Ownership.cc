@@ -18,6 +18,11 @@
 namespace hrb {
 
 const std::string_view Ownership::redis_prefix{"ownership:"};
+const std::string_view Ownership::blob_prefix{"blob:"};
+const std::string_view Ownership::dir_prefix{"dir:"};
+
+const std::string_view Ownership::Prefix<ObjectID>::value{"blob:"};
+const std::string_view Ownership::Prefix<std::string_view>::value{"dir:"};
 
 Ownership::Ownership(std::string_view name) : m_name{name}
 {

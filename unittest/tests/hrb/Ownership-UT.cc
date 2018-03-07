@@ -43,28 +43,36 @@ TEST_CASE("Ownership tests", "[normal]")
 	auto testid = blobdb.save(std::move(tmp), "hello.world", sec);
 
 	int tested = 0;
-	Ownership::add(*redis, "test", testid, [&tested, redis, testid, &blobdb](std::error_code ec)
-	{
-		REQUIRE(!ec);
-
-		Ownership::is_owned(*redis, "test", testid, [&tested](std::error_code ec, bool added)
+	Ownership::add(
+		*redis, "test", testid, [&tested, redis, testid, &blobdb](std::error_code ec)
 		{
 			REQUIRE(!ec);
-			REQUIRE(added);
-			tested++;
-		});
 
-		Ownership::remove(*redis, "test", testid, [&tested, testid, redis](std::error_code ec)
-		{
-			REQUIRE(!ec);
-			Ownership::is_owned(*redis, "test", testid, [&tested](std::error_code ec, bool present)
-			{
-				REQUIRE(!ec);
-				REQUIRE(!present);
-				tested++;
-			});
-		});
-	});
+			Ownership::is_owned(
+				*redis, "test", testid, [&tested](std::error_code ec, bool added)
+				{
+					REQUIRE(!ec);
+					REQUIRE(added);
+					tested++;
+				}
+			);
+
+			Ownership::remove_blob(
+				*redis, "test", testid, [&tested, testid, redis](std::error_code ec)
+				{
+					REQUIRE(!ec);
+					Ownership::is_owned(
+						*redis, "test", testid, [&tested](std::error_code ec, bool present)
+						{
+							REQUIRE(!ec);
+							REQUIRE(!present);
+							tested++;
+						}
+					);
+				}
+			);
+		}
+	);
 	REQUIRE(ioc.run_for(10s) > 0);
 	REQUIRE(tested == 2);
 }

@@ -67,7 +67,6 @@ public:
 		Complete&& complete
 	)
 	{
-//		auto json = Entry::JSON(blob, mime, filename);
 		db.command([
 				comp=std::forward<Complete>(complete)
 			](auto&&, std::error_code&& ec) mutable
@@ -79,8 +78,6 @@ public:
 			user.data(), user.size(),
 			path.data(), path.size(),
 			blob.data(), blob.size()
-//			filename.data(), filename.size(),
-//			json.data(), json.size()
 		);
 	}
 

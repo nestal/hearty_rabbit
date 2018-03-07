@@ -30,15 +30,20 @@ class Ownership
 {
 private:
 	static const std::string_view redis_prefix;
+	static const std::string_view blob_prefix;
+	static const std::string_view dir_prefix;
+
+	template <typename BlobOrDir>
+	struct Prefix {};
 
 public:
 	explicit Ownership(std::string_view name);
 
-	template <typename Complete>
+	template <typename Complete, typename BlobOrDir>
 	static void add(
 		redis::Connection& db,
 		std::string_view user,
-		const ObjectID& blob,
+		const BlobOrDir& blob_or_dir,
 		Complete&& complete
 	)
 	{
@@ -49,16 +54,23 @@ public:
 			{
 				comp(std::move(ec));
 			},
-			"HSET %b%b %b %b",
+			"HSET %b%b %b%b %b",
+
+			// key is ownership:<user>
 			redis_prefix.data(), redis_prefix.size(),
 			user.data(), user.size(),
-			blob.data(), blob.size(),
+
+			// hash field is blob:<blob ID>
+			Prefix<BlobOrDir>::value.data(), Prefix<BlobOrDir>::value.size(),
+			blob_or_dir.data(), blob_or_dir.size(),
+
+			// value is empty
 			&empty_str, 0
 		);
 	}
 
 	template <typename Complete>
-	static void remove(
+	static void remove_blob(
 		redis::Connection& db,
 		std::string_view user,
 		const ObjectID& blob,
@@ -71,9 +83,13 @@ public:
 			{
 				comp(std::move(ec));
 			},
-			"HDEL %b%b %b",
+			"HDEL %b%b %b%b",
+			// key is ownership:<user>
 			redis_prefix.data(), redis_prefix.size(),
 			user.data(), user.size(),
+
+			// hash field is blob:<blob ID>
+			blob_prefix.data(), blob_prefix.size(),
 			blob.data(), blob.size()
 		);
 	}
@@ -91,9 +107,13 @@ public:
 			{
 				comp(std::move(ec), reply.as_int() == 1);
 			},
-			"HEXISTS %b%b %b",
+			"HEXISTS %b%b %b%b",
+			// key is ownership:<user>
 			redis_prefix.data(), redis_prefix.size(),
 			user.data(), user.size(),
+
+			// hash field is blob:<blob ID>
+			blob_prefix.data(), blob_prefix.size(),
 			blob.data(), blob.size()
 		);
 	}
@@ -113,5 +133,9 @@ private:
 	std::string             m_name;
 	std::vector<ObjectID>   m_blobs;
 };
+
+template <> struct Ownership::Prefix<ObjectID> 			{static const std::string_view value;};
+template <> struct Ownership::Prefix<std::string_view>	{static const std::string_view value;};
+
 
 } // end of namespace hrb

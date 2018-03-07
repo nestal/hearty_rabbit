@@ -219,14 +219,19 @@ void Server::handle_blob(const EmptyRequest& req, Send&& send, const Authenticat
 
 			else if (req.method() == http::verb::delete_)
 			{
-				Ownership::remove(
+				// Remove the blob from the ownership table, but not remove the physical files
+				// in the filesystem (i.e. via BlobDatabase) because not sure whether other user
+				// are still referring to it
+				Ownership::remove_blob(
 					*redis, auth.user(), object_id,
-					[send=std::move(send), version=req.version()](std::error_code ec)
+					[send = std::move(send), version = req.version()](std::error_code ec)
 					{
-						return send(http::response<http::empty_body>{
-							ec ? http::status::internal_server_error : http::status::accepted,
-							version
-						});
+						return send(
+							http::response<http::empty_body>{
+								ec ? http::status::internal_server_error : http::status::accepted,
+								version
+							}
+						);
 					}
 				);
 			}

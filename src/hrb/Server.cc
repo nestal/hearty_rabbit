@@ -130,34 +130,37 @@ void Server::on_upload(UploadRequest&& req, EmptyResponseSender&& send, const Au
 	// Add the newly created blob to the user's container.
 	// The user's container contains all the blobs that is owned by the user.
 	// It will be used for authorizing the user's request on these blob later.
-	Ownership::add(*m_db.alloc(), auth.user(), id, [
-		id,
-		this,
-		auth,
-		filename=std::string{path_url.filename()},
-		path=std::string{path_url.path()},
-		send=std::move(send),
-		version=req.version()
-	](auto ec) mutable
-	{
-		if (ec)
-			return send(http::response<http::empty_body>{http::status::internal_server_error,version});
+	Ownership::add(
+		*m_db.alloc(), auth.user(), id, [
+			id,
+			this,
+			auth,
+			filename = std::string{path_url.filename()},
+			path = std::string{path_url.path()},
+			send = std::move(send),
+			version = req.version()
+		](auto ec) mutable
+		{
+			if (ec)
+				return send(http::response<http::empty_body>{http::status::internal_server_error, version});
 
-		// add to user's root container
-		Container::add(*m_db.alloc(), auth.user(), path, filename, id, "image/jpeg",
-			[send=std::move(send), version, id](auto ec)
-			{
-				http::response<http::empty_body> res{
-					ec ? http::status::internal_server_error : http::status::created,
-					version
-				};
-				if (!ec)
-					res.set(http::field::location, "/blob/" + to_hex(id));
-				res.set(http::field::cache_control, "no-cache, no-store, must-revalidate");
-				return send(std::move(res));
-			}
-		);
-	});
+			// add to user's root container
+			Container::add(
+				*m_db.alloc(), auth.user(), path, filename, id, "image/jpeg",
+				[send = std::move(send), version, id](auto ec)
+				{
+					http::response<http::empty_body> res{
+						ec ? http::status::internal_server_error : http::status::created,
+						version
+					};
+					if (!ec)
+						res.set(http::field::location, "/blob/" + to_hex(id));
+					res.set(http::field::cache_control, "no-cache, no-store, must-revalidate");
+					return send(std::move(res));
+				}
+			);
+		}
+	);
 }
 
 void Server::on_invalid_session(const RequestHeader& req, FileResponseSender&& send)
