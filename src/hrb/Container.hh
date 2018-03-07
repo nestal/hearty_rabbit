@@ -22,31 +22,6 @@
 
 namespace hrb {
 
-class Entry
-{
-public:
-	Entry(std::string_view filename, std::string_view json);
-
-	Entry(std::string_view filename, const ObjectID& blob, std::string_view mime) :
-		m_filename{filename},
-		m_blob{blob},
-		m_mime{mime}
-	{
-	}
-
-	std::string JSON() const;
-	static std::string JSON(const ObjectID& blob, std::string_view mime, std::string_view filename);
-
-	const ObjectID& blob() const {return m_blob;}
-	const std::string& filename() const {return m_filename;}
-	const std::string& mime() const {return m_mime;}
-
-private:
-	std::string m_filename;
-	ObjectID    m_blob;
-	std::string m_mime;
-};
-
 class ContainerName
 {
 public:
@@ -200,7 +175,7 @@ private:
 		std::ostringstream ss;
 		ss  << R"__({"name":")__"      << user
 			<< R"__(", "path":")__"    << path
-			<< R"__(", "elements":)__" << "[";
+			<< R"__(", "elements":)__" << "{";
 
 		bool first = true;
 		for (auto&& blob : reply)
@@ -210,9 +185,12 @@ private:
 			else
 				ss << ",\n";
 
-			ss << blobdb.load_meta_json(raw_to_object_id(blob.as_string()));
+			auto blob_id = raw_to_object_id(blob.as_string());
+
+			ss  << to_quoted_hex(blob_id) << ":"
+				<< blobdb.load_meta_json(blob_id);
 		}
-		ss << "]}";
+		ss << "}}";
 		return ss.str();
 	}
 

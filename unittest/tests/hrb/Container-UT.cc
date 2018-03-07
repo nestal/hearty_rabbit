@@ -24,17 +24,6 @@
 using namespace hrb;
 using namespace std::chrono_literals;
 
-TEST_CASE("Container entries are JSON", "[normal]")
-{
-	Entry subject{"abc.txt", insecure_random<ObjectID>(), "text/plain"};
-
-	auto json = subject.JSON();
-	INFO(json);
-
-	rapidjson::Document doc;
-	doc.Parse(json.data(), json.size());
-}
-
 TEST_CASE("Container tests", "[normal]")
 {
 	auto blobid = insecure_random<ObjectID>();
