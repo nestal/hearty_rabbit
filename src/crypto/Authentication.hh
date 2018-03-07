@@ -70,7 +70,7 @@ public:
 	std::string set_cookie() const;
 
 	const Cookie& cookie() const {return m_cookie;}
-	std::string_view user() const {return m_user;}
+	const std::string& user() const {return m_user;}
 
 private:
 	Cookie      m_cookie{};

@@ -251,7 +251,7 @@ TEST_CASE("General server tests", "[normal]")
 
 			SECTION("blob ID too short")
 			{
-				req.target("/blob/abc");
+				req.target("/blob/user/abc");
 				SECTION("with valid session")
 				{
 					req.set(boost::beast::http::field::cookie, session.set_cookie());
@@ -268,7 +268,7 @@ TEST_CASE("General server tests", "[normal]")
 			}
 			SECTION("empty blob ID")
 			{
-				req.target("/blob");
+				req.target("/blob/user/");
 				SECTION("with valid session")
 				{
 					req.set(boost::beast::http::field::cookie, session.set_cookie());

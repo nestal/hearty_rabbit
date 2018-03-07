@@ -184,7 +184,7 @@ template <typename Send>
 void Server::handle_blob(const EmptyRequest& req, Send&& send, const Authentication& auth)
 {
 	// blob ID is fixed size (40 characters, i.e., Blake hash size * 2)
-	auto [empty, blob, blob_id, rendition] = tokenize<4>(req.target(), "/");
+	auto [empty, blob, user, blob_id, rendition] = tokenize<5>(req.target(), "/");
 	assert(empty.empty());
 	assert(blob == url::blob.substr(1).to_string());
 

@@ -147,14 +147,14 @@ void Server::on_upload(UploadRequest&& req, EmptyResponseSender&& send, const Au
 			// add to user's root container
 			Container::add(
 				*m_db.alloc(), auth.user(), path, filename, id, "image/jpeg",
-				[send = std::move(send), version, id](auto ec)
+				[send = std::move(send), version, id, user=auth.user()](auto ec)
 				{
 					http::response<http::empty_body> res{
 						ec ? http::status::internal_server_error : http::status::created,
 						version
 					};
 					if (!ec)
-						res.set(http::field::location, "/blob/" + to_hex(id));
+						res.set(http::field::location, "/blob/" + user + "/" + to_hex(id));
 					res.set(http::field::cache_control, "no-cache, no-store, must-revalidate");
 					return send(std::move(res));
 				}

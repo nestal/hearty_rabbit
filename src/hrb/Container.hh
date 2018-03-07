@@ -78,7 +78,7 @@ public:
 		redis::Connection& db,
 		std::string_view user,
 		std::string_view path,
-		std::string_view filename,
+		std::string_view,
 		const ObjectID& blob,
 		std::string_view mime,
 		Complete&& complete
