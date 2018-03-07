@@ -31,8 +31,6 @@ class Ownership
 {
 private:
 	static const std::string_view redis_prefix;
-	static const std::string_view blob_prefix;
-	static const std::string_view dir_prefix;
 
 	template <typename BlobOrDir>
 	struct Prefix {};
@@ -48,14 +46,13 @@ public:
 		Complete&& complete
 	)
 	{
-		const char empty_str = '\0';
 		db.command([
 				comp=std::forward<Complete>(complete)
 			](auto&&, std::error_code&& ec) mutable
 			{
 				comp(std::move(ec));
 			},
-			"HSET %b%b %b%b %b",
+			"HINCRBY %b%b %b%b 1",
 
 			// key is ownership:<user>
 			redis_prefix.data(), redis_prefix.size(),
@@ -63,10 +60,7 @@ public:
 
 			// hash field is blob:<blob ID>
 			Prefix<BlobOrDir>::value.data(), Prefix<BlobOrDir>::value.size(),
-			blob_or_dir.data(), blob_or_dir.size(),
-
-			// value is empty
-			&empty_str, 0
+			blob_or_dir.data(), blob_or_dir.size()
 		);
 	}
 
@@ -78,13 +72,16 @@ public:
 		Complete&& complete
 	)
 	{
+		// If only redis has a command to automatically delete hash field if
+		// it's decremented to zero. But since there is no harm to keep these
+		// zeroed fields in the hash, we will leave them.
 		db.command([
 				comp=std::forward<Complete>(complete)
 			](auto&&, std::error_code&& ec) mutable
 			{
 				comp(std::move(ec));
 			},
-			"HDEL %b%b %b%b",
+			"HINCRBY %b%b %b%b -1",
 			// key is ownership:<user>
 			redis_prefix.data(), redis_prefix.size(),
 			user.data(), user.size(),
@@ -106,9 +103,9 @@ public:
 		db.command(
 			[comp=std::forward<Complete>(complete)](auto&& reply, std::error_code&& ec) mutable
 			{
-				comp(std::move(ec), reply.as_int() == 1);
+				comp(std::move(ec), reply.to_int() > 0);
 			},
-			"HEXISTS %b%b %b%b",
+			"HGET %b%b %b%b",
 			// key is ownership:<user>
 			redis_prefix.data(), redis_prefix.size(),
 			user.data(), user.size(),
