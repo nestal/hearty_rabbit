@@ -38,6 +38,18 @@ private:
 public:
 	explicit Ownership(std::string_view name);
 
+	template <typename Complete>
+	static void add_blob(
+		redis::Connection& db,
+		std::string_view user,
+		const ObjectID& blob,
+		std::string_view path,
+		Complete&& complete
+	)
+	{
+
+	}
+
 	template <typename Complete, typename BlobOrDir>
 	static void add(
 		redis::Connection& db,

@@ -210,3 +210,24 @@ TEST_CASE("redis reply reader simple error cases", "[normal]")
 		REQUIRE(reply.as_string().empty());
 	}
 }
+
+TEST_CASE("transaction", "[normal]")
+{
+	boost::asio::io_context ioc;
+	auto redis = connect(ioc);
+
+	redis->Multi();
+
+	bool tested = false;
+	redis->command([&tested](auto&& reply, auto&& ec)
+	{
+		REQUIRE(!ec);
+		REQUIRE(reply.as_status() == "QUEUED");
+		tested = true;
+
+	}, "SET in_transaction 100");
+
+	using namespace std::chrono_literals;
+	REQUIRE(ioc.run_for(10s) > 0);
+	REQUIRE(tested);
+}

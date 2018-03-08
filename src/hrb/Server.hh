@@ -169,7 +169,6 @@ private:
 	void on_invalid_session(const RequestHeader& req, FileResponseSender&& send);
 	void on_upload(UploadRequest&& req, EmptyResponseSender&& send, const Authentication& auth);
 	void on_unlink(const RequestHeader& req, EmptyResponseSender&& send, const Authentication& auth);
-	http::response<http::string_body> get_dir(const EmptyRequest& req);
 	static bool is_static_resource(boost::string_view target);
 	void serve_view(const EmptyRequest& req, FileResponseSender&& send, const Authentication& auth);
 

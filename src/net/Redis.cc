@@ -156,6 +156,14 @@ void Connection::disconnect()
 	m_socket.close();
 }
 
+void Connection::Multi()
+{
+	command([this](auto&& reply, auto&& ec)
+	{
+		m_in_transaction = true;
+	}, "MULTI");
+}
+
 Reply::Reply(::redisReply *r) noexcept :
 	m_reply{r, [](::redisReply *r){if (!r)::freeReplyObject(r);}}
 {

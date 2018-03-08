@@ -210,6 +210,10 @@ public:
 		}
 	}
 
+	// Redis transactions
+	void Multi();
+	void Exec();
+
 	boost::asio::io_context& get_io_context() {return m_socket.get_io_context();}
 	void disconnect() ;
 
@@ -232,6 +236,8 @@ private:
 
 	ReplyReader m_reader;
 	PoolBase&   m_parent;
+
+	bool m_in_transaction{false};
 };
 
 class Pool : public PoolBase

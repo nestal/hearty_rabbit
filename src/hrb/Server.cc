@@ -224,11 +224,6 @@ void Server::on_invalid_session(const RequestHeader& req, FileResponseSender&& s
 	});
 }
 
-http::response<http::string_body> Server::get_dir(const EmptyRequest& req)
-{
-	return http::response<http::string_body>();
-}
-
 http::response<http::string_body> Server::bad_request(boost::beast::string_view why, unsigned version)
 {
 	http::response<http::string_body> res{
