@@ -53,7 +53,7 @@ public:
 		Complete&& complete
 	)
 	{
-		db.command([](auto&&, auto&&){}, "MULTI");
+		db.command("MULTI");
 		Ownership::add(db, user, blob, [](auto&&, auto&&){});
 
 		// add to user's container

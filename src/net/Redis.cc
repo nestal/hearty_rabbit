@@ -127,7 +127,7 @@ void Connection::on_read(boost::system::error_code ec, std::size_t bytes)
 			else if (!m_queued_callbacks.empty())
 				on_exec_transaction(std::move(reply), std::error_code{ec.value(), ec.category()});
 
-			else
+			else if (m_callbacks.front())
 				m_callbacks.front()(std::move(reply), std::error_code{ec.value(), ec.category()});
 
 			m_callbacks.pop_front();
@@ -189,7 +189,9 @@ void Connection::on_exec_transaction(Reply&& reply, std::error_code ec)
 		for (auto&& transaction_reply : reply)
 		{
 			assert(!m_queued_callbacks.empty());
-			(*callback++)(std::move(transaction_reply), ec);
+			if (*callback)
+				(*callback)(std::move(transaction_reply), ec);
+			callback++;
 		}
 	}
 
@@ -199,7 +201,8 @@ void Connection::on_exec_transaction(Reply&& reply, std::error_code ec)
 
 	// run the callback for the "EXEC" command
 	assert(!m_callbacks.empty());
-	m_callbacks.front()(Reply{}, std::move(ec));
+	if (m_callbacks.front())
+		m_callbacks.front()(Reply{}, std::move(ec));
 
 	m_queued_callbacks.clear();
 }

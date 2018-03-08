@@ -21,6 +21,7 @@
 #include <deque>
 #include <memory>
 #include <string>
+#include <type_traits>
 #include <mutex>
 
 namespace hrb {
@@ -181,6 +182,9 @@ public:
 class Connection : public std::enable_shared_from_this<Connection>
 {
 public:
+	using Completion = std::function<void(Reply, std::error_code)>;
+
+public:
 	explicit Connection(
 		PoolBase& parent,
 		boost::asio::ip::tcp::socket socket
@@ -193,14 +197,39 @@ public:
 	Connection& operator=(Connection&&) = delete;
 	Connection& operator=(const Connection&) = delete;
 
-	template <typename Callback, typename... Args>
+	template <typename... Args>
+	void command(Completion&& callback, Args... args)
+	{
+		try
+		{
+			do_write(CommandString{args...}, std::move(callback));
+		}
+		catch (std::logic_error&)
+		{
+			callback(Reply{}, std::error_code{Error::protocol});
+		}
+	}
+
+	template <
+		typename Callback,
+		typename... Args,
+
+		// only enable this template if Callback is a function-like type that takes
+		// two argument: Reply, std::error_code.
+		typename=std::enable_if_t<
+			std::is_invocable<Callback, Reply, std::error_code>::value
+		>
+	>
 	void command(Callback&& callback, Args... args)
 	{
 		try
 		{
 			do_write(
 				CommandString{args...},
-				[cb=std::make_shared<std::remove_reference_t<Callback>>(std::forward<Callback>(callback)), self=shared_from_this()](auto&& r, auto ec)
+				[
+					cb=std::make_shared<std::remove_reference_t<Callback>>(std::forward<Callback>(callback)),
+					self=shared_from_this()
+				](auto&& r, auto ec)
 				{
 					(*cb)(std::move(r), std::move(ec));
 				}
@@ -212,12 +241,22 @@ public:
 		}
 	}
 
+	template <typename... Args>
+	void command(Args... args)
+	{
+		try
+		{
+			do_write(CommandString{args...}, Completion{});
+		}
+		catch (std::logic_error&)
+		{
+		}
+	}
+
 	boost::asio::io_context& get_io_context() {return m_socket.get_io_context();}
 	void disconnect() ;
 
 private:
-	using Completion = std::function<void(Reply, std::error_code)>;
-
 	void do_write(CommandString&& cmd, Completion&& completion);
 	void do_read();
 	void on_read(boost::system::error_code ec, std::size_t bytes);
