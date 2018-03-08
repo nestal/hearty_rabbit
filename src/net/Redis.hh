@@ -61,6 +61,7 @@ public:
 	iterator end() const;
 
 	bool is_string() const {return m_reply->type == REDIS_REPLY_STRING;}
+	bool is_nil() const {return m_reply->type == REDIS_REPLY_NIL;}
 
 	std::string_view as_string() const noexcept;
 	std::string_view as_status() const noexcept;
@@ -198,7 +199,7 @@ public:
 		{
 			do_write(
 				CommandString{args...},
-				[cb=std::make_shared<Callback>(std::forward<Callback>(callback)), self=shared_from_this()](auto&& r, auto ec)
+				[cb=std::make_shared<std::remove_reference_t<Callback>>(std::forward<Callback>(callback)), self=shared_from_this()](auto&& r, auto ec)
 				{
 					(*cb)(std::move(r), std::move(ec));
 				}
@@ -210,10 +211,6 @@ public:
 		}
 	}
 
-	// Redis transactions
-	void Multi();
-	void Exec();
-
 	boost::asio::io_context& get_io_context() {return m_socket.get_io_context();}
 	void disconnect() ;
 
@@ -224,6 +221,8 @@ private:
 	void do_read();
 	void on_read(boost::system::error_code ec, std::size_t bytes);
 
+	void on_exec_transaction(Reply&& reply, std::error_code ec);
+
 private:
 	boost::asio::ip::tcp::socket m_socket;
 	boost::asio::strand<boost::asio::io_context::executor_type> m_strand;
@@ -233,12 +232,10 @@ private:
 	std::vector<char> m_read_buf;
 
 	std::deque<Completion> m_callbacks;
-	std::deque<Completion> m_transactions;
+	std::vector<Completion> m_queued_callbacks;
 
 	ReplyReader m_reader;
 	PoolBase&   m_parent;
-
-	bool m_in_transaction{false};
 };
 
 class Pool : public PoolBase

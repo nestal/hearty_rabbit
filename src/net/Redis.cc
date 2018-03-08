@@ -115,8 +115,18 @@ void Connection::on_read(boost::system::error_code ec, std::size_t bytes)
 		// Extract all replies from the
 		while (!m_callbacks.empty() && result == ReplyReader::Result::ok)
 		{
-			if (m_in_transaction && reply.as_status() == "QUEUED")
-				m_transactions.push_back(std::move(m_callbacks.front()));
+			// When we are in the middle of a transaction, the commands will be queued
+			// by redis. These queued commands will be executed when the "EXEC" command
+			// is sent. We cannot call the callbacks for these queued commands. Instead,
+			// we move them to m_queued_callback so that they will be executed when "EXEC".
+			if (reply.as_status() == "QUEUED")
+				m_queued_callbacks.push_back(std::move(m_callbacks.front()));
+
+			// reply is not QUEUED but inside a transaction, that means the transaction
+			// is just executed.
+			else if (!m_queued_callbacks.empty())
+				on_exec_transaction(std::move(reply), std::error_code{ec.value(), ec.category()});
+
 			else
 				m_callbacks.front()(std::move(reply), std::error_code{ec.value(), ec.category()});
 
@@ -160,29 +170,40 @@ void Connection::disconnect()
 	m_socket.close();
 }
 
-void Connection::Multi()
+void Connection::on_exec_transaction(Reply&& reply, std::error_code ec)
 {
-	command([this](auto&& reply, auto&& ec)
-	{
-		m_in_transaction = true;
-	}, "MULTI");
-}
+	assert(!m_queued_callbacks.empty());
 
-void Connection::Exec()
-{
-	command([this](auto&& reply, auto&& ec)
+	// transaction discarded
+	if (reply.is_nil())
 	{
-		assert(m_in_transaction);
-		assert(reply.array_size() == m_transactions.size());
+		if (!ec)
+			ec = hrb::Error::redis_transaction_aborted;
+
+		for (auto&& callback : m_queued_callbacks)
+			callback(Reply{reply}, ec);
+	}
+
+	// transaction executed
+	else if (reply.array_size() == m_queued_callbacks.size())
+	{
+		auto callback = m_queued_callbacks.begin();
 		for (auto&& transaction_reply : reply)
 		{
-			assert(!m_transactions.empty());
-			m_transactions.front()(std::move(transaction_reply), std::error_code{ec.value(), ec.category()});
-			m_transactions.pop_front();
+			assert(!m_queued_callbacks.empty());
+			(*callback++)(std::move(transaction_reply), ec);
 		}
+	}
 
-		assert(m_transactions.empty());
-	}, "EXEC");
+	// something is wrong
+	else
+		assert(false);
+
+	// run the callback for the "EXEC" command
+	assert(!m_callbacks.empty());
+	m_callbacks.front()(Reply{}, std::move(ec));
+
+	m_queued_callbacks.clear();
 }
 
 Reply::Reply(::redisReply *r) noexcept :
