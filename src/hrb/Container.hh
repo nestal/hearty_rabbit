@@ -19,6 +19,7 @@
 #include <functional>
 #include <unordered_map>
 #include <sstream>
+#include <util/Error.hh>
 
 namespace hrb {
 
@@ -59,9 +60,9 @@ public:
 	{
 		db.command([
 				comp=std::forward<Complete>(complete)
-			](auto&&, std::error_code&& ec) mutable
+			](auto&& reply, std::error_code&& ec) mutable
 			{
-				comp(std::move(ec));
+				comp(reply.as_int() == 1, std::move(ec));
 			},
 			"SADD %b%b:%b %b",
 			redis_prefix.data(), redis_prefix.size(),
@@ -82,8 +83,12 @@ public:
 	{
 		db.command([
 				comp=std::forward<Complete>(complete)
-			](auto&&, std::error_code&& ec) mutable
+			](auto&& reply, std::error_code&& ec) mutable
 			{
+				// redis replies with the number of object deleted
+				if (!ec && reply.as_int() < 1)
+					ec = Error::object_not_exist;
+
 				comp(std::move(ec));
 			},
 			"SREM %b%b:%b %b",

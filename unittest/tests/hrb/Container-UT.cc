@@ -32,9 +32,10 @@ TEST_CASE("Container tests", "[normal]")
 	auto redis = redis::connect(ioc);
 
 	int tested = 0;
-	Container::add(*redis, "testuser", "/", blobid, [&tested, redis, blobid](auto ec)
+	Container::add(*redis, "testuser", "/", blobid, [&tested, redis, blobid](bool added, auto ec)
 	{
 		REQUIRE(!ec);
+		REQUIRE(added);
 
 		Container::load(*redis, "testuser", "/", [&tested, blobid](auto&& con, auto ec)
 		{
@@ -52,7 +53,7 @@ TEST_CASE("Container tests", "[normal]")
 
 TEST_CASE("Load 3 images in json", "[normal]")
 {
-	auto blobids = insecure_random<std::array<ObjectID, 3>>();
+	const auto blobids = insecure_random<std::array<ObjectID, 3>>();
 
 	boost::asio::io_context ioc;
 	auto redis = redis::connect(ioc);
@@ -60,9 +61,10 @@ TEST_CASE("Load 3 images in json", "[normal]")
 	int count = 0;
 	for (auto&& blobid : blobids)
 	{
-		Container::add(*redis, "testuser", "/", blobid, [&count](auto ec)
+		Container::add(*redis, "testuser", "/", blobid, [&count](bool added, auto ec)
 		{
 			REQUIRE(!ec);
+			REQUIRE(added);
 			++count;
 		});
 	}
@@ -96,6 +98,22 @@ TEST_CASE("Load 3 images in json", "[normal]")
 	});
 	REQUIRE(ioc.run_for(10s) > 0);
 	REQUIRE(tested);
+
+	ioc.restart();
+
+	int deleted = 0;
+	for (auto&& blobid : blobids)
+	{
+		Container::remove(*redis, "testuser", "/", blobid, [&deleted](auto&& ec)
+		{
+			INFO("remove() return error " << ec << " " << ec.message());
+			INFO("removed " << deleted << " objects");
+			REQUIRE(!ec);
+			deleted++;
+		});
+	}
+	REQUIRE(ioc.run_for(10s) > 0);
+	REQUIRE(deleted == blobids.size());
 }
 
 TEST_CASE("Scan for all containers from testuser")
