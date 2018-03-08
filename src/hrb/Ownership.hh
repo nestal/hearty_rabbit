@@ -13,6 +13,7 @@
 #pragma once
 
 #include "ObjectID.hh"
+#include "Container.hh"
 #include "net/Redis.hh"
 
 #include <rapidjson/document.h>
@@ -26,14 +27,19 @@ namespace hrb {
 class BlobDatabase;
 class ContainerName;
 
+namespace detail {
+template <typename BlobOrDir>
+struct Prefix {};
+
+template <> struct Prefix<ObjectID> 		{static const std::string_view value;};
+template <> struct Prefix<ContainerName>	{static const std::string_view value;};
+}
+
 /// A set of blob objects represented by a redis set.
 class Ownership
 {
 private:
 	static const std::string_view redis_prefix;
-
-	template <typename BlobOrDir>
-	struct Prefix {};
 
 public:
 	explicit Ownership(std::string_view name);
@@ -47,7 +53,15 @@ public:
 		Complete&& complete
 	)
 	{
+		db.command([](auto&&, auto&&){}, "MULTI");
+		Ownership::add(db, user, blob, [](auto&&, auto&&){});
 
+		// add to user's container
+		Container::add(db, user, path, blob, [](auto&&, auto&&){});
+		db.command([comp=std::forward<Complete>(complete)](auto&&, auto ec)
+		{
+			comp(ec);
+		});
 	}
 
 	template <typename Complete, typename BlobOrDir>
@@ -71,7 +85,7 @@ public:
 			user.data(), user.size(),
 
 			// hash field is blob:<blob ID>
-			Prefix<BlobOrDir>::value.data(), Prefix<BlobOrDir>::value.size(),
+			detail::Prefix<BlobOrDir>::value.data(), detail::Prefix<BlobOrDir>::value.size(),
 			blob_or_dir.data(), blob_or_dir.size()
 		);
 	}
@@ -99,7 +113,7 @@ public:
 			user.data(), user.size(),
 
 			// hash field is blob:<blob ID>
-			Prefix<BlobOrDir>::value.data(), Prefix<BlobOrDir>::value.size(),
+			detail::Prefix<BlobOrDir>::value.data(), detail::Prefix<BlobOrDir>::value.size(),
 			blob_or_dir.data(), blob_or_dir.size()
 		);
 	}
@@ -123,7 +137,7 @@ public:
 			user.data(), user.size(),
 
 			// hash field is blob:<blob ID>
-			Prefix<BlobOrDir>::value.data(), Prefix<BlobOrDir>::value.size(),
+			detail::Prefix<BlobOrDir>::value.data(), detail::Prefix<BlobOrDir>::value.size(),
 			blob_or_dir.data(), blob_or_dir.size()
 		);
 	}
@@ -143,9 +157,6 @@ private:
 	std::string             m_name;
 	std::vector<ObjectID>   m_blobs;
 };
-
-template <> struct Ownership::Prefix<ObjectID> 		{static const std::string_view value;};
-template <> struct Ownership::Prefix<ContainerName>	{static const std::string_view value;};
 
 
 } // end of namespace hrb

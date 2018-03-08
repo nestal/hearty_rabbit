@@ -154,7 +154,8 @@ void Connection::on_read(boost::system::error_code ec, std::size_t bytes)
 			disconnect();
 		}
 
-		// Keep reading until all outstanding commands are finished
+		// Keep reading until all outstanding commands are finished.
+		// This will keep the io_context::run() from returning.
 		else if (!m_callbacks.empty())
 			do_read();
 	}
@@ -173,8 +174,6 @@ void Connection::disconnect()
 void Connection::on_exec_transaction(Reply&& reply, std::error_code ec)
 {
 	assert(!m_queued_callbacks.empty());
-
-	std::cout << "on_exec() " << reply.type() << " " << reply.as_any_string() << std::endl;
 
 	// transaction failed (i.e. WATCH error) or "DISCARD"
 	if (reply.is_nil() || reply.as_status() == "OK")
