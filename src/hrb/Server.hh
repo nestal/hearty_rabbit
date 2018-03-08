@@ -148,7 +148,7 @@ private:
 		if (req.target() == url::logout)
 			return on_logout(req, std::forward<Send>(send), auth);
 
-		if (req.target() == url::unlink)
+		if (req.target().starts_with(url::unlink))
 			return on_unlink(req, std::forward<Send>(send), auth);
 
 		return send(not_found(req.target(), req.version()));

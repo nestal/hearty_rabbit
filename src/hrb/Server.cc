@@ -128,7 +128,11 @@ void Server::on_unlink(const RequestHeader& req, EmptyResponseSender&& send, con
 		[send = std::move(send), version=req.version(), blob_id, user=auth.user(), this](auto ec)
 		{
 			if (ec)
-				return send(http::response<http::empty_body>{http::status::internal_server_error, version});
+				return send(http::response<http::empty_body>{
+					ec == Error::object_not_exist ?
+						http::status::bad_request :
+						http::status::internal_server_error, version
+				});
 
 			Ownership::remove(
 				*m_db.alloc(), user, blob_id, [send = std::move(send), version](auto ec)
