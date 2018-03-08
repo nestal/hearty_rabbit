@@ -47,6 +47,7 @@ const boost::string_view logout{"/logout"};
 const boost::string_view blob{"/blob"};
 const boost::string_view view{"/view"};
 const boost::string_view upload{"/upload"};
+const boost::string_view unlink{"/unlink"};
 }
 
 class Configuration;
@@ -145,7 +146,10 @@ private:
 			return serve_view(req, std::forward<decltype(send)>(send), auth);
 
 		if (req.target() == url::logout)
-			return on_logout(req, auth, std::forward<Send>(send));
+			return on_logout(req, std::forward<Send>(send), auth);
+
+		if (req.target() == url::unlink)
+			return on_unlink(req, std::forward<Send>(send), auth);
 
 		return send(not_found(req.target(), req.version()));
 	}
@@ -161,9 +165,10 @@ private:
 	using BlobResponseSender   = std::function<void(http::response<MMapResponseBody>&&)>;
 
 	void on_login(const StringRequest& req, EmptyResponseSender&& send);
-	void on_logout(const EmptyRequest& req, const Authentication& auth, EmptyResponseSender&& send);
+	void on_logout(const EmptyRequest& req, EmptyResponseSender&& send, const Authentication& auth);
 	void on_invalid_session(const RequestHeader& req, FileResponseSender&& send);
 	void on_upload(UploadRequest&& req, EmptyResponseSender&& send, const Authentication& auth);
+	void on_unlink(const RequestHeader& req, EmptyResponseSender&& send, const Authentication& auth);
 	http::response<http::string_body> get_dir(const EmptyRequest& req);
 	static bool is_static_resource(boost::string_view target);
 	void serve_view(const EmptyRequest& req, FileResponseSender&& send, const Authentication& auth);

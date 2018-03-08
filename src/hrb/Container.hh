@@ -53,9 +53,7 @@ public:
 		redis::Connection& db,
 		std::string_view user,
 		std::string_view path,
-		std::string_view,
 		const ObjectID& blob,
-		std::string_view mime,
 		Complete&& complete
 	)
 	{
@@ -66,6 +64,29 @@ public:
 				comp(std::move(ec));
 			},
 			"SADD %b%b:%b %b",
+			redis_prefix.data(), redis_prefix.size(),
+			user.data(), user.size(),
+			path.data(), path.size(),
+			blob.data(), blob.size()
+		);
+	}
+
+	template <typename Complete>
+	static void remove(
+		redis::Connection& db,
+		std::string_view user,
+		std::string_view path,
+		const ObjectID& blob,
+		Complete&& complete
+	)
+	{
+		db.command([
+				comp=std::forward<Complete>(complete)
+			](auto&&, std::error_code&& ec) mutable
+			{
+				comp(std::move(ec));
+			},
+			"SREM %b%b:%b %b",
 			redis_prefix.data(), redis_prefix.size(),
 			user.data(), user.size(),
 			path.data(), path.size(),

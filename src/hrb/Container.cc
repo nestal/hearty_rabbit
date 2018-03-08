@@ -12,9 +12,6 @@
 
 #include "Container.hh"
 
-#include <rapidjson/document.h>
-#include <rapidjson/pointer.h>
-
 namespace hrb {
 
 const std::string_view Container::redis_prefix = "dir:";

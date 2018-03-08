@@ -89,7 +89,7 @@ void Server::on_login(const StringRequest& req, EmptyResponseSender&& send)
 		send(see_other("/", req.version()));
 }
 
-void Server::on_logout(const EmptyRequest& req, const Authentication& auth, EmptyResponseSender&& send)
+void Server::on_logout(const EmptyRequest& req, EmptyResponseSender&& send, const Authentication& auth)
 {
 	auth.destroy_session(*m_db.alloc(), [this, send=std::move(send), version=req.version()](auto&& ec) mutable
 	{
@@ -110,6 +110,33 @@ http::response<http::empty_body> Server::see_other(boost::beast::string_view whe
 	http::response<http::empty_body> res{http::status::see_other, version};
 	res.set(http::field::location, where);
 	return res;
+}
+
+void Server::on_unlink(const RequestHeader& req, EmptyResponseSender&& send, const Authentication& auth)
+{
+	PathURL path_url{req.target()};
+	auto blob_id = hex_to_object_id(path_url.filename());
+	Log(LOG_INFO, "unlinking object %1% from path(%2%)", blob_id, path_url.path());
+
+	// remove from user's container
+	Container::remove(
+		*m_db.alloc(), auth.user(), path_url.path(), blob_id,
+		[send = std::move(send), version=req.version(), blob_id, user=auth.user(), this](auto ec)
+		{
+			if (ec)
+				return send(http::response<http::empty_body>{http::status::internal_server_error, version});
+
+			Ownership::remove(
+				*m_db.alloc(), user, blob_id, [send = std::move(send), version](auto ec)
+				{
+					return send(http::response<http::empty_body>{
+						ec ? http::status::internal_server_error : http::status::accepted,
+						version
+					});
+				}
+			);
+		}
+	);
 }
 
 void Server::on_upload(UploadRequest&& req, EmptyResponseSender&& send, const Authentication& auth)
@@ -135,7 +162,6 @@ void Server::on_upload(UploadRequest&& req, EmptyResponseSender&& send, const Au
 			id,
 			this,
 			auth,
-			filename = std::string{path_url.filename()},
 			path = std::string{path_url.path()},
 			send = std::move(send),
 			version = req.version()
@@ -144,9 +170,9 @@ void Server::on_upload(UploadRequest&& req, EmptyResponseSender&& send, const Au
 			if (ec)
 				return send(http::response<http::empty_body>{http::status::internal_server_error, version});
 
-			// add to user's root container
+			// add to user's container
 			Container::add(
-				*m_db.alloc(), auth.user(), path, filename, id, "image/jpeg",
+				*m_db.alloc(), auth.user(), path, id,
 				[send = std::move(send), version, id, user=auth.user()](auto ec)
 				{
 					http::response<http::empty_body> res{

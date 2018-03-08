@@ -32,7 +32,7 @@ TEST_CASE("Container tests", "[normal]")
 	auto redis = redis::connect(ioc);
 
 	int tested = 0;
-	Container::add(*redis, "testuser", "/", "test.jpg", blobid, "image/jpeg", [&tested, redis, blobid](auto ec)
+	Container::add(*redis, "testuser", "/", blobid, [&tested, redis, blobid](auto ec)
 	{
 		REQUIRE(!ec);
 
@@ -60,7 +60,7 @@ TEST_CASE("Load 3 images in json", "[normal]")
 	int count = 0;
 	for (auto&& blobid : blobids)
 	{
-		Container::add(*redis, "testuser", "/", to_hex(blobid) + ".jpg", blobid, "image/jpeg", [&count](auto ec)
+		Container::add(*redis, "testuser", "/", blobid, [&count](auto ec)
 		{
 			REQUIRE(!ec);
 			++count;
