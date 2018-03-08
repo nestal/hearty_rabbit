@@ -233,6 +233,7 @@ private:
 	std::vector<char> m_read_buf;
 
 	std::deque<Completion> m_callbacks;
+	std::deque<Completion> m_transactions;
 
 	ReplyReader m_reader;
 	PoolBase&   m_parent;

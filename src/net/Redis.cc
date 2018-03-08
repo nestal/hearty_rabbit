@@ -115,7 +115,11 @@ void Connection::on_read(boost::system::error_code ec, std::size_t bytes)
 		// Extract all replies from the
 		while (!m_callbacks.empty() && result == ReplyReader::Result::ok)
 		{
-			m_callbacks.front()(std::move(reply), std::error_code{ec.value(), ec.category()});
+			if (m_in_transaction && reply.as_status() == "QUEUED")
+				m_transactions.push_back(std::move(m_callbacks.front()));
+			else
+				m_callbacks.front()(std::move(reply), std::error_code{ec.value(), ec.category()});
+
 			m_callbacks.pop_front();
 
 			std::tie(reply, result) = m_reader.get();
@@ -162,6 +166,23 @@ void Connection::Multi()
 	{
 		m_in_transaction = true;
 	}, "MULTI");
+}
+
+void Connection::Exec()
+{
+	command([this](auto&& reply, auto&& ec)
+	{
+		assert(m_in_transaction);
+		assert(reply.array_size() == m_transactions.size());
+		for (auto&& transaction_reply : reply)
+		{
+			assert(!m_transactions.empty());
+			m_transactions.front()(std::move(transaction_reply), std::error_code{ec.value(), ec.category()});
+			m_transactions.pop_front();
+		}
+
+		assert(m_transactions.empty());
+	}, "EXEC");
 }
 
 Reply::Reply(::redisReply *r) noexcept :
