@@ -65,7 +65,7 @@ public:
 			{
 				comp(std::move(ec));
 			},
-			"RPUSH %b%b:%b %b",
+			"SADD %b%b:%b %b",
 			redis_prefix.data(), redis_prefix.size(),
 			user.data(), user.size(),
 			path.data(), path.size(),
@@ -94,7 +94,7 @@ public:
 
 				comp(std::move(con), std::move(ec));
 			},
-			"LRANGE %b%b:%b 0 -1",
+			"SMEMBERS %b%b:%b",
 			redis_prefix.data(), redis_prefix.size(),
 			user.data(), user.size(),
 			path.data(), path.size()
@@ -120,7 +120,7 @@ public:
 			{
 				comp(serialize(std::move(user), std::move(path), blobdb, reply), std::move(ec));
 			},
-			"LRANGE %b%b:%b 0 -1",
+			"SMEMBERS %b%b:%b",
 			redis_prefix.data(), redis_prefix.size(),
 			user.data(), user.size(),
 			path.data(), path.size()

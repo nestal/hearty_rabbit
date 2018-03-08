@@ -36,8 +36,7 @@ ADD https://dl.bintray.com/boostorg/release/1.66.0/source/boost_1_66_0.tar.gz /b
 RUN tar zxf boost_1_66_0.tar.gz \
 	&& cd boost_1_66_0 \
 	&& ./bootstrap.sh --with-libraries=program_options,filesystem,system \
-	&& (./b2 -j8; exit 0) \
-	&& (./b2 --clean-all; exit 0)
+	&& (./b2 -j8; exit 0)
 
 # build cmake 3.10.2 (>= 3.8 to support C++17)
 ADD https://cmake.org/files/v3.10/cmake-3.10.2.tar.gz /build
