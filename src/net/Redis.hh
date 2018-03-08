@@ -68,6 +68,7 @@ public:
 	std::string_view as_error() const noexcept;
 	std::string_view as_any_string() const noexcept;
 	boost::asio::const_buffer as_buffer() const noexcept;
+	int type() const {return m_reply->type;}
 
 	explicit operator bool() const noexcept ;
 
