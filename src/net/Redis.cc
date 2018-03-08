@@ -179,11 +179,8 @@ void Connection::on_exec_transaction(Reply&& reply, std::error_code ec)
 	// transaction failed (i.e. WATCH error) or "DISCARD"
 	if (reply.is_nil() || reply.as_status() == "OK")
 	{
-		if (!ec)
-			ec = hrb::Error::redis_transaction_aborted;
-
 		for (auto&& callback : m_queued_callbacks)
-			callback(Reply{reply}, ec);
+			callback(Reply{reply}, hrb::Error::redis_transaction_aborted);
 	}
 
 	// transaction executed

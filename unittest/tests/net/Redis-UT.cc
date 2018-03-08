@@ -20,6 +20,7 @@
 #include <cassert>
 #include <chrono>
 #include <iostream>
+#include <util/Error.hh>
 
 using namespace hrb::redis;
 
@@ -217,22 +218,31 @@ TEST_CASE("transaction", "[normal]")
 	auto redis = connect(ioc);
 
 	int tested = 0;
-	auto callback = [&tested](Reply, std::error_code ec)
+	auto expect_success = [&tested](auto, auto ec)
 	{
-//		REQUIRE(!ec);
+		REQUIRE(!ec);
 		tested++;
 	};
 
-	redis->command(callback, "MULTI");
-	redis->command(callback, "SET in_transaction 100");
-
 	SECTION("execute transaction")
 	{
-		redis->command(callback, "EXEC");
+		redis->command(expect_success, "MULTI");
+		redis->command(expect_success, "SET in_transaction 100");
+
+		redis->command(expect_success, "EXEC");
 	}
 	SECTION("discard transaction")
 	{
-		redis->command(callback, "DISCARD");
+		auto expect_abort = [&tested](auto, auto ec)
+		{
+			REQUIRE(ec == hrb::Error::redis_transaction_aborted);
+			tested++;
+		};
+
+		redis->command(expect_success, "MULTI");
+		redis->command(expect_abort, "SET in_transaction 100");
+
+		redis->command(expect_success, "DISCARD");
 	}
 
 	using namespace std::chrono_literals;
