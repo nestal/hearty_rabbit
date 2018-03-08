@@ -249,3 +249,22 @@ TEST_CASE("transaction", "[normal]")
 	REQUIRE(ioc.run_for(10s) > 0);
 	REQUIRE(tested == 3);
 }
+
+TEST_CASE("std::function() as callback", "[normal]")
+{
+	bool tested = false;
+	std::function<void(Reply, std::error_code)> expect_success{[&tested](Reply, std::error_code ec)
+	{
+		REQUIRE(!ec);
+		tested = true;
+	}};
+
+	boost::asio::io_context ioc;
+	auto redis = connect(ioc);
+
+	redis->command(expect_success, "SET func_callback 120");
+
+	using namespace std::chrono_literals;
+	REQUIRE(ioc.run_for(10s) > 0);
+	REQUIRE(tested);
+}

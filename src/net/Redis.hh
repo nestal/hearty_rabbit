@@ -182,9 +182,6 @@ public:
 class Connection : public std::enable_shared_from_this<Connection>
 {
 public:
-	using Completion = std::function<void(Reply, std::error_code)>;
-
-public:
 	explicit Connection(
 		PoolBase& parent,
 		boost::asio::ip::tcp::socket socket
@@ -197,12 +194,35 @@ public:
 	Connection& operator=(Connection&&) = delete;
 	Connection& operator=(const Connection&) = delete;
 
-	template <typename... Args>
-	void command(Completion&& callback, Args... args)
+	template <
+		typename Callback,
+		typename... Args
+	>
+
+	// Only enable this template if Callback is a copy-constructible
+	// function-like type that takes two argument: Reply, std::error_code.
+	// If Callback is copy-constructible, we can copy it to the lambda
+	// capture directly. The other overload, which uses a shared_ptr to
+	// store the callback, does not require the callback to be copy-
+	// constructible, but will have more overhead from the shared_ptr.
+	typename std::enable_if_t<
+		std::is_invocable<Callback, Reply, std::error_code>::value &&
+		std::is_copy_constructible<Callback>::value
+	>
+	command(Callback&& callback, Args... args)
 	{
 		try
 		{
-			do_write(CommandString{args...}, std::move(callback));
+			do_write(
+				CommandString{args...},
+				[
+					callback=std::forward<Callback>(callback),
+					self=shared_from_this()
+				](auto&& r, auto ec) mutable
+				{
+					callback(std::move(r), std::move(ec));
+				}
+			);
 		}
 		catch (std::logic_error&)
 		{
@@ -212,15 +232,19 @@ public:
 
 	template <
 		typename Callback,
-		typename... Args,
-
-		// only enable this template if Callback is a function-like type that takes
-		// two argument: Reply, std::error_code.
-		typename=std::enable_if_t<
-			std::is_invocable<Callback, Reply, std::error_code>::value
-		>
+		typename... Args
 	>
-	void command(Callback&& callback, Args... args)
+
+	// Only enable this template if Callback is a move-constructible
+	// function-like type that takes two argument: Reply, std::error_code.
+	// This function will move the passed callback into a shared_ptr,
+	// which will be stored in a lambda capture.
+	typename std::enable_if_t<
+		std::is_invocable<Callback, Reply, std::error_code>::value &&
+		std::is_move_constructible<Callback>::value &&
+		!std::is_copy_constructible<Callback>::value
+	>
+	command(Callback&& callback, Args... args)
 	{
 		try
 		{
@@ -257,6 +281,8 @@ public:
 	void disconnect() ;
 
 private:
+	using Completion = std::function<void(Reply, std::error_code)>;
+
 	void do_write(CommandString&& cmd, Completion&& completion);
 	void do_read();
 	void on_read(boost::system::error_code ec, std::size_t bytes);
