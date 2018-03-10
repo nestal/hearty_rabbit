@@ -41,10 +41,10 @@ template <> struct Prefix<ContainerName>	{static const std::string_view value;};
 class Ownership
 {
 private:
-	class BlobTable
+	class Blob
 	{
 	public:
-		BlobTable(std::string_view user, const ObjectID& blob);
+		Blob(std::string_view user, const ObjectID& blob);
 
 		void watch(redis::Connection& db) const;
 
@@ -69,10 +69,11 @@ public:
 		redis::Connection& db,
 		std::string_view path,
 		const ObjectID& blobid,
+		bool add,
 		Complete&& complete
 	)
 	{
-		BlobTable  blob{m_user, blobid};
+		Blob  blob{m_user, blobid};
 		Collection coll{m_user, path};
 
 		// watch everything that will be modified
@@ -81,14 +82,24 @@ public:
 
 		coll.has(
 			db, blobid, [
-				blob, coll, db=db.shared_from_this(), comp=std::forward<Complete>(complete)
+				add, blob, coll, db=db.shared_from_this(), comp=std::forward<Complete>(complete)
 			](bool present, std::error_code ec) mutable
 			{
-				if (!present)
+				// if add == true, we want to add a blob, only add when !preset
+				// if add == false, we want to remove a blob, only remove when preset
+				if (add == !present)
 				{
 					db->command("MULTI");
-					blob.link(*db, coll.path());
-					coll.link(*db, blob.blob());
+					if (add)
+					{
+						blob.link(*db, coll.path());
+						coll.link(*db, blob.blob());
+					}
+					else
+					{
+						blob.unlink(*db, coll.path());
+						coll.unlink(*db, blob.blob());
+					}
 
 					db->command([comp=std::move(comp)](auto&&, std::error_code ec)
 					{

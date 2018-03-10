@@ -51,12 +51,12 @@ std::string Ownership::serialize(const BlobDatabase& db) const
 	return json.str();
 }
 
-Ownership::BlobTable::BlobTable(std::string_view user, const ObjectID& blob) :
+Ownership::Blob::Blob(std::string_view user, const ObjectID& blob) :
 	m_user{user}, m_blob{blob}
 {
 }
 
-void Ownership::BlobTable::watch(redis::Connection& db) const
+void Ownership::Blob::watch(redis::Connection& db) const
 {
 	db.command(
 		"WATCH %b%b:%b",
@@ -66,7 +66,7 @@ void Ownership::BlobTable::watch(redis::Connection& db) const
 	);
 }
 
-void Ownership::BlobTable::link(redis::Connection& db, std::string_view path) const
+void Ownership::Blob::link(redis::Connection& db, std::string_view path) const
 {
 	const char empty = '\0';
 	db.command(
@@ -79,7 +79,7 @@ void Ownership::BlobTable::link(redis::Connection& db, std::string_view path) co
 	);
 }
 
-void Ownership::BlobTable::unlink(redis::Connection& db, std::string_view path) const
+void Ownership::Blob::unlink(redis::Connection& db, std::string_view path) const
 {
 	db.command(
 		"HDEL %b%b:%b link:%b",
