@@ -1,9 +1,0 @@
-#!/usr/bin/env bash
-
-echo "Login correct set cookie"
-curl $CURLOPTS \
-	-d 'username=nestal&password=hello' https://localhost:4433/login
-
-echo "Login incorrect not set cookie"
-curl $CURLOPTS_NOCOOKIE \
-	-d 'username=nestal&password=invalid' https://localhost:4433/login

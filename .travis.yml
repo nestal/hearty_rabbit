@@ -13,7 +13,6 @@ before_install:
 script:
   - docker build -t nestal/hearty_rabbit --network="host" .
   - ./automation/start_tests
-  - python3 ./unittest/client/upload_blob.py
 
 after_success:
   - if [ "$TRAVIS_BRANCH" == "master" ]; then

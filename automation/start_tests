@@ -13,6 +13,9 @@ docker run -t --detach --rm \
   --network=host --name hb_test \
     nestal/hearty_rabbit
 
+# Run python unit tests
+python3 ./unittest/client/upload_blob.py
+
 # Run all tests
 pushd automation
 source ./run_tests
