@@ -18,8 +18,4 @@ pushd unittest/client
 python3 upload_blob.py || { echo "auto system test failed!"; docker stop hb_test; exit 1;}
 popd
 
-# Run all tests
-pushd automation
-source ./run_tests
-
 docker stop hb_test
