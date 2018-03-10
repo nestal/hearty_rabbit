@@ -37,45 +37,43 @@ template <> struct Prefix<ObjectID> 		{static const std::string_view value;};
 template <> struct Prefix<ContainerName>	{static const std::string_view value;};
 }
 
-class BlobTable
-{
-public:
-	BlobTable(std::string_view user, const ObjectID& blob);
-
-	void watch(redis::Connection& db) const;
-
-	// expect to be done inside a transaction
-	void link(redis::Connection& db, std::string_view path) const;
-	void unlink(redis::Connection& db, std::string_view path) const;
-
-	const std::string& user() const {return m_user;}
-	const ObjectID& blob() const {return m_blob;}
-
-private:
-	std::string m_user;
-	ObjectID    m_blob;
-};
-
 /// A set of blob objects represented by a redis set.
 class Ownership
 {
 private:
+	class BlobTable
+	{
+	public:
+		BlobTable(std::string_view user, const ObjectID& blob);
+
+		void watch(redis::Connection& db) const;
+
+		// expect to be done inside a transaction
+		void link(redis::Connection& db, std::string_view path) const;
+		void unlink(redis::Connection& db, std::string_view path) const;
+
+		const std::string& user() const {return m_user;}
+		const ObjectID& blob() const {return m_blob;}
+
+	private:
+		std::string m_user;
+		ObjectID    m_blob;
+	};
 	static const std::string_view redis_prefix;
 
 public:
 	explicit Ownership(std::string_view name);
 
 	template <typename Complete>
-	static void add_blob(
+	void link(
 		redis::Connection& db,
-		std::string_view user,
 		std::string_view path,
 		const ObjectID& blobid,
 		Complete&& complete
 	)
 	{
-		BlobTable  blob{user, blobid};
-		Collection coll{user, path};
+		BlobTable  blob{m_user, blobid};
+		Collection coll{m_user, path};
 
 		// watch everything that will be modified
 		blob.watch(db);
@@ -90,7 +88,7 @@ public:
 				{
 					db->command("MULTI");
 					blob.link(*db, coll.path());
-					coll.add(*db, blob.blob());
+					coll.link(*db, blob.blob());
 
 					db->command([comp=std::move(comp)](auto&&, std::error_code ec)
 					{
@@ -186,7 +184,7 @@ public:
 		);
 	}
 
-	const std::string& name() const {return m_name;}
+	const std::string& user() const {return m_user;}
 
 	using value_type = ObjectID;
 	using iterator = std::vector<ObjectID>::const_iterator;
@@ -198,7 +196,7 @@ public:
 	std::string serialize(const BlobDatabase& db) const;
 
 private:
-	std::string             m_name;
+	std::string             m_user;
 	std::vector<ObjectID>   m_blobs;
 };
 

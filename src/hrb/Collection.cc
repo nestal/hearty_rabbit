@@ -30,9 +30,19 @@ void Collection::watch(redis::Connection& db)
 	);
 }
 
-void Collection::add(redis::Connection& db, const ObjectID& id)
+void Collection::link(redis::Connection& db, const ObjectID& id)
 {
 	db.command("SADD %b%b:%b %b",
+		redis_prefix.data(), redis_prefix.size(),
+		m_user.data(), m_user.size(),
+		m_path.data(), m_path.size(),
+		id.data(), id.size()
+	);
+}
+
+void Collection::unlink(redis::Connection& db, const ObjectID& id)
+{
+	db.command("SREM %b%b:%b %b",
 		redis_prefix.data(), redis_prefix.size(),
 		m_user.data(), m_user.size(),
 		m_path.data(), m_path.size(),

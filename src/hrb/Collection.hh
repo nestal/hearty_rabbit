@@ -73,7 +73,8 @@ public:
 		);
 	}
 
-	void add(redis::Connection& db, const ObjectID& id);
+	void link(redis::Connection& db, const ObjectID& id);
+	void unlink(redis::Connection& db, const ObjectID& id);
 
 	template <typename Complete>
 	static void add(

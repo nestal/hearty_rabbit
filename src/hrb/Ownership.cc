@@ -24,7 +24,7 @@ const std::string_view Prefix<ObjectID>::value{"blob:"};
 const std::string_view Prefix<ContainerName>::value{"dir:"};
 }
 
-Ownership::Ownership(std::string_view name) : m_name{name}
+Ownership::Ownership(std::string_view name) : m_user{name}
 {
 }
 
@@ -32,7 +32,7 @@ std::string Ownership::serialize(const BlobDatabase& db) const
 {
 	bool first = true;
 	std::ostringstream json;
-	json << R"({"name":")" << m_name << R"(", "elements":{)";
+	json << R"({"name":")" << m_user << R"(", "elements":{)";
 	for (auto&& blob : m_blobs)
 	{
 		auto meta = db.load_meta_json(blob);
@@ -51,12 +51,12 @@ std::string Ownership::serialize(const BlobDatabase& db) const
 	return json.str();
 }
 
-BlobTable::BlobTable(std::string_view user, const ObjectID& blob) :
+Ownership::BlobTable::BlobTable(std::string_view user, const ObjectID& blob) :
 	m_user{user}, m_blob{blob}
 {
 }
 
-void BlobTable::watch(redis::Connection& db) const
+void Ownership::BlobTable::watch(redis::Connection& db) const
 {
 	db.command(
 		"WATCH %b%b:%b",
@@ -66,7 +66,7 @@ void BlobTable::watch(redis::Connection& db) const
 	);
 }
 
-void BlobTable::link(redis::Connection& db, std::string_view path) const
+void Ownership::BlobTable::link(redis::Connection& db, std::string_view path) const
 {
 	const char empty = '\0';
 	db.command(
@@ -79,7 +79,7 @@ void BlobTable::link(redis::Connection& db, std::string_view path) const
 	);
 }
 
-void BlobTable::unlink(redis::Connection& db, std::string_view path) const
+void Ownership::BlobTable::unlink(redis::Connection& db, std::string_view path) const
 {
 	db.command(
 		"HDEL %b%b:%b link:%b",

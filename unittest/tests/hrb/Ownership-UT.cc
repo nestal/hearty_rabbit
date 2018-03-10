@@ -32,8 +32,8 @@ TEST_CASE("add blob to Ownership", "[normal]")
 
 	int tested = 0;
 
-	Ownership::add_blob(
-		*redis, "test",  "/", blobid, [&tested, redis, blobid](std::error_code ec)
+	Ownership{"test"}.link(
+		*redis, "/", blobid, [&tested, redis, blobid](std::error_code ec)
 		{
 			REQUIRE(!ec);
 			tested++;
