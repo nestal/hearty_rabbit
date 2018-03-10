@@ -199,7 +199,9 @@ void Connection::on_exec_transaction(Reply&& reply, std::error_code ec)
 
 	// something is wrong
 	else
+	{
 		assert(false);
+	}
 
 	// run the callback for the "EXEC" command
 	assert(!m_callbacks.empty());

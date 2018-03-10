@@ -9,6 +9,7 @@ services:
 before_install:
   - docker pull nestal/hearty_rabbit_dev
   - git submodule update --init --recursive
+  - pip install requests
 
 script:
   - docker build -t nestal/hearty_rabbit --network="host" .
