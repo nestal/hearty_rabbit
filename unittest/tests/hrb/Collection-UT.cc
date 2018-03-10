@@ -85,6 +85,14 @@ TEST_CASE("Scan for all containers from testuser")
 	boost::asio::io_context ioc;
 	auto redis = redis::connect(ioc);
 
+	redis->command("MULTI");
+	Collection{"testuser", "/"}.link(*redis, insecure_random<ObjectID>());
+	redis->command("EXEC", [](auto&& reply, auto ec)
+	{
+		REQUIRE(!ec);
+		REQUIRE(reply.array_size() == 1);
+	});
+
 	std::vector<std::string> dirs;
 
 	bool tested = false;
