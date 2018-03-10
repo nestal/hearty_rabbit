@@ -41,13 +41,13 @@ private:
 };
 
 /// A set of blob objects represented by a redis set.
-class Container
+class Collection
 {
 private:
 	static const std::string_view redis_prefix;
 
 public:
-	explicit Container(std::string_view user, std::string_view path);
+	explicit Collection(std::string_view user, std::string_view path);
 
 	template <typename Complete>
 	static void add(
@@ -113,7 +113,7 @@ public:
 				path=std::string{path}
 			](auto&& reply, std::error_code&& ec) mutable
 			{
-				Container con{std::move(user), std::move(path)};
+				Collection con{std::move(user), std::move(path)};
 
 				for (auto&& blob : reply)
 					con.m_blobs.push_back(raw_to_object_id(blob.as_string()));

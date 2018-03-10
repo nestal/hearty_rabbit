@@ -12,7 +12,7 @@
 
 #include <catch.hpp>
 
-#include "hrb/Container.hh"
+#include "hrb/Collection.hh"
 #include "crypto/Random.hh"
 
 #include <rapidjson/ostreamwrapper.h>
@@ -32,12 +32,12 @@ TEST_CASE("Container tests", "[normal]")
 	auto redis = redis::connect(ioc);
 
 	int tested = 0;
-	Container::add(*redis, "testuser", "/", blobid, [&tested, redis, blobid](bool added, auto ec)
+	Collection::add(*redis, "testuser", "/", blobid, [&tested, redis, blobid](bool added, auto ec)
 	{
 		REQUIRE(!ec);
 		REQUIRE(added);
 
-		Container::load(*redis, "testuser", "/", [&tested, blobid](auto&& con, auto ec)
+		Collection::load(*redis, "testuser", "/", [&tested, blobid](auto&& con, auto ec)
 		{
 			REQUIRE(!ec);
 
@@ -61,7 +61,7 @@ TEST_CASE("Load 3 images in json", "[normal]")
 	int count = 0;
 	for (auto&& blobid : blobids)
 	{
-		Container::add(*redis, "testuser", "/", blobid, [&count](bool added, auto ec)
+		Collection::add(*redis, "testuser", "/", blobid, [&count](bool added, auto ec)
 		{
 			REQUIRE(!ec);
 			REQUIRE(added);
@@ -82,7 +82,7 @@ TEST_CASE("Load 3 images in json", "[normal]")
 	};
 
 	bool tested = false;
-	Container::serialize(*redis, "testuser", "/", MockBlobDb{}, [&tested](auto&& json, auto ec)
+	Collection::serialize(*redis, "testuser", "/", MockBlobDb{}, [&tested](auto&& json, auto ec)
 	{
 		INFO("serialize() error_code: " << ec << " " << ec.message());
 		REQUIRE(!ec);
@@ -104,7 +104,7 @@ TEST_CASE("Load 3 images in json", "[normal]")
 	int deleted = 0;
 	for (auto&& blobid : blobids)
 	{
-		Container::remove(*redis, "testuser", "/", blobid, [&deleted](auto&& ec)
+		Collection::remove(*redis, "testuser", "/", blobid, [&deleted](auto&& ec)
 		{
 			INFO("remove() return error " << ec << " " << ec.message());
 			INFO("removed " << deleted << " objects");
@@ -124,7 +124,7 @@ TEST_CASE("Scan for all containers from testuser")
 	std::vector<std::string> dirs;
 
 	bool tested = false;
-	Container::scan(*redis, "testuser", 0, [&tested, &dirs](auto begin, auto end, long cursor, auto ec)
+	Collection::scan(*redis, "testuser", 0, [&tested, &dirs](auto begin, auto end, long cursor, auto ec)
 	{
 		INFO("scan() error: " << ec << " " << ec.message());
 		REQUIRE(!ec);

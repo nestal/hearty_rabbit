@@ -10,13 +10,13 @@
 // Created by nestal on 3/4/18.
 //
 
-#include "Container.hh"
+#include "Collection.hh"
 
 namespace hrb {
 
-const std::string_view Container::redis_prefix = "dir:";
+const std::string_view Collection::redis_prefix = "dir:";
 
-Container::Container(std::string_view user, std::string_view path) :
+Collection::Collection(std::string_view user, std::string_view path) :
 	m_user{user},
 	m_path{path}
 {

@@ -13,7 +13,7 @@
 #pragma once
 
 #include "ObjectID.hh"
-#include "Container.hh"
+#include "Collection.hh"
 #include "net/Redis.hh"
 
 #include <rapidjson/document.h>
@@ -57,7 +57,7 @@ public:
 		Ownership::add(db, user, blob, [](auto&&, auto&&){});
 
 		// add to user's container
-		Container::add(db, user, path, blob, [](auto&&, auto&&){});
+		Collection::add(db, user, path, blob, [](auto&&, auto&&){});
 		db.command([comp=std::forward<Complete>(complete)](auto&&, auto ec)
 		{
 			comp(ec);
