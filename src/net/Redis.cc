@@ -192,7 +192,7 @@ void Connection::on_exec_transaction(Reply&& reply, std::error_code ec)
 			assert(callback != m_queued_callbacks.end());
 
 			if (*callback)
-				(*callback)(std::move(transaction_reply), ec);
+				(*callback)(Reply{transaction_reply}, ec);
 			callback++;
 		}
 	}
@@ -204,7 +204,7 @@ void Connection::on_exec_transaction(Reply&& reply, std::error_code ec)
 	// run the callback for the "EXEC" command
 	assert(!m_callbacks.empty());
 	if (m_callbacks.front())
-		m_callbacks.front()(Reply{}, std::move(ec));
+		m_callbacks.front()(std::move(reply), std::move(ec));
 
 	m_queued_callbacks.clear();
 }

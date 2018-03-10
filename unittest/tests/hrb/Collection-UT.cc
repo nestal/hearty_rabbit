@@ -34,7 +34,11 @@ TEST_CASE("Load 3 images in json", "[normal]")
 	redis->command("MULTI");
 	for (auto&& blobid : blobids)
 		Collection{"testuser", "/"}.link(*redis, blobid);
-	redis->command("EXEC");
+	redis->command("EXEC", [](auto&& reply, auto ec)
+	{
+		REQUIRE(!ec);
+		REQUIRE(reply.array_size() == 3);
+	});
 
 	REQUIRE(ioc.run_for(10s) > 0);
 

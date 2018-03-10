@@ -28,15 +28,6 @@
 namespace hrb {
 
 class BlobDatabase;
-class ContainerName;
-
-namespace detail {
-template <typename BlobOrDir>
-struct Prefix {};
-
-template <> struct Prefix<ObjectID> 		{static const std::string_view value;};
-template <> struct Prefix<ContainerName>	{static const std::string_view value;};
-}
 
 /// A set of blob objects represented by a redis set.
 class Ownership
@@ -44,6 +35,9 @@ class Ownership
 private:
 	class Blob
 	{
+	private:
+		static const std::string_view m_prefix;
+
 	public:
 		Blob(std::string_view user, const ObjectID& blob);
 
@@ -64,7 +58,7 @@ private:
 				},
 
 				"EXISTS %b%b:%b",
-				detail::Prefix<ObjectID>::value.data(), detail::Prefix<ObjectID>::value.size(),
+				m_prefix.data(), m_prefix.size(),
 				m_user.data(), m_user.size(),
 				m_blob.data(), m_blob.size()
 			);
@@ -77,7 +71,6 @@ private:
 		std::string m_user;
 		ObjectID    m_blob;
 	};
-	static const std::string_view redis_prefix;
 
 public:
 	explicit Ownership(std::string_view name);
@@ -98,8 +91,6 @@ public:
 		blob.watch(db);
 		coll.watch(db);
 
-		// if add == true, we want to add a blob, only add when !preset
-		// if add == false, we want to remove a blob, only remove when preset
 		db.command("MULTI");
 		if (add)
 		{

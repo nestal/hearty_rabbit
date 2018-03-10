@@ -17,16 +17,11 @@
 
 namespace hrb {
 
-const std::string_view Ownership::redis_prefix{"ownership:"};
-
-namespace detail {
-const std::string_view Prefix<ObjectID>::value{"blob:"};
-const std::string_view Prefix<ContainerName>::value{"dir:"};
-}
-
 Ownership::Ownership(std::string_view name) : m_user{name}
 {
 }
+
+const std::string_view Ownership::Blob::m_prefix{"blob:"};
 
 Ownership::Blob::Blob(std::string_view user, const ObjectID& blob) :
 	m_user{user}, m_blob{blob}
@@ -37,7 +32,7 @@ void Ownership::Blob::watch(redis::Connection& db) const
 {
 	db.command(
 		"WATCH %b%b:%b",
-		detail::Prefix<ObjectID>::value.data(), detail::Prefix<ObjectID>::value.size(),
+		m_prefix.data(), m_prefix.size(),
 		m_user.data(), m_user.size(),
 		m_blob.data(), m_blob.size()
 	);
@@ -48,7 +43,7 @@ void Ownership::Blob::link(redis::Connection& db, std::string_view path) const
 	const char empty = '\0';
 	db.command(
 		"HMSET %b%b:%b link:%b %b",
-		detail::Prefix<ObjectID>::value.data(), detail::Prefix<ObjectID>::value.size(),
+		m_prefix.data(), m_prefix.size(),
 		m_user.data(), m_user.size(),
 		m_blob.data(), m_blob.size(),
 		path.data(), path.size(),
@@ -60,7 +55,7 @@ void Ownership::Blob::unlink(redis::Connection& db, std::string_view path) const
 {
 	db.command(
 		"HDEL %b%b:%b link:%b",
-		detail::Prefix<ObjectID>::value.data(), detail::Prefix<ObjectID>::value.size(),
+		m_prefix.data(), m_prefix.size(),
 		m_user.data(), m_user.size(),
 		m_blob.data(), m_blob.size(),
 		path.data(), path.size()

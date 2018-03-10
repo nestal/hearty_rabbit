@@ -24,23 +24,6 @@
 
 namespace hrb {
 
-class ContainerName
-{
-public:
-	ContainerName(std::string_view user, std::string_view path) :
-		m_name{std::string{user} + std::string{path}}
-	{
-	}
-
-	const std::string& str() const {return m_name;}
-
-	auto data() const {return m_name.data();}
-	auto size() const {return m_name.size();}
-
-private:
-	std::string m_name;
-};
-
 /// A set of blob objects represented by a redis set.
 class Collection
 {
@@ -51,27 +34,6 @@ public:
 	explicit Collection(std::string_view user, std::string_view path);
 
 	void watch(redis::Connection& db);
-
-	template <typename Complete>
-	void has(
-		redis::Connection& db,
-		const ObjectID& blob,
-		Complete&& complete
-	)
-	{
-		db.command(
-			[comp=std::forward<Complete>(complete)](redis::Reply&& reply, std::error_code ec) mutable
-			{
-				std::cout << "Collection::has() " << reply.type() << " " << reply.as_int() << std::endl;
-				comp(reply.as_int() == 1, std::move(ec));
-			},
-			"SISMEMBER %b%b:%b %b",
-			redis_prefix.data(), redis_prefix.size(),
-			m_user.data(), m_user.size(),
-			m_path.data(), m_path.size(),
-			blob.data(), blob.size()
-		);
-	}
 
 	void link(redis::Connection& db, const ObjectID& id);
 	void unlink(redis::Connection& db, const ObjectID& id);
