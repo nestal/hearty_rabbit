@@ -16,15 +16,35 @@
 #include "hrb/Ownership.hh"
 #include "hrb/BlobDatabase.hh"
 #include "hrb/UploadFile.hh"
+#include "crypto/Random.hh"
 
 #include <rapidjson/document.h>
 
 using namespace hrb;
+	using namespace std::chrono_literals;
+
+TEST_CASE("add blob to Ownership", "[normal]")
+{
+	auto blobid = insecure_random<ObjectID>();
+
+	boost::asio::io_context ioc;
+	auto redis = redis::connect(ioc);
+
+	int tested = 0;
+
+	Ownership::add_blob(
+		*redis, "test", blobid, "/", [&tested, redis, blobid](std::error_code ec)
+		{
+			REQUIRE(!ec);
+			tested++;
+		}
+	);
+	REQUIRE(ioc.run_for(10s) > 0);
+	REQUIRE(tested == 1);
+}
 
 TEST_CASE("Ownership tests", "[normal]")
 {
-	using namespace std::chrono_literals;
-
 	boost::asio::io_context ioc;
 	auto redis = redis::connect(ioc);
 
@@ -44,7 +64,7 @@ TEST_CASE("Ownership tests", "[normal]")
 
 	int tested = 0;
 	Ownership::add(
-		*redis, "test", testid, [&tested, redis, testid, &blobdb](std::error_code ec)
+		*redis, "test", testid, [&tested, redis, testid](std::error_code ec)
 		{
 			REQUIRE(!ec);
 

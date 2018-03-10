@@ -54,14 +54,14 @@ public:
 	)
 	{
 		db.command("MULTI");
-		Ownership::add(db, user, blob, [](auto&&, auto&&){});
+		Ownership::add(db, user, blob, [](auto&&){});
 
 		// add to user's container
 		Collection::add(db, user, path, blob, [](auto&&, auto&&){});
 		db.command([comp=std::forward<Complete>(complete)](auto&&, auto ec)
 		{
 			comp(ec);
-		});
+		}, "EXEC");
 	}
 
 	template <typename Complete, typename BlobOrDir>
