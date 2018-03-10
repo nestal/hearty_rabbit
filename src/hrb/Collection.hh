@@ -129,8 +129,8 @@ private:
 	}
 
 private:
-	std::string             m_user;
-	std::string             m_path;
+	std::string m_user;
+	std::string m_path;
 };
 
 } // end of namespace hrb
