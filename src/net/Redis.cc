@@ -66,6 +66,14 @@ Connection::~Connection()
 
 void Connection::do_write(CommandString&& cmd, Completion&& completion)
 {
+	// In some cases, the redis reply will be received before the async_write() callback
+	// is called. In other words, the write-callback of sending the redis command is
+	// called even _after_ we receive redis' reply to that command.
+	// If we en-queue the completion routine in the write-callback, it is possible that
+	// the completion routine is not queued yet by the time the reply arrives.
+	// In order to avoid this, we have to en-queue the completion routine before sending
+	// the command to redis. It is impossible to receive a reply before the command is
+	// sent.
 	m_callbacks.push_back(std::move(completion));
 	if (m_callbacks.size() == 1)
 		do_read();
