@@ -85,7 +85,7 @@ void Connection::do_write(CommandString&& cmd, Completion&& completion)
 				if (ec)
 				{
 					Log(LOG_WARNING, "redis write error %1% %2%", ec, ec.message());
-//					comp(Reply{}, std::error_code{ec.value(), ec.category()});
+
 					while (!m_callbacks.empty())
 						m_callbacks.front()(Reply{}, std::error_code{Error::protocol});
 						m_callbacks.pop_front();
@@ -142,8 +142,10 @@ void Connection::on_read(boost::system::error_code ec, std::size_t bytes)
 		if (result == ReplyReader::Result::ok)
 		{
 			assert(m_callbacks.empty());
-			Log(LOG_WARNING, "Redis sends more replies than requested. Ignoring reply. %1% %2%", reply.type(), reply.as_any_string());
-//			assert(false);
+			Log(LOG_WARNING, "Redis sends more replies than requested. Disconnecting. %1% %2%", reply.type(), reply.as_any_string());
+
+			// clear callback
+			result == ReplyReader::Result::error;
 		}
 
 		// Report parse error as protocol errors in the callbacks

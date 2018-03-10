@@ -14,7 +14,7 @@ docker run -t --detach --rm \
     nestal/hearty_rabbit
 
 # Run python unit tests
-python3 ./unittest/client/upload_blob.py
+python3 ./unittest/client/upload_blob.py || { echo "auto system test failed!"; docker stop hb_test; exit 1}
 
 # Run all tests
 pushd automation
