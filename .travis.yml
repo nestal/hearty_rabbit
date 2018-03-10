@@ -2,6 +2,9 @@ sudo: required
 env:
   - OS_TYPE=centos OS_VERSION=7
 language: python
+python:
+  - "3.6"
+
 services:
   - docker
   - redis-server
@@ -9,6 +12,9 @@ services:
 before_install:
   - docker pull nestal/hearty_rabbit_dev
   - git submodule update --init --recursive
+
+install:
+  - pip install --upgrade pip
   - pip install requests
 
 script:
