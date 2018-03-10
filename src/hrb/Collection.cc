@@ -22,14 +22,21 @@ Collection::Collection(std::string_view user, std::string_view path) :
 {
 }
 
-void Collection::watch(redis::Connection& db,
-	std::string_view user,
-	std::string_view path
-)
+void Collection::watch(redis::Connection& db)
 {
 	db.command("WATCH %b%b:%b",
 		redis_prefix.data(), redis_prefix.size(),
-		user.data(), user.size(), path.data(), path.size()
+		m_user.data(), m_user.size(), m_path.data(), m_path.size()
+	);
+}
+
+void Collection::add(redis::Connection& db, const ObjectID& id)
+{
+	db.command("SADD %b%b:%b %b",
+		redis_prefix.data(), redis_prefix.size(),
+		m_user.data(), m_user.size(),
+		m_path.data(), m_path.size(),
+		id.data(), id.size()
 	);
 }
 

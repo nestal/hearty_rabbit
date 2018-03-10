@@ -14,6 +14,7 @@
 
 #include "ObjectID.hh"
 #include "Collection.hh"
+#include "BlobTable.hh"
 #include "net/Redis.hh"
 
 #include <rapidjson/document.h>
@@ -49,20 +50,44 @@ public:
 	static void add_blob(
 		redis::Connection& db,
 		std::string_view user,
-		const ObjectID& blob,
+		const ObjectID& blobid,
 		std::string_view path,
 		Complete&& complete
 	)
 	{
-		db.command("MULTI");
-		Ownership::add(db, user, blob, [](auto&&){});
+		BlobTable blob{user, blobid};
+		Collection coll{user, path};
 
-		// add to user's container
-		Collection::add(db, user, path, blob, [](auto&&, auto&&){});
-		db.command([comp=std::forward<Complete>(complete)](auto&&, auto ec)
-		{
-			comp(ec);
-		}, "EXEC");
+		// watch everything that will be modified
+		blob.watch(db);
+		coll.watch(db);
+
+		coll.has(
+			db, blobid, [
+				blob, coll, db=db.shared_from_this(), comp=std::forward<Complete>(complete)
+			](bool present, std::error_code ec) mutable
+			{
+				std::cout << "collection has blob? " << present << std::endl;
+				if (!present)
+				{
+					db->command([](auto&&, auto&&) {}, "MULTI");
+					blob.add_link(*db, "image/jpeg", coll.path());
+					coll.add(*db, blob.blob());
+
+					db->command([comp=std::move(comp)](auto&&, std::error_code ec)
+					{
+						std::cout << "on_exec(): " << ec << std::endl;
+						comp(ec);
+					}, "EXEC");
+				}
+				else
+					db->command([comp=std::move(comp)](auto&& reply, std::error_code ec)
+					{
+						std::cout << "on_discard(): " << ec << std::endl;
+						comp(ec);
+					}, "DISCARD");
+			}
+		);
 	}
 
 	template <typename Complete>
@@ -74,16 +99,6 @@ public:
 		Complete&& complete
 	)
 	{
-		Collection::watch(db, user, path);
-
-		Ownership::unlink(db, user, blob, [](auto&&, auto&&){});
-
-		// add to user's container
-//		Collection::add(db, user, path, blob, [](auto&&, auto&&){});
-		db.command([comp=std::forward<Complete>(complete)](auto&&, auto ec)
-		{
-			comp(ec);
-		}, "EXEC");
 	}
 
 	template <typename Complete, typename BlobOrDir>

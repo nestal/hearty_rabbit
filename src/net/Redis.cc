@@ -120,13 +120,17 @@ void Connection::on_read(boost::system::error_code ec, std::size_t bytes)
 			// is sent. We cannot call the callbacks for these queued commands. Instead,
 			// we move them to m_queued_callback so that they will be executed when "EXEC".
 			if (reply.as_status() == "QUEUED")
+			{
+				std::cout << "queued" << std::endl;
 				m_queued_callbacks.push_back(std::move(m_callbacks.front()));
-
+			}
 			// reply is not QUEUED but inside a transaction, that means the transaction
 			// is just executed.
 			else if (!m_queued_callbacks.empty())
+			{
+				std::cout << "exec or discard" << std::endl;
 				on_exec_transaction(std::move(reply), std::error_code{ec.value(), ec.category()});
-
+			}
 			else if (m_callbacks.front())
 				m_callbacks.front()(std::move(reply), std::error_code{ec.value(), ec.category()});
 
@@ -178,17 +182,24 @@ void Connection::on_exec_transaction(Reply&& reply, std::error_code ec)
 	// transaction failed (i.e. WATCH error) or "DISCARD"
 	if (reply.is_nil() || reply.as_status() == "OK")
 	{
+		std::cout << "transaction failed" << std::endl;
+
 		for (auto&& callback : m_queued_callbacks)
-			callback(Reply{reply}, hrb::Error::redis_transaction_aborted);
+			if (callback)
+				callback(Reply{reply}, hrb::Error::redis_transaction_aborted);
 	}
 
 	// transaction executed
 	else if (reply.array_size() == m_queued_callbacks.size())
 	{
+		std::cout << "transaction executed " << m_queued_callbacks.size() << std::endl;
+
 		auto callback = m_queued_callbacks.begin();
 		for (auto&& transaction_reply : reply)
 		{
 			assert(!m_queued_callbacks.empty());
+			assert(callback != m_queued_callbacks.end());
+
 			if (*callback)
 				(*callback)(std::move(transaction_reply), ec);
 			callback++;
@@ -203,6 +214,8 @@ void Connection::on_exec_transaction(Reply&& reply, std::error_code ec)
 	assert(!m_callbacks.empty());
 	if (m_callbacks.front())
 		m_callbacks.front()(Reply{}, std::move(ec));
+	else
+		std::cout << "WTF?" << std::endl;
 
 	m_queued_callbacks.clear();
 }

@@ -14,12 +14,13 @@
 
 #include "ObjectID.hh"
 #include "net/Redis.hh"
+#include "util/Error.hh"
 
 #include <string_view>
 #include <functional>
 #include <unordered_map>
 #include <sstream>
-#include <util/Error.hh>
+#include <iostream>
 
 namespace hrb {
 
@@ -49,10 +50,30 @@ private:
 public:
 	explicit Collection(std::string_view user, std::string_view path);
 
-	static void watch(redis::Connection& db,
-		std::string_view user,
-		std::string_view path
-	);
+	void watch(redis::Connection& db);
+
+	template <typename Complete>
+	void has(
+		redis::Connection& db,
+		const ObjectID& blob,
+		Complete&& complete
+	)
+	{
+		db.command(
+			[comp=std::forward<Complete>(complete)](redis::Reply&& reply, std::error_code ec) mutable
+			{
+				std::cout << "Collection::has() " << reply.type() << " " << reply.as_int() << std::endl;
+				comp(reply.as_int() == 1, std::move(ec));
+			},
+			"SISMEMBER %b%b:%b %b",
+			redis_prefix.data(), redis_prefix.size(),
+			m_user.data(), m_user.size(),
+			m_path.data(), m_path.size(),
+			blob.data(), blob.size()
+		);
+	}
+
+	void add(redis::Connection& db, const ObjectID& id);
 
 	template <typename Complete>
 	static void add(
@@ -198,6 +219,9 @@ public:
 	using iterator = std::vector<ObjectID>::const_iterator;
 	iterator begin() const {return m_blobs.begin();}
 	iterator end() const {return m_blobs.end();}
+
+	const std::string& user() const {return m_user;}
+	const std::string& path() const {return m_path;}
 
 private:
 	template <typename BlobDb>

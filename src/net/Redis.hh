@@ -266,15 +266,21 @@ public:
 	}
 
 	template <typename... Args>
-	void command(Args... args)
+	void command(const char *cmd, Args... args)
 	{
 		try
 		{
-			do_write(CommandString{args...}, Completion{});
+			do_write(CommandString{cmd, args...}, Completion{});
 		}
 		catch (std::logic_error&)
 		{
 		}
+	}
+
+	template <typename... Args>
+	void command(const std::string& cmd, Args... args)
+	{
+		return command(cmd.c_str(), args...);
 	}
 
 	boost::asio::io_context& get_io_context() {return m_socket.get_io_context();}
