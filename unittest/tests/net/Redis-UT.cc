@@ -268,3 +268,18 @@ TEST_CASE("std::function() as callback", "[normal]")
 	REQUIRE(ioc.run_for(10s) > 0);
 	REQUIRE(tested);
 }
+
+TEST_CASE("keep queuing")
+{
+	boost::asio::io_context ioc;
+	auto redis = connect(ioc);
+
+	redis->command("MULTI");
+
+	for (int i = 0 ; i < 1000; i++)
+		redis->command("SET key 100");
+
+	redis->command("EXEC");
+	using namespace std::chrono_literals;
+	REQUIRE(ioc.run_for(10s) > 0);
+}

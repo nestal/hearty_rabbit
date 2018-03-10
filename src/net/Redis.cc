@@ -66,6 +66,10 @@ Connection::~Connection()
 
 void Connection::do_write(CommandString&& cmd, Completion&& completion)
 {
+	m_callbacks.push_back(std::move(completion));
+	if (m_callbacks.size() == 1)
+		do_read();
+
 	auto buffer = cmd.buffer();
 	async_write(
 		m_socket,
@@ -75,20 +79,18 @@ void Connection::do_write(CommandString&& cmd, Completion&& completion)
 			[
 				this,
 				cmd=std::move(cmd),
-				comp=std::move(completion),
 				self=shared_from_this()
 			](auto ec, std::size_t bytes)
 			{
-				if (!ec)
-				{
-					m_callbacks.push_back(std::move(comp));
-					if (m_callbacks.size() == 1)
-						do_read();
-				}
-				else
+				if (ec)
 				{
 					Log(LOG_WARNING, "redis write error %1% %2%", ec, ec.message());
-					comp(Reply{}, std::error_code{ec.value(), ec.category()});
+//					comp(Reply{}, std::error_code{ec.value(), ec.category()});
+					while (!m_callbacks.empty())
+						m_callbacks.front()(Reply{}, std::error_code{Error::protocol});
+						m_callbacks.pop_front();
+
+					disconnect();
 				}
 			}
 		)
@@ -141,6 +143,7 @@ void Connection::on_read(boost::system::error_code ec, std::size_t bytes)
 		{
 			assert(m_callbacks.empty());
 			Log(LOG_WARNING, "Redis sends more replies than requested. Ignoring reply. %1% %2%", reply.type(), reply.as_any_string());
+//			assert(false);
 		}
 
 		// Report parse error as protocol errors in the callbacks
