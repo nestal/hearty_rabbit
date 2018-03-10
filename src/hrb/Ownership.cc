@@ -28,29 +28,6 @@ Ownership::Ownership(std::string_view name) : m_user{name}
 {
 }
 
-std::string Ownership::serialize(const BlobDatabase& db) const
-{
-	bool first = true;
-	std::ostringstream json;
-	json << R"({"name":")" << m_user << R"(", "elements":{)";
-	for (auto&& blob : m_blobs)
-	{
-		auto meta = db.load_meta_json(blob);
-		if (!meta.empty())
-		{
-			if (first)
-				first = false;
-			else
-				json << ",\n";
-
-			json << '\"' << blob << R"(": )" << meta;
-		}
-	}
-	json << "}}";
-
-	return json.str();
-}
-
 Ownership::Blob::Blob(std::string_view user, const ObjectID& blob) :
 	m_user{user}, m_blob{blob}
 {

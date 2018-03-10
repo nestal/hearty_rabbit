@@ -16,6 +16,7 @@
 
 #include "Collection.hh"
 #include "net/Redis.hh"
+#include "util/Log.hh"
 
 #include <rapidjson/document.h>
 
@@ -52,6 +53,23 @@ private:
 		void link(redis::Connection& db, std::string_view path) const;
 		void unlink(redis::Connection& db, std::string_view path) const;
 
+		template <typename Complete>
+		void is_owned(redis::Connection& db, Complete&& complete)
+		{
+			db.command(
+				[comp=std::forward<Complete>(complete)](auto&& reply, std::error_code&& ec) mutable
+				{
+					std::cout << "is_owned() return " << reply.type() << " " << reply.as_int() << " " << ec << std::endl;
+					comp(reply.as_int() > 0, std::move(ec));
+				},
+
+				"EXISTS %b%b:%b",
+				detail::Prefix<ObjectID>::value.data(), detail::Prefix<ObjectID>::value.size(),
+				m_user.data(), m_user.size(),
+				m_blob.data(), m_blob.size()
+			);
+		}
+
 		const std::string& user() const {return m_user;}
 		const ObjectID& blob() const {return m_blob;}
 
@@ -80,135 +98,41 @@ public:
 		blob.watch(db);
 		coll.watch(db);
 
-		coll.has(
-			db, blobid, [
-				add, blob, coll, db=db.shared_from_this(), comp=std::forward<Complete>(complete)
-			](bool present, std::error_code ec) mutable
-			{
-				// if add == true, we want to add a blob, only add when !preset
-				// if add == false, we want to remove a blob, only remove when preset
-				if (add == !present)
-				{
-					db->command("MULTI");
-					if (add)
-					{
-						blob.link(*db, coll.path());
-						coll.link(*db, blob.blob());
-					}
-					else
-					{
-						blob.unlink(*db, coll.path());
-						coll.unlink(*db, blob.blob());
-					}
+		// if add == true, we want to add a blob, only add when !preset
+		// if add == false, we want to remove a blob, only remove when preset
+		db.command("MULTI");
+		if (add)
+		{
+			blob.link(db, coll.path());
+			coll.link(db, blob.blob());
+		}
+		else
+		{
+			blob.unlink(db, coll.path());
+			coll.unlink(db, blob.blob());
+		}
 
-					db->command([comp=std::move(comp)](auto&&, std::error_code ec)
-					{
-						comp(ec);
-					}, "EXEC");
-				}
-				else
-				{
-					db->command([comp = std::move(comp)](auto&&, std::error_code ec)
-					{
-						comp(ec);
-					}, "DISCARD");
-				}
-			}
-		);
+		db.command([comp=std::forward<Complete>(complete)](auto&&, std::error_code ec)
+		{
+			Log(LOG_INFO, "transaction completed %1%", ec);
+			comp(ec);
+		}, "EXEC");
 	}
 
-	template <typename Complete, typename BlobOrDir>
-	static void add(
+	template <typename Complete>
+	void is_owned(
 		redis::Connection& db,
-		std::string_view user,
-		const BlobOrDir& blob_or_dir,
+		const ObjectID& blob,
 		Complete&& complete
 	)
 	{
-		db.command([
-				comp=std::forward<Complete>(complete)
-			](auto&&, std::error_code&& ec) mutable
-			{
-				comp(std::move(ec));
-			},
-			"HINCRBY %b%b %b%b 1",
-
-			// key is ownership:<user>
-			redis_prefix.data(), redis_prefix.size(),
-			user.data(), user.size(),
-
-			// hash field is blob:<blob ID>
-			detail::Prefix<BlobOrDir>::value.data(), detail::Prefix<BlobOrDir>::value.size(),
-			blob_or_dir.data(), blob_or_dir.size()
-		);
-	}
-
-	template <typename Complete, typename BlobOrDir>
-	static void unlink(
-		redis::Connection& db,
-		std::string_view user,
-		const BlobOrDir& blob_or_dir,
-		Complete&& complete
-	)
-	{
-		// If only redis has a command to automatically delete hash field if
-		// it's decremented to zero. But since there is no harm to keep these
-		// zeroed fields in the hash, we will leave them.
-		db.command([
-				comp=std::forward<Complete>(complete)
-			](auto&& reply, std::error_code&& ec) mutable
-			{
-				comp(reply.as_int() == 0, std::move(ec));
-			},
-			"HINCRBY %b%b %b%b -1",
-			// key is ownership:<user>
-			redis_prefix.data(), redis_prefix.size(),
-			user.data(), user.size(),
-
-			// hash field is blob:<blob ID>
-			detail::Prefix<BlobOrDir>::value.data(), detail::Prefix<BlobOrDir>::value.size(),
-			blob_or_dir.data(), blob_or_dir.size()
-		);
-	}
-
-	template <typename Complete, typename BlobOrDir>
-	static void is_owned(
-		redis::Connection& db,
-		std::string_view user,
-		const BlobOrDir& blob_or_dir,
-		Complete&& complete
-	)
-	{
-		db.command(
-			[comp=std::forward<Complete>(complete)](auto&& reply, std::error_code&& ec) mutable
-			{
-				comp(std::move(ec), reply.to_int() > 0);
-			},
-			"HGET %b%b %b%b",
-			// key is ownership:<user>
-			redis_prefix.data(), redis_prefix.size(),
-			user.data(), user.size(),
-
-			// hash field is blob:<blob ID>
-			detail::Prefix<BlobOrDir>::value.data(), detail::Prefix<BlobOrDir>::value.size(),
-			blob_or_dir.data(), blob_or_dir.size()
-		);
+		Blob{m_user, blob}.is_owned(db, std::forward<Complete>(complete));
 	}
 
 	const std::string& user() const {return m_user;}
 
-	using value_type = ObjectID;
-	using iterator = std::vector<ObjectID>::const_iterator;
-	iterator begin() const {return m_blobs.begin();}
-	iterator end() const {return m_blobs.end();}
-	std::size_t size() const {return m_blobs.size();}
-	bool empty() const {return m_blobs.empty();}
-
-	std::string serialize(const BlobDatabase& db) const;
-
 private:
 	std::string             m_user;
-	std::vector<ObjectID>   m_blobs;
 };
 
 

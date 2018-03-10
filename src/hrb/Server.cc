@@ -123,26 +123,17 @@ void Server::on_unlink(const RequestHeader& req, EmptyResponseSender&& send, con
 		return send(http::response<http::empty_body>{http::status::forbidden, req.version()});
 
 	// remove from user's container
-	Collection::remove(
-		*m_db.alloc(), auth.user(), path_url.path(), blob_id,
-		[send = std::move(send), version=req.version(), blob_id, user=auth.user(), this](auto ec)
+	Ownership{auth.user()}.link(
+		*m_db.alloc(), path_url.path(), blob_id, false,
+		[send = std::move(send), version=req.version()](auto ec)
 		{
-			if (ec)
-				return send(http::response<http::empty_body>{
-					ec == Error::object_not_exist ?
-						http::status::bad_request :
-						http::status::internal_server_error, version
-				});
+			auto status = http::status::accepted;
+			if (ec == Error::object_not_exist)
+				status = http::status::bad_request;
+			else if (ec)
+				status = http::status::internal_server_error;
 
-			Ownership::unlink(
-				*m_db.alloc(), user, blob_id, [send = std::move(send), version](bool, auto ec)
-				{
-					return send(http::response<http::empty_body>{
-						ec ? http::status::internal_server_error : http::status::accepted,
-						version
-					});
-				}
-			);
+			return send(http::response<http::empty_body>{status,version});
 		}
 	);
 }
@@ -157,7 +148,7 @@ void Server::on_upload(UploadRequest&& req, EmptyResponseSender&& send, const Au
 
 	std::error_code ec;
 	auto id = m_blob_db.save(std::move(req.body()), path_url.filename(), ec);
-	Log(LOG_INFO, "uploaded %1% to %2% (%3% %4%)", req.target(), id, ec, ec.message());
+	Log(LOG_INFO, "%5% uploaded %1% to %2% (%3% %4%)", req.target(), id, ec, ec.message(), auth.user());
 
 	if (ec)
 		return send(http::response<http::empty_body>{http::status::internal_server_error, req.version()});
@@ -165,34 +156,23 @@ void Server::on_upload(UploadRequest&& req, EmptyResponseSender&& send, const Au
 	// Add the newly created blob to the user's ownership table.
 	// The user's ownership table contains all the blobs that is owned by the user.
 	// It will be used for authorizing the user's request on these blob later.
-	Ownership::add(
-		*m_db.alloc(), auth.user(), id, [
+	Ownership{auth.user()}.link(
+		*m_db.alloc(), path_url.path(), id, true, [
 			id,
 			this,
 			auth,
-			path = std::string{path_url.path()},
 			send = std::move(send),
 			version = req.version()
-		](auto ec) mutable
+		](auto ec)
 		{
-			if (ec)
-				return send(http::response<http::empty_body>{http::status::internal_server_error, version});
-
-			// add to user's container
-			Collection::add(
-				*m_db.alloc(), auth.user(), path, id,
-				[send = std::move(send), version, id, user=auth.user()](bool, auto ec)
-				{
-					http::response<http::empty_body> res{
-						ec ? http::status::internal_server_error : http::status::created,
-						version
-					};
-					if (!ec)
-						res.set(http::field::location, "/blob/" + user + "/" + to_hex(id));
-					res.set(http::field::cache_control, "no-cache, no-store, must-revalidate");
-					return send(std::move(res));
-				}
-			);
+			http::response<http::empty_body> res{
+				ec ? http::status::internal_server_error : http::status::created,
+				version
+			};
+			if (!ec)
+				res.set(http::field::location, "/blob/" + auth.user() + "/" + to_hex(id));
+			res.set(http::field::cache_control, "no-cache, no-store, must-revalidate");
+			return send(std::move(res));
 		}
 	);
 }

@@ -37,61 +37,13 @@ TEST_CASE("add blob to Ownership", "[normal]")
 		{
 			REQUIRE(!ec);
 			tested++;
-		}
-	);
-	REQUIRE(ioc.run_for(10s) > 0);
-	REQUIRE(tested == 1);
-}
 
-TEST_CASE("Ownership tests", "[normal]")
-{
-	boost::asio::io_context ioc;
-	auto redis = redis::connect(ioc);
-
-	std::error_code sec;
-	BlobDatabase blobdb{"/tmp/BlobDatabase-UT", {2048,2048}};
-	UploadFile tmp;
-	blobdb.prepare_upload(tmp, sec);
-
-	boost::system::error_code ec;
-
-	char test[] = "hello world!!";
-	auto count = tmp.write(test, sizeof(test), ec);
-	REQUIRE(count == sizeof(test));
-	REQUIRE(ec == boost::system::error_code{});
-
-	auto testid = blobdb.save(std::move(tmp), "hello.world", sec);
-
-	int tested = 0;
-	Ownership::add(
-		*redis, "test", testid, [&tested, redis, testid](std::error_code ec)
-		{
-			REQUIRE(!ec);
-
-			Ownership::is_owned(
-				*redis, "test", testid, [&tested](std::error_code ec, bool added)
-				{
-					REQUIRE(!ec);
-					REQUIRE(added);
-					tested++;
-				}
-			);
-
-			Ownership::unlink(
-				*redis, "test", testid, [&tested, testid, redis](bool removed, std::error_code ec)
-				{
-					REQUIRE(!ec);
-					REQUIRE(removed);
-					Ownership::is_owned(
-						*redis, "test", testid, [&tested](std::error_code ec, bool present)
-						{
-							REQUIRE(!ec);
-							REQUIRE(!present);
-							tested++;
-						}
-					);
-				}
-			);
+			Ownership{"test"}.is_owned(*redis, blobid, [&tested](bool owned, std::error_code ec)
+			{
+				REQUIRE(!ec);
+				REQUIRE(owned);
+				tested++;
+			});
 		}
 	);
 	REQUIRE(ioc.run_for(10s) > 0);

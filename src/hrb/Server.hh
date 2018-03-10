@@ -32,10 +32,7 @@
 #include <boost/beast/version.hpp>
 #include <boost/asio/io_context.hpp>
 
-#include <boost/multi_index_container.hpp>
-#include <boost/multi_index/hashed_index.hpp>
-#include <boost/multi_index/member.hpp>
-
+#include <iostream>
 #include <system_error>
 
 namespace hrb {
@@ -197,19 +194,14 @@ void Server::handle_blob(const EmptyRequest& req, Send&& send, const Authenticat
 	if (object_id == ObjectID{})
 		return send(http::response<http::empty_body>{http::status::not_found, req.version()});
 
+	std::cout << "handle blob: " << user << " " << auth.user() << std::endl;
+
 	auto redis = m_db.alloc();
 
 	// Check if the user owns the blob
-	Ownership::is_owned(
-		*redis, auth.user(), object_id,
-		[
-			redis,
-			auth,
-			object_id,
-			send = std::move(send),
-			req,
-			this
-		](auto ec, bool is_member) mutable
+	Ownership{auth.user()}.is_owned(
+		*redis, object_id,
+		[object_id, send = std::move(send), req, this](bool is_member, auto ec) mutable
 		{
 			if (ec)
 				return send(http::response<http::empty_body>{http::status::internal_server_error, req.version()});
@@ -221,24 +213,6 @@ void Server::handle_blob(const EmptyRequest& req, Send&& send, const Authenticat
 			if (req.method() == http::verb::get)
 				return send(m_blob_db.response(object_id, req.version(), {etag.data(), etag.size()}));
 
-			else if (req.method() == http::verb::delete_)
-			{
-				// Remove the blob from the ownership table, but not remove the physical files
-				// in the filesystem (i.e. via BlobDatabase) because not sure whether other user
-				// are still referring to it
-				Ownership::unlink(
-					*redis, auth.user(), object_id,
-					[send = std::move(send), version = req.version()](bool, std::error_code ec)
-					{
-						return send(
-							http::response<http::empty_body>{
-								ec ? http::status::internal_server_error : http::status::accepted,
-								version
-							}
-						);
-					}
-				);
-			}
 			else
 				return send(http::response<http::empty_body>{http::status::bad_request, req.version()});
 		}
