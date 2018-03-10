@@ -74,11 +74,12 @@ public:
 		Complete&& complete
 	)
 	{
-		db.command("MULTI");
-		Ownership::add(db, user, blob, [](auto&&){});
+		Collection::watch(db, user, path);
+
+		Ownership::unlink(db, user, blob, [](auto&&, auto&&){});
 
 		// add to user's container
-		Collection::add(db, user, path, blob, [](auto&&, auto&&){});
+//		Collection::add(db, user, path, blob, [](auto&&, auto&&){});
 		db.command([comp=std::forward<Complete>(complete)](auto&&, auto ec)
 		{
 			comp(ec);
@@ -112,7 +113,7 @@ public:
 	}
 
 	template <typename Complete, typename BlobOrDir>
-	static void remove(
+	static void unlink(
 		redis::Connection& db,
 		std::string_view user,
 		const BlobOrDir& blob_or_dir,
@@ -126,9 +127,7 @@ public:
 				comp=std::forward<Complete>(complete)
 			](auto&& reply, std::error_code&& ec) mutable
 			{
-				std::cout << "reply of remove(): " << reply.as_int() << std::endl;
-
-				comp(std::move(ec));
+				comp(reply.as_int() == 0, std::move(ec));
 			},
 			"HINCRBY %b%b %b%b -1",
 			// key is ownership:<user>
@@ -152,7 +151,6 @@ public:
 		db.command(
 			[comp=std::forward<Complete>(complete)](auto&& reply, std::error_code&& ec) mutable
 			{
-				std::cout << "result of HGET " << reply.as_string() << std::endl;
 				comp(std::move(ec), reply.to_int() > 0);
 			},
 			"HGET %b%b %b%b",

@@ -134,8 +134,8 @@ void Server::on_unlink(const RequestHeader& req, EmptyResponseSender&& send, con
 						http::status::internal_server_error, version
 				});
 
-			Ownership::remove(
-				*m_db.alloc(), user, blob_id, [send = std::move(send), version](auto ec)
+			Ownership::unlink(
+				*m_db.alloc(), user, blob_id, [send = std::move(send), version](bool, auto ec)
 				{
 					return send(http::response<http::empty_body>{
 						ec ? http::status::internal_server_error : http::status::accepted,

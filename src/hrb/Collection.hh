@@ -49,6 +49,11 @@ private:
 public:
 	explicit Collection(std::string_view user, std::string_view path);
 
+	static void watch(redis::Connection& db,
+		std::string_view user,
+		std::string_view path
+	);
+
 	template <typename Complete>
 	static void add(
 		redis::Connection& db,
