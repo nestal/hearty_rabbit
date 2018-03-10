@@ -67,25 +67,24 @@ public:
 				blob, coll, db=db.shared_from_this(), comp=std::forward<Complete>(complete)
 			](bool present, std::error_code ec) mutable
 			{
-				std::cout << "collection has blob? " << present << std::endl;
 				if (!present)
 				{
-					db->command([](auto&&, auto&&) {}, "MULTI");
+					db->command("MULTI");
 					blob.add_link(*db, "image/jpeg", coll.path());
 					coll.add(*db, blob.blob());
 
 					db->command([comp=std::move(comp)](auto&&, std::error_code ec)
 					{
-						std::cout << "on_exec(): " << ec << std::endl;
 						comp(ec);
 					}, "EXEC");
 				}
 				else
-					db->command([comp=std::move(comp)](auto&& reply, std::error_code ec)
+				{
+					db->command([comp = std::move(comp)](auto&& reply, std::error_code ec)
 					{
-						std::cout << "on_discard(): " << ec << std::endl;
 						comp(ec);
 					}, "DISCARD");
+				}
 			}
 		);
 	}
