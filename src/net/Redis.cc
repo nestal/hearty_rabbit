@@ -86,7 +86,10 @@ void Connection::do_write(CommandString&& cmd, Completion&& completion)
 						do_read();
 				}
 				else
+				{
+					Log(LOG_WARNING, "redis write error %1% %2%", ec, ec.message());
 					comp(Reply{}, std::error_code{ec.value(), ec.category()});
+				}
 			}
 		)
 	);
@@ -126,7 +129,7 @@ void Connection::on_read(boost::system::error_code ec, std::size_t bytes)
 			else if (!m_queued_callbacks.empty())
 				on_exec_transaction(std::move(reply), std::error_code{ec.value(), ec.category()});
 
-			else if (m_callbacks.front())
+			else
 				m_callbacks.front()(std::move(reply), std::error_code{ec.value(), ec.category()});
 
 			m_callbacks.pop_front();
@@ -137,7 +140,7 @@ void Connection::on_read(boost::system::error_code ec, std::size_t bytes)
 		if (result == ReplyReader::Result::ok)
 		{
 			assert(m_callbacks.empty());
-			Log(LOG_WARNING, "Redis sends more replies than requested. Ignoring reply.");
+			Log(LOG_WARNING, "Redis sends more replies than requested. Ignoring reply. %1% %2%", reply.type(), reply.as_any_string());
 		}
 
 		// Report parse error as protocol errors in the callbacks
@@ -200,13 +203,13 @@ void Connection::on_exec_transaction(Reply&& reply, std::error_code ec)
 	// something is wrong
 	else
 	{
+		Log(LOG_CRIT, "assertion failed: redis sends bad reply %1% %2%", reply.array_size(), m_queued_callbacks.size());
 		assert(false);
 	}
 
 	// run the callback for the "EXEC" command
 	assert(!m_callbacks.empty());
-	if (m_callbacks.front())
-		m_callbacks.front()(std::move(reply), std::move(ec));
+	m_callbacks.front()(std::move(reply), std::move(ec));
 
 	m_queued_callbacks.clear();
 }

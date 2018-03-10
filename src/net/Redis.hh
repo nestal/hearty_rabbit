@@ -270,7 +270,7 @@ public:
 	{
 		try
 		{
-			do_write(CommandString{cmd, args...}, Completion{});
+			do_write(CommandString{cmd, args...}, [](auto&&, auto&&){});
 		}
 		catch (std::logic_error&)
 		{
