@@ -37,10 +37,25 @@ TEST_CASE("add blob to Ownership", "[normal]")
 		{
 			REQUIRE(!ec);
 			tested++;
+
+			// remove the blob from collection
+			Collection::remove(*redis, "test", "/", blobid, [&tested](std::error_code ec)
+			{
+				REQUIRE(!ec);
+				REQUIRE(tested++ == 1);
+			});
+
+			// even after removing the blob from collection, it is still owned by the user
+			Ownership::is_owned(*redis, "test", blobid, [&tested](std::error_code ec, bool owned)
+			{
+				REQUIRE(!ec);
+				REQUIRE(owned);
+				REQUIRE(tested++ == 2);
+			});
 		}
 	);
 	REQUIRE(ioc.run_for(10s) > 0);
-	REQUIRE(tested == 1);
+	REQUIRE(tested == 3);
 }
 
 TEST_CASE("Ownership tests", "[normal]")

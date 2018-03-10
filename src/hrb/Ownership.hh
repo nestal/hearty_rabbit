@@ -18,6 +18,7 @@
 
 #include <rapidjson/document.h>
 
+#include <iostream>
 #include <string_view>
 #include <functional>
 #include <vector>
@@ -46,6 +47,26 @@ public:
 
 	template <typename Complete>
 	static void add_blob(
+		redis::Connection& db,
+		std::string_view user,
+		const ObjectID& blob,
+		std::string_view path,
+		Complete&& complete
+	)
+	{
+		db.command("MULTI");
+		Ownership::add(db, user, blob, [](auto&&){});
+
+		// add to user's container
+		Collection::add(db, user, path, blob, [](auto&&, auto&&){});
+		db.command([comp=std::forward<Complete>(complete)](auto&&, auto ec)
+		{
+			comp(ec);
+		}, "EXEC");
+	}
+
+	template <typename Complete>
+	static void remove_blob(
 		redis::Connection& db,
 		std::string_view user,
 		const ObjectID& blob,
@@ -103,8 +124,10 @@ public:
 		// zeroed fields in the hash, we will leave them.
 		db.command([
 				comp=std::forward<Complete>(complete)
-			](auto&&, std::error_code&& ec) mutable
+			](auto&& reply, std::error_code&& ec) mutable
 			{
+				std::cout << "reply of remove(): " << reply.as_int() << std::endl;
+
 				comp(std::move(ec));
 			},
 			"HINCRBY %b%b %b%b -1",
@@ -129,6 +152,7 @@ public:
 		db.command(
 			[comp=std::forward<Complete>(complete)](auto&& reply, std::error_code&& ec) mutable
 			{
+				std::cout << "result of HGET " << reply.as_string() << std::endl;
 				comp(std::move(ec), reply.to_int() > 0);
 			},
 			"HGET %b%b %b%b",
