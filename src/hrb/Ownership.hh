@@ -13,8 +13,8 @@
 #pragma once
 
 #include "ObjectID.hh"
+
 #include "Collection.hh"
-#include "BlobTable.hh"
 #include "net/Redis.hh"
 
 #include <rapidjson/document.h>
@@ -37,6 +37,25 @@ template <> struct Prefix<ObjectID> 		{static const std::string_view value;};
 template <> struct Prefix<ContainerName>	{static const std::string_view value;};
 }
 
+class BlobTable
+{
+public:
+	BlobTable(std::string_view user, const ObjectID& blob);
+
+	void watch(redis::Connection& db) const;
+
+	// expect to be done inside a transaction
+	void link(redis::Connection& db, std::string_view path) const;
+	void unlink(redis::Connection& db, std::string_view path) const;
+
+	const std::string& user() const {return m_user;}
+	const ObjectID& blob() const {return m_blob;}
+
+private:
+	std::string m_user;
+	ObjectID    m_blob;
+};
+
 /// A set of blob objects represented by a redis set.
 class Ownership
 {
@@ -50,12 +69,12 @@ public:
 	static void add_blob(
 		redis::Connection& db,
 		std::string_view user,
-		const ObjectID& blobid,
 		std::string_view path,
+		const ObjectID& blobid,
 		Complete&& complete
 	)
 	{
-		BlobTable blob{user, blobid};
+		BlobTable  blob{user, blobid};
 		Collection coll{user, path};
 
 		// watch everything that will be modified
@@ -70,7 +89,7 @@ public:
 				if (!present)
 				{
 					db->command("MULTI");
-					blob.add_link(*db, "image/jpeg", coll.path());
+					blob.link(*db, coll.path());
 					coll.add(*db, blob.blob());
 
 					db->command([comp=std::move(comp)](auto&&, std::error_code ec)
@@ -80,24 +99,13 @@ public:
 				}
 				else
 				{
-					db->command([comp = std::move(comp)](auto&& reply, std::error_code ec)
+					db->command([comp = std::move(comp)](auto&&, std::error_code ec)
 					{
 						comp(ec);
 					}, "DISCARD");
 				}
 			}
 		);
-	}
-
-	template <typename Complete>
-	static void remove_blob(
-		redis::Connection& db,
-		std::string_view user,
-		const ObjectID& blob,
-		std::string_view path,
-		Complete&& complete
-	)
-	{
 	}
 
 	template <typename Complete, typename BlobOrDir>

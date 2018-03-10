@@ -51,4 +51,43 @@ std::string Ownership::serialize(const BlobDatabase& db) const
 	return json.str();
 }
 
+BlobTable::BlobTable(std::string_view user, const ObjectID& blob) :
+	m_user{user}, m_blob{blob}
+{
+}
+
+void BlobTable::watch(redis::Connection& db) const
+{
+	db.command(
+		"WATCH %b%b:%b",
+		detail::Prefix<ObjectID>::value.data(), detail::Prefix<ObjectID>::value.size(),
+		m_user.data(), m_user.size(),
+		m_blob.data(), m_blob.size()
+	);
+}
+
+void BlobTable::link(redis::Connection& db, std::string_view path) const
+{
+	const char empty = '\0';
+	db.command(
+		"HMSET %b%b:%b link:%b %b",
+		detail::Prefix<ObjectID>::value.data(), detail::Prefix<ObjectID>::value.size(),
+		m_user.data(), m_user.size(),
+		m_blob.data(), m_blob.size(),
+		path.data(), path.size(),
+		&empty, 0
+	);
+}
+
+void BlobTable::unlink(redis::Connection& db, std::string_view path) const
+{
+	db.command(
+		"HDEL %b%b:%b link:%b",
+		detail::Prefix<ObjectID>::value.data(), detail::Prefix<ObjectID>::value.size(),
+		m_user.data(), m_user.size(),
+		m_blob.data(), m_blob.size(),
+		path.data(), path.size()
+	);
+}
+
 } // end of namespace hrb
