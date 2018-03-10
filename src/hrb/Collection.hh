@@ -76,89 +76,9 @@ public:
 	void link(redis::Connection& db, const ObjectID& id);
 	void unlink(redis::Connection& db, const ObjectID& id);
 
-	template <typename Complete>
-	static void add(
-		redis::Connection& db,
-		std::string_view user,
-		std::string_view path,
-		const ObjectID& blob,
-		Complete&& complete
-	)
-	{
-		db.command([
-				comp=std::forward<Complete>(complete)
-			](auto&& reply, std::error_code&& ec) mutable
-			{
-				comp(reply.as_int() == 1, std::move(ec));
-			},
-			"SADD %b%b:%b %b",
-			redis_prefix.data(), redis_prefix.size(),
-			user.data(), user.size(),
-			path.data(), path.size(),
-			blob.data(), blob.size()
-		);
-	}
-
-	template <typename Complete>
-	static void remove(
-		redis::Connection& db,
-		std::string_view user,
-		std::string_view path,
-		const ObjectID& blob,
-		Complete&& complete
-	)
-	{
-		db.command([
-				comp=std::forward<Complete>(complete)
-			](auto&& reply, std::error_code&& ec) mutable
-			{
-				// redis replies with the number of object deleted
-				if (!ec && reply.as_int() < 1)
-					ec = Error::object_not_exist;
-
-				comp(std::move(ec));
-			},
-			"SREM %b%b:%b %b",
-			redis_prefix.data(), redis_prefix.size(),
-			user.data(), user.size(),
-			path.data(), path.size(),
-			blob.data(), blob.size()
-		);
-	}
-
-	template <typename Complete>
-	static void load(
-		redis::Connection& db,
-		std::string_view user,
-		std::string_view path,
-		Complete&& complete
-	)
-	{
-		db.command([
-				comp=std::forward<Complete>(complete),
-				user=std::string{user},
-				path=std::string{path}
-			](auto&& reply, std::error_code&& ec) mutable
-			{
-				Collection con{std::move(user), std::move(path)};
-
-				for (auto&& blob : reply)
-					con.m_blobs.push_back(raw_to_object_id(blob.as_string()));
-
-				comp(std::move(con), std::move(ec));
-			},
-			"SMEMBERS %b%b:%b",
-			redis_prefix.data(), redis_prefix.size(),
-			user.data(), user.size(),
-			path.data(), path.size()
-		);
-	}
-
 	template <typename Complete, typename BlobDb>
-	static void serialize(
+	void serialize(
 		redis::Connection& db,
-		std::string_view user,
-		std::string_view path,
 		const BlobDb& blobdb,
 		Complete&& complete
 	)
@@ -166,17 +86,17 @@ public:
 		db.command(
 			[
 				comp=std::forward<Complete>(complete),
-				user=std::string{user},
-				path=std::string{path},
+				user=std::string{m_user},
+				path=std::string{m_path},
 				&blobdb
 			](auto&& reply, std::error_code&& ec) mutable
 			{
-				comp(serialize(std::move(user), std::move(path), blobdb, reply), std::move(ec));
+				comp(Collection::serialize(std::move(user), std::move(path), blobdb, reply), std::move(ec));
 			},
 			"SMEMBERS %b%b:%b",
 			redis_prefix.data(), redis_prefix.size(),
-			user.data(), user.size(),
-			path.data(), path.size()
+			m_user.data(), m_user.size(),
+			m_path.data(), m_path.size()
 		);
 	}
 
@@ -217,10 +137,6 @@ public:
 		);
 	}
 
-	using iterator = std::vector<ObjectID>::const_iterator;
-	iterator begin() const {return m_blobs.begin();}
-	iterator end() const {return m_blobs.end();}
-
 	const std::string& user() const {return m_user;}
 	const std::string& path() const {return m_path;}
 
@@ -253,7 +169,6 @@ private:
 private:
 	std::string             m_user;
 	std::string             m_path;
-	std::vector<ObjectID>   m_blobs;
 };
 
 } // end of namespace hrb

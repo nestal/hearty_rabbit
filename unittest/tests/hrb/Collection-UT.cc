@@ -24,33 +24,6 @@
 using namespace hrb;
 using namespace std::chrono_literals;
 
-TEST_CASE("Container tests", "[normal]")
-{
-	auto blobid = insecure_random<ObjectID>();
-
-	boost::asio::io_context ioc;
-	auto redis = redis::connect(ioc);
-
-	int tested = 0;
-	Collection::add(*redis, "testuser", "/", blobid, [&tested, redis, blobid](bool added, auto ec)
-	{
-		REQUIRE(!ec);
-		REQUIRE(added);
-
-		Collection::load(*redis, "testuser", "/", [&tested, blobid](auto&& con, auto ec)
-		{
-			REQUIRE(!ec);
-
-			auto entry = std::find(con.begin(), con.end(), blobid);
-			REQUIRE(entry != con.end());
-
-			++tested;
-		});
-	});
-	REQUIRE(ioc.run_for(10s) > 0);
-	REQUIRE(tested == 1);
-}
-
 TEST_CASE("Load 3 images in json", "[normal]")
 {
 	const auto blobids = insecure_random<std::array<ObjectID, 3>>();
@@ -58,18 +31,12 @@ TEST_CASE("Load 3 images in json", "[normal]")
 	boost::asio::io_context ioc;
 	auto redis = redis::connect(ioc);
 
-	int count = 0;
+	redis->command("MULTI");
 	for (auto&& blobid : blobids)
-	{
-		Collection::add(*redis, "testuser", "/", blobid, [&count](bool added, auto ec)
-		{
-			REQUIRE(!ec);
-			REQUIRE(added);
-			++count;
-		});
-	}
+		Collection{"testuser", "/"}.link(*redis, blobid);
+	redis->command("EXEC");
+
 	REQUIRE(ioc.run_for(10s) > 0);
-	REQUIRE(count == blobids.size());
 
 	ioc.restart();
 
@@ -82,7 +49,7 @@ TEST_CASE("Load 3 images in json", "[normal]")
 	};
 
 	bool tested = false;
-	Collection::serialize(*redis, "testuser", "/", MockBlobDb{}, [&tested](auto&& json, auto ec)
+	Collection{"testuser", "/"}.serialize(*redis, MockBlobDb{}, [&tested](auto&& json, auto ec)
 	{
 		INFO("serialize() error_code: " << ec << " " << ec.message());
 		REQUIRE(!ec);
@@ -101,19 +68,12 @@ TEST_CASE("Load 3 images in json", "[normal]")
 
 	ioc.restart();
 
-	int deleted = 0;
+	redis->command("MULTI");
 	for (auto&& blobid : blobids)
-	{
-		Collection::remove(*redis, "testuser", "/", blobid, [&deleted](auto&& ec)
-		{
-			INFO("remove() return error " << ec << " " << ec.message());
-			INFO("removed " << deleted << " objects");
-			REQUIRE(!ec);
-			deleted++;
-		});
-	}
+		Collection{"testuser", "/"}.unlink(*redis, blobid);
+	redis->command("EXEC");
+
 	REQUIRE(ioc.run_for(10s) > 0);
-	REQUIRE(deleted == blobids.size());
 }
 
 TEST_CASE("Scan for all containers from testuser")
