@@ -20,7 +20,6 @@
 
 #include <rapidjson/document.h>
 
-#include <iostream>
 #include <string_view>
 #include <functional>
 #include <vector>
@@ -53,7 +52,6 @@ private:
 			db.command(
 				[comp=std::forward<Complete>(complete)](auto&& reply, std::error_code&& ec) mutable
 				{
-					std::cout << "is_owned() return " << reply.type() << " " << reply.as_int() << " " << ec << std::endl;
 					comp(reply.as_int() > 0, std::move(ec));
 				},
 

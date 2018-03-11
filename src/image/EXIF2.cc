@@ -15,7 +15,6 @@
 #include <boost/endian/buffers.hpp>
 
 #include <array>
-#include <iostream>
 
 namespace hrb {
 
@@ -69,6 +68,7 @@ void find_app1(buffer_view& buffer, std::error_code& error)
 		big_uint16_buf_at length;
 	};
 
+	std::cout << "start" << std::endl;
 	while (true)
 	{
 		App seg{};
@@ -106,6 +106,11 @@ void find_app1(buffer_view& buffer, std::error_code& error)
 			break;
 		}
 
+		else if (seg.marker[1] >= 0xE2 && seg.marker[1] <= 0xEE)
+		{
+
+		}
+
 		// found DQT/DHT/DRI/SOF, which must be after APP1 segment
 		else if (
 			seg.marker[1] == 0xDB ||    // DQT
@@ -119,8 +124,13 @@ void find_app1(buffer_view& buffer, std::error_code& error)
 		}
 
 		// TODO: add support for App0 JFIF tags (marker = 0xE0)
-		// 0xFE is comment
-		else if (seg.marker[1] != 0xE0 && seg.marker[1] != 0xFE && seg.marker[1] != 0xDA)
+		// More details: http://www.ozhiker.com/electronics/pjmt/jpeg_info/app_segments.html
+		else if (
+			seg.marker[1] != 0xE0 &&                                // App0 (JIFF image)
+			!(seg.marker[1] >= 0xE2 && seg.marker[1] <= 0xEE) &&    // other application markers
+			seg.marker[1] != 0xFE &&                                // 0xFE is comment
+			seg.marker[1] != 0xDA
+		)
 		{
 			error = EXIF2::Error::invalid_header;
 			break;

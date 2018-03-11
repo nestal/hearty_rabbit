@@ -194,8 +194,6 @@ void Server::handle_blob(const EmptyRequest& req, Send&& send, const Authenticat
 	if (object_id == ObjectID{})
 		return send(http::response<http::empty_body>{http::status::not_found, req.version()});
 
-	std::cout << "handle blob: " << user << " " << auth.user() << std::endl;
-
 	auto redis = m_db.alloc();
 
 	// Check if the user owns the blob
