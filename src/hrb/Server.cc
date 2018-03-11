@@ -143,6 +143,8 @@ void Server::on_upload(UploadRequest&& req, EmptyResponseSender&& send, const Au
 	boost::system::error_code bec;
 
 	PathURL path_url{req.target()};
+	if (auth.user() != path_url.user())
+		return send(http::response<http::empty_body>{http::status::forbidden, req.version()});
 
 	Log(LOG_INFO, "uploading %1% bytes to path(%2%) file(%3%)", req.body().size(bec), path_url.collection(), path_url.filename());
 

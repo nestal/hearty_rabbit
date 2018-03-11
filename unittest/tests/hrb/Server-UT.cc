@@ -330,7 +330,7 @@ TEST_CASE("General server tests", "[normal]")
 	SECTION("Upload request")
 	{
 		UploadRequest req;
-		req.target("/upload/testdata");
+		req.target("/upload/testuser/testdata");
 		req.method(http::verb::put);
 
 		boost::system::error_code bec;

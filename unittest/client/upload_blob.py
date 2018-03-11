@@ -38,7 +38,7 @@ class NormalTestCase(unittest.TestCase):
 			source_jpeg = Image.open(io.BytesIO(in_img))
 
 			# upload to server
-			r1 = self.session.put("https://localhost:4433/upload/test.jpg", data=in_img)
+			r1 = self.session.put("https://localhost:4433/upload/sumsum/test.jpg", data=in_img)
 			self.assertEqual(r1.status_code, 201)
 			self.assertNotEqual(r1.headers["Location"], "")
 
@@ -59,7 +59,7 @@ class NormalTestCase(unittest.TestCase):
 	def test_upload_png(self):
 		with open("../tests/image/black_20x20.png", 'rb') as black:
 			# upload to server
-			r1 = self.session.put("https://localhost:4433/upload/black.png", data=black)
+			r1 = self.session.put("https://localhost:4433/upload/sumsum/black.png", data=black)
 			self.assertEqual(r1.status_code, 201)
 			self.assertNotEqual(r1.headers["Location"], "")
 
@@ -84,6 +84,25 @@ class NormalTestCase(unittest.TestCase):
 		self.assertGreater(len(r1.json()["elements"]), 0)
 		self.assertEqual(r1.json()["collection"], "")
 		self.assertEqual(r1.json()["username"], "sumsum")
+
+	def test_upload_to_others_collection(self):
+		with open("../tests/image/up_f_rot90.jpg", 'rb') as up:
+
+			# forbidden
+			r1 = self.session.put("https://localhost:4433/upload/yungyung/abc/up.jpg", data=up)
+			self.assertEqual(r1.status_code, 403)
+
+	def test_upload_jpeg_to_other_collection(self):
+		with open("../tests/image/up_f_rot90.jpg", 'rb') as up:
+
+			# upload to server
+			r1 = self.session.put("https://localhost:4433/upload/sumsum/some/collection/up.jpg", data=up)
+			self.assertEqual(r1.status_code, 201)
+			blob_id = r1.headers["Location"][-40:]
+
+		# should find it in the new collection
+		r2 = self.session.get("https://localhost:4433/coll/sumsum/some/collection/")
+		self.assertEqual(r2.json()["elements"][blob_id]["filename"], "up.jpg")
 
 if __name__ == '__main__':
 	unittest.main()
