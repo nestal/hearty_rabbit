@@ -13,8 +13,9 @@ docker run -t --detach --rm \
   --network=host --name hb_test \
     nestal/hearty_rabbit
 
-# Run all tests
-pushd automation
-source ./run_tests
+# Run python unit tests
+pushd unittest/client
+python3 upload_blob.py || { echo "auto system test failed!"; docker stop hb_test; exit 1;}
+popd
 
 docker stop hb_test

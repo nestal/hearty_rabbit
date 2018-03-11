@@ -139,7 +139,7 @@ TEST_CASE("read exif", "[normal]")
 	REQUIRE(exiv2_orientation({&img[0], img.size()}) == 8);
 }
 
-TEST_CASE("read exif from black.jpg", "[normal]")
+TEST_CASE("read exif from image without EXIF", "[normal]")
 {
 	std::error_code ec;
 	auto mmap = MMap::open(fs::path{__FILE__}.parent_path()/"black.jpg", ec);

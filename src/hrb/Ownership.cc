@@ -17,33 +17,51 @@
 
 namespace hrb {
 
-const std::string_view Ownership::redis_prefix{"ownership:"};
-
-Ownership::Ownership(std::string_view name) : m_name{name}
+Ownership::Ownership(std::string_view name) : m_user{name}
 {
 }
 
-std::string Ownership::serialize(const BlobDatabase& db) const
+const std::string_view Ownership::Blob::m_prefix{"blob:"};
+
+Ownership::Blob::Blob(std::string_view user, const ObjectID& blob) :
+	m_user{user}, m_blob{blob}
 {
-	bool first = true;
-	std::ostringstream json;
-	json << R"({"name":")" << m_name << R"(", "elements":{)";
-	for (auto&& blob : m_blobs)
-	{
-		auto meta = db.load_meta_json(blob);
-		if (!meta.empty())
-		{
-			if (first)
-				first = false;
-			else
-				json << ",\n";
+}
 
-			json << '\"' << blob << R"(": )" << meta;
-		}
-	}
-	json << "}}";
+void Ownership::Blob::watch(redis::Connection& db) const
+{
+	db.command(
+		"WATCH %b%b:%b",
+		m_prefix.data(), m_prefix.size(),
+		m_user.data(), m_user.size(),
+		m_blob.data(), m_blob.size()
+	);
+}
 
-	return json.str();
+void Ownership::Blob::link(redis::Connection& db, std::string_view path) const
+{
+	// If the blob link already exists, it should be pointing to an existing
+	// permission string. We should not change it
+	const char empty = '\0';
+	db.command(
+		"HSETNX %b%b:%b link:%b %b",
+		m_prefix.data(), m_prefix.size(),
+		m_user.data(), m_user.size(),
+		m_blob.data(), m_blob.size(),
+		path.data(), path.size(),
+		&empty, 0
+	);
+}
+
+void Ownership::Blob::unlink(redis::Connection& db, std::string_view path) const
+{
+	db.command(
+		"HDEL %b%b:%b link:%b",
+		m_prefix.data(), m_prefix.size(),
+		m_user.data(), m_user.size(),
+		m_blob.data(), m_blob.size(),
+		path.data(), path.size()
+	);
 }
 
 } // end of namespace hrb

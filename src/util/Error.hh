@@ -24,7 +24,8 @@ enum class Error
 	mmap_already_opened,
 	redis_command_error,
 	redis_field_not_found,
-	login_incorrect
+	redis_transaction_aborted,
+	login_incorrect,
 };
 
 const std::error_category& hrb_error_category();

@@ -46,7 +46,15 @@ public:
 
 	enum class Error {ok, too_small, invalid_header, not_found};
 
-	enum class Tag {orientation = 0x112};
+	enum class Tag {
+		orientation = 0x112,
+		date_time   = 0x132,
+		exif_offset = 0x8769,
+		exif_version = 0x9000,
+		date_time_original = 0x9003,
+		date_time_digitalized = 0x9004,
+		color_space = 0xa001
+	};
 
 	static const std::error_category& error_category();
 
@@ -60,6 +68,8 @@ public:
 
 private:
 	Field& to_native(Field& field) const;
+
+	void read_ifd(const unsigned char* jpeg, BufferView& buffer, std::error_code& error);
 
 private:
 	std::ptrdiff_t m_tiff_offset{};

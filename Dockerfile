@@ -12,7 +12,7 @@ COPY . /build/hearty_rabbit
 RUN mkdir /build/docker-build \
 	&& cd docker-build \
 	&& cmake \
-		-DBOOST_ROOT=/build/boost_1_66_0 \
+		-DBOOST_ROOT=/opt/boost_1_66_0 \
 		-DCMAKE_PREFIX_PATH=/opt/libb2 \
 		-DCMAKE_BUILD_TYPE=Release \
 		-DCMAKE_INSTALL_PREFIX=/opt/hearty_rabbit \

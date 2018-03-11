@@ -1,8 +1,0 @@
-#!/usr/bin/env bash
-
-set -e
-
-
-echo "GET login page returns 200"
-
-curl $CURLOPTS https://localhost:4433/

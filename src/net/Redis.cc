@@ -22,7 +22,6 @@
 #include <boost/system/error_code.hpp>
 
 #include <cassert>
-#include <iostream>
 
 namespace hrb {
 namespace redis {
@@ -67,6 +66,18 @@ Connection::~Connection()
 
 void Connection::do_write(CommandString&& cmd, Completion&& completion)
 {
+	// In some cases, the redis reply will be received before the async_write() callback
+	// is called. In other words, the write-callback of sending the redis command is
+	// called even _after_ we receive redis' reply to that command.
+	// If we en-queue the completion routine in the write-callback, it is possible that
+	// the completion routine is not queued yet by the time the reply arrives.
+	// In order to avoid this, we have to en-queue the completion routine before sending
+	// the command to redis. It is impossible to receive a reply before the command is
+	// sent.
+	m_callbacks.push_back(std::move(completion));
+	if (m_callbacks.size() == 1)
+		do_read();
+
 	auto buffer = cmd.buffer();
 	async_write(
 		m_socket,
@@ -76,18 +87,19 @@ void Connection::do_write(CommandString&& cmd, Completion&& completion)
 			[
 				this,
 				cmd=std::move(cmd),
-				comp=std::move(completion),
 				self=shared_from_this()
 			](auto ec, std::size_t bytes)
 			{
-				if (!ec)
+				if (ec)
 				{
-					m_callbacks.push_back(std::move(comp));
-					if (m_callbacks.size() == 1)
-						do_read();
+					Log(LOG_WARNING, "redis write error %1% %2%", ec, ec.message());
+
+					while (!m_callbacks.empty())
+						m_callbacks.front()(Reply{}, std::error_code{Error::protocol});
+						m_callbacks.pop_front();
+
+					disconnect();
 				}
-				else
-					comp(Reply{}, std::error_code{ec.value(), ec.category()});
 			}
 		)
 	);
@@ -115,7 +127,21 @@ void Connection::on_read(boost::system::error_code ec, std::size_t bytes)
 		// Extract all replies from the
 		while (!m_callbacks.empty() && result == ReplyReader::Result::ok)
 		{
-			m_callbacks.front()(std::move(reply), std::error_code{ec.value(), ec.category()});
+			// When we are in the middle of a transaction, the commands will be queued
+			// by redis. These queued commands will be executed when the "EXEC" command
+			// is sent. We cannot call the callbacks for these queued commands. Instead,
+			// we move them to m_queued_callback so that they will be executed when "EXEC".
+			if (reply.as_status() == "QUEUED")
+				m_queued_callbacks.push_back(std::move(m_callbacks.front()));
+
+			// reply is not QUEUED but inside a transaction, that means the transaction
+			// is just executed.
+			else if (!m_queued_callbacks.empty())
+				on_exec_transaction(std::move(reply), std::error_code{ec.value(), ec.category()});
+
+			else
+				m_callbacks.front()(std::move(reply), std::error_code{ec.value(), ec.category()});
+
 			m_callbacks.pop_front();
 
 			std::tie(reply, result) = m_reader.get();
@@ -124,7 +150,10 @@ void Connection::on_read(boost::system::error_code ec, std::size_t bytes)
 		if (result == ReplyReader::Result::ok)
 		{
 			assert(m_callbacks.empty());
-			Log(LOG_WARNING, "Redis sends more replies than requested. Ignoring reply.");
+			Log(LOG_WARNING, "Redis sends more replies than requested. Disconnecting. %1% %2%", reply.type(), reply.as_any_string());
+
+			// clear callback
+			result == ReplyReader::Result::error;
 		}
 
 		// Report parse error as protocol errors in the callbacks
@@ -140,7 +169,8 @@ void Connection::on_read(boost::system::error_code ec, std::size_t bytes)
 			disconnect();
 		}
 
-		// Keep reading until all outstanding commands are finished
+		// Keep reading until all outstanding commands are finished.
+		// This will keep the io_context::run() from returning.
 		else if (!m_callbacks.empty())
 			do_read();
 	}
@@ -154,6 +184,47 @@ void Connection::on_read(boost::system::error_code ec, std::size_t bytes)
 void Connection::disconnect()
 {
 	m_socket.close();
+}
+
+void Connection::on_exec_transaction(Reply&& reply, std::error_code ec)
+{
+	assert(!m_queued_callbacks.empty());
+
+	// transaction failed (i.e. WATCH error) or "DISCARD"
+	if (reply.is_nil() || reply.as_status() == "OK")
+	{
+		for (auto&& callback : m_queued_callbacks)
+			if (callback)
+				callback(Reply{reply}, hrb::Error::redis_transaction_aborted);
+	}
+
+	// transaction executed
+	else if (reply.array_size() == m_queued_callbacks.size())
+	{
+		auto callback = m_queued_callbacks.begin();
+		for (auto&& transaction_reply : reply)
+		{
+			assert(!m_queued_callbacks.empty());
+			assert(callback != m_queued_callbacks.end());
+
+			if (*callback)
+				(*callback)(Reply{transaction_reply}, ec);
+			callback++;
+		}
+	}
+
+	// something is wrong
+	else
+	{
+		Log(LOG_CRIT, "assertion failed: redis sends bad reply %1% %2%", reply.array_size(), m_queued_callbacks.size());
+		assert(false);
+	}
+
+	// run the callback for the "EXEC" command
+	assert(!m_callbacks.empty());
+	m_callbacks.front()(std::move(reply), std::move(ec));
+
+	m_queued_callbacks.clear();
 }
 
 Reply::Reply(::redisReply *r) noexcept :

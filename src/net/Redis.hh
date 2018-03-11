@@ -21,6 +21,7 @@
 #include <deque>
 #include <memory>
 #include <string>
+#include <type_traits>
 #include <mutex>
 
 namespace hrb {
@@ -61,12 +62,14 @@ public:
 	iterator end() const;
 
 	bool is_string() const {return m_reply->type == REDIS_REPLY_STRING;}
+	bool is_nil() const {return m_reply->type == REDIS_REPLY_NIL;}
 
 	std::string_view as_string() const noexcept;
 	std::string_view as_status() const noexcept;
 	std::string_view as_error() const noexcept;
 	std::string_view as_any_string() const noexcept;
 	boost::asio::const_buffer as_buffer() const noexcept;
+	int type() const {return m_reply->type;}
 
 	explicit operator bool() const noexcept ;
 
@@ -191,14 +194,66 @@ public:
 	Connection& operator=(Connection&&) = delete;
 	Connection& operator=(const Connection&) = delete;
 
-	template <typename Callback, typename... Args>
-	void command(Callback&& callback, Args... args)
+	template <
+		typename Callback,
+		typename... Args
+	>
+
+	// Only enable this template if Callback is a copy-constructible
+	// function-like type that takes two argument: Reply, std::error_code.
+	// If Callback is copy-constructible, we can copy it to the lambda
+	// capture directly. The other overload, which uses a shared_ptr to
+	// store the callback, does not require the callback to be copy-
+	// constructible, but will have more overhead from the shared_ptr.
+	typename std::enable_if_t<
+		std::is_invocable<Callback, Reply, std::error_code>::value &&
+		std::is_copy_constructible<Callback>::value
+	>
+	command(Callback&& callback, Args... args)
 	{
 		try
 		{
 			do_write(
 				CommandString{args...},
-				[cb=std::make_shared<Callback>(std::forward<Callback>(callback)), self=shared_from_this()](auto&& r, auto ec)
+				[
+					callback=std::forward<Callback>(callback),
+					self=shared_from_this()
+				](auto&& r, auto ec) mutable
+				{
+					callback(std::move(r), std::move(ec));
+				}
+			);
+		}
+		catch (std::logic_error&)
+		{
+			callback(Reply{}, std::error_code{Error::protocol});
+		}
+	}
+
+	template <
+		typename Callback,
+		typename... Args
+	>
+
+	// Only enable this template if Callback is a move-constructible
+	// function-like type that takes two argument: Reply, std::error_code.
+	// This function will move the passed callback into a shared_ptr,
+	// which will be stored in a lambda capture.
+	typename std::enable_if_t<
+		std::is_invocable<Callback, Reply, std::error_code>::value &&
+		std::is_move_constructible<Callback>::value &&
+		!std::is_copy_constructible<Callback>::value
+	>
+	command(Callback&& callback, Args... args)
+	{
+		try
+		{
+			do_write(
+				CommandString{args...},
+				[
+					cb=std::make_shared<std::remove_reference_t<Callback>>(std::forward<Callback>(callback)),
+					self=shared_from_this()
+				](auto&& r, auto ec)
 				{
 					(*cb)(std::move(r), std::move(ec));
 				}
@@ -208,6 +263,24 @@ public:
 		{
 			callback(Reply{}, std::error_code{Error::protocol});
 		}
+	}
+
+	template <typename... Args>
+	void command(const char *cmd, Args... args)
+	{
+		try
+		{
+			do_write(CommandString{cmd, args...}, [](auto&&, auto&&){});
+		}
+		catch (std::logic_error&)
+		{
+		}
+	}
+
+	template <typename... Args>
+	void command(const std::string& cmd, Args... args)
+	{
+		return command(cmd.c_str(), args...);
 	}
 
 	boost::asio::io_context& get_io_context() {return m_socket.get_io_context();}
@@ -220,6 +293,8 @@ private:
 	void do_read();
 	void on_read(boost::system::error_code ec, std::size_t bytes);
 
+	void on_exec_transaction(Reply&& reply, std::error_code ec);
+
 private:
 	boost::asio::ip::tcp::socket m_socket;
 	boost::asio::strand<boost::asio::io_context::executor_type> m_strand;
@@ -229,6 +304,7 @@ private:
 	std::vector<char> m_read_buf;
 
 	std::deque<Completion> m_callbacks;
+	std::vector<Completion> m_queued_callbacks;
 
 	ReplyReader m_reader;
 	PoolBase&   m_parent;

@@ -15,7 +15,6 @@
 #include <boost/endian/buffers.hpp>
 
 #include <array>
-#include <iostream>
 
 namespace hrb {
 
@@ -69,8 +68,6 @@ void find_app1(buffer_view& buffer, std::error_code& error)
 		big_uint16_buf_at length;
 	};
 
-	std::size_t index = 2;
-
 	while (true)
 	{
 		App seg{};
@@ -108,6 +105,11 @@ void find_app1(buffer_view& buffer, std::error_code& error)
 			break;
 		}
 
+		else if (seg.marker[1] >= 0xE2 && seg.marker[1] <= 0xEE)
+		{
+
+		}
+
 		// found DQT/DHT/DRI/SOF, which must be after APP1 segment
 		else if (
 			seg.marker[1] == 0xDB ||    // DQT
@@ -120,8 +122,14 @@ void find_app1(buffer_view& buffer, std::error_code& error)
 			break;
 		}
 
-		// 0xFE is comment
-		else if (seg.marker[1] != 0xE0 && seg.marker[1] != 0xFE && seg.marker[1] != 0xDA)
+		// TODO: add support for App0 JFIF tags (marker = 0xE0)
+		// More details: http://www.ozhiker.com/electronics/pjmt/jpeg_info/app_segments.html
+		else if (
+			seg.marker[1] != 0xE0 &&                                // App0 (JIFF image)
+			!(seg.marker[1] >= 0xE2 && seg.marker[1] <= 0xEE) &&    // other application markers
+			seg.marker[1] != 0xFE &&                                // 0xFE is comment
+			seg.marker[1] != 0xDA
+		)
 		{
 			error = EXIF2::Error::invalid_header;
 			break;
@@ -185,6 +193,34 @@ const unsigned char* read_EXIF_and_TIFF_header(buffer_view& buffer, order& byte_
 
 } // end of anonymous namespace
 
+void EXIF2::read_ifd(const unsigned char* jpeg, BufferView& buffer, std::error_code& error)
+{
+	std::uint16_t tag_count{};
+	read(buffer, tag_count, error);
+	if (error)
+		return;
+	tag_count = hrb::to_native(tag_count, m_byte_order);
+
+	for (std::uint16_t i = 0 ; i < tag_count ; i++)
+	{
+		auto offset = buffer.data() - jpeg;
+		assert(offset > 0);
+
+		Field tag{};
+		read(buffer, tag, error);
+		if (error)
+			return;
+
+		to_native(tag);
+		m_tags.emplace(static_cast<Tag>(tag.tag), offset);
+
+//		std::cout << "tag " << std::hex << tag.tag << " value = " << tag.value_offset << std::endl;
+	}
+
+	// After the tags there are 4 more bytes that is the offset of the next IFD.
+	// We don't need all IFDs so we ignore it.
+}
+
 EXIF2::EXIF2(const unsigned char *jpeg, std::size_t size, std::error_code& error)
 {
 	if (jpeg[0] != 0xFF ||
@@ -207,25 +243,22 @@ EXIF2::EXIF2(const unsigned char *jpeg, std::size_t size, std::error_code& error
 	m_tiff_offset = tiff-jpeg;
 	assert(m_tiff_offset > 0);
 
-	std::uint16_t tag_count{};
-	read(buffer, tag_count, error);
+	read_ifd(jpeg, buffer, error);
 	if (error)
 		return;
-	tag_count = hrb::to_native(tag_count, m_byte_order);
 
-	for (std::uint16_t i = 0 ; i < tag_count ; i++)
+	if (auto exif_offset = get(jpeg, Tag::exif_offset))
 	{
-		// convert to non-const pointer
-		auto offset = buffer.data() - jpeg;
-		assert(offset > 0);
-
-		Field tag{};
-		read(buffer, tag, error);
-		if (error)
+		if (m_tiff_offset + exif_offset->value_offset >= size)
+		{
+			error = Error::too_small;
 			return;
+		}
 
-		to_native(tag);
-		m_tags.emplace(static_cast<Tag>(tag.tag), offset);
+		auto exif_if0_start = tiff+exif_offset->value_offset;
+		BufferView exif_ifd{exif_if0_start, size-(exif_if0_start-jpeg)};
+
+		read_ifd(jpeg, exif_ifd, error);
 	}
 }
 

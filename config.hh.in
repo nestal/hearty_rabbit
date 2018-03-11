@@ -19,9 +19,8 @@
 namespace hrb {
 namespace constants {
 
-static const std:: string_view config_filename = "@CONFIG_FILENAME@";
-static const std:: string_view version         = "@VERSION@";
-static const std:: string_view install_prefix  = "@CMAKE_INSTALL_PREFIX@";
+const std::string_view config_filename = "@CONFIG_FILENAME@";
+const std::string_view version         = "@VERSION@";
 
 @HTTP_SERVED_FILES@
 

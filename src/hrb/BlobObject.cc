@@ -43,6 +43,7 @@ BlobObject BlobObject::upload(
 	const Magic& magic,
 	const Size& resize_img,
 	std::string_view filename,
+	int quality,
 	std::error_code& ec
 )
 {
@@ -75,7 +76,7 @@ BlobObject BlobObject::upload(
 		};
 
 		if (resize_img != img.size())
-			rotated = img.compress(70);
+			rotated = img.compress(quality);
 
 		std::ostringstream fn;
 		fn << resize_img.width() << "x" << resize_img.height();
@@ -172,7 +173,7 @@ std::string BlobObject::meta_string(const fs::path& dir)
 {
 	std::error_code ec;
 	auto meta = MMap::open(dir/metafile, ec);
-	return ec ? std::string{} : std::string{meta.string()};
+	return ec ? std::string{"\"\""} : std::string{meta.string()};
 }
 
 } // end of namespace hrb

@@ -20,54 +20,75 @@ TEST_CASE("path URL")
 {
 	PathURL empty{""};
 	REQUIRE(empty.action() == "");
-	REQUIRE(empty.path() == "/");
+	REQUIRE(empty.collection() == "");
 	REQUIRE(empty.filename() == "");
 
 	PathURL slash{"/"};
 	REQUIRE(slash.action() == "/");
 	REQUIRE(slash.user() == "");
-	REQUIRE(slash.path() == "/");
+	REQUIRE(slash.collection() == "");
 	REQUIRE(slash.filename() == "");
 
 	PathURL no_path{"/view/file"};
 	REQUIRE(no_path.action() == "/view");
 	REQUIRE(no_path.user() == "file");
-	REQUIRE(no_path.path() == "/");
+	REQUIRE(no_path.collection() == "");
 	REQUIRE(no_path.filename() == "");
 
 	PathURL slash_view_slash{"/view/"};
 	REQUIRE(slash_view_slash.action() == "/view");
 	REQUIRE(slash_view_slash.user() == "");
-	REQUIRE(slash_view_slash.path() == "/");
+	REQUIRE(slash_view_slash.collection() == "");
 	REQUIRE(slash_view_slash.filename() == "");
 
 	PathURL slash_view{"/view"};
 	REQUIRE(slash_view.action() == "/view");
 	REQUIRE(slash_view.user() == "");
-	REQUIRE(slash_view.path() == "/");
+	REQUIRE(slash_view.collection() == "");
 	REQUIRE(slash_view.filename() == "");
 
 	PathURL slash_view_slash_user{"/view/sumyung"};
 	REQUIRE(slash_view_slash_user.action() == "/view");
 	REQUIRE(slash_view_slash_user.user() == "sumyung");
-	REQUIRE(slash_view_slash_user.path() == "/");
+	REQUIRE(slash_view_slash_user.collection() == "");
 	REQUIRE(slash_view_slash_user.filename() == "");
 
 	PathURL slash_upload_slash_user_slash{"/upload/not_exists/"};
 	REQUIRE(slash_upload_slash_user_slash.action() == "/upload");
 	REQUIRE(slash_upload_slash_user_slash.user() == "not_exists");
-	REQUIRE(slash_upload_slash_user_slash.path() == "/");
+	REQUIRE(slash_upload_slash_user_slash.collection() == "");
 	REQUIRE(slash_upload_slash_user_slash.filename() == "");
 
 	PathURL slash_upload_slash_path_slash{"/upload/some/path/to/"};
 	REQUIRE(slash_upload_slash_path_slash.action() == "/upload");
 	REQUIRE(slash_upload_slash_path_slash.user() == "some");
-	REQUIRE(slash_upload_slash_path_slash.path() == "/path/to/");
+	REQUIRE(slash_upload_slash_path_slash.collection() == "path/to");
 	REQUIRE(slash_upload_slash_path_slash.filename() == "");
 
 	PathURL slash_upload_slash_path_slash_filename{"/upload/path/to/upload/myfile.jpeg"};
 	REQUIRE(slash_upload_slash_path_slash_filename.action() == "/upload");
 	REQUIRE(slash_upload_slash_path_slash_filename.user() == "path");
-	REQUIRE(slash_upload_slash_path_slash_filename.path() == "/to/upload/");
+	REQUIRE(slash_upload_slash_path_slash_filename.collection() == "to/upload");
 	REQUIRE(slash_upload_slash_path_slash_filename.filename() == "myfile.jpeg");
+
+	// slash at the start and end of path will be removed
+	PathURL slash_upload_slash_path_slash_slash_filename{"/upload/path//myfile.jpeg"};
+	REQUIRE(slash_upload_slash_path_slash_slash_filename.action() == "/upload");
+	REQUIRE(slash_upload_slash_path_slash_slash_filename.user() == "path");
+	REQUIRE(slash_upload_slash_path_slash_slash_filename.collection() == "");
+	REQUIRE(slash_upload_slash_path_slash_slash_filename.filename() == "myfile.jpeg");
+
+	// slash at the start and end of path will be removed
+	PathURL slash_upload_slash_path_3slash_filename{"/upload/path///password"};
+	REQUIRE(slash_upload_slash_path_3slash_filename.action() == "/upload");
+	REQUIRE(slash_upload_slash_path_3slash_filename.user() == "path");
+	REQUIRE(slash_upload_slash_path_3slash_filename.collection() == "");
+	REQUIRE(slash_upload_slash_path_3slash_filename.filename() == "password");
+
+	// slash at the start and end of path will be removed
+	PathURL path_with_2slashes{"/upload/path/something/////wrong/image.jpeg"};
+	REQUIRE(path_with_2slashes.action() == "/upload");
+	REQUIRE(path_with_2slashes.user() == "path");
+	REQUIRE(path_with_2slashes.collection() == "something/////wrong");
+	REQUIRE(path_with_2slashes.filename() == "image.jpeg");
 }

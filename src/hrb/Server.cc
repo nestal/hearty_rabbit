@@ -12,8 +12,7 @@
 
 #include "Server.hh"
 #include "ResourcesList.hh"
-#include "Container.hh"
-#include "PathURL.hh"
+#include "Collection.hh"
 
 #include "crypto/Password.hh"
 #include "crypto/Authentication.hh"
@@ -89,7 +88,7 @@ void Server::on_login(const StringRequest& req, EmptyResponseSender&& send)
 		send(see_other("/", req.version()));
 }
 
-void Server::on_logout(const EmptyRequest& req, const Authentication& auth, EmptyResponseSender&& send)
+void Server::on_logout(const EmptyRequest& req, EmptyResponseSender&& send, const Authentication& auth)
 {
 	auth.destroy_session(*m_db.alloc(), [this, send=std::move(send), version=req.version()](auto&& ec) mutable
 	{
@@ -112,52 +111,66 @@ http::response<http::empty_body> Server::see_other(boost::beast::string_view whe
 	return res;
 }
 
+void Server::unlink(std::string_view user, std::string_view coll, const ObjectID& blob_id, unsigned version, EmptyResponseSender&& send)
+{
+	Log(LOG_INFO, "unlinking object %1% from path(%2%)", blob_id, coll);
+
+	// remove from user's container
+	Ownership{user}.link(
+		*m_db.alloc(), coll, blob_id, false,
+		[send = std::move(send), version](auto ec)
+		{
+			auto status = http::status::accepted;
+			if (ec == Error::object_not_exist)
+				status = http::status::bad_request;
+			else if (ec)
+				status = http::status::internal_server_error;
+
+			return send(http::response<http::empty_body>{status,version});
+		}
+	);
+}
+
 void Server::on_upload(UploadRequest&& req, EmptyResponseSender&& send, const Authentication& auth)
 {
 	boost::system::error_code bec;
 
 	PathURL path_url{req.target()};
+	if (auth.user() != path_url.user())
+		return send(http::response<http::empty_body>{http::status::forbidden, req.version()});
 
-	Log(LOG_INFO, "uploading %1% bytes to path(%2%) file(%3%)", req.body().size(bec), path_url.path(), path_url.filename());
+	Log(LOG_INFO, "uploading %1% bytes to path(%2%) file(%3%)", req.body().size(bec), path_url.collection(), path_url.filename());
 
 	std::error_code ec;
 	auto id = m_blob_db.save(std::move(req.body()), path_url.filename(), ec);
-	Log(LOG_INFO, "uploaded %1% bytes to %2% (%3% %4%)", req.body().size(bec), id, ec, ec.message());
+	Log(LOG_INFO, "%5% uploaded %1% to %2% (%3% %4%)", req.target(), id, ec, ec.message(), auth.user());
 
 	if (ec)
 		return send(http::response<http::empty_body>{http::status::internal_server_error, req.version()});
 
-	// Add the newly created blob to the user's container.
-	// The user's container contains all the blobs that is owned by the user.
+	// Add the newly created blob to the user's ownership table.
+	// The user's ownership table contains all the blobs that is owned by the user.
 	// It will be used for authorizing the user's request on these blob later.
-	Ownership::add(*m_db.alloc(), auth.user(), id, [
-		id,
-		this,
-		auth,
-		filename=std::string{path_url.filename()},
-		path=std::string{path_url.path()},
-		send=std::move(send),
-		version=req.version()
-	](auto ec) mutable
-	{
-		if (ec)
-			return send(http::response<http::empty_body>{http::status::internal_server_error,version});
-
-		// add to user's root container
-		Container::add(*m_db.alloc(), auth.user(), path, filename, id, "image/jpeg",
-			[send=std::move(send), version, id](auto ec)
-			{
-				http::response<http::empty_body> res{
-					ec ? http::status::internal_server_error : http::status::created,
-					version
-				};
-				if (!ec)
-					res.set(http::field::location, "/blob/" + to_hex(id));
-				res.set(http::field::cache_control, "no-cache, no-store, must-revalidate");
-				return send(std::move(res));
-			}
-		);
-	});
+	Ownership{auth.user()}.link(
+		*m_db.alloc(), path_url.collection(), id, true, [
+			id,
+			this,
+			auth,
+			coll=std::string{path_url.collection()},
+			send = std::move(send),
+			version = req.version()
+		](auto ec)
+		{
+			http::response<http::empty_body> res{
+				ec ? http::status::internal_server_error : http::status::created,
+				version
+			};
+			if (!ec)
+				res.set(http::field::location, "/blob/" + auth.user() + '/' + (coll.empty() ? "" : coll + '/') + to_hex(id));
+			res.set(http::field::cache_control, "no-cache, no-store, must-revalidate");
+			return send(std::move(res));
+		}
+	);
 }
 
 void Server::on_invalid_session(const RequestHeader& req, FileResponseSender&& send)
@@ -185,11 +198,6 @@ void Server::on_invalid_session(const RequestHeader& req, FileResponseSender&& s
 
 		send(http::response<SplitBuffers>{http::status::forbidden, version});
 	});
-}
-
-http::response<http::string_body> Server::get_dir(const EmptyRequest& req)
-{
-	return http::response<http::string_body>();
 }
 
 http::response<http::string_body> Server::bad_request(boost::beast::string_view why, unsigned version)
@@ -227,19 +235,6 @@ http::response<http::string_body> Server::server_error(boost::beast::string_view
 	return res;
 }
 
-void Server::serve_home(FileResponseSender&& send, unsigned version, const Authentication& auth)
-{
-	Ownership::load(*m_db.alloc(), auth.user(), [send=std::move(send), version, this](auto ec, auto&& ownership)
-	{
-		auto res = m_lib.find_dynamic("index.html", version);
-		res.body().extra(
-			index_needle,
-			"<script>var dir = " + ownership.serialize(m_blob_db) + ";</script>"
-		);
-		send(std::move(res));
-	});
-}
-
 void Server::serve_view(const EmptyRequest& req, Server::FileResponseSender&& send, const Authentication& auth)
 {
 	if (req.method() != http::verb::get)
@@ -257,7 +252,10 @@ void Server::serve_view(const EmptyRequest& req, Server::FileResponseSender&& se
 	if (path_url.user() != auth.user())
 		return send(http::response<SplitBuffers>{http::status::forbidden, req.version()});
 
-	Container::serialize(*m_db.alloc(), auth.user(), path_url.path(), [send=std::move(send), version=req.version(), auth, this](auto&& json, auto ec)
+	Collection{auth.user(), path_url.collection()}.serialize(
+		*m_db.alloc(),
+		m_blob_db,
+		[send=std::move(send), version=req.version(), auth, this](auto&& json, auto ec)
 	{
 		std::ostringstream ss;
 		ss  << "<script>var dir = " << json << ";</script>";
@@ -468,6 +466,31 @@ std::string Server::user_view(std::string_view user, std::string_view path)
 	result.append(path.data(), path.size());
 
 	return result;
+}
+
+void Server::serve_collection(const EmptyRequest& req, StringResponseSender&& send, const Authentication& auth)
+{
+	if (req.method() != http::verb::get)
+		return send(http::response<http::string_body>{http::status::bad_request, req.version()});
+
+	PathURL path_url{req.target()};
+	if (path_url.user() != auth.user())
+		return send(http::response<http::string_body>{http::status::forbidden, req.version()});
+
+	Collection{path_url.user(), path_url.collection()}.serialize(
+		*m_db.alloc(),
+		m_blob_db,
+		[send=std::move(send), version=req.version()](auto&& json, auto ec)
+		{
+			http::response<http::string_body> res{
+				std::piecewise_construct,
+				std::make_tuple(std::move(json)),
+				std::make_tuple(http::status::ok, version)
+			};
+			res.set(http::field::content_type, "application/json");
+			return send(std::move(res));
+		}
+	);
 }
 
 } // end of namespace

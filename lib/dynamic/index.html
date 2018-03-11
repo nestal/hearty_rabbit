@@ -15,7 +15,7 @@
 <body class="index-body">
 <div class="topnav">
 	<img class="nav-logo" src="/logo.svg">
-	<label class="active"><span id="username"></span>'s Home</label>
+	<label class="active" onclick="home()"><span id="username"></span>'s Photo</label>
 	<label for="file-upload">Upload</label>
 	<label>About</label>
 	<a href="/logout">Logout</a>
@@ -25,7 +25,7 @@
 <section id="hrb-entry-root">
 	<div id="hrb-entry-prototype">
 		<img
-				src="loading.svg"
+				src="/loading.svg"
 				onclick="show_image(this.dataset.blob_id);"
 		>
 	</div>

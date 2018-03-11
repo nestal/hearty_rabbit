@@ -20,6 +20,7 @@
 #include <cassert>
 #include <chrono>
 #include <iostream>
+#include <util/Error.hh>
 
 using namespace hrb::redis;
 
@@ -209,4 +210,76 @@ TEST_CASE("redis reply reader simple error cases", "[normal]")
 		REQUIRE(!reply);
 		REQUIRE(reply.as_string().empty());
 	}
+}
+
+TEST_CASE("transaction", "[normal]")
+{
+	boost::asio::io_context ioc;
+	auto redis = connect(ioc);
+
+	int tested = 0;
+	auto expect_success = [&tested](auto, auto ec)
+	{
+		REQUIRE(!ec);
+		tested++;
+	};
+
+	SECTION("execute transaction")
+	{
+		redis->command(expect_success, "MULTI");
+		redis->command(expect_success, "SET in_transaction 100");
+
+		redis->command(expect_success, "EXEC");
+	}
+	SECTION("discard transaction")
+	{
+		auto expect_abort = [&tested](auto, auto ec)
+		{
+			REQUIRE(ec == hrb::Error::redis_transaction_aborted);
+			tested++;
+		};
+
+		redis->command(expect_success, "MULTI");
+		redis->command(expect_abort, "SET in_transaction 100");
+
+		redis->command(expect_success, "DISCARD");
+	}
+
+	using namespace std::chrono_literals;
+	REQUIRE(ioc.run_for(10s) > 0);
+	REQUIRE(tested == 3);
+}
+
+TEST_CASE("std::function() as callback", "[normal]")
+{
+	bool tested = false;
+	std::function<void(Reply, std::error_code)> expect_success{[&tested](Reply, std::error_code ec)
+	{
+		REQUIRE(!ec);
+		tested = true;
+	}};
+
+	boost::asio::io_context ioc;
+	auto redis = connect(ioc);
+
+	redis->command(expect_success, "SET func_callback 120");
+
+	using namespace std::chrono_literals;
+	REQUIRE(ioc.run_for(10s) > 0);
+	REQUIRE(tested);
+}
+
+TEST_CASE("keep queuing")
+{
+	boost::asio::io_context ioc;
+	auto redis = connect(ioc);
+
+	redis->command("MULTI");
+
+	for (int i = 0 ; i < 1000; i++)
+		redis->command("SET key 100");
+
+	redis->command("EXEC");
+	using namespace std::chrono_literals;
+	REQUIRE(ioc.run_for(10s) > 0);
 }

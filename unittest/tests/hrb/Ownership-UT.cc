@@ -16,73 +16,36 @@
 #include "hrb/Ownership.hh"
 #include "hrb/BlobDatabase.hh"
 #include "hrb/UploadFile.hh"
+#include "crypto/Random.hh"
 
 #include <rapidjson/document.h>
 
 using namespace hrb;
+using namespace std::chrono_literals;
 
-TEST_CASE("Ownership tests", "[normal]")
+TEST_CASE("add blob to Ownership", "[normal]")
 {
-	using namespace std::chrono_literals;
+	auto blobid = insecure_random<ObjectID>();
 
 	boost::asio::io_context ioc;
 	auto redis = redis::connect(ioc);
 
-	std::error_code sec;
-	BlobDatabase blobdb{"/tmp/BlobDatabase-UT", {2048,2048}};
-	UploadFile tmp;
-	blobdb.prepare_upload(tmp, sec);
-
-	boost::system::error_code ec;
-
-	char test[] = "hello world!!";
-	auto count = tmp.write(test, sizeof(test), ec);
-	REQUIRE(count == sizeof(test));
-	REQUIRE(ec == boost::system::error_code{});
-
-	auto testid = blobdb.save(std::move(tmp), "hello.world", sec);
-
 	int tested = 0;
-	Ownership::add(*redis, "test", testid, [&tested, redis, testid, &blobdb](std::error_code ec)
-	{
-		REQUIRE(!ec);
 
-		Ownership::is_owned(*redis, "test", testid, [&tested](std::error_code ec, bool added)
+	Ownership{"test"}.link(
+		*redis, "/", blobid, true, [&tested, redis, blobid](std::error_code ec)
 		{
 			REQUIRE(!ec);
-			REQUIRE(added);
 			tested++;
-		});
 
-		Ownership::load(*redis, "test", [&tested, testid, &blobdb, redis](std::error_code ec, Ownership&& container)
-		{
-			REQUIRE(!ec);
-			REQUIRE(container.name() == "test");
-			REQUIRE(container.size() > 0);
-			REQUIRE(!container.empty());
-
-			REQUIRE(std::find(container.begin(), container.end(), testid) != container.end());
-
-			auto json = container.serialize(blobdb);
-			INFO("container json: " << json);
-			REQUIRE(json.size() > 0);
-
-			rapidjson::Document doc;
-			doc.Parse(json.c_str(), json.size());
-			REQUIRE(doc["name"].GetString() == std::string{"test"});
-
-			Ownership::remove(*redis, "test", testid, [&tested, testid, redis](std::error_code ec)
+			Ownership{"test"}.is_owned(*redis, blobid, [&tested](bool owned, std::error_code ec)
 			{
 				REQUIRE(!ec);
-				Ownership::is_owned(*redis, "test", testid, [&tested](std::error_code ec, bool present)
-				{
-					REQUIRE(!ec);
-					REQUIRE(!present);
-					tested++;
-				});
+				REQUIRE(owned);
+				tested++;
 			});
-		});
-	});
+		}
+	);
 	REQUIRE(ioc.run_for(10s) > 0);
 	REQUIRE(tested == 2);
 }

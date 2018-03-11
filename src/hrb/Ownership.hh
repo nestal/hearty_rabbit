@@ -13,7 +13,10 @@
 #pragma once
 
 #include "ObjectID.hh"
+
+#include "Collection.hh"
 #include "net/Redis.hh"
+#include "util/Log.hh"
 
 #include <rapidjson/document.h>
 
@@ -29,110 +32,97 @@ class BlobDatabase;
 class Ownership
 {
 private:
-	static const std::string_view redis_prefix;
+	class Blob
+	{
+	private:
+		static const std::string_view m_prefix;
+
+	public:
+		Blob(std::string_view user, const ObjectID& blob);
+
+		void watch(redis::Connection& db) const;
+
+		// expect to be done inside a transaction
+		void link(redis::Connection& db, std::string_view path) const;
+		void unlink(redis::Connection& db, std::string_view path) const;
+
+		template <typename Complete>
+		void is_owned(redis::Connection& db, Complete&& complete)
+		{
+			db.command(
+				[comp=std::forward<Complete>(complete)](auto&& reply, std::error_code&& ec) mutable
+				{
+					comp(reply.as_int() > 0, std::move(ec));
+				},
+
+				"EXISTS %b%b:%b",
+				m_prefix.data(), m_prefix.size(),
+				m_user.data(), m_user.size(),
+				m_blob.data(), m_blob.size()
+			);
+		}
+
+		const std::string& user() const {return m_user;}
+		const ObjectID& blob() const {return m_blob;}
+
+	private:
+		std::string m_user;
+		ObjectID    m_blob;
+	};
 
 public:
 	explicit Ownership(std::string_view name);
 
 	template <typename Complete>
-	static void load(
+	void link(
 		redis::Connection& db,
-		std::string_view user,
+		std::string_view path,
+		const ObjectID& blobid,
+		bool add,
 		Complete&& complete
 	)
 	{
-		db.command([
-			comp=std::forward<Complete>(complete),
-			user=std::string{user}
-		](auto&& reply, std::error_code&& ec) mutable
+		Blob  blob{m_user, blobid};
+		Collection coll{m_user, path};
+
+		// watch everything that will be modified
+		blob.watch(db);
+		coll.watch(db);
+
+		db.command("MULTI");
+		if (add)
 		{
-			Ownership result{user};
-			for (auto&& element : reply)
-			{
-				if (ObjectID oid = raw_to_object_id(element.as_string()); oid != ObjectID{})
-					result.m_blobs.push_back(oid);
-			}
+			blob.link(db, coll.path());
+			coll.link(db, blob.blob());
+		}
+		else
+		{
+			blob.unlink(db, coll.path());
+			coll.unlink(db, blob.blob());
+		}
 
-			comp(std::move(ec), std::move(result));
-		}, "SMEMBERS %b%b", redis_prefix.data(), redis_prefix.size(), user.data(), user.size());
+		db.command([comp=std::forward<Complete>(complete)](auto&&, std::error_code ec)
+		{
+			Log(LOG_INFO, "transaction completed %1%", ec);
+			comp(ec);
+		}, "EXEC");
 	}
 
 	template <typename Complete>
-	static void add(
+	void is_owned(
 		redis::Connection& db,
-		std::string_view user,
 		const ObjectID& blob,
 		Complete&& complete
 	)
 	{
-		db.command([
-				comp=std::forward<Complete>(complete)
-			](auto&&, std::error_code&& ec) mutable
-			{
-				comp(std::move(ec));
-			},
-			"SADD %b%b %b",
-			redis_prefix.data(), redis_prefix.size(),
-			user.data(), user.size(),
-			blob.data(), blob.size()
-		);
+		Blob{m_user, blob}.is_owned(db, std::forward<Complete>(complete));
 	}
 
-	template <typename Complete>
-	static void remove(
-		redis::Connection& db,
-		std::string_view user,
-		const ObjectID& blob,
-		Complete&& complete
-	)
-	{
-		db.command([
-				comp=std::forward<Complete>(complete)
-			](auto&&, std::error_code&& ec) mutable
-			{
-				comp(std::move(ec));
-			},
-			"SREM %b%b %b",
-			redis_prefix.data(), redis_prefix.size(),
-			user.data(), user.size(),
-			blob.data(), blob.size()
-		);
-	}
-
-	template <typename Complete>
-	static void is_owned(
-		redis::Connection& db,
-		std::string_view user,
-		const ObjectID& blob,
-		Complete&& complete
-	)
-	{
-		db.command(
-			[comp=std::forward<Complete>(complete)](auto&& reply, std::error_code&& ec) mutable
-			{
-				comp(std::move(ec), reply.as_int() == 1);
-			},
-			"SISMEMBER %b%b %b",
-			redis_prefix.data(), redis_prefix.size(),
-			user.data(), user.size(),
-			blob.data(), blob.size()
-		);
-	}
-
-	const std::string& name() const {return m_name;}
-
-	using value_type = ObjectID;
-	using iterator = std::vector<ObjectID>::const_iterator;
-	iterator begin() const {return m_blobs.begin();}
-	iterator end() const {return m_blobs.end();}
-	std::size_t size() const {return m_blobs.size();}
-	bool empty() const {return m_blobs.empty();}
-
-	std::string serialize(const BlobDatabase& db) const;
+	const std::string& user() const {return m_user;}
 
 private:
-	std::string             m_name;
-	std::vector<ObjectID>   m_blobs;
+	std::string             m_user;
 };
+
 
 } // end of namespace hrb
