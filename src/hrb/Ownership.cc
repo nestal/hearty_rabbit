@@ -40,9 +40,11 @@ void Ownership::Blob::watch(redis::Connection& db) const
 
 void Ownership::Blob::link(redis::Connection& db, std::string_view path) const
 {
+	// If the blob link already exists, it should be pointing to an existing
+	// permission string. We should not change it
 	const char empty = '\0';
 	db.command(
-		"HMSET %b%b:%b link:%b %b",
+		"HSETNX %b%b:%b link:%b %b",
 		m_prefix.data(), m_prefix.size(),
 		m_user.data(), m_user.size(),
 		m_blob.data(), m_blob.size(),
