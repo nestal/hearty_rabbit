@@ -148,13 +148,3 @@ TEST_CASE("read exif from image without EXIF", "[normal]")
 	EXIF2 subject{mmap.buffer().data(), mmap.size(), ec};
 	REQUIRE(ec == EXIF2::Error::not_found);
 }
-
-TEST_CASE("load jpeg image", "[normal]")
-{
-	std::error_code ec;
-	auto mmap = MMap::open("/home/nestal/vFW8PiD.jpg", ec);
-	REQUIRE(!ec);
-
-	EXIF2 subject{mmap.buffer().data(), mmap.size(), ec};
-	REQUIRE(ec == EXIF2::Error::not_found);
-}
