@@ -25,8 +25,12 @@ class NormalTestCase(unittest.TestCase):
 
 	def test_upload(self):
 		with open("../tests/image/black.jpg", 'rb') as black:
-			in_img = black.read()
 
+			# read source image
+			in_img = black.read()
+			source_jpeg = Image.open(io.BytesIO(in_img))
+
+			# upload to server
 			r1 = self.session.put("https://localhost:4433/upload/test.jpg", data=in_img)
 			self.assertEqual(r1.status_code, 201)
 			self.assertNotEqual(r1.headers["Location"], "")
@@ -36,7 +40,9 @@ class NormalTestCase(unittest.TestCase):
 			self.assertEqual(r2.status_code, 200);
 			jpeg = Image.open(io.BytesIO(r2.content))
 
-
+			# the size of the images should be the same
+			self.assertEqual(jpeg.width, source_jpeg.width)
+			self.assertEqual(jpeg.height, source_jpeg.height)
 
 if __name__ == '__main__':
 	unittest.main()
