@@ -85,7 +85,7 @@ class NormalTestCase(unittest.TestCase):
 		self.assertEqual(r1.json()["collection"], "")
 		self.assertEqual(r1.json()["username"], "sumsum")
 
-	def test_upload_to_others_collection(self):
+	def test_upload_to_other_users_collection(self):
 		with open("../tests/image/up_f_rot90.jpg", 'rb') as up:
 
 			# forbidden
@@ -102,7 +102,19 @@ class NormalTestCase(unittest.TestCase):
 
 		# should find it in the new collection
 		r2 = self.session.get("https://localhost:4433/coll/sumsum/some/collection/")
+		self.assertEqual(r2.status_code, 200)
 		self.assertEqual(r2.json()["elements"][blob_id]["filename"], "up.jpg")
+
+		blob_url = "https://localhost:4433" + r1.headers["Location"]
+
+		# delete it afterwards
+		r3 = self.session.delete(blob_url)
+		self.assertEqual(r3.status_code, 202)
+
+		# not found in collection
+		r4 = self.session.get("https://localhost:4433/coll/sumsum/some/collection/")
+		self.assertEqual(r4.status_code, 200)
+		self.assertFalse(blob_id in r4.json()["elements"])
 
 if __name__ == '__main__':
 	unittest.main()

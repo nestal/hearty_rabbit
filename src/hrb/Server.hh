@@ -46,7 +46,6 @@ const boost::string_view blob{"/blob"};
 const boost::string_view view{"/view"};
 const boost::string_view collection{"/coll"};
 const boost::string_view upload{"/upload"};
-const boost::string_view unlink{"/unlink"};
 }
 
 class Configuration;
@@ -150,9 +149,6 @@ private:
 		if (req.target() == url::logout)
 			return on_logout(req, std::forward<Send>(send), auth);
 
-		if (req.target().starts_with(url::unlink))
-			return on_unlink(req, std::forward<Send>(send), auth);
-
 		return send(not_found(req.target(), req.version()));
 	}
 
@@ -170,13 +166,16 @@ private:
 	void on_logout(const EmptyRequest& req, EmptyResponseSender&& send, const Authentication& auth);
 	void on_invalid_session(const RequestHeader& req, FileResponseSender&& send);
 	void on_upload(UploadRequest&& req, EmptyResponseSender&& send, const Authentication& auth);
-	void on_unlink(const RequestHeader& req, EmptyResponseSender&& send, const Authentication& auth);
+	void unlink(std::string_view user, std::string_view coll, const ObjectID& blobid, unsigned version, EmptyResponseSender&& send);
 	static bool is_static_resource(boost::string_view target);
 	void serve_view(const EmptyRequest& req, FileResponseSender&& send, const Authentication& auth);
 	void serve_collection(const EmptyRequest& req, StringResponseSender&& send, const Authentication& auth);
 
 	template <typename Send>
 	void handle_blob(const EmptyRequest& req, Send&& send, const Authentication& auth);
+
+	template <typename Send>
+	void get_blob(std::string_view user, const ObjectID& blobid, unsigned version, boost::string_view etag, Send&& send);
 
 private:
 	const Configuration&    m_cfg;
@@ -200,23 +199,35 @@ void Server::handle_blob(const EmptyRequest& req, Send&& send, const Authenticat
 	if (auth.user() != path_url.user())
 		return send(http::response<http::empty_body>{http::status::forbidden, req.version()});
 
+	if (req.method() == http::verb::delete_)
+		return unlink(path_url.user(), path_url.collection(), object_id, req.version(), std::move(send));
+
+	else if (req.method() == http::verb::get)
+		return get_blob(path_url.user(), object_id, req.version(), req[http::field::if_none_match], std::move(send));
+
+	else
+		return send(http::response<http::empty_body>{http::status::bad_request, req.version()});
+}
+
+template <typename Send>
+void Server::get_blob(std::string_view user, const ObjectID& object_id, unsigned version, boost::string_view etag, Send&& send)
+{
 	// Check if the user owns the blob
-	Ownership{auth.user()}.is_owned(
+	Ownership{user}.is_owned(
 		*m_db.alloc(), object_id,
-		[object_id, send = std::move(send), req, this](bool is_member, auto ec) mutable
+		[
+			object_id, version, etag=etag.to_string(), this,
+			user=std::string{user},
+			send=std::move(send)
+		](bool is_member, auto ec) mutable
 		{
 			if (ec)
-				return send(http::response<http::empty_body>{http::status::internal_server_error, req.version()});
+				return send(http::response<http::empty_body>{http::status::internal_server_error, version});
 
 			if (!is_member)
-				return send(http::response<http::empty_body>{http::status::forbidden, req.version()});
+				return send(http::response<http::empty_body>{http::status::forbidden, version});
 
-			auto etag = req[http::field::if_none_match];
-			if (req.method() == http::verb::get)
-				return send(m_blob_db.response(object_id, req.version(), {etag.data(), etag.size()}));
-
-			else
-				return send(http::response<http::empty_body>{http::status::bad_request, req.version()});
+			return send(m_blob_db.response(object_id, version, etag));
 		}
 	);
 }

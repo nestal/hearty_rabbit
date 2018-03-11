@@ -111,20 +111,14 @@ http::response<http::empty_body> Server::see_other(boost::beast::string_view whe
 	return res;
 }
 
-void Server::on_unlink(const RequestHeader& req, EmptyResponseSender&& send, const Authentication& auth)
+void Server::unlink(std::string_view user, std::string_view coll, const ObjectID& blob_id, unsigned version, EmptyResponseSender&& send)
 {
-	PathURL path_url{req.target()};
-	auto blob_id = hex_to_object_id(path_url.filename());
-	Log(LOG_INFO, "unlinking object %1% from path(%2%)", blob_id, path_url.collection());
-
-	// only owners can unlink objects
-	if (path_url.user() != auth.user())
-		return send(http::response<http::empty_body>{http::status::forbidden, req.version()});
+	Log(LOG_INFO, "unlinking object %1% from path(%2%)", blob_id, coll);
 
 	// remove from user's container
-	Ownership{auth.user()}.link(
-		*m_db.alloc(), path_url.collection(), blob_id, false,
-		[send = std::move(send), version=req.version()](auto ec)
+	Ownership{user}.link(
+		*m_db.alloc(), coll, blob_id, false,
+		[send = std::move(send), version](auto ec)
 		{
 			auto status = http::status::accepted;
 			if (ec == Error::object_not_exist)
@@ -172,7 +166,7 @@ void Server::on_upload(UploadRequest&& req, EmptyResponseSender&& send, const Au
 				version
 			};
 			if (!ec)
-				res.set(http::field::location, "/blob/" + auth.user() + '/' + coll + '/' + to_hex(id));
+				res.set(http::field::location, "/blob/" + auth.user() + '/' + (coll.empty() ? "" : coll + '/') + to_hex(id));
 			res.set(http::field::cache_control, "no-cache, no-store, must-revalidate");
 			return send(std::move(res));
 		}
