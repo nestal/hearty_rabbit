@@ -173,7 +173,7 @@ std::string BlobObject::meta_string(const fs::path& dir)
 {
 	std::error_code ec;
 	auto meta = MMap::open(dir/metafile, ec);
-	return ec ? std::string{} : std::string{meta.string()};
+	return ec ? std::string{"\"\""} : std::string{meta.string()};
 }
 
 } // end of namespace hrb
