@@ -1,5 +1,7 @@
 import requests
 import unittest
+from PIL import Image
+import io
 
 class NormalTestCase(unittest.TestCase):
 	def setUp(self):
@@ -22,14 +24,19 @@ class NormalTestCase(unittest.TestCase):
 		self.assertEqual(r1.status_code, 200)
 
 	def test_upload(self):
-		with open("../tests/image/black.jpg", 'rb') as f:
-			r1 = self.session.put("https://localhost:4433/upload/test.jpg", data=f)
+		with open("../tests/image/black.jpg", 'rb') as black:
+			in_img = black.read()
+
+			r1 = self.session.put("https://localhost:4433/upload/test.jpg", data=in_img)
 			self.assertEqual(r1.status_code, 201)
 			self.assertNotEqual(r1.headers["Location"], "")
 
-			print("https://localhost:4433" + r1.headers["Location"]);
+			# read back the upload image
+			r2 = self.session.get("https://localhost:4433" + r1.headers["Location"])
+			self.assertEqual(r2.status_code, 200);
+			jpeg = Image.open(io.BytesIO(r2.content))
 
-#			self.session.get("https://localhost:4433")
+
 
 if __name__ == '__main__':
 	unittest.main()
