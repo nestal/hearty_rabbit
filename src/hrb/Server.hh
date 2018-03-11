@@ -16,6 +16,7 @@
 #include "WebResources.hh"
 #include "UploadFile.hh"
 #include "Ownership.hh"
+#include "PathURL.hh"
 
 #include "crypto/Authentication.hh"
 #include "net/SplitBuffers.hh"
@@ -189,21 +190,19 @@ private:
 template <typename Send>
 void Server::handle_blob(const EmptyRequest& req, Send&& send, const Authentication& auth)
 {
-	// blob ID is fixed size (40 characters, i.e., Blake hash size * 2)
-	auto [empty, blob, user, blob_id, rendition] = tokenize<5>(req.target(), "/");
-	assert(empty.empty());
-	assert(blob == url::blob.substr(1).to_string());
+	PathURL path_url{req.target()};
 
 	// Return 404 not_found if the blob ID is invalid
-	auto object_id = hex_to_object_id(std::string_view{blob_id.data(), blob_id.size()});
+	auto object_id = hex_to_object_id(path_url.filename());
 	if (object_id == ObjectID{})
 		return send(http::response<http::empty_body>{http::status::not_found, req.version()});
 
-	auto redis = m_db.alloc();
+	if (auth.user() != path_url.user())
+		return send(http::response<http::empty_body>{http::status::forbidden, req.version()});
 
 	// Check if the user owns the blob
 	Ownership{auth.user()}.is_owned(
-		*redis, object_id,
+		*m_db.alloc(), object_id,
 		[object_id, send = std::move(send), req, this](bool is_member, auto ec) mutable
 		{
 			if (ec)

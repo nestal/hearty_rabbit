@@ -13,7 +13,6 @@
 #include "Server.hh"
 #include "ResourcesList.hh"
 #include "Collection.hh"
-#include "PathURL.hh"
 
 #include "crypto/Password.hh"
 #include "crypto/Authentication.hh"
@@ -163,6 +162,7 @@ void Server::on_upload(UploadRequest&& req, EmptyResponseSender&& send, const Au
 			id,
 			this,
 			auth,
+			coll=std::string{path_url.collection()},
 			send = std::move(send),
 			version = req.version()
 		](auto ec)
@@ -172,7 +172,7 @@ void Server::on_upload(UploadRequest&& req, EmptyResponseSender&& send, const Au
 				version
 			};
 			if (!ec)
-				res.set(http::field::location, "/blob/" + auth.user() + "/" + to_hex(id));
+				res.set(http::field::location, "/blob/" + auth.user() + '/' + coll + '/' + to_hex(id));
 			res.set(http::field::cache_control, "no-cache, no-store, must-revalidate");
 			return send(std::move(res));
 		}
