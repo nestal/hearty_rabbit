@@ -43,6 +43,7 @@ const boost::string_view login{"/login"};
 const boost::string_view logout{"/logout"};
 const boost::string_view blob{"/blob"};
 const boost::string_view view{"/view"};
+const boost::string_view collection{"/coll"};
 const boost::string_view upload{"/upload"};
 const boost::string_view unlink{"/unlink"};
 }
@@ -142,6 +143,9 @@ private:
 		if (req.target().starts_with(url::view))
 			return serve_view(req, std::forward<decltype(send)>(send), auth);
 
+		if (req.target().starts_with(url::collection))
+			return serve_collection(req, std::forward<decltype(send)>(send), auth);
+
 		if (req.target() == url::logout)
 			return on_logout(req, std::forward<Send>(send), auth);
 
@@ -168,6 +172,7 @@ private:
 	void on_unlink(const RequestHeader& req, EmptyResponseSender&& send, const Authentication& auth);
 	static bool is_static_resource(boost::string_view target);
 	void serve_view(const EmptyRequest& req, FileResponseSender&& send, const Authentication& auth);
+	void serve_collection(const EmptyRequest& req, StringResponseSender&& send, const Authentication& auth);
 
 	template <typename Send>
 	void handle_blob(const EmptyRequest& req, Send&& send, const Authentication& auth);

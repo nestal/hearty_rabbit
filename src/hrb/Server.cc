@@ -472,4 +472,29 @@ std::string Server::user_view(std::string_view user, std::string_view path)
 	return result;
 }
 
+void Server::serve_collection(const EmptyRequest& req, StringResponseSender&& send, const Authentication& auth)
+{
+	if (req.method() != http::verb::get)
+		return send(http::response<http::string_body>{http::status::bad_request, req.version()});
+
+	PathURL path_url{req.target()};
+	if (path_url.user() != auth.user())
+		return send(http::response<http::string_body>{http::status::forbidden, req.version()});
+
+	Collection{path_url.user(), path_url.path()}.serialize(
+		*m_db.alloc(),
+		m_blob_db,
+		[send=std::move(send), version=req.version()](auto&& json, auto ec)
+		{
+			http::response<http::string_body> res{
+				std::piecewise_construct,
+				std::make_tuple(std::move(json)),
+				std::make_tuple(http::status::ok, version)
+			};
+			res.set(http::field::content_type, "application/json");
+			return send(std::move(res));
+		}
+	);
+}
+
 } // end of namespace

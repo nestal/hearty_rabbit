@@ -2,6 +2,7 @@ import requests
 import unittest
 from PIL import Image
 import io
+import json
 
 class NormalTestCase(unittest.TestCase):
 	def setUp(self):
@@ -23,12 +24,13 @@ class NormalTestCase(unittest.TestCase):
 
 	def tearDown(self):
 		self.session.close()
+		self.session_no_cred.close()
 
 	def test_fetch_home_page(self):
 		r1 = self.session.get("https://localhost:4433")
 		self.assertEqual(r1.status_code, 200)
 
-	def test_upload(self):
+	def test_upload_jpeg(self):
 		with open("../tests/image/black.jpg", 'rb') as black:
 
 			# read source image
@@ -43,6 +45,7 @@ class NormalTestCase(unittest.TestCase):
 			# read back the upload image
 			r2 = self.session.get("https://localhost:4433" + r1.headers["Location"])
 			self.assertEqual(r2.status_code, 200)
+			self.assertEqual(r2.headers["Content-type"], "image/jpeg")
 			jpeg = Image.open(io.BytesIO(r2.content))
 
 			# the size of the images should be the same
@@ -52,6 +55,13 @@ class NormalTestCase(unittest.TestCase):
 			# cannot get the same image without credential
 			r3 = self.session_no_cred.get("https://localhost:4433" + r1.headers["Location"])
 			self.assertEqual(r3.status_code, 403)
+
+	def test_upload_png(self):
+		with open("../tests/image/black_20x20.png", 'rb') as black:
+			# upload to server
+			r1 = self.session.put("https://localhost:4433/upload/black.png", data=black)
+			self.assertEqual(r1.status_code, 201)
+			self.assertNotEqual(r1.headers["Location"], "")
 
 	def test_not_found(self):
 		# resource not exist
@@ -65,6 +75,13 @@ class NormalTestCase(unittest.TestCase):
 		# other user's blob
 		r3 = self.session.get("https://localhost:4433/blob/nestal/0100000000000000000000000000000000000003")
 		self.assertEqual(r3.status_code, 403)
+
+	def test_view_collection(self):
+		# resource not exist
+		r1 = self.session.get("https://localhost:4433/coll/sumsum/")
+		self.assertEqual(r1.status_code, 200)
+		self.assertEqual(r1.headers["Content-type"], "application/json")
+		self.assertGreater(len(r1.json()["elements"]), 0)
 
 if __name__ == '__main__':
 	unittest.main()
