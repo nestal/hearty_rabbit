@@ -82,6 +82,7 @@ class NormalTestCase(unittest.TestCase):
 		self.assertEqual(r1.status_code, 200)
 		self.assertEqual(r1.headers["Content-type"], "application/json")
 		self.assertGreater(len(r1.json()["elements"]), 0)
+		self.assertEqual(r1.json()["collection"], "")
 
 if __name__ == '__main__':
 	unittest.main()

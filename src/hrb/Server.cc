@@ -116,7 +116,7 @@ void Server::on_unlink(const RequestHeader& req, EmptyResponseSender&& send, con
 {
 	PathURL path_url{req.target()};
 	auto blob_id = hex_to_object_id(path_url.filename());
-	Log(LOG_INFO, "unlinking object %1% from path(%2%)", blob_id, path_url.path());
+	Log(LOG_INFO, "unlinking object %1% from path(%2%)", blob_id, path_url.collection());
 
 	// only owners can unlink objects
 	if (path_url.user() != auth.user())
@@ -124,7 +124,7 @@ void Server::on_unlink(const RequestHeader& req, EmptyResponseSender&& send, con
 
 	// remove from user's container
 	Ownership{auth.user()}.link(
-		*m_db.alloc(), path_url.path(), blob_id, false,
+		*m_db.alloc(), path_url.collection(), blob_id, false,
 		[send = std::move(send), version=req.version()](auto ec)
 		{
 			auto status = http::status::accepted;
@@ -144,7 +144,7 @@ void Server::on_upload(UploadRequest&& req, EmptyResponseSender&& send, const Au
 
 	PathURL path_url{req.target()};
 
-	Log(LOG_INFO, "uploading %1% bytes to path(%2%) file(%3%)", req.body().size(bec), path_url.path(), path_url.filename());
+	Log(LOG_INFO, "uploading %1% bytes to path(%2%) file(%3%)", req.body().size(bec), path_url.collection(), path_url.filename());
 
 	std::error_code ec;
 	auto id = m_blob_db.save(std::move(req.body()), path_url.filename(), ec);
@@ -157,7 +157,7 @@ void Server::on_upload(UploadRequest&& req, EmptyResponseSender&& send, const Au
 	// The user's ownership table contains all the blobs that is owned by the user.
 	// It will be used for authorizing the user's request on these blob later.
 	Ownership{auth.user()}.link(
-		*m_db.alloc(), path_url.path(), id, true, [
+		*m_db.alloc(), path_url.collection(), id, true, [
 			id,
 			this,
 			auth,
@@ -256,7 +256,7 @@ void Server::serve_view(const EmptyRequest& req, Server::FileResponseSender&& se
 	if (path_url.user() != auth.user())
 		return send(http::response<SplitBuffers>{http::status::forbidden, req.version()});
 
-	Collection{auth.user(), path_url.path()}.serialize(
+	Collection{auth.user(), path_url.collection()}.serialize(
 		*m_db.alloc(),
 		m_blob_db,
 		[send=std::move(send), version=req.version(), auth, this](auto&& json, auto ec)
@@ -481,7 +481,7 @@ void Server::serve_collection(const EmptyRequest& req, StringResponseSender&& se
 	if (path_url.user() != auth.user())
 		return send(http::response<http::string_body>{http::status::forbidden, req.version()});
 
-	Collection{path_url.user(), path_url.path()}.serialize(
+	Collection{path_url.user(), path_url.collection()}.serialize(
 		*m_db.alloc(),
 		m_blob_db,
 		[send=std::move(send), version=req.version()](auto&& json, auto ec)

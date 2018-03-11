@@ -24,7 +24,7 @@ public:
 
 	std::string_view action() const {return m_action;}
 	std::string_view user() const {return m_user;}
-	std::string_view path() const {return m_container;}
+	std::string_view collection() const {return m_container;}
 	std::string_view filename() const {return m_filename;}
 
 private:

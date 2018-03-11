@@ -108,7 +108,7 @@ private:
 	{
 		std::ostringstream ss;
 		ss  << R"__({"name":")__"      << user
-			<< R"__(", "path":")__"    << path
+			<< R"__(", "collection":")__"    << path
 			<< R"__(", "elements":)__" << "{";
 
 		bool first = true;
