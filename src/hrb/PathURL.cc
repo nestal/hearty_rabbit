@@ -44,7 +44,11 @@ PathURL::PathURL(boost::string_view boost_target)
 	if (target.empty())
 		return;
 
-	m_path = target;
+	m_container = target;
+	while (!m_container.empty() && m_container.front() == '/')
+		m_container.remove_prefix(1);
+	while (!m_container.empty() && m_container.back() == '/')
+		m_container.remove_suffix(1);
 }
 
 } // end of namespace hrb

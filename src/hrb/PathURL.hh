@@ -24,7 +24,7 @@ public:
 
 	std::string_view action() const {return m_action;}
 	std::string_view user() const {return m_user;}
-	std::string_view path() const {return m_path.empty() ? std::string_view{"/"} : m_path;}
+	std::string_view path() const {return m_container;}
 	std::string_view filename() const {return m_filename;}
 
 private:
@@ -33,8 +33,8 @@ private:
 
 	std::string_view m_user;
 
-	// path to the container
-	std::string_view m_path;
+	// container name
+	std::string_view m_container;
 
 	// filename
 	std::string_view m_filename;
