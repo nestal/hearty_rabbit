@@ -68,7 +68,6 @@ void find_app1(buffer_view& buffer, std::error_code& error)
 		big_uint16_buf_at length;
 	};
 
-	std::cout << "start" << std::endl;
 	while (true)
 	{
 		App seg{};
@@ -215,7 +214,7 @@ void EXIF2::read_ifd(const unsigned char* jpeg, BufferView& buffer, std::error_c
 		to_native(tag);
 		m_tags.emplace(static_cast<Tag>(tag.tag), offset);
 
-		std::cout << "tag " << std::hex << tag.tag << " value = " << tag.value_offset << std::endl;
+//		std::cout << "tag " << std::hex << tag.tag << " value = " << tag.value_offset << std::endl;
 	}
 
 	// After the tags there are 4 more bytes that is the offset of the next IFD.
