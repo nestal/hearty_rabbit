@@ -107,7 +107,7 @@ private:
 	static std::string serialize(std::string&& user, std::string&& path, const BlobDb& blobdb, redis::Reply& reply)
 	{
 		std::ostringstream ss;
-		ss  << R"__({"name":")__"      << user
+		ss  << R"__({"username":")__"      << user
 			<< R"__(", "collection":")__"    << path
 			<< R"__(", "elements":)__" << "{";
 
