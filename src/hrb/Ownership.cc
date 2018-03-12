@@ -21,7 +21,7 @@ Ownership::Ownership(std::string_view name) : m_user{name}
 {
 }
 
-const std::string_view Ownership::Blob::m_prefix{"blob:"};
+const std::string_view Ownership::Blob::m_prefix{"blob-backlink:"};
 
 Ownership::Blob::Blob(std::string_view user, const ObjectID& blob) :
 	m_user{user}, m_blob{blob}
@@ -38,29 +38,28 @@ void Ownership::Blob::watch(redis::Connection& db) const
 	);
 }
 
-void Ownership::Blob::link(redis::Connection& db, std::string_view path) const
+void Ownership::Blob::link(redis::Connection& db, std::string_view coll) const
 {
 	// If the blob link already exists, it should be pointing to an existing
 	// permission string. We should not change it
 	const char empty = '\0';
 	db.command(
-		"HSETNX %b%b:%b link:%b %b",
+		"SADD %b%b:%b %b",
 		m_prefix.data(), m_prefix.size(),
 		m_user.data(), m_user.size(),
 		m_blob.data(), m_blob.size(),
-		path.data(), path.size(),
-		&empty, 0
+		coll.data(), coll.size()
 	);
 }
 
-void Ownership::Blob::unlink(redis::Connection& db, std::string_view path) const
+void Ownership::Blob::unlink(redis::Connection& db, std::string_view coll) const
 {
 	db.command(
-		"HDEL %b%b:%b link:%b",
+		"SREM %b%b:%b %b",
 		m_prefix.data(), m_prefix.size(),
 		m_user.data(), m_user.size(),
 		m_blob.data(), m_blob.size(),
-		path.data(), path.size()
+		coll.data(), coll.size()
 	);
 }
 

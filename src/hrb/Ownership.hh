@@ -43,8 +43,8 @@ private:
 		void watch(redis::Connection& db) const;
 
 		// expect to be done inside a transaction
-		void link(redis::Connection& db, std::string_view path) const;
-		void unlink(redis::Connection& db, std::string_view path) const;
+		void link(redis::Connection& db, std::string_view coll) const;
+		void unlink(redis::Connection& db, std::string_view coll) const;
 
 		template <typename Complete>
 		void is_owned(redis::Connection& db, Complete&& complete)
