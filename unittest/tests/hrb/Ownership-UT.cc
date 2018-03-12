@@ -11,14 +11,16 @@
 //
 
 #include <catch.hpp>
-#include <iostream>
 
 #include "hrb/Ownership.hh"
+#include "hrb/Ownership.ipp"
 #include "hrb/BlobDatabase.hh"
 #include "hrb/UploadFile.hh"
 #include "crypto/Random.hh"
 
 #include <rapidjson/document.h>
+
+#include <iostream>
 
 using namespace hrb;
 using namespace std::chrono_literals;

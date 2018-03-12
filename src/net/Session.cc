@@ -13,6 +13,8 @@
 #include "Session.hh"
 #include "util/Log.hh"
 #include "hrb/Server.hh"
+#include "hrb/Server.ipp"
+#include "hrb/Ownership.ipp"
 
 #include <boost/asio/bind_executor.hpp>
 #include <iostream>

@@ -15,6 +15,8 @@
 #include "CheckResource.hh"
 
 #include "hrb/Server.hh"
+#include "hrb/Server.ipp"
+#include "hrb/Ownership.ipp"
 
 #include "crypto/Random.hh"
 #include "crypto/Password.hh"
@@ -384,27 +386,5 @@ TEST_CASE("General server tests", "[normal]")
 			REQUIRE(subject.get_io_context().run_for(10s) > 0);
 			REQUIRE(checker.tested());
 		}
-	}
-}
-
-TEST_CASE("Extract prefix from URL until '/'", "[normal]")
-{
-	EmptyRequest req;
-	SECTION("No suffix")
-	{
-		req.target("/target");
-		REQUIRE(Server::extract_prefix(req) == std::make_tuple("target", ""));
-	}
-	SECTION("2 levels")
-	{
-		req.target("/level1/level2");
-		auto [prefix, remain] = Server::extract_prefix(req);
-		REQUIRE(prefix == "level1");
-		REQUIRE(remain == "level2");
-	}
-	SECTION("1 levels with ?")
-	{
-		req.target("/blob?q=s");
-		REQUIRE(Server::extract_prefix(req) == std::make_tuple("blob", "q=s"));
 	}
 }

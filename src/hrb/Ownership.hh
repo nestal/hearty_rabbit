@@ -68,21 +68,7 @@ private:
 		void unlink(redis::Connection& db, const ObjectID& id);
 
 		template <typename Complete>
-		void is_owned(redis::Connection& db, const ObjectID& blob, Complete&& complete) const
-		{
-			db.command(
-				[comp=std::forward<Complete>(complete)](redis::Reply&& reply, std::error_code&& ec) mutable
-				{
-					comp(!reply.is_nil(), std::move(ec));
-				},
-
-				"HGET %b%b:%b %b",
-				m_prefix.data(), m_prefix.size(),
-				m_user.data(), m_user.size(),
-				m_path.data(), m_path.size(),
-				blob.data(), blob.size()
-			);
-		}
+		void is_owned(redis::Connection& db, const ObjectID& blob, Complete&& complete) const;
 
 		template <typename Complete, typename BlobDb>
 		void serialize(
@@ -109,41 +95,7 @@ private:
 		}
 
 		template <typename Complete>
-		static void scan(
-			redis::Connection& db,
-			std::string_view user,
-			long cursor,
-			Complete&& complete
-		)
-		{
-			db.command(
-				[
-					comp=std::forward<Complete>(complete), &db, user=std::string{user}
-				](redis::Reply&& reply, std::error_code&& ec) mutable
-				{
-					if (!ec)
-					{
-						auto [cursor_reply, dirs] = reply.as_tuple<2>(ec);
-						if (!ec)
-						{
-							// Repeat scanning only when the cycle is not completed yet (i.e.
-							// cursor != 0), and the completion callback return true.
-							auto cursor = cursor_reply.to_int();
-							if (comp(dirs.begin(), dirs.end(), cursor, ec) && cursor != 0)
-								scan(db, user, cursor, std::move(comp));
-							return;
-						}
-					}
-
-					redis::Reply empty{};
-					comp(empty.begin(), empty.end(), 0, ec);
-				},
-				"SCAN %d MATCH %b%b:*",
-				cursor,
-				m_prefix.data(), m_prefix.size(),
-				user.data(), user.size()
-			);
-		}
+		static void scan(redis::Connection& db, std::string_view user, long cursor, Complete&& complete);
 
 		const std::string& user() const {return m_user;}
 		const std::string& path() const {return m_path;}
@@ -267,7 +219,6 @@ private:
 
 		db.command([comp=std::forward<Complete>(complete)](auto&&, std::error_code ec)
 		{
-			Log(LOG_INFO, "transaction completed %1%", ec);
 			comp(ec);
 		}, "EXEC");
 	}
@@ -275,6 +226,5 @@ private:
 private:
 	std::string             m_user;
 };
-
 
 } // end of namespace hrb

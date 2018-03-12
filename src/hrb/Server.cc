@@ -349,20 +349,6 @@ bool Server::is_static_resource(boost::string_view target) const
 	return m_lib.is_static(target.to_string());
 }
 
-std::tuple<
-	std::string_view,
-	std::string_view
-> Server::extract_prefix(const RequestHeader& req)
-{
-	auto target = req.target();
-	auto sv = std::string_view{target.data(), target.size()};
-	if (!sv.empty() && sv.front() == '/')
-		sv.remove_prefix(1);
-
-	auto prefix = std::get<0>(split_front(sv, "/?$"));
-	return std::make_tuple(prefix, sv);
-}
-
 unsigned short Server::https_port() const
 {
 	return m_cfg.listen_https().port();
