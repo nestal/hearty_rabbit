@@ -32,7 +32,7 @@
 namespace hrb {
 
 namespace {
-const std::string_view index_needle{"<meta charset=\"utf-8\">"};
+const std::string_view index_needle{"<meta charset=\"utf-8\"><script>"};
 }
 
 Server::Server(const Configuration& cfg) :
@@ -49,8 +49,8 @@ http::response<SplitBuffers> Server::on_login_incorrect(const EmptyRequest& req)
 {
 	auto res = m_lib.find_dynamic("login.html", req.version());
 	res.body().extra(
-		R"_(<meta charset="UTF-8">)_",
-		R"_(<script>const message = "Login incorrect... Try again?";</script>)_"
+		index_needle,
+		R"_(const message = "Login incorrect... Try again?";)_"
 	);
 	return res;
 }
@@ -254,7 +254,7 @@ void Server::serve_view(const EmptyRequest& req, Server::FileResponseSender&& se
 		[send=std::move(send), version=req.version(), auth, this](auto&& json, auto ec)
 	{
 		std::ostringstream ss;
-		ss  << "<script>var dir = " << json << ";</script>";
+		ss  << "var dir = " << json << ";";
 
 		auto res = m_lib.find_dynamic("index.html", version);
 		res.body().extra(index_needle, ss.str());
