@@ -241,6 +241,16 @@ public:
 		Collection{m_user, coll}.is_owned(db, blob, std::forward<Complete>(complete));
 	}
 
+	template <typename Complete>
+	void scan_collections(
+		redis::Connection& db,
+		long cursor,
+		Complete&& complete
+	)
+	{
+		return Collection::scan(db, m_user, cursor, std::forward<Complete>(complete));
+	}
+
 	const std::string& user() const {return m_user;}
 
 private:
