@@ -68,7 +68,7 @@ private:
 		void unlink(redis::Connection& db, const ObjectID& id);
 
 		template <typename Complete>
-		void is_owned(redis::Connection& db, const ObjectID& blob, Complete&& complete)
+		void is_owned(redis::Connection& db, const ObjectID& blob, Complete&& complete) const
 		{
 			db.command(
 				[comp=std::forward<Complete>(complete)](redis::Reply&& reply, std::error_code&& ec) mutable
@@ -89,7 +89,7 @@ private:
 			redis::Connection& db,
 			const BlobDb& blobdb,
 			Complete&& complete
-		)
+		) const
 		{
 			db.command(
 				[
@@ -212,7 +212,7 @@ public:
 		std::string_view coll,
 		const BlobDb& blobdb,
 		Complete&& complete
-	)
+	) const
 	{
 		return Collection{m_user, coll}.serialize(db, blobdb, std::forward<Complete>(complete));
 	}
@@ -223,7 +223,7 @@ public:
 		std::string_view coll,
 		const ObjectID& blob,
 		Complete&& complete
-	)
+	) const
 	{
 		Collection{m_user, coll}.is_owned(db, blob, std::forward<Complete>(complete));
 	}
@@ -233,7 +233,7 @@ public:
 		redis::Connection& db,
 		long cursor,
 		Complete&& complete
-	)
+	) const
 	{
 		return Collection::scan(db, m_user, cursor, std::forward<Complete>(complete));
 	}
