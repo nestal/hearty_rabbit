@@ -35,7 +35,7 @@ TEST_CASE("add blob to Ownership", "[normal]")
 	Ownership subject{"test"};
 
 	subject.link(
-		*redis, "/", blobid, true, [&tested, redis, blobid](std::error_code ec)
+		*redis, "/", blobid, [&tested, redis, blobid](std::error_code ec)
 		{
 			REQUIRE(!ec);
 			tested++;
@@ -61,8 +61,10 @@ TEST_CASE("Load 3 images in json", "[normal]")
 
 	int added = 0;
 
+	Ownership subject{"testuser"};
+
 	for (auto&& blobid : blobids)
-		Ownership{"testuser"}.link(*redis, "/", blobid, true, [&added](auto ec)
+		subject.link(*redis, "/", blobid, [&added](auto ec)
 		{
 			REQUIRE(!ec);
 			added++;
@@ -82,7 +84,7 @@ TEST_CASE("Load 3 images in json", "[normal]")
 	};
 
 	bool tested = false;
-	Ownership{"testuser"}.serialize(*redis, "/", MockBlobDb{}, [&tested](auto&& json, auto ec)
+	subject.serialize(*redis, "/", MockBlobDb{}, [&tested](auto&& json, auto ec)
 	{
 		INFO("serialize() error_code: " << ec << " " << ec.message());
 		REQUIRE(!ec);
@@ -101,9 +103,8 @@ TEST_CASE("Load 3 images in json", "[normal]")
 
 	ioc.restart();
 
-	redis->command("MULTI");
 	for (auto&& blobid : blobids)
-		Ownership{"testuser"}.link(*redis, "/", blobid, false, [&added](auto ec)
+		subject.unlink(*redis, "/", blobid, [&added](auto ec)
 		{
 			REQUIRE(!ec);
 			added--;
@@ -121,7 +122,7 @@ TEST_CASE("Scan for all containers from testuser")
 	Ownership subject{"testuser"};
 
 	bool added = false;
-	subject.link(*redis, "/", insecure_random<ObjectID>(), true, [&added](auto ec)
+	subject.link(*redis, "/", insecure_random<ObjectID>(), [&added](auto ec)
 	{
 		REQUIRE(!ec);
 		added = true;

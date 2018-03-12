@@ -114,8 +114,8 @@ void Server::unlink(std::string_view user, std::string_view coll, const ObjectID
 	Log(LOG_INFO, "unlinking object %1% from path(%2%)", blob_id, coll);
 
 	// remove from user's container
-	Ownership{user}.link(
-		*m_db.alloc(), coll, blob_id, false,
+	Ownership{user}.unlink(
+		*m_db.alloc(), coll, blob_id,
 		[send = std::move(send), version](auto ec)
 		{
 			auto status = http::status::accepted;
@@ -146,15 +146,15 @@ void Server::on_upload(UploadRequest&& req, EmptyResponseSender&& send, const Au
 	if (ec)
 		return send(http::response<http::empty_body>{http::status::internal_server_error, req.version()});
 
+	std::string coll{path_url.collection()};
+	std::string location = "/blob/" + auth.user() + '/' + (coll.empty() ? "" : coll + '/') + to_hex(id);
+
 	// Add the newly created blob to the user's ownership table.
 	// The user's ownership table contains all the blobs that is owned by the user.
 	// It will be used for authorizing the user's request on these blob later.
 	Ownership{auth.user()}.link(
-		*m_db.alloc(), path_url.collection(), id, true, [
-			id,
-			this,
-			auth,
-			coll=std::string{path_url.collection()},
+		*m_db.alloc(), path_url.collection(), id, [
+			location,
 			send = std::move(send),
 			version = req.version()
 		](auto ec)
@@ -164,7 +164,7 @@ void Server::on_upload(UploadRequest&& req, EmptyResponseSender&& send, const Au
 				version
 			};
 			if (!ec)
-				res.set(http::field::location, "/blob/" + auth.user() + '/' + (coll.empty() ? "" : coll + '/') + to_hex(id));
+				res.set(http::field::location, location);
 			res.set(http::field::cache_control, "no-cache, no-store, must-revalidate");
 			return send(std::move(res));
 		}

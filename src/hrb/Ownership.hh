@@ -189,34 +189,21 @@ public:
 		redis::Connection& db,
 		std::string_view path,
 		const ObjectID& blobid,
-		bool add,
 		Complete&& complete
 	)
 	{
-		BlobBackLink  blob{m_user, blobid};
-		Collection coll{m_user, path};
+		link(db, path, blobid, true, std::forward<Complete>(complete));
+	}
 
-		// watch everything that will be modified
-		blob.watch(db);
-		coll.watch(db);
-
-		db.command("MULTI");
-		if (add)
-		{
-			blob.link(db, coll.path());
-			coll.link(db, blob.blob());
-		}
-		else
-		{
-			blob.unlink(db, coll.path());
-			coll.unlink(db, blob.blob());
-		}
-
-		db.command([comp=std::forward<Complete>(complete)](auto&&, std::error_code ec)
-		{
-			Log(LOG_INFO, "transaction completed %1%", ec);
-			comp(ec);
-		}, "EXEC");
+	template <typename Complete>
+	void unlink(
+		redis::Connection& db,
+		std::string_view path,
+		const ObjectID& blobid,
+		Complete&& complete
+	)
+	{
+		link(db, path, blobid, false, std::forward<Complete>(complete));
 	}
 
 	template <typename Complete, typename BlobDb>
@@ -252,6 +239,42 @@ public:
 	}
 
 	const std::string& user() const {return m_user;}
+
+private:
+	template <typename Complete>
+	void link(
+		redis::Connection& db,
+		std::string_view path,
+		const ObjectID& blobid,
+		bool add,
+		Complete&& complete
+	)
+	{
+		BlobBackLink  blob{m_user, blobid};
+		Collection coll{m_user, path};
+
+		// watch everything that will be modified
+		blob.watch(db);
+		coll.watch(db);
+
+		db.command("MULTI");
+		if (add)
+		{
+			blob.link(db, coll.path());
+			coll.link(db, blob.blob());
+		}
+		else
+		{
+			blob.unlink(db, coll.path());
+			coll.unlink(db, blob.blob());
+		}
+
+		db.command([comp=std::forward<Complete>(complete)](auto&&, std::error_code ec)
+		{
+			Log(LOG_INFO, "transaction completed %1%", ec);
+			comp(ec);
+		}, "EXEC");
+	}
 
 private:
 	std::string             m_user;
