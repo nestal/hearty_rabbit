@@ -40,9 +40,6 @@ void Ownership::BlobBackLink::watch(redis::Connection& db) const
 
 void Ownership::BlobBackLink::link(redis::Connection& db, std::string_view coll) const
 {
-	// If the blob link already exists, it should be pointing to an existing
-	// permission string. We should not change it
-	const char empty = '\0';
 	db.command(
 		"SADD %b%b:%b %b",
 		m_prefix.data(), m_prefix.size(),
