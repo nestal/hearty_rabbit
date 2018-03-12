@@ -146,15 +146,12 @@ void Server::on_upload(UploadRequest&& req, EmptyResponseSender&& send, const Au
 	if (ec)
 		return send(http::response<http::empty_body>{http::status::internal_server_error, req.version()});
 
-	std::string coll{path_url.collection()};
-	std::string location = "/blob/" + auth.user() + '/' + (coll.empty() ? "" : coll + '/') + to_hex(id);
-
 	// Add the newly created blob to the user's ownership table.
 	// The user's ownership table contains all the blobs that is owned by the user.
 	// It will be used for authorizing the user's request on these blob later.
 	Ownership{auth.user()}.link(
 		*m_db.alloc(), path_url.collection(), id, [
-			location,
+			location = PathURL{"blob", auth.user(), path_url.collection(), to_hex(id)}.str(),
 			send = std::move(send),
 			version = req.version()
 		](auto ec)
@@ -269,10 +266,10 @@ http::response<SplitBuffers> Server::static_file_request(const EmptyRequest& req
 {
 	Log(LOG_NOTICE, "requesting path %1% %2%", req.target(), req[http::field::if_none_match]);
 
-	auto filepath = req.target();
+	std::string_view filepath{req.target().data(), req.target().size()};
 	filepath.remove_prefix(1);
 
-	return m_lib.find_static(std::string{filepath}, req[http::field::if_none_match], req.version());
+	return m_lib.find_static(filepath, req[http::field::if_none_match], req.version());
 }
 
 void Server::run()

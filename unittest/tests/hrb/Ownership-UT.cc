@@ -35,12 +35,12 @@ TEST_CASE("add blob to Ownership", "[normal]")
 	Ownership subject{"test"};
 
 	subject.link(
-		*redis, "/", blobid, [&tested, redis, blobid](std::error_code ec)
+		*redis, "/", blobid, [&tested, redis, blobid, subject](std::error_code ec)
 		{
 			REQUIRE(!ec);
 			tested++;
 
-			Ownership{"test"}.is_owned(*redis, "/", blobid, [&tested](bool owned, std::error_code ec)
+			subject.is_owned(*redis, "/", blobid, [&tested](bool owned, std::error_code ec)
 			{
 				REQUIRE(!ec);
 				REQUIRE(owned);
