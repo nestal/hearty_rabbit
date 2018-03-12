@@ -16,6 +16,8 @@
 #include "ResourcesList.hh"
 #include "crypto/Blake2.hh"
 
+#include <boost/exception/info.hpp>
+
 namespace hrb {
 namespace {
 std::string_view resource_mime(const std::string& ext)
@@ -38,6 +40,8 @@ auto WebResources::load(const boost::filesystem::path& base, Iterator first, Ite
 	{
 		auto path = base / *it;
 		auto mmap = MMap::open(path, ec);
+		if (ec)
+			BOOST_THROW_EXCEPTION(Error() << ErrorCode(ec) << MissingResource(path));
 
 		Blake2 hasher;
 		hasher.update(mmap.data(), mmap.size());

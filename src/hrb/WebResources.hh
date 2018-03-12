@@ -15,9 +15,10 @@
 #include "net/Request.hh"
 
 #include "util/MMap.hh"
+#include "util/Exception.hh"
+#include "util/FS.hh"
 #include "net/SplitBuffers.hh"
 
-#include <boost/filesystem/path.hpp>
 #include <boost/utility/string_view.hpp>
 #include <unordered_map>
 
@@ -26,9 +27,12 @@ namespace hrb {
 class WebResources
 {
 public:
+	struct Error : virtual Exception {};
+	using MissingResource = boost::error_info<struct missing_resource, fs::path>;
+
 	using Response = http::response<SplitBuffers>;
 
-	explicit WebResources(const boost::filesystem::path& web_root);
+	explicit WebResources(const fs::path& web_root);
 
 	Response find_static(const std::string& filename, boost::string_view etag, int version) const;
 	Response find_dynamic(const std::string& filename, int version) const;
@@ -51,7 +55,7 @@ private:
 	};
 
 	template <typename Iterator>
-	static auto load(const boost::filesystem::path& base, Iterator first, Iterator last);
+	static auto load(const fs::path& base, Iterator first, Iterator last);
 
 private:
 	const std::unordered_map<std::string, Resource>   m_static;
