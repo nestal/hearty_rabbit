@@ -48,7 +48,6 @@ TEST_CASE( "Load normal.json", "[normal]" )
 	REQUIRE(cfg.private_key() == (current_src/"key.pem").string());
 	REQUIRE(cfg.cert_chain()  == (current_src/"certificate.pem").string());
 	REQUIRE(cfg.web_root()    == "/usr/lib/hearty_rabbit");
-	REQUIRE(cfg.server_name() == "example.com");
 	REQUIRE(cfg.listen_https().address() == boost::asio::ip::make_address("0.0.0.0"));
 	REQUIRE(cfg.listen_http().address() == boost::asio::ip::make_address("0.0.0.0"));
 	REQUIRE(cfg.listen_https().port() == 4433);
@@ -58,12 +57,12 @@ TEST_CASE( "Load normal.json", "[normal]" )
 	REQUIRE(cfg.upload_limit() == 10*1024*1024);
 }
 
-TEST_CASE( "Missing server name", "[error]" )
+TEST_CASE( "Missing server name", "[normal]" )
 {
 	auto error_json = (current_src / "missing_server_name.json").string();
 
 	const char *argv[] = {"hearty_rabbit", "--cfg", error_json.c_str()};
-	REQUIRE_THROWS_AS(Configuration(sizeof(argv)/sizeof(argv[1]), argv, nullptr), json::Error);
+	REQUIRE_NOTHROW(Configuration(sizeof(argv)/sizeof(argv[1]), argv, nullptr));
 }
 
 TEST_CASE( "Bad web root", "[error]" )

@@ -367,11 +367,9 @@ std::tuple<
 	return std::make_tuple(prefix, sv);
 }
 
-std::string Server::https_root() const
+unsigned short Server::https_port() const
 {
-	using namespace std::literals;
-	return "https://" + m_cfg.server_name()
-		+ (m_cfg.listen_https().port() == 443 ? ""s : (":"s + std::to_string(m_cfg.listen_https().port())));
+	return m_cfg.listen_https().port();
 }
 
 std::size_t Server::upload_limit() const

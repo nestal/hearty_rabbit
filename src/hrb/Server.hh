@@ -122,7 +122,7 @@ public:
 
 	// Administrative commands and configurations
 	void add_user(std::string_view username, Password&& password, std::function<void(std::error_code)> complete);
-	std::string https_root() const;
+	unsigned short https_port() const;
 	std::size_t upload_limit() const;
 
 private:
