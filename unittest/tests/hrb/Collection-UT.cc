@@ -12,13 +12,15 @@
 
 #include <catch.hpp>
 
-#include "hrb/Collection.hh"
+#include "hrb/Ownership.hh"
 #include "crypto/Random.hh"
 
 #include <rapidjson/ostreamwrapper.h>
 #include <rapidjson/writer.h>
 #include <rapidjson/pointer.h>
 #include <rapidjson/document.h>
+
+#include <chrono>
 #include <iostream>
 
 using namespace hrb;
@@ -31,16 +33,17 @@ TEST_CASE("Load 3 images in json", "[normal]")
 	boost::asio::io_context ioc;
 	auto redis = redis::connect(ioc);
 
-	redis->command("MULTI");
+	int added = 0;
+
 	for (auto&& blobid : blobids)
-		Collection{"testuser", "/"}.link(*redis, blobid);
-	redis->command("EXEC", [](auto&& reply, auto ec)
-	{
-		REQUIRE(!ec);
-		REQUIRE(reply.array_size() == 3);
-	});
+		Ownership{"testuser"}.link(*redis, "/", blobid, true, [&added](auto ec)
+		{
+			REQUIRE(!ec);
+			added++;
+		});
 
 	REQUIRE(ioc.run_for(10s) > 0);
+	REQUIRE(added == blobids.size());
 
 	ioc.restart();
 
@@ -53,7 +56,7 @@ TEST_CASE("Load 3 images in json", "[normal]")
 	};
 
 	bool tested = false;
-	Collection{"testuser", "/"}.serialize(*redis, MockBlobDb{}, [&tested](auto&& json, auto ec)
+	Ownership{"testuser"}.serialize(*redis, "/", MockBlobDb{}, [&tested](auto&& json, auto ec)
 	{
 		INFO("serialize() error_code: " << ec << " " << ec.message());
 		REQUIRE(!ec);
@@ -74,11 +77,17 @@ TEST_CASE("Load 3 images in json", "[normal]")
 
 	redis->command("MULTI");
 	for (auto&& blobid : blobids)
-		Collection{"testuser", "/"}.unlink(*redis, blobid);
-	redis->command("EXEC");
+		Ownership{"testuser"}.link(*redis, "/", blobid, false, [&added](auto ec)
+		{
+			REQUIRE(!ec);
+			added--;
+		});
+
 
 	REQUIRE(ioc.run_for(10s) > 0);
+	REQUIRE(added == 0);
 }
+/*
 
 TEST_CASE("Scan for all containers from testuser")
 {
@@ -86,7 +95,7 @@ TEST_CASE("Scan for all containers from testuser")
 	auto redis = redis::connect(ioc);
 
 	redis->command("MULTI");
-	Collection{"testuser", "/"}.link(*redis, insecure_random<ObjectID>());
+	Owne{"testuser", "/"}.link(*redis, insecure_random<ObjectID>());
 	redis->command("EXEC", [](auto&& reply, auto ec)
 	{
 		REQUIRE(!ec);
@@ -115,3 +124,4 @@ TEST_CASE("Scan for all containers from testuser")
 	REQUIRE(tested);
 	REQUIRE(!dirs.empty());
 }
+*/

@@ -63,4 +63,41 @@ void Ownership::BlobBackLink::unlink(redis::Connection& db, std::string_view col
 	);
 }
 
+const std::string_view Ownership::Collection::m_prefix = "dir:";
+
+Ownership::Collection::Collection(std::string_view user, std::string_view path) :
+	m_user{user},
+	m_path{path}
+{
+}
+
+void Ownership::Collection::watch(redis::Connection& db)
+{
+	db.command("WATCH %b%b:%b",
+		m_prefix.data(), m_prefix.size(),
+		m_user.data(), m_user.size(), m_path.data(), m_path.size()
+	);
+}
+
+void Ownership::Collection::link(redis::Connection& db, const ObjectID& id, std::string_view perm)
+{
+	db.command("HSET %b%b:%b %b %b",
+		m_prefix.data(), m_prefix.size(),
+		m_user.data(), m_user.size(),
+		m_path.data(), m_path.size(),
+		id.data(), id.size(),
+		perm.data(), perm.size()
+	);
+}
+
+void Ownership::Collection::unlink(redis::Connection& db, const ObjectID& id)
+{
+	db.command("HDEL %b%b:%b %b",
+		m_prefix.data(), m_prefix.size(),
+		m_user.data(), m_user.size(),
+		m_path.data(), m_path.size(),
+		id.data(), id.size()
+	);
+}
+
 } // end of namespace hrb

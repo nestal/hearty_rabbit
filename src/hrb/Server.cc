@@ -11,7 +11,6 @@
 //
 
 #include "Server.hh"
-#include "Collection.hh"
 
 #include "crypto/Password.hh"
 #include "crypto/Authentication.hh"
@@ -251,8 +250,9 @@ void Server::serve_view(const EmptyRequest& req, Server::FileResponseSender&& se
 	if (path_url.user() != auth.user())
 		return send(http::response<SplitBuffers>{http::status::forbidden, req.version()});
 
-	Collection{auth.user(), path_url.collection()}.serialize(
+	Ownership{auth.user()}.serialize(
 		*m_db.alloc(),
+		path_url.collection(),
 		m_blob_db,
 		[send=std::move(send), version=req.version(), auth, this](auto&& json, auto ec)
 	{
@@ -474,8 +474,9 @@ void Server::serve_collection(const EmptyRequest& req, StringResponseSender&& se
 	if (path_url.user() != auth.user())
 		return send(http::response<http::string_body>{http::status::forbidden, req.version()});
 
-	Collection{path_url.user(), path_url.collection()}.serialize(
+	Ownership{path_url.user()}.serialize(
 		*m_db.alloc(),
+		path_url.collection(),
 		m_blob_db,
 		[send=std::move(send), version=req.version()](auto&& json, auto ec)
 		{

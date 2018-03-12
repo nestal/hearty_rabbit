@@ -14,7 +14,6 @@
 
 #include "ObjectID.hh"
 
-#include "Collection.hh"
 #include "net/Redis.hh"
 #include "util/Log.hh"
 
@@ -54,6 +53,134 @@ private:
 		ObjectID    m_blob;
 	};
 
+	/// A set of blob objects represented by a redis set.
+	class Collection
+	{
+	private:
+		static const std::string_view m_prefix;
+
+	public:
+		explicit Collection(std::string_view user, std::string_view path);
+
+		void watch(redis::Connection& db);
+
+		void link(redis::Connection& db, const ObjectID& id, std::string_view perm="");
+		void unlink(redis::Connection& db, const ObjectID& id);
+
+		template <typename Complete>
+		void is_owned(redis::Connection& db, const ObjectID& blob, Complete&& complete)
+		{
+			db.command(
+				[comp=std::forward<Complete>(complete)](redis::Reply&& reply, std::error_code&& ec) mutable
+				{
+					comp(!reply.is_nil(), std::move(ec));
+				},
+
+				"HGET %b%b:%b %b",
+				m_prefix.data(), m_prefix.size(),
+				m_user.data(), m_user.size(),
+				m_path.data(), m_path.size(),
+				blob.data(), blob.size()
+			);
+		}
+
+		template <typename Complete, typename BlobDb>
+		void serialize(
+			redis::Connection& db,
+			const BlobDb& blobdb,
+			Complete&& complete
+		)
+		{
+			db.command(
+				[
+					comp=std::forward<Complete>(complete),
+					user=std::string{m_user},
+					path=std::string{m_path},
+					&blobdb
+				](auto&& reply, std::error_code&& ec) mutable
+				{
+					comp(Collection{user,path}.serialize(blobdb, reply), std::move(ec));
+				},
+				"HGETALL %b%b:%b",
+				m_prefix.data(), m_prefix.size(),
+				m_user.data(), m_user.size(),
+				m_path.data(), m_path.size()
+			);
+		}
+
+		template <typename Complete>
+		static void scan(
+			redis::Connection& db,
+			std::string_view user,
+			long cursor,
+			Complete&& complete
+		)
+		{
+			db.command(
+				[
+					comp=std::forward<Complete>(complete), &db, user=std::string{user}
+				](redis::Reply&& reply, std::error_code&& ec) mutable
+				{
+					if (!ec)
+					{
+						auto [cursor_reply, dirs] = reply.as_tuple<2>(ec);
+						if (!ec)
+						{
+							// Repeat scanning only when the cycle is not completed yet (i.e.
+							// cursor != 0), and the completion callback return true.
+							auto cursor = cursor_reply.to_int();
+							if (comp(dirs.begin(), dirs.end(), cursor, ec) && cursor != 0)
+								scan(db, user, cursor, std::move(comp));
+							return;
+						}
+					}
+
+					redis::Reply empty{};
+					comp(empty.begin(), empty.end(), 0, ec);
+				},
+				"SCAN %d MATCH %b%b:*",
+				cursor,
+				m_prefix.data(), m_prefix.size(),
+				user.data(), user.size()
+			);
+		}
+
+		const std::string& user() const {return m_user;}
+		const std::string& path() const {return m_path;}
+
+	private:
+		template <typename BlobDb>
+		std::string serialize(const BlobDb& blobdb, redis::Reply& reply) const
+		{
+			std::ostringstream ss;
+			ss  << R"__({"username":")__"      << m_user
+				<< R"__(", "collection":")__"  << m_path
+				<< R"__(", "elements":)__" << "{";
+
+			bool first = true;
+			reply.foreach_kv_pair([&ss, &blobdb, &first](auto&& blob, auto&& perm)
+			{
+				// TODO: check perm
+
+				if (first)
+					first = false;
+				else
+					ss << ",\n";
+
+				auto blob_id = raw_to_object_id(blob);
+
+				ss  << to_quoted_hex(blob_id) << ":"
+					<< blobdb.load_meta_json(blob_id);
+			});
+			ss << "}}";
+			return ss.str();
+		}
+
+	private:
+		std::string m_user;
+		std::string m_path;
+	};
+
 public:
 	explicit Ownership(std::string_view name);
 
@@ -90,6 +217,17 @@ public:
 			Log(LOG_INFO, "transaction completed %1%", ec);
 			comp(ec);
 		}, "EXEC");
+	}
+
+	template <typename Complete, typename BlobDb>
+	void serialize(
+		redis::Connection& db,
+		std::string_view coll,
+		const BlobDb& blobdb,
+		Complete&& complete
+	)
+	{
+		return Collection{m_user, coll}.serialize(db, blobdb, std::forward<Complete>(complete));
 	}
 
 	template <typename Complete>
