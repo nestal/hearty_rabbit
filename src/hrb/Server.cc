@@ -266,10 +266,10 @@ http::response<SplitBuffers> Server::static_file_request(const EmptyRequest& req
 {
 	Log(LOG_NOTICE, "requesting path %1% %2%", req.target(), req[http::field::if_none_match]);
 
-	auto filepath = req.target();
+	std::string_view filepath{req.target().data(), req.target().size()};
 	filepath.remove_prefix(1);
 
-	return m_lib.find_static(std::string{filepath}, req[http::field::if_none_match], req.version());
+	return m_lib.find_static(filepath, req[http::field::if_none_match], req.version());
 }
 
 void Server::run()
