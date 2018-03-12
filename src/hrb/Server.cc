@@ -11,7 +11,6 @@
 //
 
 #include "Server.hh"
-#include "ResourcesList.hh"
 #include "Collection.hh"
 
 #include "crypto/Password.hh"
@@ -344,13 +343,13 @@ boost::asio::io_context& Server::get_io_context()
 	return m_ioc;
 }
 
-bool Server::is_static_resource(boost::string_view target)
+bool Server::is_static_resource(boost::string_view target) const
 {
 	assert(!target.empty());
 	assert(target.front() == '/');
 	target.remove_prefix(1);
 
-	return static_resources.find(target.to_string()) != static_resources.end();
+	return m_lib.is_static(target.to_string());
 }
 
 std::tuple<

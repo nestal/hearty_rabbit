@@ -37,6 +37,8 @@ public:
 	Response find_static(const std::string& filename, boost::string_view etag, int version) const;
 	Response find_dynamic(const std::string& filename, int version) const;
 
+	bool is_static(const std::string& filename) const;
+
 private:
 	class Resource
 	{

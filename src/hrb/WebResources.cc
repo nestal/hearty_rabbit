@@ -91,6 +91,11 @@ WebResources::Response WebResources::find_dynamic(const std::string& filename, i
 		Response{http::status::not_found, version};
 }
 
+bool WebResources::is_static(const std::string& filename) const
+{
+	return m_static.find(filename) != m_static.end();
+}
+
 WebResources::Response WebResources::Resource::get(int version, bool dynamic) const
 {
 	http::response<hrb::SplitBuffers> result{
