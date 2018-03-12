@@ -47,10 +47,10 @@ Server::Server(const Configuration& cfg) :
 
 http::response<SplitBuffers> Server::on_login_incorrect(const EmptyRequest& req)
 {
-	auto res = m_lib.find_dynamic("login.html", req.version());
+	auto res = m_lib.find_dynamic("index.html", req.version());
 	res.body().extra(
 		index_needle,
-		R"_(const message = "Login incorrect... Try again?";)_"
+		R"_(var login_message = "Login incorrect... Try again?";)_"
 	);
 	return res;
 }
