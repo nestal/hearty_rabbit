@@ -153,9 +153,9 @@ TEST_CASE("General server tests", "[normal]")
 		EmptyRequest req;
 		req.version(11);
 
-		SECTION("Request login.html success without login")
+		SECTION("Request index.html success without login")
 		{
-			FileResponseChecker checker{http::status::ok, cfg.web_root() / "dynamic/login.html"};
+			FileResponseChecker checker{http::status::ok, cfg.web_root() / "dynamic/index.html"};
 
 			req.target("/");
 			subject.handle_https(std::move(req), std::ref(checker), {});
@@ -224,7 +224,7 @@ TEST_CASE("General server tests", "[normal]")
 
 		SECTION("requesting other resources without a session")
 		{
-			FileResponseChecker login{http::status::ok, cfg.web_root() / "dynamic/login.html"};
+			FileResponseChecker login{http::status::ok, cfg.web_root() / "dynamic/index.html"};
 			GenericStatusChecker forbidden{http::status::forbidden};
 			Checker *expected{nullptr};
 

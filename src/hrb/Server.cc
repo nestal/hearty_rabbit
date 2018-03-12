@@ -174,7 +174,7 @@ void Server::on_invalid_session(const RequestHeader& req, FileResponseSender&& s
 	// Do not penalize the user, because their session may be expired.
 	// It may also be the first visit of an anonymous user.
 	if (req.target() == "/")
-		return send(m_lib.find_dynamic("login.html", req.version()));
+		return send(m_lib.find_dynamic("index.html", req.version()));
 
 	if (req.target().starts_with(url::view))
 	{

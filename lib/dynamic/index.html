@@ -14,11 +14,12 @@
 </head>
 <body class="index-body">
 <div class="topnav">
-	<img class="nav-logo" src="/logo.svg">
-	<label class="active" onclick="home()"><span id="username"></span>'s Photo</label>
+	<img   class="nav-logo" src="/logo.svg">
+	<label id="go-home-nav" class="active"><span id="username"></span>'s Photo</label>
+	<label id="login-nav"   class="active">Login</label>
 	<label for="file-upload">Upload</label>
 	<label>About</label>
-	<a href="/logout">Logout</a>
+	<a id="logout-nav" href="/logout">Logout</a>
 	<label class="icon" onclick="myFunction()">&#9776;</label>
 </div>
 
@@ -44,15 +45,21 @@
     <a class="next" onclick="next_image(1)">&#10095;</a>
 </div>
 
-<div id="login-box" class="login model">
-	<h1>Welcome to HeartyRabbit!</h1>
-
-	<div id="login-message">Please login:</div>
-	<form action="/login" method="post">
-		<input id="username" name="username" type="text" placeholder="Username">
-		<input id="password" name="password" type="password" placeholder="Password">
-		<button type="submit">Login</button>
-	</form>
+<div id="login-box" class="modal">
+	<div class="light-box-button-bar">
+		<span class="close cursor" onclick="cancel_login();"><i class="light-box-button material-icons">close</i></span>
+	</div>
+	<div class="login">
+		<div class="login-form">
+			<h1>Welcome to HeartyRabbit!</h1>
+			<div id="login-message">Please login:</div>
+			<form action="/login" method="post">
+				<input id="username" name="username" type="text" placeholder="Username">
+				<input id="password" name="password" type="password" placeholder="Password">
+				<button type="submit">Login</button>
+			</form>
+		</div>
+	</div>
 </div>
 
 <script>

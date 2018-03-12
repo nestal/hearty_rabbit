@@ -7,9 +7,19 @@
 }
 
 div.login {
-	width: 360px;
+	width: 640px;
 	padding: 8% 0 0;
 	margin: auto;
+}
+
+div.login-form {
+	position: relative;
+	z-index: 1;
+	background: #FFFFFF;
+	max-width: 640px;
+	margin: 0 auto 100px;
+	padding: 45px;
+	text-align: center;
 }
 
 div.login form input {
