@@ -73,7 +73,7 @@ void Server::on_login(const StringRequest& req, EmptyResponseSender&& send)
 			{
 				Log(LOG_INFO, "login result: %1% %2%", ec, ec.message());
 
-				auto&& res = see_other(ec ? "/login_incorrect.html" : PathURL{"view", session.user(), "", ""}.str(), version);
+				auto&& res = see_other(ec ? "/login_incorrect.html" : URLIntent{"view", session.user(), "", ""}.str(), version);
 				if (!ec)
 					res.set(http::field::set_cookie, session.set_cookie());
 
@@ -133,7 +133,7 @@ void Server::on_upload(UploadRequest&& req, EmptyResponseSender&& send, const Au
 {
 	boost::system::error_code bec;
 
-	PathURL path_url{req.target()};
+	URLIntent path_url{req.target()};
 	if (auth.user() != path_url.user())
 		return send(http::response<http::empty_body>{http::status::forbidden, req.version()});
 
@@ -151,7 +151,7 @@ void Server::on_upload(UploadRequest&& req, EmptyResponseSender&& send, const Au
 	// It will be used for authorizing the user's request on these blob later.
 	Ownership{auth.user()}.link(
 		*m_db.alloc(), path_url.collection(), id, [
-			location = PathURL{"blob", auth.user(), path_url.collection(), to_hex(id)}.str(),
+			location = URLIntent{"blob", auth.user(), path_url.collection(), to_hex(id)}.str(),
 			send = std::move(send),
 			version = req.version()
 		](auto ec)
@@ -245,7 +245,7 @@ void Server::serve_view(const EmptyRequest& req, Server::FileResponseSender&& se
 		return send(std::move(res));
 	}
 
-	PathURL path_url{req.target()};
+	URLIntent path_url{req.target()};
 
 	if (path_url.user() != auth.user())
 		return send(http::response<SplitBuffers>{http::status::forbidden, req.version()});
@@ -443,7 +443,7 @@ void Server::serve_collection(const EmptyRequest& req, StringResponseSender&& se
 	if (req.method() != http::verb::get)
 		return send(http::response<http::string_body>{http::status::bad_request, req.version()});
 
-	PathURL path_url{req.target()};
+	URLIntent path_url{req.target()};
 	if (path_url.user() != auth.user())
 		return send(http::response<http::string_body>{http::status::forbidden, req.version()});
 

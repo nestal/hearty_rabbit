@@ -19,7 +19,7 @@ namespace hrb {
 template <typename Send>
 void Server::handle_blob(const EmptyRequest& req, Send&& send, const Authentication& auth)
 {
-	PathURL path_url{req.target()};
+	URLIntent path_url{req.target()};
 
 	// Return 404 not_found if the blob ID is invalid
 	auto object_id = hex_to_object_id(path_url.filename());
@@ -71,7 +71,7 @@ void Server::on_valid_session(EmptyRequest&& req, Send&& send, const Authenticat
 	const RequestHeader& header = req;
 
 	if (req.target() == "/")
-		return send(see_other(PathURL{"view", auth.user(), "", ""}.str(), req.version()));
+		return send(see_other(URLIntent{"view", auth.user(), "", ""}.str(), req.version()));
 
 	if (req.target().starts_with(url::blob))
 		return handle_blob(req, std::forward<decltype(send)>(send), auth);

@@ -13,15 +13,28 @@
 #pragma once
 
 #include <boost/utility/string_view.hpp>
+#include <string_view>
+#include <array>
 
 namespace hrb {
 
-// An URL containing a container path, i.e. /view/user/path/to/dir or /upload/user/path/to/dir/file.toupload
-class PathURL
+// Deduce the intention of the user from the URL
+class URLIntent
 {
 public:
-	explicit PathURL(boost::string_view target);
-	PathURL(std::string_view action, std::string_view user, std::string_view coll, std::string_view name);
+	// TODO: narrow down the possibility of actions in these enum
+	enum class Action {login, logout, blob, view, coll, upload, none};
+
+private:
+	// Allowed HTTP methods
+	static const std::array<bool, static_cast<int>(Action::none)> allow_get, allow_post, allow_put;
+
+	// Required URL components
+	static const std::array<bool, static_cast<int>(Action::none)> require_user, require_coll, require_filename;
+
+public:
+	explicit URLIntent(boost::string_view target);
+	URLIntent(std::string_view action, std::string_view user, std::string_view coll, std::string_view name);
 
 	std::string_view action() const {return m_action;}
 	std::string_view user() const {return m_user;}
@@ -30,8 +43,12 @@ public:
 
 	std::string str() const;
 
+	bool valid() const;
+
 private:
 	static std::string_view trim(std::string_view s);
+
+	static Action parse_action(std::string_view str);
 
 private:
 	// "view" or "upload"

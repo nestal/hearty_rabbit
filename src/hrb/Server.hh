@@ -16,7 +16,7 @@
 #include "WebResources.hh"
 #include "UploadFile.hh"
 #include "Ownership.hh"
-#include "PathURL.hh"
+#include "URLIntent.hh"
 
 #include "crypto/Authentication.hh"
 #include "net/SplitBuffers.hh"
