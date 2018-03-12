@@ -21,14 +21,14 @@ Ownership::Ownership(std::string_view name) : m_user{name}
 {
 }
 
-const std::string_view Ownership::Blob::m_prefix{"blob-backlink:"};
+const std::string_view Ownership::BlobBackLink::m_prefix{"blob-backlink:"};
 
-Ownership::Blob::Blob(std::string_view user, const ObjectID& blob) :
+Ownership::BlobBackLink::BlobBackLink(std::string_view user, const ObjectID& blob) :
 	m_user{user}, m_blob{blob}
 {
 }
 
-void Ownership::Blob::watch(redis::Connection& db) const
+void Ownership::BlobBackLink::watch(redis::Connection& db) const
 {
 	db.command(
 		"WATCH %b%b:%b",
@@ -38,7 +38,7 @@ void Ownership::Blob::watch(redis::Connection& db) const
 	);
 }
 
-void Ownership::Blob::link(redis::Connection& db, std::string_view coll) const
+void Ownership::BlobBackLink::link(redis::Connection& db, std::string_view coll) const
 {
 	// If the blob link already exists, it should be pointing to an existing
 	// permission string. We should not change it
@@ -52,7 +52,7 @@ void Ownership::Blob::link(redis::Connection& db, std::string_view coll) const
 	);
 }
 
-void Ownership::Blob::unlink(redis::Connection& db, std::string_view coll) const
+void Ownership::BlobBackLink::unlink(redis::Connection& db, std::string_view coll) const
 {
 	db.command(
 		"SREM %b%b:%b %b",

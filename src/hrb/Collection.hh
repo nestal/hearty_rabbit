@@ -35,7 +35,7 @@ public:
 
 	void watch(redis::Connection& db);
 
-	void link(redis::Connection& db, const ObjectID& id);
+	void link(redis::Connection& db, const ObjectID& id, std::string_view perm="");
 	void unlink(redis::Connection& db, const ObjectID& id);
 
 	template <typename Complete, typename BlobDb>
@@ -53,9 +53,9 @@ public:
 				&blobdb
 			](auto&& reply, std::error_code&& ec) mutable
 			{
-				comp(Collection::serialize(std::move(user), std::move(path), blobdb, reply), std::move(ec));
+				comp(Collection{user,path}.serialize(blobdb, reply), std::move(ec));
 			},
-			"SMEMBERS %b%b:%b",
+			"HGETALL %b%b:%b",
 			redis_prefix.data(), redis_prefix.size(),
 			m_user.data(), m_user.size(),
 			m_path.data(), m_path.size()
@@ -104,26 +104,28 @@ public:
 
 private:
 	template <typename BlobDb>
-	static std::string serialize(std::string&& user, std::string&& path, const BlobDb& blobdb, redis::Reply& reply)
+	std::string serialize(const BlobDb& blobdb, redis::Reply& reply) const
 	{
 		std::ostringstream ss;
-		ss  << R"__({"username":")__"      << user
-			<< R"__(", "collection":")__"    << path
+		ss  << R"__({"username":")__"      << m_user
+			<< R"__(", "collection":")__"  << m_path
 			<< R"__(", "elements":)__" << "{";
 
 		bool first = true;
-		for (auto&& blob : reply)
+		reply.foreach_kv_pair([&ss, &blobdb, &first](auto&& blob, auto&& perm)
 		{
+			// TODO: check perm
+
 			if (first)
 				first = false;
 			else
 				ss << ",\n";
 
-			auto blob_id = raw_to_object_id(blob.as_string());
+			auto blob_id = raw_to_object_id(blob);
 
 			ss  << to_quoted_hex(blob_id) << ":"
 				<< blobdb.load_meta_json(blob_id);
-		}
+		});
 		ss << "}}";
 		return ss.str();
 	}

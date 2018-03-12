@@ -32,13 +32,13 @@ class BlobDatabase;
 class Ownership
 {
 private:
-	class Blob
+	class BlobBackLink
 	{
 	private:
 		static const std::string_view m_prefix;
 
 	public:
-		Blob(std::string_view user, const ObjectID& blob);
+		BlobBackLink(std::string_view user, const ObjectID& blob);
 
 		void watch(redis::Connection& db) const;
 
@@ -82,7 +82,7 @@ public:
 		Complete&& complete
 	)
 	{
-		Blob  blob{m_user, blobid};
+		BlobBackLink  blob{m_user, blobid};
 		Collection coll{m_user, path};
 
 		// watch everything that will be modified
@@ -115,7 +115,7 @@ public:
 		Complete&& complete
 	)
 	{
-		Blob{m_user, blob}.is_owned(db, std::forward<Complete>(complete));
+		BlobBackLink{m_user, blob}.is_owned(db, std::forward<Complete>(complete));
 	}
 
 	const std::string& user() const {return m_user;}

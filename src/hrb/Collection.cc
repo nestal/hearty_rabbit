@@ -30,19 +30,20 @@ void Collection::watch(redis::Connection& db)
 	);
 }
 
-void Collection::link(redis::Connection& db, const ObjectID& id)
+void Collection::link(redis::Connection& db, const ObjectID& id, std::string_view perm)
 {
-	db.command("SADD %b%b:%b %b",
+	db.command("HSET %b%b:%b %b %b",
 		redis_prefix.data(), redis_prefix.size(),
 		m_user.data(), m_user.size(),
 		m_path.data(), m_path.size(),
-		id.data(), id.size()
+		id.data(), id.size(),
+		perm.data(), perm.size()
 	);
 }
 
 void Collection::unlink(redis::Connection& db, const ObjectID& id)
 {
-	db.command("SREM %b%b:%b %b",
+	db.command("HDEL %b%b:%b %b",
 		redis_prefix.data(), redis_prefix.size(),
 		m_user.data(), m_user.size(),
 		m_path.data(), m_path.size(),
