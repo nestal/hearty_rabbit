@@ -10,10 +10,11 @@
 // Created by nestal on 3/4/18.
 //
 
-#include <iostream>
 #include "PathURL.hh"
 
 #include "util/Escape.hh"
+
+#include <sstream>
 
 namespace hrb {
 
@@ -44,11 +45,35 @@ PathURL::PathURL(boost::string_view boost_target)
 	if (target.empty())
 		return;
 
-	m_container = target;
-	while (!m_container.empty() && m_container.front() == '/')
-		m_container.remove_prefix(1);
-	while (!m_container.empty() && m_container.back() == '/')
-		m_container.remove_suffix(1);
+	m_coll = target;
+	while (!m_coll.empty() && m_coll.front() == '/')
+		m_coll.remove_prefix(1);
+	while (!m_coll.empty() && m_coll.back() == '/')
+		m_coll.remove_suffix(1);
+}
+
+PathURL::PathURL(std::string_view action, std::string_view user, std::string_view coll, std::string_view name) :
+	m_action{action}, m_user{user}, m_coll{coll}, m_filename{name}
+{
+}
+
+std::string PathURL::str() const
+{
+	std::ostringstream oss;
+	if (!m_action.empty())
+	{
+		if (m_action.front() != '/')
+			oss << '/';
+		oss << m_action;
+	}
+	if (!m_user.empty())
+		oss << '/' << m_user;
+	if (!m_coll.empty())
+		oss << '/' << m_coll;
+	if (!m_filename.empty())
+		oss << '/' << m_filename;
+
+	return oss.str();
 }
 
 } // end of namespace hrb

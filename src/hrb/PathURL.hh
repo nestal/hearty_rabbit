@@ -20,12 +20,15 @@ namespace hrb {
 class PathURL
 {
 public:
-	PathURL(boost::string_view target);
+	explicit PathURL(boost::string_view target);
+	PathURL(std::string_view action, std::string_view user, std::string_view coll, std::string_view name);
 
 	std::string_view action() const {return m_action;}
 	std::string_view user() const {return m_user;}
-	std::string_view collection() const {return m_container;}
+	std::string_view collection() const {return m_coll;}
 	std::string_view filename() const {return m_filename;}
+
+	std::string str() const;
 
 private:
 	// "view" or "upload"
@@ -34,7 +37,7 @@ private:
 	std::string_view m_user;
 
 	// container name
-	std::string_view m_container;
+	std::string_view m_coll;
 
 	// filename
 	std::string_view m_filename;

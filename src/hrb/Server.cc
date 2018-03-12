@@ -146,15 +146,12 @@ void Server::on_upload(UploadRequest&& req, EmptyResponseSender&& send, const Au
 	if (ec)
 		return send(http::response<http::empty_body>{http::status::internal_server_error, req.version()});
 
-	std::string coll{path_url.collection()};
-	std::string location = "/blob/" + auth.user() + '/' + (coll.empty() ? "" : coll + '/') + to_hex(id);
-
 	// Add the newly created blob to the user's ownership table.
 	// The user's ownership table contains all the blobs that is owned by the user.
 	// It will be used for authorizing the user's request on these blob later.
 	Ownership{auth.user()}.link(
 		*m_db.alloc(), path_url.collection(), id, [
-			location,
+			location = PathURL{"blob", auth.user(), path_url.collection(), to_hex(id)}.str(),
 			send = std::move(send),
 			version = req.version()
 		](auto ec)

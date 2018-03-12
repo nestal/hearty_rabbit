@@ -253,10 +253,6 @@ private:
 		BlobBackLink  blob{m_user, blobid};
 		Collection coll{m_user, path};
 
-		// watch everything that will be modified
-		blob.watch(db);
-		coll.watch(db);
-
 		db.command("MULTI");
 		if (add)
 		{
