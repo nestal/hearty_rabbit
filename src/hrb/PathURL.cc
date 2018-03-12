@@ -15,16 +15,22 @@
 #include "util/Escape.hh"
 
 #include <sstream>
+#include <cassert>
 
 namespace hrb {
 
 PathURL::PathURL(boost::string_view boost_target)
 {
-	if (boost_target.empty())
+	// order is important here
+	// All URL path must start with slash
+	if (boost_target.empty() || boost_target.front() != '/' || boost_target.size() == 1)
 		return;
 
+	// skip the first slash
 	std::string_view target{boost_target.data(), boost_target.size()};
-	m_action = target.substr(0, target.find_first_of('/', 1));
+	target.remove_prefix(1);
+
+	m_action = target.substr(0, target.find_first_of('/', 0));
 	target.remove_prefix(m_action.size());
 
 	if (target.empty())
@@ -60,18 +66,16 @@ PathURL::PathURL(std::string_view action, std::string_view user, std::string_vie
 std::string PathURL::str() const
 {
 	std::ostringstream oss;
+	oss << '/' << m_action;
 	if (!m_action.empty())
-	{
-		if (m_action.front() != '/')
-			oss << '/';
-		oss << m_action;
-	}
+		oss << '/';
+	oss << m_user;
 	if (!m_user.empty())
-		oss << '/' << m_user;
+		oss << '/';
+	oss << m_coll;
 	if (!m_coll.empty())
-		oss << '/' << m_coll;
-	if (!m_filename.empty())
-		oss << '/' << m_filename;
+		oss << '/';
+	oss << m_filename;
 
 	return oss.str();
 }

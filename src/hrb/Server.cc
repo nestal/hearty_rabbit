@@ -235,6 +235,9 @@ void Server::serve_view(const EmptyRequest& req, Server::FileResponseSender&& se
 	if (req.method() != http::verb::get)
 		return send(http::response<SplitBuffers>{http::status::bad_request, req.version()});
 
+	// The trailing slash for views is mandatory.
+	// Otherwise PathURL will treat the last segment as the filename, not part of
+	// the collection name.
 	if (req.target().back() != '/')
 	{
 		http::response<SplitBuffers> res{http::status::moved_permanently, req.version()};
