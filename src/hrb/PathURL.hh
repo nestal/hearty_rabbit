@@ -31,6 +31,9 @@ public:
 	std::string str() const;
 
 private:
+	static std::string_view trim(std::string_view s);
+
+private:
 	// "view" or "upload"
 	std::string_view m_action;
 

@@ -73,7 +73,7 @@ void Server::on_login(const StringRequest& req, EmptyResponseSender&& send)
 			{
 				Log(LOG_INFO, "login result: %1% %2%", ec, ec.message());
 
-				auto&& res = see_other(ec ? "/login_incorrect.html" : user_view(session.user()), version);
+				auto&& res = see_other(ec ? "/login_incorrect.html" : PathURL{"view", session.user(), "", ""}.str(), version);
 				if (!ec)
 					res.set(http::field::set_cookie, session.set_cookie());
 
@@ -436,19 +436,6 @@ bool Server::is_upload(const RequestHeader& header)
 bool Server::is_login(const RequestHeader& header)
 {
 	return header.target() == hrb::url::login && header.method() == http::verb::post;
-}
-
-std::string Server::user_view(std::string_view user, std::string_view path)
-{
-	assert(!user.empty());
-
-	static const auto url_view = std::string{url::view} + "/";
-	auto result = url_view + std::string{user};
-	if (path.empty() || path.front() != '/')
-		result.push_back('/');
-	result.append(path.data(), path.size());
-
-	return result;
 }
 
 void Server::serve_collection(const EmptyRequest& req, StringResponseSender&& send, const Authentication& auth)

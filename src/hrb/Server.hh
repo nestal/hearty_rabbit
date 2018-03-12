@@ -130,7 +130,6 @@ private:
 	static bool is_upload(const RequestHeader& header);
 	static bool is_login(const RequestHeader& header);
 	static void drop_privileges();
-	static std::string user_view(std::string_view user, std::string_view path = {});
 
 	using EmptyResponseSender  = std::function<void(http::response<http::empty_body>&&)>;
 	using StringResponseSender = std::function<void(http::response<http::string_body>&&)>;

@@ -71,7 +71,7 @@ void Server::on_valid_session(EmptyRequest&& req, Send&& send, const Authenticat
 	const RequestHeader& header = req;
 
 	if (req.target() == "/")
-		return send(see_other(user_view(auth.user()), req.version()));
+		return send(see_other(PathURL{"view", auth.user(), "", ""}.str(), req.version()));
 
 	if (req.target().starts_with(url::blob))
 		return handle_blob(req, std::forward<decltype(send)>(send), auth);

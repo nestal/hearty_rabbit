@@ -15,7 +15,6 @@
 #include "util/Escape.hh"
 
 #include <sstream>
-#include <cassert>
 
 namespace hrb {
 
@@ -51,15 +50,11 @@ PathURL::PathURL(boost::string_view boost_target)
 	if (target.empty())
 		return;
 
-	m_coll = target;
-	while (!m_coll.empty() && m_coll.front() == '/')
-		m_coll.remove_prefix(1);
-	while (!m_coll.empty() && m_coll.back() == '/')
-		m_coll.remove_suffix(1);
+	m_coll = trim(target);
 }
 
 PathURL::PathURL(std::string_view action, std::string_view user, std::string_view coll, std::string_view name) :
-	m_action{action}, m_user{user}, m_coll{coll}, m_filename{name}
+	m_action{trim(action)}, m_user{trim(user)}, m_coll{trim(coll)}, m_filename{trim(name)}
 {
 }
 
@@ -78,6 +73,15 @@ std::string PathURL::str() const
 	oss << m_filename;
 
 	return oss.str();
+}
+
+std::string_view PathURL::trim(std::string_view s)
+{
+	while (!s.empty() && s.front() == '/')
+		s.remove_prefix(1);
+	while (!s.empty() && s.back() == '/')
+		s.remove_suffix(1);
+	return s;
 }
 
 } // end of namespace hrb

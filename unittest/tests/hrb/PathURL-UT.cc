@@ -103,4 +103,13 @@ TEST_CASE("path URL")
 	REQUIRE(path_with_2slashes.collection() == "something/////wrong");
 	REQUIRE(path_with_2slashes.filename() == "image.jpeg");
 	REQUIRE(path_with_2slashes.str() == "/upload/path/something/////wrong/image.jpeg");
+
+	PathURL trim_action{"/action", "user", "", ""};
+	REQUIRE(trim_action.str() == "/action/user/");
+
+	PathURL trim_action_fn{"/action", "user", "", "read.me"};
+	REQUIRE(trim_action_fn.str() == "/action/user/read.me");
+
+	PathURL trim_user{"action", "/user", "", ""};
+	REQUIRE(trim_user.str() == "/action/user/");
 }
