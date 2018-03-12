@@ -10,7 +10,7 @@
 // Created by nestal on 3/3/18.
 //
 
-#include "BlobObject.hh"
+#include "BlobFile.hh"
 #include "BlobMeta.hh"
 
 #include "image/RotateImage.hh"
@@ -30,7 +30,7 @@ const std::string default_rendition = "master";
 const std::string metafile = "meta";
 }
 
-BlobMeta BlobObject::meta() const
+BlobMeta BlobFile::meta() const
 {
 	rapidjson::Document json;
 	json.Parse(m_meta.data(), m_meta.size());
@@ -38,7 +38,7 @@ BlobMeta BlobObject::meta() const
 	return BlobMeta::load(json);
 }
 
-BlobObject BlobObject::upload(
+BlobFile BlobFile::upload(
 	UploadFile&& tmp,
 	const Magic& magic,
 	const Size& resize_img,
@@ -47,12 +47,12 @@ BlobObject BlobObject::upload(
 	std::error_code& ec
 )
 {
-	BlobObject result;
+	BlobFile result;
 
 	auto master = MMap::open(tmp.native_handle(), ec);
 	if (ec)
 	{
-		Log(LOG_WARNING, "BlobObject::upload(): cannot mmap temporary file %1% %2%", ec, ec.message());
+		Log(LOG_WARNING, "BlobFile::upload(): cannot mmap temporary file %1% %2%", ec, ec.message());
 		return result;
 	}
 
@@ -65,7 +65,7 @@ BlobObject BlobObject::upload(
 		auto rotated = transform.auto_rotate(master.buffer(), ec);
 		if (ec)
 		{
-			Log(LOG_WARNING, "BlobObject::upload(): cannot rotate image %1% %2%", ec, ec.message());
+			Log(LOG_WARNING, "BlobFile::upload(): cannot rotate image %1% %2%", ec, ec.message());
 			return result;
 		}
 
@@ -99,7 +99,7 @@ BlobObject BlobObject::upload(
 	return result;
 }
 
-BufferView BlobObject::blob() const
+BufferView BlobFile::blob() const
 {
 	return m_master.buffer();
 }
@@ -127,7 +127,7 @@ void save_blob(const Blob& blob, const fs::path& dest, std::error_code& ec)
 		ec.assign(0, ec.category());
 }
 
-void BlobObject::save(const fs::path& dir, std::error_code& ec) const
+void BlobFile::save(const fs::path& dir, std::error_code& ec) const
 {
 	boost::system::error_code bec;
 	fs::create_directories(dir, bec);
@@ -156,7 +156,7 @@ void BlobObject::save(const fs::path& dir, std::error_code& ec) const
 		save_blob(m_meta, dir/metafile, ec);
 }
 
-BlobObject::BlobObject(const fs::path& dir, const ObjectID& id, const Size& resize_img, std::error_code& ec) :
+BlobFile::BlobFile(const fs::path& dir, const ObjectID& id, const Size& resize_img, std::error_code& ec) :
 	m_id{id}
 {
 	std::ostringstream fn;
@@ -169,7 +169,7 @@ BlobObject::BlobObject(const fs::path& dir, const ObjectID& id, const Size& resi
 		m_meta = meta_string(dir);
 }
 
-std::string BlobObject::meta_string(const fs::path& dir)
+std::string BlobFile::meta_string(const fs::path& dir)
 {
 	std::error_code ec;
 	auto meta = MMap::open(dir/metafile, ec);

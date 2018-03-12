@@ -13,7 +13,7 @@
 #include "BlobDatabase.hh"
 #include "UploadFile.hh"
 #include "BlobMeta.hh"
-#include "BlobObject.hh"
+#include "BlobFile.hh"
 
 #include "net/MMapResponseBody.hh"
 
@@ -45,7 +45,7 @@ void BlobDatabase::prepare_upload(UploadFile& result, std::error_code& ec) const
 
 ObjectID BlobDatabase::save(UploadFile&& tmp, std::string_view filename, std::error_code& ec)
 {
-	auto blob_obj = BlobObject::upload(std::move(tmp), m_magic, m_resize_img, filename, 70, ec);
+	auto blob_obj = BlobFile::upload(std::move(tmp), m_magic, m_resize_img, filename, 70, ec);
 	if (!ec)
 		blob_obj.save(dest(blob_obj.ID()), ec);
 
@@ -77,7 +77,7 @@ BlobDatabase::BlobResponse BlobDatabase::response(
 	auto path = dest(id);
 
 	std::error_code ec;
-	BlobObject blob_obj{path, id, m_resize_img, ec};
+	BlobFile blob_obj{path, id, m_resize_img, ec};
 
 	if (ec)
 		return BlobResponse{http::status::not_found, version};
@@ -105,7 +105,7 @@ void BlobDatabase::set_cache_control(BlobResponse& res, const ObjectID& id)
 
 std::string BlobDatabase::load_meta_json(const ObjectID& id) const
 {
-	return BlobObject::meta_string(dest(id));
+	return BlobFile::meta_string(dest(id));
 }
 
 } // end of namespace hrb

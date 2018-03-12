@@ -25,7 +25,7 @@
 namespace hrb {
 
 class ObjectID;
-class BlobObject;
+class BlobFile;
 class UploadFile;
 class MMapResponseBody;
 class Magic;

@@ -29,13 +29,13 @@ class UploadFile;
 class BlobMeta;
 class Magic;
 
-class BlobObject
+class BlobFile
 {
 public:
-	BlobObject() = default;
-	BlobObject(const fs::path& dir, const ObjectID& id, const Size& resize_img, std::error_code& ec);
+	BlobFile() = default;
+	BlobFile(const fs::path& dir, const ObjectID& id, const Size& resize_img, std::error_code& ec);
 
-	static BlobObject upload(
+	static BlobFile upload(
 		UploadFile&& tmp,
 		const Magic& magic,
 		const Size& resize_img,

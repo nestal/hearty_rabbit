@@ -12,7 +12,7 @@
 
 #include <catch.hpp>
 
-#include "hrb/BlobObject.hh"
+#include "hrb/BlobFile.hh"
 #include "hrb/BlobMeta.hh"
 #include "hrb/UploadFile.hh"
 #include "util/MMap.hh"
@@ -33,7 +33,7 @@ auto upload(const fs::path& file)
 
 	boost::system::error_code bec;
 	UploadFile tmp;
-	tmp.open("/tmp/BlobObject-UT", bec);
+	tmp.open("/tmp/BlobFile-UT", bec);
 	REQUIRE(!bec);
 	tmp.write(mmap.data(), mmap.size(), bec);
 	REQUIRE(!bec);
@@ -41,15 +41,15 @@ auto upload(const fs::path& file)
 	return std::make_tuple(std::move(tmp), std::move(mmap));
 }
 
-TEST_CASE("upload non-image BlobObject", "[normal]")
+TEST_CASE("upload non-image BlobFile", "[normal]")
 {
-	fs::remove_all("/tmp/BlobObject-UT");
-	fs::create_directories("/tmp/BlobObject-UT");
+	fs::remove_all("/tmp/BlobFile-UT");
+	fs::create_directories("/tmp/BlobFile-UT");
 
 	auto [tmp, src] = upload(__FILE__);
 
 	std::error_code ec;
-	auto subject = BlobObject::upload(std::move(tmp), Magic{}, {2048, 2048}, "unittest.cc", 70, ec);
+	auto subject = BlobFile::upload(std::move(tmp), Magic{}, {2048, 2048}, "unittest.cc", 70, ec);
 	REQUIRE(!ec);
 	REQUIRE(subject.ID() != ObjectID{});
 
@@ -57,25 +57,25 @@ TEST_CASE("upload non-image BlobObject", "[normal]")
 	REQUIRE(meta.mime() == "text/x-c");
 	REQUIRE(meta.filename() == "unittest.cc");
 
-	subject.save("/tmp/BlobObject-UT", ec);
+	subject.save("/tmp/BlobFile-UT", ec);
 	REQUIRE(!ec);
-	REQUIRE(fs::exists("/tmp/BlobObject-UT/master"));
+	REQUIRE(fs::exists("/tmp/BlobFile-UT/master"));
 
-	auto out = MMap::open("/tmp/BlobObject-UT/master", ec);
+	auto out = MMap::open("/tmp/BlobFile-UT/master", ec);
 	REQUIRE(!ec);
 	REQUIRE(out.size() == src.size());
 	REQUIRE(std::memcmp(out.data(), src.data(), out.size()) == 0);
 }
 
-TEST_CASE("upload small image BlobObject", "[normal]")
+TEST_CASE("upload small image BlobFile", "[normal]")
 {
-	fs::remove_all("/tmp/BlobObject-UT");
-	fs::create_directories("/tmp/BlobObject-UT");
+	fs::remove_all("/tmp/BlobFile-UT");
+	fs::create_directories("/tmp/BlobFile-UT");
 
 	auto [tmp, src] = upload(image_path()/"black.jpg");
 
 	std::error_code ec;
-	auto subject = BlobObject::upload(std::move(tmp), Magic{}, {2048, 2048}, "black.jpeg", 70, ec);
+	auto subject = BlobFile::upload(std::move(tmp), Magic{}, {2048, 2048}, "black.jpeg", 70, ec);
 	REQUIRE(!ec);
 	REQUIRE(subject.ID() != ObjectID{});
 
@@ -83,25 +83,25 @@ TEST_CASE("upload small image BlobObject", "[normal]")
 	REQUIRE(meta.mime() == "image/jpeg");
 	REQUIRE(meta.filename() == "black.jpeg");
 
-	subject.save("/tmp/BlobObject-UT", ec);
+	subject.save("/tmp/BlobFile-UT", ec);
 	REQUIRE(!ec);
-	REQUIRE(fs::exists("/tmp/BlobObject-UT/master"));
+	REQUIRE(fs::exists("/tmp/BlobFile-UT/master"));
 
-	auto out = MMap::open("/tmp/BlobObject-UT/master", ec);
+	auto out = MMap::open("/tmp/BlobFile-UT/master", ec);
 	REQUIRE(!ec);
 	REQUIRE(out.size() == src.size());
 	REQUIRE(std::memcmp(out.data(), src.data(), out.size()) == 0);
 }
 
-TEST_CASE("upload big upright image BlobObject", "[normal]")
+TEST_CASE("upload big upright image BlobFile", "[normal]")
 {
-		fs::remove_all("/tmp/BlobObject-UT");
-fs::create_directories("/tmp/BlobObject-UT");
+		fs::remove_all("/tmp/BlobFile-UT");
+fs::create_directories("/tmp/BlobFile-UT");
 
 	auto [tmp, src] = upload(image_path()/"up_f_upright.jpg");
 
 	std::error_code ec;
-	auto subject = BlobObject::upload(std::move(tmp), Magic{}, {128, 128}, "upright.jpeg", 70, ec);
+	auto subject = BlobFile::upload(std::move(tmp), Magic{}, {128, 128}, "upright.jpeg", 70, ec);
 	REQUIRE(!ec);
 	REQUIRE(subject.ID() != ObjectID{});
 
@@ -109,16 +109,16 @@ fs::create_directories("/tmp/BlobObject-UT");
 	REQUIRE(meta.mime() == "image/jpeg");
 	REQUIRE(meta.filename() == "upright.jpeg");
 
-	subject.save("/tmp/BlobObject-UT", ec);
+	subject.save("/tmp/BlobFile-UT", ec);
 	REQUIRE(!ec);
-	REQUIRE(fs::exists("/tmp/BlobObject-UT/master"));
+	REQUIRE(fs::exists("/tmp/BlobFile-UT/master"));
 
-	auto out = MMap::open("/tmp/BlobObject-UT/master", ec);
+	auto out = MMap::open("/tmp/BlobFile-UT/master", ec);
 	REQUIRE(!ec);
 	REQUIRE(out.size() == src.size());
 	REQUIRE(std::memcmp(out.data(), src.data(), out.size()) == 0);
 
-	auto out128 = MMap::open("/tmp/BlobObject-UT/128x128", ec);
+	auto out128 = MMap::open("/tmp/BlobFile-UT/128x128", ec);
 	REQUIRE(!ec);
 	REQUIRE(out128.size() < src.size());
 	REQUIRE(std::memcmp(out128.data(), src.data(), out128.size()) != 0);

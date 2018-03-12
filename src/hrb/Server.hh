@@ -50,7 +50,7 @@ const boost::string_view upload{"/upload"};
 
 class Configuration;
 class Password;
-class BlobObject;
+class BlobFile;
 
 /// The main application logic of hearty rabbit.
 /// This is the class that handles HTTP requests from and produce response to clients. The unit test
