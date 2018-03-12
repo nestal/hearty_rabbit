@@ -12,10 +12,20 @@
 
 #pragma once
 
+#include <string_view>
+#include <string>
+
 namespace hrb {
 
 class Permission
 {
+public:
+	Permission(std::string_view str);
+
+	bool allow(std::string_view user);
+
+private:
+	std::string m_str;
 };
 
 } // end of namespace hrb

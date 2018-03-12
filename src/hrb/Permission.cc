@@ -14,4 +14,26 @@
 
 namespace hrb {
 
+Permission::Permission(std::string_view str) :
+	m_str{str}
+{
+}
+
+bool Permission::allow(std::string_view user)
+{
+	// assume not owner. no need to call this if owner.
+	if (m_str.empty())
+		return false;
+
+	switch (m_str.front())
+	{
+		case '*':   return true;
+		case '+':   return !user.empty();
+
+		// TODO: handle ACL
+		default:    return false;
+	}
+}
+
+
 } // end of namespace hrb

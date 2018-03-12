@@ -44,6 +44,17 @@
     <a class="next" onclick="next_image(1)">&#10095;</a>
 </div>
 
+<div id="login-box" class="login model">
+	<h1>Welcome to HeartyRabbit!</h1>
+
+	<div id="login-message">Please login:</div>
+	<form action="/login" method="post">
+		<input id="username" name="username" type="text" placeholder="Username">
+		<input id="password" name="password" type="password" placeholder="Password">
+		<button type="submit">Login</button>
+	</form>
+</div>
+
 <script>
 	// Make sure it's called after loading the DOM.
 	main();

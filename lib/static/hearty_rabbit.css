@@ -1,15 +1,24 @@
 .login-body {
 	text-align:center;
 }
-div.login {
-	display:inline-block;
-	border: 3px solid green;
-	padding: 20px;
+
+#login-box {
+	display: none;
 }
 
-.login .logo img {
-	max-width: 100%;
-	height: auto;
+div.login {
+	width: 360px;
+	padding: 8% 0 0;
+	margin: auto;
+}
+
+div.login form input {
+	width: 100%;
+	box-sizing: border-box;
+	border: 0;
+	margin: 0 0 15px;
+	padding: 15px;
+	background: #f2f2f2;
 }
 
 /* Refer to: https://css-tricks.com/seamless-responsive-photo-grid/ */
