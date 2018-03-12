@@ -46,22 +46,6 @@ private:
 		void link(redis::Connection& db, std::string_view coll) const;
 		void unlink(redis::Connection& db, std::string_view coll) const;
 
-		template <typename Complete>
-		void is_owned(redis::Connection& db, Complete&& complete)
-		{
-			db.command(
-				[comp=std::forward<Complete>(complete)](auto&& reply, std::error_code&& ec) mutable
-				{
-					comp(reply.as_int() > 0, std::move(ec));
-				},
-
-				"EXISTS %b%b:%b",
-				m_prefix.data(), m_prefix.size(),
-				m_user.data(), m_user.size(),
-				m_blob.data(), m_blob.size()
-			);
-		}
-
 		const std::string& user() const {return m_user;}
 		const ObjectID& blob() const {return m_blob;}
 
@@ -111,11 +95,12 @@ public:
 	template <typename Complete>
 	void is_owned(
 		redis::Connection& db,
+		std::string_view coll,
 		const ObjectID& blob,
 		Complete&& complete
 	)
 	{
-		BlobBackLink{m_user, blob}.is_owned(db, std::forward<Complete>(complete));
+		Collection{m_user, coll}.is_owned(db, blob, std::forward<Complete>(complete));
 	}
 
 	const std::string& user() const {return m_user;}

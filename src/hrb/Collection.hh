@@ -28,7 +28,7 @@ namespace hrb {
 class Collection
 {
 private:
-	static const std::string_view redis_prefix;
+	static const std::string_view m_prefix;
 
 public:
 	explicit Collection(std::string_view user, std::string_view path);
@@ -37,6 +37,23 @@ public:
 
 	void link(redis::Connection& db, const ObjectID& id, std::string_view perm="");
 	void unlink(redis::Connection& db, const ObjectID& id);
+
+	template <typename Complete>
+	void is_owned(redis::Connection& db, const ObjectID& blob, Complete&& complete)
+	{
+		db.command(
+			[comp=std::forward<Complete>(complete)](redis::Reply&& reply, std::error_code&& ec) mutable
+			{
+				comp(!reply.is_nil(), std::move(ec));
+			},
+
+			"HGET %b%b:%b %b",
+			m_prefix.data(), m_prefix.size(),
+			m_user.data(), m_user.size(),
+			m_path.data(), m_path.size(),
+			blob.data(), blob.size()
+		);
+	}
 
 	template <typename Complete, typename BlobDb>
 	void serialize(
@@ -56,7 +73,7 @@ public:
 				comp(Collection{user,path}.serialize(blobdb, reply), std::move(ec));
 			},
 			"HGETALL %b%b:%b",
-			redis_prefix.data(), redis_prefix.size(),
+			m_prefix.data(), m_prefix.size(),
 			m_user.data(), m_user.size(),
 			m_path.data(), m_path.size()
 		);
@@ -94,7 +111,7 @@ public:
 			},
 			"SCAN %d MATCH %b%b:*",
 			cursor,
-			redis_prefix.data(), redis_prefix.size(),
+			m_prefix.data(), m_prefix.size(),
 			user.data(), user.size()
 		);
 	}

@@ -175,7 +175,7 @@ private:
 	void handle_blob(const EmptyRequest& req, Send&& send, const Authentication& auth);
 
 	template <typename Send>
-	void get_blob(std::string_view user, const ObjectID& blobid, unsigned version, boost::string_view etag, Send&& send);
+	void get_blob(std::string_view user, std::string_view coll, const ObjectID& blobid, unsigned version, boost::string_view etag, Send&& send);
 
 private:
 	const Configuration&    m_cfg;
@@ -203,18 +203,21 @@ void Server::handle_blob(const EmptyRequest& req, Send&& send, const Authenticat
 		return unlink(path_url.user(), path_url.collection(), object_id, req.version(), std::move(send));
 
 	else if (req.method() == http::verb::get)
-		return get_blob(path_url.user(), object_id, req.version(), req[http::field::if_none_match], std::move(send));
+		return get_blob(
+			path_url.user(), path_url.collection(), object_id, req.version(),
+			req[http::field::if_none_match], std::move(send)
+		);
 
 	else
 		return send(http::response<http::empty_body>{http::status::bad_request, req.version()});
 }
 
 template <typename Send>
-void Server::get_blob(std::string_view user, const ObjectID& object_id, unsigned version, boost::string_view etag, Send&& send)
+void Server::get_blob(std::string_view user, std::string_view coll, const ObjectID& object_id, unsigned version, boost::string_view etag, Send&& send)
 {
 	// Check if the user owns the blob
 	Ownership{user}.is_owned(
-		*m_db.alloc(), object_id,
+		*m_db.alloc(), coll, object_id,
 		[
 			object_id, version, etag=etag.to_string(), this,
 			user=std::string{user},

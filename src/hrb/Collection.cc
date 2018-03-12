@@ -14,7 +14,7 @@
 
 namespace hrb {
 
-const std::string_view Collection::redis_prefix = "dir:";
+const std::string_view Collection::m_prefix = "dir:";
 
 Collection::Collection(std::string_view user, std::string_view path) :
 	m_user{user},
@@ -25,7 +25,7 @@ Collection::Collection(std::string_view user, std::string_view path) :
 void Collection::watch(redis::Connection& db)
 {
 	db.command("WATCH %b%b:%b",
-		redis_prefix.data(), redis_prefix.size(),
+		m_prefix.data(), m_prefix.size(),
 		m_user.data(), m_user.size(), m_path.data(), m_path.size()
 	);
 }
@@ -33,7 +33,7 @@ void Collection::watch(redis::Connection& db)
 void Collection::link(redis::Connection& db, const ObjectID& id, std::string_view perm)
 {
 	db.command("HSET %b%b:%b %b %b",
-		redis_prefix.data(), redis_prefix.size(),
+		m_prefix.data(), m_prefix.size(),
 		m_user.data(), m_user.size(),
 		m_path.data(), m_path.size(),
 		id.data(), id.size(),
@@ -44,7 +44,7 @@ void Collection::link(redis::Connection& db, const ObjectID& id, std::string_vie
 void Collection::unlink(redis::Connection& db, const ObjectID& id)
 {
 	db.command("HDEL %b%b:%b %b",
-		redis_prefix.data(), redis_prefix.size(),
+		m_prefix.data(), m_prefix.size(),
 		m_user.data(), m_user.size(),
 		m_path.data(), m_path.size(),
 		id.data(), id.size()
