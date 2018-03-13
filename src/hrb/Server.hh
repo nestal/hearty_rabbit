@@ -100,7 +100,7 @@ private:
 	void on_logout(const EmptyRequest& req, EmptyResponseSender&& send, const Authentication& auth);
 	void on_invalid_session(const RequestHeader& req, FileResponseSender&& send);
 	void on_upload(UploadRequest&& req, EmptyResponseSender&& send, const Authentication& auth);
-	void unlink(std::string_view user, std::string_view coll, const ObjectID& blobid, unsigned version, EmptyResponseSender&& send);
+	void unlink(std::string_view requester, std::string_view owner, std::string_view coll, const ObjectID& blobid, unsigned version, EmptyResponseSender&& send);
 	bool is_static_resource(boost::string_view target) const;
 	void serve_view(const EmptyRequest& req, FileResponseSender&& send, const Authentication& auth);
 	void serve_collection(const EmptyRequest& req, StringResponseSender&& send, const Authentication& auth);
@@ -109,7 +109,7 @@ private:
 	void handle_blob(const EmptyRequest& req, Send&& send, const Authentication& auth);
 
 	template <typename Send>
-	void get_blob(std::string_view user, std::string_view coll, const ObjectID& blobid, unsigned version, boost::string_view etag, Send&& send);
+	void get_blob(std::string_view requester, std::string_view owner, std::string_view coll, const ObjectID& blobid, unsigned version, boost::string_view etag, Send&& send);
 
 private:
 	const Configuration&    m_cfg;

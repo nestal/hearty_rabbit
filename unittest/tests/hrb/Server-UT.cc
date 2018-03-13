@@ -247,7 +247,7 @@ TEST_CASE("General server tests", "[normal]")
 
 		SECTION("requesting invalid blob")
 		{
-			GenericStatusChecker valid_session{http::status::not_found};
+			GenericStatusChecker valid_session{http::status::bad_request};
 			GenericStatusChecker invalid_session{http::status::forbidden};
 			Checker *expected{nullptr};
 

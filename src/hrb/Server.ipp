@@ -74,20 +74,17 @@ void Server::handle_blob(const EmptyRequest& req, Send&& send, const Authenticat
 {
 	URLIntent path_url{req.target()};
 
-	// Return 404 not_found if the blob ID is invalid
+	// Return 403 bad request if the blob ID is invalid
 	auto object_id = hex_to_object_id(path_url.filename());
 	if (object_id == ObjectID{})
-		return send(http::response<http::empty_body>{http::status::not_found, req.version()});
-
-	if (auth.user() != path_url.user())
-		return send(http::response<http::empty_body>{http::status::forbidden, req.version()});
+		return send(http::response<http::empty_body>{http::status::bad_request, req.version()});
 
 	if (req.method() == http::verb::delete_)
-		return unlink(path_url.user(), path_url.collection(), object_id, req.version(), std::move(send));
+		return unlink(auth.user(), path_url.user(), path_url.collection(), object_id, req.version(), std::move(send));
 
 	else if (req.method() == http::verb::get)
 		return get_blob(
-			path_url.user(), path_url.collection(), object_id, req.version(),
+			auth.user(), path_url.user(), path_url.collection(), object_id, req.version(),
 			req[http::field::if_none_match], std::move(send)
 		);
 
@@ -96,14 +93,13 @@ void Server::handle_blob(const EmptyRequest& req, Send&& send, const Authenticat
 }
 
 template <typename Send>
-void Server::get_blob(std::string_view user, std::string_view coll, const ObjectID& object_id, unsigned version, boost::string_view etag, Send&& send)
+void Server::get_blob(std::string_view requester, std::string_view owner, std::string_view coll, const ObjectID& object_id, unsigned version, boost::string_view etag, Send&& send)
 {
 	// Check if the user owns the blob
-	Ownership{user}.is_owned(
-		*m_db.alloc(), coll, object_id,
+	Ownership{owner}.allow(
+		*m_db.alloc(), requester, coll, object_id,
 		[
 			object_id, version, etag=etag.to_string(), this,
-			user=std::string{user},
 			send=std::move(send)
 		](bool is_member, auto ec) mutable
 		{

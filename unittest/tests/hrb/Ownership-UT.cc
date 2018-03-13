@@ -42,7 +42,7 @@ TEST_CASE("add blob to Ownership", "[normal]")
 			REQUIRE(!ec);
 			tested++;
 
-			subject.is_owned(*redis, "/", blobid, [&tested](bool owned, std::error_code ec)
+			subject.allow(*redis, "test", "/", blobid, [&tested](bool owned, std::error_code ec)
 			{
 				REQUIRE(!ec);
 				REQUIRE(owned);

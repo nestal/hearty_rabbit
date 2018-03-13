@@ -11,6 +11,7 @@
 //
 
 #include "Ownership.hh"
+#include "Permission.hh"
 
 #include <rapidjson/document.h>
 
@@ -57,7 +58,7 @@ public:
 	void unlink(redis::Connection& db, const ObjectID& id);
 
 	template <typename Complete>
-	void is_owned(redis::Connection& db, const ObjectID& blob, Complete&& complete) const;
+	void allow(redis::Connection& db, std::string_view requester, const ObjectID& blob, Complete&& complete) const;
 
 	template <typename Complete, typename BlobDb>
 	void serialize(
@@ -119,12 +120,24 @@ void Ownership::Collection::scan(
 }
 
 template <typename Complete>
-void Ownership::Collection::is_owned(redis::Connection& db, const ObjectID& blob, Complete&& complete) const
+void Ownership::Collection::allow(
+	redis::Connection& db,
+	std::string_view requester,
+	const ObjectID& blob,
+	Complete&& complete
+) const
 {
 	db.command(
-		[comp=std::forward<Complete>(complete)](redis::Reply&& reply, std::error_code&& ec) mutable
+		[
+			comp=std::forward<Complete>(complete),
+			requester=std::string{requester},
+			is_owner=(m_user == requester)
+		](auto&& perm, std::error_code&& ec) mutable
 		{
-			comp(!reply.is_nil(), std::move(ec));
+			comp(
+				!perm.is_nil() && (is_owner || Permission{perm.as_string()}.allow(requester)),
+				std::move(ec)
+			);
 		},
 
 		"HGET %b%b:%b %b",
@@ -228,14 +241,15 @@ void Ownership::serialize(
 }
 
 template <typename Complete>
-void Ownership::is_owned(
+void Ownership::allow(
 	redis::Connection& db,
+	std::string_view requester,
 	std::string_view coll,
 	const ObjectID& blob,
 	Complete&& complete
 ) const
 {
-	Collection{m_user, coll}.is_owned(db, blob, std::forward<Complete>(complete));
+	Collection{m_user, coll}.allow(db, requester, blob, std::forward<Complete>(complete));
 }
 
 template <typename Complete>

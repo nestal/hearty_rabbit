@@ -66,8 +66,9 @@ public:
 	) const;
 
 	template <typename Complete>
-	void is_owned(
+	void allow(
 		redis::Connection& db,
+		std::string_view requester,
 		std::string_view coll,
 		const ObjectID& blob,
 		Complete&& complete
