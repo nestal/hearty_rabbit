@@ -206,8 +206,6 @@ div.login form input {
 	padding: 16px;
 	margin-top: -50px;
 	color: white;
-	font-weight: bold;
-	font-size: 2em;
 	transition: 0.6s ease;
 	border-radius: 0 3px 3px 0;
 	user-select: none;
@@ -224,4 +222,27 @@ div.login form input {
 .prev:hover,
 .next:hover {
 	background-color: rgba(0, 0, 0, 0.8);
+}
+
+/* Tooltip text */
+.tooltip .tooltiptext {
+	font-size: 0.3em;
+	font-family: 'Mukta Mahee', sans-serif;
+	visibility: hidden;
+	background-color: white;
+	color: black;
+	text-align: center;
+	padding: 0.2em;
+	border-radius: 6px;
+
+	/* Position the tooltip text - see examples below! */
+	position: absolute;
+	z-index: 1;
+	left: 0;
+	top: 100%;
+}
+
+/* Show the tooltip text when you mouse over the tooltip container */
+.tooltip:hover .tooltiptext {
+	visibility: visible;
 }

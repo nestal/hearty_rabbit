@@ -33,16 +33,30 @@
 
 <div id="light-box" class="modal">
 	<div class="light-box-button-bar">
-		<span class="close cursor" onclick="delete_image();"><i class="light-box-button material-icons">delete</i></span>
-		<span class="close cursor" onclick="hide_image();"><i class="light-box-button material-icons">close</i></span>
+		<span class="close cursor" onclick="make_share();">
+			<i class="tooltip light-box-button material-icons">people<span class="tooltiptext">Share picture to all users</span></i>
+		</span>
+		<span class="close cursor" onclick="make_public();">
+			<i class="tooltip light-box-button material-icons">public<span class="tooltiptext">Make picture public</span></i>
+		</span>
+		<span class="close cursor" onclick="delete_image();">
+			<i class="tooltip light-box-button material-icons">delete<span class="tooltiptext">Delete picture</span></i>
+		</span>
+		<span class="close cursor" onclick="hide_image();">
+			<i class="tooltip light-box-button material-icons">close<span class="tooltiptext">Close</span></i>
+		</span>
 	</div>
 	<div class="modal-content">
 		<img id="light-box-image" class="hrb-blob-image" src="/loading.svg">
 	</div>
 
 	<!-- Next/previous controls -->
-    <a class="prev" onclick="next_image(-1)" class="material-icons">skip_previous</a>
-    <a class="next" onclick="next_image(1)" class="material-icons">skip_next</a>
+	<a class="prev" onclick="next_image(-1)">
+		<i class="tooltip light-box-button material-icons">skip_previous<span class="tooltiptext">Previous</span></i>
+	</a>
+	<a class="next" onclick="next_image(1)">
+		<i class="tooltip light-box-button material-icons">skip_next<span class="tooltiptext">Next</span></i>
+	</a>
 </div>
 
 <div id="login-box" class="modal">
