@@ -83,7 +83,15 @@ void Server::handle_blob(Request&& req, Send&& send, const Authentication& auth)
 }
 
 template <class Send>
-void Server::get_blob(std::string_view requester, std::string_view owner, std::string_view coll, const ObjectID& object_id, unsigned version, boost::string_view etag, Send&& send)
+void Server::get_blob(
+	std::string_view requester,
+	std::string_view owner,
+	std::string_view coll,
+	const ObjectID& object_id,
+	unsigned version,
+	boost::string_view etag,
+	Send&& send
+)
 {
 	// Check if the user owns the blob
 	Ownership{owner}.allow(
@@ -111,7 +119,7 @@ template <class Request, class Send>
 void Server::on_valid_session(Request&& req, Send&& send, const Authentication& auth)
 {
 	// handle_blob() is a function template on the request type. It can work with all
-	// request types so no need to check before call it.
+	// request types so no need to check before calling.
 	if (req.target().starts_with(url::blob))
 		return handle_blob(std::forward<Request>(req), std::forward<Send>(send), auth);
 
@@ -185,7 +193,7 @@ void Server::on_request_header(
 			&header,
 			&dest,
 			&src,
-			complete=std::move(complete)
+			complete=std::forward<Complete>(complete)
 		](std::error_code ec, const Authentication& auth) mutable
 		{
 			// Use a UploadRequestParse to parser upload requests, only when the session is authenicated.
@@ -204,6 +212,5 @@ void Server::on_request_header(
 		}
 	);
 }
-
 
 } // end of namespace

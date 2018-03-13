@@ -42,6 +42,11 @@ TEST_CASE("Test password init", "[normal]")
 	REQUIRE_NOTHROW(subject.derive_key("salt", 100, "sha512" ));
 }
 
+TEST_CASE("Default Authenication ctor construct invalid authenication", "[normal]")
+{
+	REQUIRE(!Authentication{}.valid());
+}
+
 TEST_CASE("Test normal user login", "[normal]")
 {
 	boost::asio::io_context ioc;
