@@ -29,14 +29,23 @@
 
 namespace hrb {
 
-template <class Send>
-void Server::handle_https(EmptyRequest&& req, Send&& send, const Authentication& auth)
+template <class Request, class Send>
+void Server::handle_https(Request&& req, Send&& send, const Authentication& auth)
 {
-	if (is_static_resource(req.target()))
-		return send(static_file_request(req));
+	if constexpr (std::is_same<std::remove_reference_t<Request>, EmptyRequest>::value)
+	{
+		if (is_static_resource(req.target()))
+			return send(static_file_request(req));
 
-	if (req.target() == "/login_incorrect.html")
-		return send(on_login_incorrect(req));
+		if (req.target() == "/login_incorrect.html")
+			return send(on_login_incorrect(req));
+	}
+
+	if constexpr (std::is_same<std::remove_reference_t<Request>, StringRequest>::value)
+	{
+		if (is_login(req))
+			return on_login(req, std::forward<Send>(send));
+	}
 
 	// Everything else require a valid session.
 	return auth.valid() ?
@@ -44,38 +53,7 @@ void Server::handle_https(EmptyRequest&& req, Send&& send, const Authentication&
 		on_invalid_session(std::move(req), std::forward<decltype(send)>(send));
 }
 
-// This function produces an HTTP response for the given
-// request. The type of the response object depends on the
-// contents of the request, so the interface requires the
-// caller to pass a generic lambda for receiving the response.
-template<class Send>
-void Server::handle_https(StringRequest&& req, Send&& send, const Authentication& auth)
-{
-	if (is_login(req))
-		return on_login(req, std::forward<Send>(send));
-
-	else if (req.target().starts_with(url::blob))
-		return handle_blob(req, std::forward<Send>(send), auth);
-
-	else
-		return send(bad_request("invalid request", req.version()));
-}
-
-template<class Send>
-void Server::handle_https(UploadRequest&& req, Send&& send, const Authentication& auth)
-{
-	assert(is_upload(req));
-
-	if (auth.valid())
-		return req.target().starts_with(url::upload) ?
-			on_upload(std::move(req), std::forward<Send>(send), auth) :
-			send(not_found(req.target(), req.version()));
-
-	else
-		return on_invalid_session(std::move(req), std::forward<Send>(send));
-}
-
-template <typename Request, typename Send>
+template <class Request, class Send>
 void Server::handle_blob(Request&& req, Send&& send, const Authentication& auth)
 {
 	URLIntent path_url{req.target()};
@@ -104,7 +82,7 @@ void Server::handle_blob(Request&& req, Send&& send, const Authentication& auth)
 		return send(http::response<http::empty_body>{http::status::bad_request, req.version()});
 }
 
-template <typename Send>
+template <class Send>
 void Server::get_blob(std::string_view requester, std::string_view owner, std::string_view coll, const ObjectID& object_id, unsigned version, boost::string_view etag, Send&& send)
 {
 	// Check if the user owns the blob
@@ -132,22 +110,33 @@ void Server::get_blob(std::string_view requester, std::string_view owner, std::s
 template <class Request, class Send>
 void Server::on_valid_session(Request&& req, Send&& send, const Authentication& auth)
 {
-	const RequestHeader& header = req;
-
-	if (req.target() == "/")
-		return send(see_other(URLIntent{"view", auth.user(), "", ""}.str(), req.version()));
-
+	// handle_blob() is a function template on the request type. It can work with all
+	// request types so no need to check before call it.
 	if (req.target().starts_with(url::blob))
 		return handle_blob(std::forward<Request>(req), std::forward<Send>(send), auth);
 
-	if (req.target().starts_with(url::view))
-		return serve_view(std::forward<Request>(req), std::forward<Send>(send), auth);
+	// The following URL only support EmptyRequests, i.e. requests without body.
+	if constexpr (std::is_same<std::remove_reference_t<Request>, EmptyRequest>::value)
+	{
+		if (req.target() == "/")
+			return send(see_other(URLIntent{"view", auth.user(), "", ""}.str(), req.version()));
 
-	if (req.target().starts_with(url::collection))
-		return serve_collection(std::forward<Request>(req), std::forward<Send>(send), auth);
+		if (req.target().starts_with(url::view))
+			return serve_view(std::forward<Request>(req), std::forward<Send>(send), auth);
 
-	if (req.target() == url::logout)
-		return on_logout(std::forward<Request>(req), std::forward<Send>(send), auth);
+		if (req.target().starts_with(url::collection))
+			return serve_collection(std::forward<Request>(req), std::forward<Send>(send), auth);
+
+		if (req.target() == url::logout)
+			return on_logout(std::forward<Request>(req), std::forward<Send>(send), auth);
+	}
+
+	// Upload requests for /upload URL only
+	if constexpr (std::is_same<std::remove_reference_t<Request>, UploadRequest>::value)
+	{
+		if (req.target().starts_with(url::upload))
+			return on_upload(std::move(req), std::forward<Send>(send), auth);
+	}
 
 	return send(not_found(req.target(), req.version()));
 }

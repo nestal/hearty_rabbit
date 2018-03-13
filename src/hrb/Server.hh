@@ -54,18 +54,12 @@ public:
 		std::function<void(const Authentication&)>&& complete
 	);
 
-	template<class Send>
-	void handle_https(UploadRequest&& req, Send&& send, const Authentication& auth);
-
 	// This function produces an HTTP response for the given
 	// request. The type of the response object depends on the
 	// contents of the request, so the interface requires the
 	// caller to pass a generic lambda for receiving the response.
-	template<class Send>
-	void handle_https(StringRequest&& req, Send&& send, const Authentication& auth);
-
-	template <class Send>
-	void handle_https(EmptyRequest&& req, Send&& send, const Authentication& auth);
+	template<class Request, class Send>
+	void handle_https(Request&& req, Send&& send, const Authentication& auth);
 
 	static http::response<http::string_body> bad_request(boost::string_view why, unsigned version);
 	static http::response<http::string_body> not_found(boost::string_view target, unsigned version);
@@ -106,10 +100,10 @@ private:
 	void serve_view(const EmptyRequest& req, FileResponseSender&& send, const Authentication& auth);
 	void serve_collection(const EmptyRequest& req, StringResponseSender&& send, const Authentication& auth);
 
-	template <typename Request, typename Send>
+	template <class Request, class Send>
 	void handle_blob(Request&& req, Send&& send, const Authentication& auth);
 
-	template <typename Send>
+	template <class Send>
 	void get_blob(
 		std::string_view requester,
 		std::string_view owner,
