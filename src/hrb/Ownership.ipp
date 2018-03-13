@@ -136,16 +136,17 @@ void Ownership::Collection::allow(
 		[
 			comp=std::forward<Complete>(complete),
 			requester=std::string{requester},
-			is_owner=(m_user == requester)
+			requested_by_owner = (m_user == requester)
 		](auto&& perm, std::error_code&& ec) mutable
 		{
 			// Only owner is allow to know whether an object exists or not
-			if (!ec && is_owner && perm.is_nil())
+			if (!ec && requested_by_owner && perm.is_nil())
 				ec = Error::object_not_exist;
 
 			comp(
 				// true if granted access, false if deny
-				!perm.is_nil() && (is_owner || Permission{perm.as_string()}.allow(requester)),
+				// always allow access to owner
+				!perm.is_nil() && (requested_by_owner || Permission{perm.as_string()}.allow(requester)),
 				std::move(ec)
 			);
 		},

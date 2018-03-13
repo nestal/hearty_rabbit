@@ -51,8 +51,14 @@ void Server::handle_https(EmptyRequest&& req, Send&& send, const Authentication&
 template<class Send>
 void Server::handle_https(StringRequest&& req, Send&& send, const Authentication& auth)
 {
-	assert(is_login(req));
-	return on_login(req, std::forward<Send>(send));
+	if (is_login(req))
+		return on_login(req, std::forward<Send>(send));
+
+	else if (req.target().starts_with(url::blob))
+		return handle_blob(req, std::forward<Send>(send), auth);
+
+	else
+		return send(bad_request("invalid request", req.version()));
 }
 
 template<class Send>
@@ -69,8 +75,8 @@ void Server::handle_https(UploadRequest&& req, Send&& send, const Authentication
 		return on_invalid_session(std::move(req), std::forward<Send>(send));
 }
 
-template <typename Send>
-void Server::handle_blob(const EmptyRequest& req, Send&& send, const Authentication& auth)
+template <typename Request, typename Send>
+void Server::handle_blob(Request&& req, Send&& send, const Authentication& auth)
 {
 	URLIntent path_url{req.target()};
 
@@ -86,6 +92,12 @@ void Server::handle_blob(const EmptyRequest& req, Send&& send, const Authenticat
 		return get_blob(
 			auth.user(), path_url.user(), path_url.collection(), *object_id, req.version(),
 			req[http::field::if_none_match], std::move(send)
+		);
+
+	else if (req.method() == http::verb::post)
+		return update_blob(
+			auth.user(), path_url.user(), path_url.collection(), *object_id, req.version(),
+			std::move(send)
 		);
 
 	else
@@ -117,8 +129,8 @@ void Server::get_blob(std::string_view requester, std::string_view owner, std::s
 	);
 }
 
-template <class Send>
-void Server::on_valid_session(EmptyRequest&& req, Send&& send, const Authentication& auth)
+template <class Request, class Send>
+void Server::on_valid_session(Request&& req, Send&& send, const Authentication& auth)
 {
 	const RequestHeader& header = req;
 
@@ -126,16 +138,16 @@ void Server::on_valid_session(EmptyRequest&& req, Send&& send, const Authenticat
 		return send(see_other(URLIntent{"view", auth.user(), "", ""}.str(), req.version()));
 
 	if (req.target().starts_with(url::blob))
-		return handle_blob(req, std::forward<decltype(send)>(send), auth);
+		return handle_blob(std::forward<Request>(req), std::forward<Send>(send), auth);
 
 	if (req.target().starts_with(url::view))
-		return serve_view(req, std::forward<decltype(send)>(send), auth);
+		return serve_view(std::forward<Request>(req), std::forward<Send>(send), auth);
 
 	if (req.target().starts_with(url::collection))
-		return serve_collection(req, std::forward<decltype(send)>(send), auth);
+		return serve_collection(std::forward<Request>(req), std::forward<Send>(send), auth);
 
 	if (req.target() == url::logout)
-		return on_logout(req, std::forward<Send>(send), auth);
+		return on_logout(std::forward<Request>(req), std::forward<Send>(send), auth);
 
 	return send(not_found(req.target(), req.version()));
 }

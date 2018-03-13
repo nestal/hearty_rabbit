@@ -88,6 +88,7 @@ public:
 			func(as_array(i).as_string(), as_array(i+1));
 	}
 
+	// Return a tuple of replies, one for each field in the parameter list
 	template <typename... Field>
 	auto map_kv_pair(Field... fields) const
 	{
@@ -97,6 +98,7 @@ public:
 		return result;
 	}
 
+	/// Return a tuple of the first \a count replies in the array.
 	template <std::size_t count>
 	auto as_tuple(std::error_code& ec) const
 	{

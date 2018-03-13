@@ -84,8 +84,8 @@ private:
 	http::response<SplitBuffers> static_file_request(const EmptyRequest& req);
 	http::response<SplitBuffers> on_login_incorrect(const EmptyRequest& req);
 
-	template <class Send>
-	void on_valid_session(EmptyRequest&& req, Send&& send, const Authentication& auth);
+	template <class Request, class Send>
+	void on_valid_session(Request&& req, Send&& send, const Authentication& auth);
 
 	static bool is_upload(const RequestHeader& header);
 	static bool is_login(const RequestHeader& header);
@@ -101,12 +101,13 @@ private:
 	void on_invalid_session(const RequestHeader& req, FileResponseSender&& send);
 	void on_upload(UploadRequest&& req, EmptyResponseSender&& send, const Authentication& auth);
 	void unlink(std::string_view requester, std::string_view owner, std::string_view coll, const ObjectID& blobid, unsigned version, EmptyResponseSender&& send);
+	void update_blob(std::string_view requester, std::string_view owner, std::string_view coll, const ObjectID& blobid, unsigned version, EmptyResponseSender&& send);
 	bool is_static_resource(boost::string_view target) const;
 	void serve_view(const EmptyRequest& req, FileResponseSender&& send, const Authentication& auth);
 	void serve_collection(const EmptyRequest& req, StringResponseSender&& send, const Authentication& auth);
 
-	template <typename Send>
-	void handle_blob(const EmptyRequest& req, Send&& send, const Authentication& auth);
+	template <typename Request, typename Send>
+	void handle_blob(Request&& req, Send&& send, const Authentication& auth);
 
 	template <typename Send>
 	void get_blob(

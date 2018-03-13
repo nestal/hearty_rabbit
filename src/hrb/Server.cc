@@ -143,6 +143,18 @@ void Server::unlink(std::string_view requester, std::string_view owner, std::str
 	);
 }
 
+
+void Server::update_blob(
+	std::string_view requester,
+	std::string_view owner,
+	std::string_view coll,
+	const ObjectID& blobid,
+	unsigned version,
+	Server::EmptyResponseSender&& send
+)
+{
+}
+
 void Server::on_upload(UploadRequest&& req, EmptyResponseSender&& send, const Authentication& auth)
 {
 	boost::system::error_code bec;
@@ -429,6 +441,12 @@ void Server::on_request_header(
 				m_blob_db.prepare_upload(dest.emplace<UploadRequestParser>(std::move(src)).get().body(), ec);
 				if (ec)
 					Log(LOG_WARNING, "error opening file %1%: %2% (%3%)", m_cfg.blob_path(), ec, ec.message());
+			}
+
+			// blobs support post request
+			else if (!ec && header.target().starts_with(url::blob) && header.method() == http::verb::post)
+			{
+				dest.emplace<StringRequestParser>(std::move(src));
 			}
 
 			// Other requests use EmptyRequestParser, because they don't have a body.
