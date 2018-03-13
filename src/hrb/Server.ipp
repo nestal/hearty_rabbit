@@ -74,7 +74,7 @@ void Server::handle_blob(const EmptyRequest& req, Send&& send, const Authenticat
 {
 	URLIntent path_url{req.target()};
 
-	// Return 403 bad request if the blob ID is invalid
+	// Return 400 bad request if the blob ID is invalid
 	auto object_id = hex_to_object_id(path_url.filename());
 	if (object_id == ObjectID{})
 		return send(http::response<http::empty_body>{http::status::bad_request, req.version()});

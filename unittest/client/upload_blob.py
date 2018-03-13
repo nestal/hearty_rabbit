@@ -69,8 +69,9 @@ class NormalTestCase(unittest.TestCase):
 		self.assertEqual(r1.status_code, 404)
 
 		# invalid blob
+		# TODO: is all-zero blob ID really invalid?
 		r2 = self.session.get("https://localhost:4433/blob/sumsum/0000000000000000000000000000000000000000")
-		self.assertEqual(r2.status_code, 404)
+		self.assertEqual(r2.status_code, 400)
 
 		# other user's blob
 		r3 = self.session.get("https://localhost:4433/blob/nestal/0100000000000000000000000000000000000003")
