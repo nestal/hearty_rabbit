@@ -35,5 +35,20 @@ bool Permission::allow(std::string_view user)
 	}
 }
 
+Permission Permission::shared()
+{
+	return Permission{"+"};
+}
+
+Permission Permission::public_()
+{
+	return Permission{"*"};
+}
+
+Permission Permission::private_()
+{
+	return Permission{};
+}
+
 
 } // end of namespace hrb

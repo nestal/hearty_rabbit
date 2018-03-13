@@ -22,6 +22,7 @@
 namespace hrb {
 
 class BlobDatabase;
+class Permission;
 
 /// A set of blob objects represented by a redis set.
 class Ownership
@@ -38,24 +39,33 @@ public:
 	template <typename Complete>
 	void link(
 		redis::Connection& db,
-		std::string_view path,
+		std::string_view coll,
 		const ObjectID& blobid,
 		Complete&& complete
 	)
 	{
-		link(db, path, blobid, true, std::forward<Complete>(complete));
+		link(db, coll, blobid, true, std::forward<Complete>(complete));
 	}
 
 	template <typename Complete>
 	void unlink(
 		redis::Connection& db,
-		std::string_view path,
+		std::string_view coll,
 		const ObjectID& blobid,
 		Complete&& complete
 	)
 	{
-		link(db, path, blobid, false, std::forward<Complete>(complete));
+		link(db, coll, blobid, false, std::forward<Complete>(complete));
 	}
+
+	template <typename Complete>
+	void set_permission(
+		redis::Connection& db,
+		std::string_view coll,
+		const ObjectID& blobid,
+		const Permission& perm,
+		Complete&& complete
+	);
 
 	template <typename Complete, typename BlobDb>
 	void serialize(

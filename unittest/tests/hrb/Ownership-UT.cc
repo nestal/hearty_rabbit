@@ -16,6 +16,7 @@
 #include "hrb/Ownership.ipp"
 #include "hrb/BlobDatabase.hh"
 #include "hrb/UploadFile.hh"
+#include "hrb/Permission.hh"
 #include "crypto/Random.hh"
 
 #include <rapidjson/document.h>
@@ -36,22 +37,44 @@ TEST_CASE("add blob to Ownership", "[normal]")
 
 	Ownership subject{"test"};
 
-	subject.link(
-		*redis, "/", blobid, [&tested, redis, blobid, subject](std::error_code ec)
-		{
-			REQUIRE(!ec);
-			tested++;
+	subject.link(*redis, "/", blobid, [&tested](std::error_code ec)
+	{
+		REQUIRE(!ec);
+		tested++;
+	});
 
-			subject.allow(*redis, "test", "/", blobid, [&tested](bool owned, std::error_code ec)
-			{
-				REQUIRE(!ec);
-				REQUIRE(owned);
-				tested++;
-			});
-		}
-	);
+	// owner access is allowed
+	subject.allow(*redis, "test", "/", blobid, [&tested](bool owned, std::error_code ec)
+	{
+		REQUIRE(!ec);
+		REQUIRE(owned);
+		tested++;
+	});
+	// anonymous access is not allowed
+	subject.allow(*redis, "", "/", blobid, [&tested](bool allowed, std::error_code ec)
+	{
+		REQUIRE(!ec);
+		REQUIRE(!allowed);
+		tested++;
+	});
+
+	// set permission to public
+	subject.set_permission(*redis, "/", blobid, Permission::public_(), [&tested](std::error_code ec)
+	{
+		REQUIRE(!ec);
+		tested++;
+	});
+
+	// anonymous access is now allowed
+	subject.allow(*redis, "", "/", blobid, [&tested](bool allowed, std::error_code ec)
+	{
+		REQUIRE(!ec);
+		REQUIRE(allowed);
+		tested++;
+	});
+
 	REQUIRE(ioc.run_for(10s) > 0);
-	REQUIRE(tested == 2);
+	REQUIRE(tested == 5);
 }
 
 TEST_CASE("Load 3 images in json", "[normal]")

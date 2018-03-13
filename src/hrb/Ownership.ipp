@@ -60,6 +60,9 @@ public:
 	void unlink(redis::Connection& db, const ObjectID& id);
 
 	template <typename Complete>
+	void set_permission(redis::Connection& db, const ObjectID& blob, const Permission& perm, Complete&& complete) const;
+
+	template <typename Complete>
 	void allow(redis::Connection& db, std::string_view requester, const ObjectID& blob, Complete&& complete) const;
 
 	template <typename Complete, typename BlobDb>
@@ -152,6 +155,33 @@ void Ownership::Collection::allow(
 		m_user.data(), m_user.size(),
 		m_path.data(), m_path.size(),
 		blob.data(), blob.size()
+	);
+}
+
+
+template <typename Complete>
+void Ownership::Collection::set_permission(
+	redis::Connection& db,
+	const ObjectID& blob,
+	const Permission& perm,
+	Complete&& complete
+) const
+{
+	db.command(
+		[
+			comp=std::forward<Complete>(complete),
+			perm
+		](auto&&, std::error_code&& ec) mutable
+		{
+			comp(std::move(ec));
+		},
+
+		"HSET %b%b:%b %b %b",
+		m_prefix.data(), m_prefix.size(),
+		m_user.data(), m_user.size(),
+		m_path.data(), m_path.size(),
+		blob.data(), blob.size(),
+		perm.data(), perm.size()
 	);
 }
 
@@ -257,7 +287,7 @@ void Ownership::allow(
 	Complete&& complete
 ) const
 {
-	Collection{m_user, coll}.allow(db, requester, blob, std::forward<Complete>(complete));
+	return Collection{m_user, coll}.allow(db, requester, blob, std::forward<Complete>(complete));
 }
 
 template <typename Complete>
@@ -268,6 +298,18 @@ void Ownership::scan_collections(
 ) const
 {
 	return Collection::scan(db, m_user, cursor, std::forward<Complete>(complete));
+}
+
+template <typename Complete>
+void Ownership::set_permission(
+	redis::Connection& db,
+	std::string_view coll,
+	const ObjectID& blobid,
+	const Permission& perm,
+	Complete&& complete
+)
+{
+	return Collection{m_user, coll}.set_permission(db, blobid, perm, std::forward<Complete>(complete));
 }
 
 } // end of namespace

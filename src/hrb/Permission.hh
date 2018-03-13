@@ -20,9 +20,16 @@ namespace hrb {
 class Permission
 {
 public:
-	Permission(std::string_view str);
+	explicit Permission(std::string_view str = {});
+
+	static Permission shared();
+	static Permission public_();
+	static Permission private_();
 
 	bool allow(std::string_view user);
+
+	auto data() const {return m_str.data();}
+	auto size() const {return m_str.size();}
 
 private:
 	std::string m_str;
