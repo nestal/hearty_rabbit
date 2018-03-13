@@ -109,7 +109,15 @@ private:
 	void handle_blob(const EmptyRequest& req, Send&& send, const Authentication& auth);
 
 	template <typename Send>
-	void get_blob(std::string_view requester, std::string_view owner, std::string_view coll, const ObjectID& blobid, unsigned version, boost::string_view etag, Send&& send);
+	void get_blob(
+		std::string_view requester,
+		std::string_view owner,
+		std::string_view coll,
+		const ObjectID& blobid,
+		unsigned version,
+		boost::string_view etag,
+		Send&& send
+	);
 
 private:
 	const Configuration&    m_cfg;

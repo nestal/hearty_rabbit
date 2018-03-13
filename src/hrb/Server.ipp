@@ -101,12 +101,15 @@ void Server::get_blob(std::string_view requester, std::string_view owner, std::s
 		[
 			object_id, version, etag=etag.to_string(), this,
 			send=std::move(send)
-		](bool is_member, auto ec) mutable
+		](bool can_access, auto ec) mutable
 		{
+			if (ec == Error::object_not_exist)
+				return send(http::response<http::empty_body>{http::status::not_found, version});
+
 			if (ec)
 				return send(http::response<http::empty_body>{http::status::internal_server_error, version});
 
-			if (!is_member)
+			if (!can_access)
 				return send(http::response<http::empty_body>{http::status::forbidden, version});
 
 			return send(m_blob_db.response(object_id, version, etag));

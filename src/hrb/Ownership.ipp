@@ -13,6 +13,8 @@
 #include "Ownership.hh"
 #include "Permission.hh"
 
+#include "util/Error.hh"
+
 #include <rapidjson/document.h>
 
 #include <vector>
@@ -134,7 +136,12 @@ void Ownership::Collection::allow(
 			is_owner=(m_user == requester)
 		](auto&& perm, std::error_code&& ec) mutable
 		{
+			// Only owner is allow to know whether an object exists or not
+			if (!ec && is_owner && perm.is_nil())
+				ec = Error::object_not_exist;
+
 			comp(
+				// true if granted access, false if deny
 				!perm.is_nil() && (is_owner || Permission{perm.as_string()}.allow(requester)),
 				std::move(ec)
 			);

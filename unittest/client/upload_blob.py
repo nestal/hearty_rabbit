@@ -69,14 +69,15 @@ class NormalTestCase(unittest.TestCase):
 		self.assertEqual(r1.status_code, 404)
 
 		# Is all-zero blob ID really invalid? <- Yes, it's valid.
+		# Requesting with a valid object ID on an object that doesn't exists will return "Not Found"
 		r2 = self.session.get("https://localhost:4433/blob/sumsum/0000000000000000000000000000000000000000")
-		self.assertEqual(r2.status_code, 403)
+		self.assertEqual(r2.status_code, 404)
 
-		# 10-digit blob ID is really invalid
+		# 10-digit blob ID is really invalid: Bad Request
 		r4 = self.session.get("https://localhost:4433/blob/sumsum/FF0000000000000000FF")
 		self.assertEqual(r4.status_code, 400)
 
-		# other user's blob
+		# other user's blob: no matter the target exists or not will give you "forbidden"
 		r3 = self.session.get("https://localhost:4433/blob/nestal/0100000000000000000000000000000000000003")
 		self.assertEqual(r3.status_code, 403)
 
