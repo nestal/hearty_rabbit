@@ -13,8 +13,59 @@
 #pragma once
 
 #include "Server.hh"
+#include "UploadFile.hh"
+#include "URLIntent.hh"
+#include "Ownership.hh"
+
+#include "crypto/Authentication.hh"
+#include "net/MMapResponseBody.hh"
+
+#include <boost/beast/http/fields.hpp>
+#include <boost/beast/http/message.hpp>
+#include <boost/beast/http/empty_body.hpp>
+#include <boost/beast/version.hpp>
 
 namespace hrb {
+
+template <class Send>
+void Server::handle_https(EmptyRequest&& req, Send&& send, const Authentication& auth)
+{
+	if (is_static_resource(req.target()))
+		return send(static_file_request(req));
+
+	if (req.target() == "/login_incorrect.html")
+		return send(on_login_incorrect(req));
+
+	// Everything else require a valid session.
+	return auth.valid() ?
+		on_valid_session(std::move(req), std::forward<decltype(send)>(send), auth) :
+		on_invalid_session(std::move(req), std::forward<decltype(send)>(send));
+}
+
+// This function produces an HTTP response for the given
+// request. The type of the response object depends on the
+// contents of the request, so the interface requires the
+// caller to pass a generic lambda for receiving the response.
+template<class Send>
+void Server::handle_https(StringRequest&& req, Send&& send, const Authentication& auth)
+{
+	assert(is_login(req));
+	return on_login(req, std::forward<Send>(send));
+}
+
+template<class Send>
+void Server::handle_https(UploadRequest&& req, Send&& send, const Authentication& auth)
+{
+	assert(is_upload(req));
+
+	if (auth.valid())
+		return req.target().starts_with(url::upload) ?
+			on_upload(std::move(req), std::forward<Send>(send), auth) :
+			send(not_found(req.target(), req.version()));
+
+	else
+		return on_invalid_session(std::move(req), std::forward<Send>(send));
+}
 
 template <typename Send>
 void Server::handle_blob(const EmptyRequest& req, Send&& send, const Authentication& auth)

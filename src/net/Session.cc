@@ -11,14 +11,15 @@
 //
 
 #include "Session.hh"
-#include "util/Log.hh"
+
 #include "hrb/Server.hh"
 #include "hrb/Server.ipp"
 #include "hrb/Ownership.ipp"
 
+#include "util/Error.hh"
+#include "util/Log.hh"
+
 #include <boost/asio/bind_executor.hpp>
-#include <iostream>
-#include <util/Error.hh>
 
 namespace hrb {
 

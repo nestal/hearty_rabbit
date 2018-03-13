@@ -14,40 +14,27 @@
 
 #include "BlobDatabase.hh"
 #include "WebResources.hh"
-#include "UploadFile.hh"
-#include "Ownership.hh"
-#include "URLIntent.hh"
 
-#include "crypto/Authentication.hh"
-#include "net/SplitBuffers.hh"
 #include "net/Request.hh"
 #include "net/Redis.hh"
-#include "net/MMapResponseBody.hh"
-#include "util/Escape.hh"
 
-#include <boost/filesystem/path.hpp>
-#include <boost/format.hpp>
-#include <boost/beast/http/fields.hpp>
-#include <boost/beast/http/message.hpp>
-#include <boost/beast/http/empty_body.hpp>
-#include <boost/beast/version.hpp>
 #include <boost/asio/io_context.hpp>
 
-#include <iostream>
 #include <system_error>
 
 namespace hrb {
 
 // URL prefixes
 namespace url {
+const boost::string_view view{"/view"};
 const boost::string_view login{"/login"};
 const boost::string_view logout{"/logout"};
 const boost::string_view blob{"/blob"};
-const boost::string_view view{"/view"};
 const boost::string_view collection{"/coll"};
 const boost::string_view upload{"/upload"};
 }
 
+class Authentication;
 class Configuration;
 class Password;
 class BlobFile;
@@ -68,44 +55,17 @@ public:
 	);
 
 	template<class Send>
-	void handle_https(UploadRequest&& req, Send&& send, const Authentication& auth)
-	{
-		assert(is_upload(req));
-
-		if (auth.valid())
-			return req.target().starts_with(url::upload) ?
-				on_upload(std::move(req), std::forward<Send>(send), auth) :
-				send(not_found(req.target(), req.version()));
-
-		else
-			return on_invalid_session(std::move(req), std::forward<Send>(send));
-	}
+	void handle_https(UploadRequest&& req, Send&& send, const Authentication& auth);
 
 	// This function produces an HTTP response for the given
 	// request. The type of the response object depends on the
 	// contents of the request, so the interface requires the
 	// caller to pass a generic lambda for receiving the response.
 	template<class Send>
-	void handle_https(StringRequest&& req, Send&& send, const Authentication& auth)
-	{
-		assert(is_login(req));
-		return on_login(req, std::forward<Send>(send));
-	}
+	void handle_https(StringRequest&& req, Send&& send, const Authentication& auth);
 
 	template <class Send>
-	void handle_https(EmptyRequest&& req, Send&& send, const Authentication& auth)
-	{
-		if (is_static_resource(req.target()))
-			return send(static_file_request(req));
-
-		if (req.target() == "/login_incorrect.html")
-			return send(on_login_incorrect(req));
-
-		// Everything else require a valid session.
-		return auth.valid() ?
-			on_valid_session(std::move(req), std::forward<decltype(send)>(send), auth) :
-			on_invalid_session(std::move(req), std::forward<decltype(send)>(send));
-	}
+	void handle_https(EmptyRequest&& req, Send&& send, const Authentication& auth);
 
 	static http::response<http::string_body> bad_request(boost::string_view why, unsigned version);
 	static http::response<http::string_body> not_found(boost::string_view target, unsigned version);
