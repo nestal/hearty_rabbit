@@ -40,20 +40,32 @@ std::string to_quoted_hex(const ObjectID& id, char quote)
 	return result;
 }
 
-ObjectID hex_to_object_id(std::string_view hex)
+std::optional<ObjectID> hex_to_object_id(std::string_view hex)
 {
 	ObjectID result{};
 	if (hex.size() == result.size()*2)
+	{
 		boost::algorithm::unhex(hex.begin(), hex.end(), result.begin());
-	return result;
+		return result;
+	}
+	else
+	{
+		return std::nullopt;
+	}
 }
 
-ObjectID raw_to_object_id(std::string_view raw)
+std::optional<ObjectID> raw_to_object_id(std::string_view raw)
 {
 	ObjectID result{};
 	if (raw.size() == result.size())
+	{
 		std::copy(raw.begin(), raw.end(), result.begin());
-	return result;
+		return result;
+	}
+	else
+	{
+		return std::nullopt;
+	}
 }
 
 bool operator==(const ObjectID& id1, const ObjectID& id2)

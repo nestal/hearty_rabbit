@@ -18,6 +18,7 @@
 #include <iosfwd>
 #include <string_view>
 #include <type_traits>
+#include <optional>
 
 namespace hrb {
 
@@ -33,9 +34,9 @@ static_assert(std::is_standard_layout<ObjectID>::value);
 
 std::string to_hex(const ObjectID& id);
 std::string to_quoted_hex(const ObjectID& id, char quote = '\"');
-ObjectID hex_to_object_id(std::string_view hex);
+std::optional<ObjectID> hex_to_object_id(std::string_view hex);
 
-ObjectID raw_to_object_id(std::string_view raw);
+std::optional<ObjectID> raw_to_object_id(std::string_view raw);
 
 std::ostream& operator<<(std::ostream& os, const ObjectID& id);
 

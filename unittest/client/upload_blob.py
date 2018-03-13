@@ -68,10 +68,13 @@ class NormalTestCase(unittest.TestCase):
 		r1 = self.session.get("https://localhost:4433/index.html")
 		self.assertEqual(r1.status_code, 404)
 
-		# invalid blob
-		# TODO: is all-zero blob ID really invalid?
+		# Is all-zero blob ID really invalid? <- Yes, it's valid.
 		r2 = self.session.get("https://localhost:4433/blob/sumsum/0000000000000000000000000000000000000000")
-		self.assertEqual(r2.status_code, 400)
+		self.assertEqual(r2.status_code, 403)
+
+		# 10-digit blob ID is really invalid
+		r4 = self.session.get("https://localhost:4433/blob/sumsum/FF0000000000000000FF")
+		self.assertEqual(r4.status_code, 400)
 
 		# other user's blob
 		r3 = self.session.get("https://localhost:4433/blob/nestal/0100000000000000000000000000000000000003")

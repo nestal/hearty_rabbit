@@ -192,8 +192,9 @@ std::string Ownership::Collection::serialize(const BlobDb& blobdb, redis::Reply&
 
 		auto blob_id = raw_to_object_id(blob);
 
-		ss  << to_quoted_hex(blob_id) << ":"
-			<< blobdb.load_meta_json(blob_id);
+		if (blob_id)
+			ss  << to_quoted_hex(*blob_id) << ":"
+				<< blobdb.load_meta_json(*blob_id);
 	});
 	ss << "}}";
 	return ss.str();
