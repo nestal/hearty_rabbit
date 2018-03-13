@@ -47,11 +47,12 @@ class Server
 public:
 	explicit Server(const Configuration& cfg);
 
+	template <class Complete>
 	void on_request_header(
 		const RequestHeader& header,
 		EmptyRequestParser& src,
 		RequestBodyParsers& dest,
-		std::function<void(const Authentication&)>&& complete
+		Complete&& complete
 	);
 
 	// This function produces an HTTP response for the given
@@ -99,6 +100,7 @@ private:
 	bool is_static_resource(boost::string_view target) const;
 	void serve_view(const EmptyRequest& req, FileResponseSender&& send, const Authentication& auth);
 	void serve_collection(const EmptyRequest& req, StringResponseSender&& send, const Authentication& auth);
+	void prepare_upload(UploadFile& result, std::error_code& ec);
 
 	template <class Request, class Send>
 	void handle_blob(Request&& req, Send&& send, const Authentication& auth);

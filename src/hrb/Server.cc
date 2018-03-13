@@ -388,78 +388,6 @@ std::size_t Server::upload_limit() const
 	return m_cfg.upload_limit();
 }
 
-/// \arg    header      The header we just received. This reference must be valid
-///						until \a complete() is called.
-/// \arg    src         The request_parser that produce \a header. It will be moved
-///                     to \a dest. Must be valid until \a complete() is called.
-void Server::on_request_header(
-	const RequestHeader& header,
-	EmptyRequestParser& src,
-	RequestBodyParsers& dest,
-	std::function<void(const Authentication&)>&& complete
-)
-{
-	// Use StringRequestParser to parser login requests.
-	// The username/password will be stored in the string body.
-	// No need to verify session.
-	if (is_login(header))
-	{
-		dest.emplace<StringRequestParser>(std::move(src));
-		return complete(Authentication{});
-	}
-
-	if (is_static_resource(header.target()))
-	{
-		dest.emplace<EmptyRequestParser>(std::move(src));
-		return complete(Authentication{});
-	}
-
-	// Everything else require a valid session.
-	auto cookie = header[http::field::cookie];
-	auto session = parse_cookie({cookie.data(), cookie.size()});
-	if (!session)
-	{
-		dest.emplace<EmptyRequestParser>(std::move(src));
-		return complete(Authentication{});
-	}
-
-	Authentication::verify_session(
-		*session,
-		*m_db.alloc(),
-		[
-			this,
-			&header,
-			&dest,
-			&src,
-			complete=std::move(complete)
-		](std::error_code ec, const Authentication& auth) mutable
-		{
-			// Use a UploadRequestParse to parser upload requests, only when the session is authenicated.
-			if (!ec && is_upload(header))
-			{
-				// Need to call prepare_upload() before using UploadRequestBody.
-				m_blob_db.prepare_upload(dest.emplace<UploadRequestParser>(std::move(src)).get().body(), ec);
-				if (ec)
-					Log(LOG_WARNING, "error opening file %1%: %2% (%3%)", m_cfg.blob_path(), ec, ec.message());
-			}
-
-			// blobs support post request
-			else if (!ec && header.target().starts_with(url::blob) && header.method() == http::verb::post)
-			{
-				dest.emplace<StringRequestParser>(std::move(src));
-			}
-
-			// Other requests use EmptyRequestParser, because they don't have a body.
-			else
-			{
-				dest.emplace<EmptyRequestParser>(std::move(src));
-			}
-
-			complete(auth);
-		}
-	);
-}
-
 bool Server::is_upload(const RequestHeader& header)
 {
 	return header.target().starts_with(hrb::url::upload) && header.method() == http::verb::put;
@@ -494,6 +422,14 @@ void Server::serve_collection(const EmptyRequest& req, StringResponseSender&& se
 			return send(std::move(res));
 		}
 	);
+}
+
+void Server::prepare_upload(UploadFile& result, std::error_code& ec)
+{
+	// Need to call prepare_upload() before using UploadRequestBody.
+	m_blob_db.prepare_upload(result, ec);
+	if (ec)
+		Log(LOG_WARNING, "error opening file %1%: %2% (%3%)", m_cfg.blob_path(), ec, ec.message());
 }
 
 } // end of namespace
