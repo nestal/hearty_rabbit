@@ -13,6 +13,8 @@
 #pragma once
 
 #include "Server.hh"
+
+#include "Ownership.ipp"
 #include "UploadFile.hh"
 #include "URLIntent.hh"
 #include "Ownership.hh"

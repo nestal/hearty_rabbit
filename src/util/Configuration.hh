@@ -13,7 +13,7 @@
 #pragma once
 
 #include "Exception.hh"
-#include "Size.hh"
+#include "Size2D.hh"
 
 #include <boost/program_options/variables_map.hpp>
 #include <boost/program_options/options_description.hpp>
@@ -50,7 +50,7 @@ public:
 	boost::filesystem::path blob_path() const {return m_blob_path;}
 	std::size_t thread_count() const {return m_thread_count;}
 	std::size_t upload_limit() const {return m_upload_limit;}
-	Size image_dimension() const {return m_img_dim;}
+	Size2D image_dimension() const {return m_img_dim;}
 
 	bool help() const {return m_args.count("help") > 0;}
 
@@ -90,7 +90,7 @@ private:
 	std::size_t m_thread_count{1};
 	std::size_t m_upload_limit{10 * 1024 * 1024};
 
-	Size m_img_dim{2048, 2048};
+	Size2D m_img_dim{2048, 2048};
 };
 
 } // end of namespace

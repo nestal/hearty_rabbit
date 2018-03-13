@@ -11,6 +11,7 @@
 //
 
 #include "Ownership.hh"
+#include "Ownership.ipp"
 #include "BlobDatabase.hh"
 
 #include <sstream>

@@ -12,9 +12,10 @@
 
 #include "Session.hh"
 
+#include "crypto/Authentication.hh"
+
 #include "hrb/Server.hh"
 #include "hrb/Server.ipp"
-#include "hrb/Ownership.ipp"
 
 #include "util/Error.hh"
 #include "util/Log.hh"

@@ -41,7 +41,7 @@ BlobMeta BlobFile::meta() const
 BlobFile BlobFile::upload(
 	UploadFile&& tmp,
 	const Magic& magic,
-	const Size& resize_img,
+	const Size2D& resize_img,
 	std::string_view filename,
 	int quality,
 	std::error_code& ec
@@ -156,7 +156,7 @@ void BlobFile::save(const fs::path& dir, std::error_code& ec) const
 		save_blob(m_meta, dir/metafile, ec);
 }
 
-BlobFile::BlobFile(const fs::path& dir, const ObjectID& id, const Size& resize_img, std::error_code& ec) :
+BlobFile::BlobFile(const fs::path& dir, const ObjectID& id, const Size2D& resize_img, std::error_code& ec) :
 	m_id{id}
 {
 	std::ostringstream fn;

@@ -16,7 +16,7 @@
 #include "UploadFile.hh"
 
 #include "image/TurboBuffer.hh"
-#include "util/Size.hh"
+#include "util/Size2D.hh"
 #include "util/FS.hh"
 #include "util/MMap.hh"
 
@@ -33,12 +33,12 @@ class BlobFile
 {
 public:
 	BlobFile() = default;
-	BlobFile(const fs::path& dir, const ObjectID& id, const Size& resize_img, std::error_code& ec);
+	BlobFile(const fs::path& dir, const ObjectID& id, const Size2D& resize_img, std::error_code& ec);
 
 	static BlobFile upload(
 		UploadFile&& tmp,
 		const Magic& magic,
-		const Size& resize_img,
+		const Size2D& resize_img,
 		std::string_view filename,
 		int quality,
 		std::error_code& ec

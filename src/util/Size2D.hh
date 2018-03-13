@@ -15,11 +15,11 @@
 namespace hrb {
 
 template <typename T>
-class BasicSize
+class BasicSize2D
 {
 public:
-	BasicSize() = default;
-	BasicSize(T width, T height) : m_width{width}, m_height{height} {}
+	BasicSize2D() = default;
+	BasicSize2D(T width, T height) : m_width{width}, m_height{height} {}
 
 	T width() const {return m_width;}
 	T height() const {return m_height;}
@@ -30,14 +30,14 @@ public:
 	void height(T h) {m_height = h;}
 	void assign(T w, T h) {m_width = w; m_height = h;}
 
-	bool operator==(const BasicSize& other) const {return m_width == other.m_width && m_height == other.m_height;}
-	bool operator!=(const BasicSize& other) const {return m_width != other.m_width || m_height != other.m_height;}
+	bool operator==(const BasicSize2D& other) const {return m_width == other.m_width && m_height == other.m_height;}
+	bool operator!=(const BasicSize2D& other) const {return m_width != other.m_width || m_height != other.m_height;}
 
 private:
 	T m_width{};
 	T m_height{};
 };
 
-using Size = BasicSize<int>;
+using Size2D = BasicSize2D<int>;
 
 } // end of namespace hrb

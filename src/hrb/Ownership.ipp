@@ -12,9 +12,74 @@
 
 #include "Ownership.hh"
 
+#include <rapidjson/document.h>
+
+#include <vector>
+
 #pragma once
 
 namespace hrb {
+
+class Ownership::BlobBackLink
+{
+private:
+	static const std::string_view m_prefix;
+
+public:
+	BlobBackLink(std::string_view user, const ObjectID& blob);
+
+	void watch(redis::Connection& db) const;
+
+	// expect to be done inside a transaction
+	void link(redis::Connection& db, std::string_view coll) const;
+	void unlink(redis::Connection& db, std::string_view coll) const;
+
+	const std::string& user() const {return m_user;}
+	const ObjectID& blob() const {return m_blob;}
+
+private:
+	std::string m_user;
+	ObjectID    m_blob;
+};
+
+/// A set of blob objects represented by a redis set.
+class Ownership::Collection
+{
+private:
+	static const std::string_view m_prefix;
+
+public:
+	explicit Collection(std::string_view user, std::string_view path);
+
+	void watch(redis::Connection& db);
+
+	void link(redis::Connection& db, const ObjectID& id, std::string_view perm="");
+	void unlink(redis::Connection& db, const ObjectID& id);
+
+	template <typename Complete>
+	void is_owned(redis::Connection& db, const ObjectID& blob, Complete&& complete) const;
+
+	template <typename Complete, typename BlobDb>
+	void serialize(
+		redis::Connection& db,
+		const BlobDb& blobdb,
+		Complete&& complete
+	) const ;
+
+	template <typename Complete>
+	static void scan(redis::Connection& db, std::string_view user, long cursor, Complete&& complete);
+
+	const std::string& user() const {return m_user;}
+	const std::string& path() const {return m_path;}
+
+private:
+	template <typename BlobDb>
+	std::string serialize(const BlobDb& blobdb, redis::Reply& reply) const;
+
+private:
+	std::string m_user;
+	std::string m_path;
+};
 
 template <typename Complete>
 void Ownership::Collection::scan(
@@ -149,6 +214,38 @@ void Ownership::link(
 	{
 		comp(ec);
 	}, "EXEC");
+}
+
+template <typename Complete, typename BlobDb>
+void Ownership::serialize(
+	redis::Connection& db,
+	std::string_view coll,
+	const BlobDb& blobdb,
+	Complete&& complete
+) const
+{
+	return Collection{m_user, coll}.serialize(db, blobdb, std::forward<Complete>(complete));
+}
+
+template <typename Complete>
+void Ownership::is_owned(
+	redis::Connection& db,
+	std::string_view coll,
+	const ObjectID& blob,
+	Complete&& complete
+) const
+{
+	Collection{m_user, coll}.is_owned(db, blob, std::forward<Complete>(complete));
+}
+
+template <typename Complete>
+void Ownership::scan_collections(
+	redis::Connection& db,
+	long cursor,
+	Complete&& complete
+) const
+{
+	return Collection::scan(db, m_user, cursor, std::forward<Complete>(complete));
 }
 
 } // end of namespace

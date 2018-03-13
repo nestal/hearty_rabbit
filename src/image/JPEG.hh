@@ -12,7 +12,7 @@
 
 #pragma once
 
-#include "util/Size.hh"
+#include "util/Size2D.hh"
 
 #include <string_view>
 #include <exception>
@@ -36,7 +36,7 @@ public:
 	};
 
 public:
-	JPEG(const void *data, std::size_t size, const Size& max_dim);
+	JPEG(const void *data, std::size_t size, const Size2D& max_dim);
 	JPEG(JPEG&&) = default;
 	JPEG(const JPEG&) noexcept = default;
 	~JPEG() = default;
@@ -44,16 +44,16 @@ public:
 	JPEG& operator=(JPEG&&) noexcept = default;
 	JPEG& operator=(const JPEG&) = default;
 
-	Size size() const {return m_size;}
+	Size2D size() const {return m_size;}
 	TurboBuffer compress(int quality) const;
 
 private:
-	static Size select_scaling_factor(const Size& max, const Size& actual);
+	static Size2D select_scaling_factor(const Size2D& max, const Size2D& actual);
 
 private:
 	std::vector<unsigned char> m_pixels;
 
-	Size m_size;
+	Size2D m_size;
 	int m_subsample{};
 	int m_colorspace{};
 };

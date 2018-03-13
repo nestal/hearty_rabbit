@@ -21,7 +21,7 @@ namespace hrb {
 
 using Handle = std::unique_ptr<void, decltype(&tjDestroy)>;
 
-JPEG::JPEG(const void *data, std::size_t size, const Size& max_dim)
+JPEG::JPEG(const void *data, std::size_t size, const Size2D& max_dim)
 {
 	Handle handle{tjInitDecompress(), &tjDestroy};
 	auto result = tjDecompressHeader3(
@@ -51,11 +51,11 @@ JPEG::JPEG(const void *data, std::size_t size, const Size& max_dim)
 }
 
 // width, height: target size of the image.
-Size JPEG::select_scaling_factor(const Size& max, const Size& actual)
+Size2D JPEG::select_scaling_factor(const Size2D& max, const Size2D& actual)
 {
 	if (actual.width() > max.width() || actual.height() > max.height())
 	{
-		Size selected;
+		Size2D selected;
 
 		int count{};
 		auto factors = tjGetScalingFactors(&count);
