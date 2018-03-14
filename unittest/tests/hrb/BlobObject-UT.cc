@@ -123,3 +123,10 @@ fs::create_directories("/tmp/BlobFile-UT");
 	REQUIRE(out128.size() < src.size());
 	REQUIRE(std::memcmp(out128.data(), src.data(), out128.size()) != 0);
 }
+
+TEST_CASE("hex_to_object_id() error cases", "[error]")
+{
+	REQUIRE(!hex_to_object_id(""));
+	REQUIRE(!hex_to_object_id("1"));
+	REQUIRE(!hex_to_object_id("012345678901234567890123456789_123456789"));
+}

@@ -73,13 +73,17 @@ class NormalTestCase(unittest.TestCase):
 		r2 = self.session.get("https://localhost:4433/blob/sumsum/0000000000000000000000000000000000000000")
 		self.assertEqual(r2.status_code, 404)
 
+		# other user's blob: no matter the target exists or not will give you "forbidden"
+		r3 = self.session.get("https://localhost:4433/blob/nestal/0100000000000000000000000000000000000003")
+		self.assertEqual(r3.status_code, 403)
+
 		# 10-digit blob ID is really invalid: Bad Request
 		r4 = self.session.get("https://localhost:4433/blob/sumsum/FF0000000000000000FF")
 		self.assertEqual(r4.status_code, 400)
 
-		# other user's blob: no matter the target exists or not will give you "forbidden"
-		r3 = self.session.get("https://localhost:4433/blob/nestal/0100000000000000000000000000000000000003")
-		self.assertEqual(r3.status_code, 403)
+		# invalid blob ID with funny characters
+		r5 = self.session.get("https://localhost:4433/blob/nestal/0L00000000000000000PP0000000000000000003")
+		self.assertEqual(r5.status_code, 400)
 
 	def test_view_collection(self):
 		# resource not exist

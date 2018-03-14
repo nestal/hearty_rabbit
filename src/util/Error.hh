@@ -20,8 +20,6 @@ enum class Error
 {
 	ok,
 	object_not_exist,
-	invalid_object,
-	mmap_already_opened,
 	redis_command_error,
 	redis_field_not_found,
 	redis_transaction_aborted,

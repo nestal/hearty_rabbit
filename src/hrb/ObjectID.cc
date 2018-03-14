@@ -43,15 +43,18 @@ std::string to_quoted_hex(const ObjectID& id, char quote)
 std::optional<ObjectID> hex_to_object_id(std::string_view hex)
 {
 	ObjectID result{};
-	if (hex.size() == result.size()*2)
+	try
 	{
-		boost::algorithm::unhex(hex.begin(), hex.end(), result.begin());
-		return result;
+		if (hex.size() == result.size()*2)
+		{
+			boost::algorithm::unhex(hex.begin(), hex.end(), result.begin());
+			return result;
+		}
 	}
-	else
+	catch (boost::algorithm::hex_decode_error&)
 	{
-		return std::nullopt;
 	}
+	return std::nullopt;
 }
 
 std::optional<ObjectID> raw_to_object_id(std::string_view raw)
