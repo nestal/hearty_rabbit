@@ -178,3 +178,21 @@ TEST_CASE("Scan for all containers from testuser")
 	INFO("dirs.size() " << dirs.size());
 	REQUIRE(std::find(dirs.begin(), dirs.end(), "dir:testuser:/") != dirs.end());
 }
+
+TEST_CASE("collection entry", "[normal]")
+{
+	auto s = CollEntry::create(" ", "somepic.jpeg", "image/jpeg");
+	CollEntry subject{s};
+	INFO("entry JSON = " << subject.json());
+
+	REQUIRE(subject.filename() == "somepic.jpeg");
+	REQUIRE(subject.mime() == "image/jpeg");
+	REQUIRE(subject.allow("sumsum") == false);
+	REQUIRE(subject.raw() == s);
+
+	CollEntry same{subject.raw()};
+	REQUIRE(same.filename() == "somepic.jpeg");
+	REQUIRE(same.mime() == "image/jpeg");
+	REQUIRE(same.allow("yungyung") == false);
+	REQUIRE(same.raw() == subject.raw());
+}

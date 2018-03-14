@@ -19,10 +19,6 @@
 
 #include "util/Log.hh"
 
-#include <rapidjson/ostreamwrapper.h>
-#include <rapidjson/writer.h>
-#include <rapidjson/pointer.h>
-
 namespace hrb {
 
 BlobDatabase::BlobDatabase(const fs::path& base, const Size2D& img_resize) : m_base{base}, m_resize_img{img_resize}

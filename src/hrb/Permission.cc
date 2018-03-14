@@ -29,6 +29,7 @@ bool Permission::allow(std::string_view user)
 	{
 		case '*':   return true;
 		case '+':   return !user.empty();
+		case ' ':	return false;
 
 		// TODO: handle ACL
 		default:    return false;

@@ -21,7 +21,6 @@
 #include <rapidjson/ostreamwrapper.h>
 #include <rapidjson/writer.h>
 #include <rapidjson/pointer.h>
-#include <iostream>
 
 namespace hrb {
 

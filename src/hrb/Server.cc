@@ -143,7 +143,6 @@ void Server::unlink(std::string_view requester, std::string_view owner, std::str
 	);
 }
 
-
 void Server::update_blob(
 	std::string_view requester,
 	std::string_view owner,
@@ -153,6 +152,7 @@ void Server::update_blob(
 	Server::EmptyResponseSender&& send
 )
 {
+	send(http::response<http::empty_body>{http::status::accepted, version});
 }
 
 void Server::on_upload(UploadRequest&& req, EmptyResponseSender&& send, const Authentication& auth)

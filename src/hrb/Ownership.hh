@@ -24,6 +24,26 @@ namespace hrb {
 class BlobDatabase;
 class Permission;
 
+class CollEntry
+{
+public:
+	CollEntry(std::string_view redis_reply);
+
+	static std::string create(std::string_view perm, std::string_view filename, std::string_view mime);
+
+	bool allow(std::string_view user) const;
+
+	std::string filename() const;
+	std::string mime() 	const;
+
+	std::string_view json() const;
+
+	std::string_view raw() const {return m_raw;}
+
+private:
+	std::string_view	m_raw;
+};
+
 /// A set of blob objects represented by a redis set.
 class Ownership
 {
