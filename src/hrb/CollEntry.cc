@@ -10,7 +10,7 @@
 // Created by nestal on 2/26/18.
 //
 
-#include "BlobMeta.hh"
+#include "CollEntry.hh"
 #include "Permission.hh"
 
 #include "util/Magic.hh"
@@ -83,7 +83,12 @@ std::string CollEntry::mime() const
 
 bool CollEntry::allow(std::string_view user) const
 {
-	return Permission{m_raw.substr(0, 1)}.allow(user);
+	return permission().allow(user);
+}
+
+Permission CollEntry::permission() const
+{
+	return Permission{m_raw.substr(0, 1)};
 }
 
 } // end of namespace hrb

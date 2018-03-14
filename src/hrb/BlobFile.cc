@@ -11,7 +11,7 @@
 //
 
 #include "BlobFile.hh"
-#include "BlobMeta.hh"
+#include "CollEntry.hh"
 #include "Ownership.hh"
 
 #include "image/RotateImage.hh"

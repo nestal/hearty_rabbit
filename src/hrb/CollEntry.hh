@@ -17,7 +17,8 @@
 
 namespace hrb {
 
-// TODO: move to a separate header file
+class Permission;
+
 class CollEntry
 {
 public:
@@ -32,6 +33,7 @@ public:
 	std::string mime() 	const;
 
 	std::string_view json() const;
+	Permission permission() const;
 
 	std::string_view raw() const {return m_raw;}
 	auto data() const {return m_raw.data();}

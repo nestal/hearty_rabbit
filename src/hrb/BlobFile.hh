@@ -26,7 +26,7 @@
 namespace hrb {
 
 class UploadFile;
-class BlobMeta;
+class CollEntry;
 class Magic;
 class CollEntry;
 

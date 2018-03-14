@@ -16,7 +16,7 @@
 #include "image/JPEG.hh"
 #include "image/EXIF2.hh"
 
-#include "hrb/BlobMeta.hh"
+#include "hrb/CollEntry.hh"
 #include "util/MMap.hh"
 #include "util/FS.hh"
 #include "util/Magic.hh"

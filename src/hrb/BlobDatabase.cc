@@ -12,7 +12,7 @@
 
 #include "BlobDatabase.hh"
 #include "UploadFile.hh"
-#include "BlobMeta.hh"
+#include "CollEntry.hh"
 #include "BlobFile.hh"
 
 #include "net/MMapResponseBody.hh"

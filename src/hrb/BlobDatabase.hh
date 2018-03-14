@@ -29,7 +29,7 @@ class BlobFile;
 class UploadFile;
 class MMapResponseBody;
 class Magic;
-class BlobMeta;
+class CollEntry;
 
 class BlobDatabase
 {
