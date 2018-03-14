@@ -18,6 +18,7 @@
 #include "UploadFile.hh"
 #include "URLIntent.hh"
 #include "Ownership.hh"
+#include "BlobRequest.hh"
 
 #include "crypto/Authentication.hh"
 #include "net/MMapResponseBody.hh"
@@ -56,65 +57,24 @@ void Server::handle_https(Request&& req, Send&& send, const Authentication& auth
 template <class Request, class Send>
 void Server::handle_blob(Request&& req, Send&& send, const Authentication& auth)
 {
-	URLIntent path_url{req.target()};
+	BlobRequest breq{req, auth.user()};
 
 	// Return 400 bad request if the blob ID is invalid
-	auto object_id = hex_to_object_id(path_url.filename());
+	auto object_id = breq.blob();
 	if (!object_id)
 		return send(http::response<http::empty_body>{http::status::bad_request, req.version()});
 
 	if (req.method() == http::verb::delete_)
-		return unlink(auth.user(), path_url.user(), path_url.collection(), *object_id, req.version(), std::move(send));
+		return unlink(std::move(breq), std::move(send));
 
 	else if (req.method() == http::verb::get)
-		return get_blob(
-			auth.user(), path_url.user(), path_url.collection(), *object_id, req.version(),
-			req[http::field::if_none_match], std::move(send)
-		);
+		return get_blob(std::move(breq), std::move(send));
 
 	else if (req.method() == http::verb::post)
-		return update_blob(
-			auth.user(), path_url.user(), path_url.collection(), *object_id, req.version(),
-			std::move(send)
-		);
+		return update_blob(std::move(breq),std::move(send));
 
 	else
 		return send(http::response<http::empty_body>{http::status::bad_request, req.version()});
-}
-
-template <class Send>
-void Server::get_blob(
-	std::string_view requester,
-	std::string_view owner,
-	std::string_view coll,
-	const ObjectID& object_id,
-	unsigned version,
-	boost::string_view etag,
-	Send&& send
-)
-{
-	// Check if the user owns the blob
-	Ownership{owner}.find(
-		*m_db.alloc(), coll, object_id,
-		[
-			object_id, version, etag=etag.to_string(), this,
-			request_by_owner = (owner == requester), requester=std::string{requester},
-			send=std::move(send)
-		](CollEntry entry, auto ec) mutable
-		{
-			// Only owner is allow to know whether an object exists or not
-			if (ec == Error::object_not_exist && request_by_owner)
-				return send(http::response<http::empty_body>{http::status::not_found, version});
-
-			if (ec)
-				return send(http::response<http::empty_body>{http::status::internal_server_error, version});
-
-			if (!request_by_owner && !entry.permission().allow(requester))
-				return send(http::response<http::empty_body>{http::status::forbidden, version});
-
-			return send(m_blob_db.response(object_id, version, entry.mime(), etag));
-		}
-	);
 }
 
 template <class Request, class Send>
@@ -149,6 +109,38 @@ void Server::on_valid_session(Request&& req, Send&& send, const Authentication& 
 	}
 
 	return send(not_found(req.target(), req.version()));
+}
+
+template <class Send>
+void Server::get_blob(BlobRequest&& req, Send&& send)
+{
+	assert(req.blob());
+
+	// Check if the user owns the blob
+	Ownership{req.owner()}.find(
+		*m_db.alloc(), req.collection(), *req.blob(),
+		[
+			req=std::move(req),
+			send=std::move(send),
+			this
+		](CollEntry entry, auto ec) mutable
+		{
+			// Only owner is allow to know whether an object exists or not
+			if (ec == Error::object_not_exist)
+				return send(http::response<http::empty_body>{
+					req.request_by_owner() ? http::status::not_found : http::status::forbidden,
+					req.version()
+				});
+
+			if (ec)
+				return send(http::response<http::empty_body>{http::status::internal_server_error, req.version()});
+
+			if (!req.request_by_owner() && !entry.permission().allow(req.requester()))
+				return send(http::response<http::empty_body>{http::status::forbidden, req.version()});
+
+			return send(m_blob_db.response(*req.blob(), req.version(), entry.mime(), req.etag()));
+		}
+	);
 }
 
 /// \arg    header      The header we just received. This reference must be valid

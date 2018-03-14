@@ -38,6 +38,7 @@ class Authentication;
 class Configuration;
 class Password;
 class BlobFile;
+class BlobRequest;
 
 /// The main application logic of hearty rabbit.
 /// This is the class that handles HTTP requests from and produce response to clients. The unit test
@@ -95,8 +96,8 @@ private:
 	void on_logout(const EmptyRequest& req, EmptyResponseSender&& send, const Authentication& auth);
 	void on_invalid_session(const RequestHeader& req, FileResponseSender&& send);
 	void on_upload(UploadRequest&& req, EmptyResponseSender&& send, const Authentication& auth);
-	void unlink(std::string_view requester, std::string_view owner, std::string_view coll, const ObjectID& blobid, unsigned version, EmptyResponseSender&& send);
-	void update_blob(std::string_view requester, std::string_view owner, std::string_view coll, const ObjectID& blobid, unsigned version, EmptyResponseSender&& send);
+	void unlink(BlobRequest&& req, EmptyResponseSender&& send);
+	void update_blob(BlobRequest&& req, EmptyResponseSender&& send);
 	bool is_static_resource(boost::string_view target) const;
 	void serve_view(const EmptyRequest& req, FileResponseSender&& send, const Authentication& auth);
 	void serve_collection(const EmptyRequest& req, StringResponseSender&& send, const Authentication& auth);
@@ -106,15 +107,7 @@ private:
 	void handle_blob(Request&& req, Send&& send, const Authentication& auth);
 
 	template <class Send>
-	void get_blob(
-		std::string_view requester,
-		std::string_view owner,
-		std::string_view coll,
-		const ObjectID& blobid,
-		unsigned version,
-		boost::string_view etag,
-		Send&& send
-	);
+	void get_blob(BlobRequest&& req, Send&& send);
 
 private:
 	const Configuration&    m_cfg;

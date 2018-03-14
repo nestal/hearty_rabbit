@@ -17,6 +17,7 @@
 #include "UploadFile.hh"
 #include "BlobFile.hh"
 #include "URLIntent.hh"
+#include "BlobRequest.hh"
 
 #include "crypto/Password.hh"
 #include "crypto/Authentication.hh"
@@ -121,17 +122,18 @@ http::response<http::empty_body> Server::see_other(boost::beast::string_view whe
 	return res;
 }
 
-void Server::unlink(std::string_view requester, std::string_view owner, std::string_view coll, const ObjectID& blob_id, unsigned version, EmptyResponseSender&& send)
+void Server::unlink(BlobRequest&& req, EmptyResponseSender&& send)
 {
-	Log(LOG_INFO, "unlinking object %1% from path(%2%)", blob_id, coll);
+	assert(req.blob());
+	Log(LOG_INFO, "unlinking object %1% from path(%2%)", *req.blob(), req.collection());
 
-	if (requester != owner)
-		return send(http::response<http::empty_body>{http::status::forbidden, version});
+	if (!req.request_by_owner())
+		return send(http::response<http::empty_body>{http::status::forbidden, req.version()});
 
 	// remove from user's container
-	Ownership{owner}.unlink(
-		*m_db.alloc(), coll, blob_id,
-		[send = std::move(send), version](auto ec)
+	Ownership{req.owner()}.unlink(
+		*m_db.alloc(), req.collection(), *req.blob(),
+		[send = std::move(send), version=req.version()](auto ec)
 		{
 			auto status = http::status::accepted;
 			if (ec == Error::object_not_exist)
@@ -144,16 +146,9 @@ void Server::unlink(std::string_view requester, std::string_view owner, std::str
 	);
 }
 
-void Server::update_blob(
-	std::string_view requester,
-	std::string_view owner,
-	std::string_view coll,
-	const ObjectID& blobid,
-	unsigned version,
-	Server::EmptyResponseSender&& send
-)
+void Server::update_blob(BlobRequest&& req, Server::EmptyResponseSender&& send)
 {
-	send(http::response<http::empty_body>{http::status::accepted, version});
+	send(http::response<http::empty_body>{http::status::accepted, req.version()});
 }
 
 void Server::on_upload(UploadRequest&& req, EmptyResponseSender&& send, const Authentication& auth)
