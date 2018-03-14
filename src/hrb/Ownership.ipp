@@ -19,7 +19,6 @@
 #include <rapidjson/document.h>
 
 #include <vector>
-#include <iostream>
 
 #pragma once
 
@@ -164,7 +163,6 @@ void Ownership::Collection::set_permission(
 {
 	// we can't lock a field in the hash table, so lock a dummy key instead
 	db.command(
-		[](auto&&, auto&& ec){std::cout << "watch " << ec << std::endl;},
 		"WATCH lock:%b%b:%b:%b",
 		m_prefix.data(), m_prefix.size(),
 		m_user.data(), m_user.size(),
@@ -179,11 +177,9 @@ void Ownership::Collection::set_permission(
 		{
 			CollEntry entry{reply.as_string()};
 			auto s = CollEntry::create(Permission{perm}, entry.filename(), entry.mime());
-			std::cout << "setting entry to " << s << std::endl;
 
 			db->command("MULTI");
 			db->command(
-				[](auto&&, auto&& ec){std::cout << "setex " << ec << std::endl;},
 				"SETEX lock:%b%b:%b:%b 3600 %b",
 				m_prefix.data(), m_prefix.size(),
 				m_user.data(), m_user.size(),
@@ -192,7 +188,6 @@ void Ownership::Collection::set_permission(
 				s.data(), s.size()
 			);
 			db->command(
-				[](auto&&, auto&& ec){std::cout << "hset " << ec << std::endl;},
 				"HSET %b%b:%b %b %b",
 				m_prefix.data(), m_prefix.size(),
 				m_user.data(), m_user.size(),
@@ -203,7 +198,6 @@ void Ownership::Collection::set_permission(
 			db->command(
 				[comp=std::forward<Complete>(comp)](auto&& reply, auto&& ec) mutable
 				{
-					std::cout << "transaction " << reply.as_array(0).as_int() << " " << reply.as_array(1).as_int() << std::endl;
 					comp(std::move(ec));
 				},
 				"EXEC"
