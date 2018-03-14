@@ -43,12 +43,21 @@ TEST_CASE("add blob to Ownership", "[normal]")
 		tested++;
 	});
 
+	REQUIRE(ioc.run_for(10s) > 0);
+	REQUIRE(tested == 1);
+	ioc.restart();
+
 	// owner access is allowed
 	subject.find(*redis, "/", blobid, [&tested](auto&&, std::error_code ec)
 	{
 		REQUIRE(!ec);
 		tested++;
 	});
+
+	REQUIRE(ioc.run_for(10s) > 0);
+	REQUIRE(tested == 2);
+	ioc.restart();
+
 	// anonymous access is not allowed
 	subject.find(*redis, "/", blobid, [&tested](auto&& entry, std::error_code ec)
 	{
@@ -57,12 +66,20 @@ TEST_CASE("add blob to Ownership", "[normal]")
 		tested++;
 	});
 
+	REQUIRE(ioc.run_for(10s) > 0);
+	REQUIRE(tested == 3);
+	ioc.restart();
+
 	// set permission to public
 	subject.set_permission(*redis, "/", blobid, Permission::public_(), [&tested](std::error_code ec)
 	{
 		REQUIRE(!ec);
 		tested++;
 	});
+
+	REQUIRE(ioc.run_for(10s) > 0);
+	REQUIRE(tested == 4);
+	ioc.restart();
 
 	// anonymous access is now allowed
 	subject.find(*redis, "/", blobid, [&tested](auto&& entry, std::error_code ec)

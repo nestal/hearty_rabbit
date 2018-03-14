@@ -19,6 +19,7 @@
 #include <rapidjson/document.h>
 
 #include <vector>
+#include <iostream>
 
 #pragma once
 
@@ -161,21 +162,59 @@ void Ownership::Collection::set_permission(
 	Complete&& complete
 ) const
 {
+	// we can't lock a field in the hash table, so lock a dummy key instead
 	db.command(
-		[
-			comp=std::forward<Complete>(complete),
-			perm
-		](auto&&, std::error_code&& ec) mutable
-		{
-			comp(std::move(ec));
-		},
-
-		"HSET %b%b:%b %b %b",
+		[](auto&&, auto&& ec){std::cout << "watch " << ec << std::endl;},
+		"WATCH lock:%b%b:%b:%b",
 		m_prefix.data(), m_prefix.size(),
 		m_user.data(), m_user.size(),
 		m_path.data(), m_path.size(),
-		blob.data(), blob.size(),
-		perm.data(), perm.size()
+		blob.data(), blob.size()
+	);
+	db.command(
+		[
+			comp=std::forward<Complete>(complete),
+			db=db.shared_from_this(), *this, blob, perm
+		](auto&& reply, std::error_code&& ec) mutable
+		{
+			CollEntry entry{reply.as_string()};
+			auto s = CollEntry::create(Permission{perm}, entry.filename(), entry.mime());
+			std::cout << "setting entry to " << s << std::endl;
+
+			db->command("MULTI");
+			db->command(
+				[](auto&&, auto&& ec){std::cout << "setex " << ec << std::endl;},
+				"SETEX lock:%b%b:%b:%b 3600 %b",
+				m_prefix.data(), m_prefix.size(),
+				m_user.data(), m_user.size(),
+				m_path.data(), m_path.size(),
+				blob.data(), blob.size(),
+				s.data(), s.size()
+			);
+			db->command(
+				[](auto&&, auto&& ec){std::cout << "hset " << ec << std::endl;},
+				"HSET %b%b:%b %b %b",
+				m_prefix.data(), m_prefix.size(),
+				m_user.data(), m_user.size(),
+				m_path.data(), m_path.size(),
+				blob.data(), blob.size(),
+				s.data(), s.size()
+			);
+			db->command(
+				[comp=std::forward<Complete>(comp)](auto&& reply, auto&& ec) mutable
+				{
+					std::cout << "transaction " << reply.as_array(0).as_int() << " " << reply.as_array(1).as_int() << std::endl;
+					comp(std::move(ec));
+				},
+				"EXEC"
+			);
+		},
+
+		"HGET %b%b:%b %b",
+		m_prefix.data(), m_prefix.size(),
+		m_user.data(), m_user.size(),
+		m_path.data(), m_path.size(),
+		blob.data(), blob.size()
 	);
 }
 
@@ -187,12 +226,10 @@ void Ownership::Collection::serialize(
 {
 	db.command(
 		[
-			comp=std::forward<Complete>(complete),
-			user=std::string{m_user},
-			path=std::string{m_path}
+			comp=std::forward<Complete>(complete), *this
 		](auto&& reply, std::error_code&& ec) mutable
 		{
-			comp(Collection{user,path}.serialize(reply), std::move(ec));
+			comp(serialize(reply), std::move(ec));
 		},
 		"HGETALL %b%b:%b",
 		m_prefix.data(), m_prefix.size(),
