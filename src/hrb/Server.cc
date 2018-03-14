@@ -15,6 +15,7 @@
 #include "Ownership.hh"
 #include "Ownership.ipp"
 #include "UploadFile.hh"
+#include "BlobFile.hh"
 #include "URLIntent.hh"
 
 #include "crypto/Password.hh"
@@ -166,8 +167,8 @@ void Server::on_upload(UploadRequest&& req, EmptyResponseSender&& send, const Au
 	Log(LOG_INFO, "uploading %1% bytes to path(%2%) file(%3%)", req.body().size(bec), path_url.collection(), path_url.filename());
 
 	std::error_code ec;
-	auto id = m_blob_db.save(std::move(req.body()), path_url.filename(), ec);
-	Log(LOG_INFO, "%5% uploaded %1% to %2% (%3% %4%)", req.target(), id, ec, ec.message(), auth.user());
+	auto blob = m_blob_db.save(std::move(req.body()), path_url.filename(), ec);
+	Log(LOG_INFO, "%5% uploaded %1% to %2% (%3% %4%)", req.target(), blob.ID(), ec, ec.message(), auth.user());
 
 	if (ec)
 		return send(http::response<http::empty_body>{http::status::internal_server_error, req.version()});
@@ -176,8 +177,8 @@ void Server::on_upload(UploadRequest&& req, EmptyResponseSender&& send, const Au
 	// The user's ownership table contains all the blobs that is owned by the user.
 	// It will be used for authorizing the user's request on these blob later.
 	Ownership{auth.user()}.link(
-		*m_db.alloc(), path_url.collection(), id, CollEntry{}, [
-			location = URLIntent{"blob", auth.user(), path_url.collection(), to_hex(id)}.str(),
+		*m_db.alloc(), path_url.collection(), blob.ID(), blob.entry(), [
+			location = URLIntent{"blob", auth.user(), path_url.collection(), to_hex(blob.ID())}.str(),
 			send = std::move(send),
 			version = req.version()
 		](auto ec)

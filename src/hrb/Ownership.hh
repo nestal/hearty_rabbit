@@ -24,6 +24,7 @@ namespace hrb {
 class BlobDatabase;
 class Permission;
 
+// TODO: move to a separate header file
 class CollEntry
 {
 public:

@@ -40,7 +40,7 @@ public:
 	explicit BlobDatabase(const fs::path& base, const Size2D& resize_img);
 
 	void prepare_upload(UploadFile& result, std::error_code& ec) const;
-	ObjectID save(UploadFile&& tmp, std::string_view filename, std::error_code& ec);
+	BlobFile save(UploadFile&& tmp, std::string_view filename, std::error_code& ec);
 
 	fs::path dest(const ObjectID& id, std::string_view rendition = {}) const;
 	std::string load_meta_json(const ObjectID& id) const;

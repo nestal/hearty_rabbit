@@ -28,6 +28,7 @@ namespace hrb {
 class UploadFile;
 class BlobMeta;
 class Magic;
+class CollEntry;
 
 class BlobFile
 {
@@ -52,6 +53,7 @@ public:
 	MMap& master() {return m_master;}
 
 	const ObjectID& ID() const {return m_id;}
+	CollEntry entry() const;
 
 	void save(const fs::path& dir, std::error_code& ec) const;
 

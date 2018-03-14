@@ -12,6 +12,7 @@
 
 #include "BlobFile.hh"
 #include "BlobMeta.hh"
+#include "Ownership.hh"
 
 #include "image/RotateImage.hh"
 #include "image/JPEG.hh"
@@ -173,6 +174,11 @@ std::string BlobFile::meta_string(const fs::path& dir)
 	std::error_code ec;
 	auto meta = MMap::open(dir/metafile, ec);
 	return ec ? std::string{"\"\""} : std::string{meta.string()};
+}
+
+CollEntry BlobFile::entry() const
+{
+	return CollEntry{m_meta};
 }
 
 } // end of namespace hrb

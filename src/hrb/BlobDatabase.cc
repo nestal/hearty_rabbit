@@ -39,13 +39,13 @@ void BlobDatabase::prepare_upload(UploadFile& result, std::error_code& ec) const
 		ec.assign(err.value(), err.category());
 }
 
-ObjectID BlobDatabase::save(UploadFile&& tmp, std::string_view filename, std::error_code& ec)
+BlobFile BlobDatabase::save(UploadFile&& tmp, std::string_view filename, std::error_code& ec)
 {
 	auto blob_obj = BlobFile::upload(std::move(tmp), m_magic, m_resize_img, filename, 70, ec);
 	if (!ec)
 		blob_obj.save(dest(blob_obj.ID()), ec);
 
-	return blob_obj.ID();
+	return blob_obj;
 }
 
 fs::path BlobDatabase::dest(const ObjectID& id, std::string_view) const
