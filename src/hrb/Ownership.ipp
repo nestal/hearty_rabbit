@@ -64,7 +64,7 @@ public:
 	void set_permission(redis::Connection& db, const ObjectID& blob, const Permission& perm, Complete&& complete) const;
 
 	template <typename Complete>
-	void allow(redis::Connection& db, std::string_view requester, const ObjectID& blob, Complete&& complete) const;
+	void find(redis::Connection& db, const ObjectID& blob, Complete&& complete) const;
 
 	template <typename Complete>
 	void serialize(
@@ -124,28 +124,22 @@ void Ownership::Collection::scan(
 }
 
 template <typename Complete>
-void Ownership::Collection::allow(
+void Ownership::Collection::find(
 	redis::Connection& db,
-	std::string_view requester,
 	const ObjectID& blob,
 	Complete&& complete
 ) const
 {
 	db.command(
 		[
-			comp=std::forward<Complete>(complete),
-			requester=std::string{requester},
-			requested_by_owner = (m_user == requester)
-		](auto&& perm, std::error_code&& ec) mutable
+			comp=std::forward<Complete>(complete)
+		](auto&& entry, std::error_code&& ec) mutable
 		{
-			// Only owner is allow to know whether an object exists or not
-			if (!ec && requested_by_owner && perm.is_nil())
+			if (!ec && entry.is_nil())
 				ec = Error::object_not_exist;
 
 			comp(
-				// true if granted access, false if deny
-				// always allow access to owner
-				!perm.is_nil() && (requested_by_owner || CollEntry{perm.as_string()}.allow(requester)),
+				CollEntry{entry.as_string()},
 				std::move(ec)
 			);
 		},
@@ -249,15 +243,14 @@ void Ownership::serialize(
 }
 
 template <typename Complete>
-void Ownership::allow(
+void Ownership::find(
 	redis::Connection& db,
-	std::string_view requester,
 	std::string_view coll,
 	const ObjectID& blob,
 	Complete&& complete
 ) const
 {
-	return Collection{m_user, coll}.allow(db, requester, blob, std::forward<Complete>(complete));
+	return Collection{m_user, coll}.find(db, blob, std::forward<Complete>(complete));
 }
 
 template <typename Complete>

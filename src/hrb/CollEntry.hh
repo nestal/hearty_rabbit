@@ -12,12 +12,12 @@
 
 #pragma once
 
+#include "Permission.hh"
+
 #include <string>
 #include <string_view>
 
 namespace hrb {
-
-class Permission;
 
 class CollEntry
 {
@@ -25,9 +25,7 @@ public:
 	CollEntry() = default;
 	explicit CollEntry(std::string_view redis_reply);
 
-	static std::string create(std::string_view perm, std::string_view filename, std::string_view mime);
-
-	bool allow(std::string_view user) const;
+	static std::string create(Permission perm, std::string_view filename, std::string_view mime);
 
 	std::string filename() const;
 	std::string mime() 	const;

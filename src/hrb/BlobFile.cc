@@ -13,6 +13,7 @@
 #include "BlobFile.hh"
 #include "CollEntry.hh"
 #include "Ownership.hh"
+#include "Permission.hh"
 
 #include "image/RotateImage.hh"
 #include "image/JPEG.hh"
@@ -80,7 +81,7 @@ BlobFile BlobFile::upload(
 	result.m_id     = tmp.ID();
 	result.m_tmp    = std::move(tmp);
 	result.m_master = std::move(master);
-	result.m_meta = CollEntry::create(" ", filename, mime);
+	result.m_meta = CollEntry::create(Permission{}, filename, mime);
 
 	return result;
 }

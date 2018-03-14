@@ -11,9 +11,6 @@
 //
 
 #include "CollEntry.hh"
-#include "Permission.hh"
-
-#include "util/Magic.hh"
 
 #include <rapidjson/document.h>
 #include <rapidjson/ostreamwrapper.h>
@@ -29,7 +26,7 @@ CollEntry::CollEntry(std::string_view redis_reply) : m_raw{redis_reply}
 {
 }
 
-std::string CollEntry::create(std::string_view perm, std::string_view filename, std::string_view mime)
+std::string CollEntry::create(Permission perm, std::string_view filename, std::string_view mime)
 {
 	rapidjson::Document json;
 	json.SetObject();
@@ -38,9 +35,8 @@ std::string CollEntry::create(std::string_view perm, std::string_view filename, 
 	if (!filename.empty())
 		json.AddMember("filename", rapidjson::StringRef(filename.data(), filename.size()), json.GetAllocator());
 
-	assert(perm.size() == 1);
 	std::ostringstream ss;
-	ss << perm;
+	ss << perm.perm();
 
 	rapidjson::OStreamWrapper osw{ss};
 	rapidjson::Writer<rapidjson::OStreamWrapper> writer{osw};
@@ -51,7 +47,8 @@ std::string CollEntry::create(std::string_view perm, std::string_view filename, 
 std::string_view CollEntry::json() const
 {
 	auto json = m_raw;
-	json.remove_prefix(1);
+	if (!json.empty())
+		json.remove_prefix(Permission{}.size());
 	return json;
 }
 
@@ -81,14 +78,9 @@ std::string CollEntry::mime() const
 	return std::string{val.GetString(), val.GetStringLength()};
 }
 
-bool CollEntry::allow(std::string_view user) const
-{
-	return permission().allow(user);
-}
-
 Permission CollEntry::permission() const
 {
-	return Permission{m_raw.substr(0, 1)};
+	return m_raw.empty() ? Permission{} : Permission{m_raw.front()} ;
 }
 
 } // end of namespace hrb

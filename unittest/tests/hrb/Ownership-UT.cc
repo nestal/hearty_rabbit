@@ -35,7 +35,7 @@ TEST_CASE("add blob to Ownership", "[normal]")
 
 	int tested = 0;
 
-	Ownership subject{"test"};
+	Ownership subject{"owner"};
 
 	subject.link(*redis, "/", blobid, CollEntry{}, [&tested](std::error_code ec)
 	{
@@ -44,17 +44,16 @@ TEST_CASE("add blob to Ownership", "[normal]")
 	});
 
 	// owner access is allowed
-	subject.allow(*redis, "test", "/", blobid, [&tested](bool owned, std::error_code ec)
+	subject.find(*redis, "/", blobid, [&tested](auto&&, std::error_code ec)
 	{
 		REQUIRE(!ec);
-		REQUIRE(owned);
 		tested++;
 	});
 	// anonymous access is not allowed
-	subject.allow(*redis, "", "/", blobid, [&tested](bool allowed, std::error_code ec)
+	subject.find(*redis, "/", blobid, [&tested](auto&& entry, std::error_code ec)
 	{
 		REQUIRE(!ec);
-		REQUIRE(!allowed);
+		REQUIRE(!entry.permission().allow(""));
 		tested++;
 	});
 
@@ -66,10 +65,10 @@ TEST_CASE("add blob to Ownership", "[normal]")
 	});
 
 	// anonymous access is now allowed
-	subject.allow(*redis, "", "/", blobid, [&tested](bool allowed, std::error_code ec)
+	subject.find(*redis, "/", blobid, [&tested](auto&& entry, std::error_code ec)
 	{
 		REQUIRE(!ec);
-		REQUIRE(allowed);
+		REQUIRE(entry.permission().allow(""));
 		tested++;
 	});
 
@@ -173,18 +172,18 @@ TEST_CASE("Scan for all containers from testuser")
 
 TEST_CASE("collection entry", "[normal]")
 {
-	auto s = CollEntry::create(" ", "somepic.jpeg", "image/jpeg");
+	auto s = CollEntry::create({}, "somepic.jpeg", "image/jpeg");
 	CollEntry subject{s};
 	INFO("entry JSON = " << subject.json());
 
 	REQUIRE(subject.filename() == "somepic.jpeg");
 	REQUIRE(subject.mime() == "image/jpeg");
-	REQUIRE(subject.allow("sumsum") == false);
+	REQUIRE(subject.permission().allow("sumsum") == false);
 	REQUIRE(subject.raw() == s);
 
 	CollEntry same{subject.raw()};
 	REQUIRE(same.filename() == "somepic.jpeg");
 	REQUIRE(same.mime() == "image/jpeg");
-	REQUIRE(same.allow("yungyung") == false);
+	REQUIRE(same.permission().allow("yungyung") == false);
 	REQUIRE(same.raw() == subject.raw());
 }

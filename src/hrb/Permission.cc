@@ -14,18 +14,13 @@
 
 namespace hrb {
 
-Permission::Permission(std::string_view str) :
-	m_str{str}
+Permission::Permission(char perm) : m_perm{perm}
 {
 }
 
 bool Permission::allow(std::string_view user)
 {
-	// assume not owner. no need to call this if owner.
-	if (m_str.empty())
-		return false;
-
-	switch (m_str.front())
+	switch (m_perm)
 	{
 		case '*':   return true;
 		case '+':   return !user.empty();
@@ -38,18 +33,17 @@ bool Permission::allow(std::string_view user)
 
 Permission Permission::shared()
 {
-	return Permission{"+"};
+	return Permission{'+'};
 }
 
 Permission Permission::public_()
 {
-	return Permission{"*"};
+	return Permission{'*'};
 }
 
 Permission Permission::private_()
 {
-	return Permission{};
+	return Permission{' '};
 }
-
 
 } // end of namespace hrb

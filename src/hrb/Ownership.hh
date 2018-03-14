@@ -76,9 +76,8 @@ public:
 	) const;
 
 	template <typename Complete>
-	void allow(
+	void find(
 		redis::Connection& db,
-		std::string_view requester,
 		std::string_view coll,
 		const ObjectID& blob,
 		Complete&& complete
@@ -105,7 +104,7 @@ private:
 	);
 
 private:
-	std::string             m_user;
+	std::string m_user;
 };
 
 } // end of namespace hrb

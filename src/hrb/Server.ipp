@@ -94,23 +94,25 @@ void Server::get_blob(
 )
 {
 	// Check if the user owns the blob
-	Ownership{owner}.allow(
-		*m_db.alloc(), requester, coll, object_id,
+	Ownership{owner}.find(
+		*m_db.alloc(), coll, object_id,
 		[
 			object_id, version, etag=etag.to_string(), this,
+			request_by_owner = (owner == requester), requester=std::string{requester},
 			send=std::move(send)
-		](bool can_access, auto ec) mutable
+		](CollEntry entry, auto ec) mutable
 		{
-			if (ec == Error::object_not_exist)
+			// Only owner is allow to know whether an object exists or not
+			if (ec == Error::object_not_exist && request_by_owner)
 				return send(http::response<http::empty_body>{http::status::not_found, version});
 
 			if (ec)
 				return send(http::response<http::empty_body>{http::status::internal_server_error, version});
 
-			if (!can_access)
+			if (!request_by_owner && !entry.permission().allow(requester))
 				return send(http::response<http::empty_body>{http::status::forbidden, version});
 
-			return send(m_blob_db.response(object_id, version, "image/jpeg", etag));
+			return send(m_blob_db.response(object_id, version, entry.mime(), etag));
 		}
 	);
 }
