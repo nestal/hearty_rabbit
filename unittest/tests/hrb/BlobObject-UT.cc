@@ -53,7 +53,7 @@ TEST_CASE("upload non-image BlobFile", "[normal]")
 	REQUIRE(!ec);
 	REQUIRE(subject.ID() != ObjectID{});
 
-	auto meta = subject.meta();
+	auto meta = subject.entry();
 	REQUIRE(meta.mime() == "text/x-c");
 	REQUIRE(meta.filename() == "unittest.cc");
 
@@ -79,7 +79,7 @@ TEST_CASE("upload small image BlobFile", "[normal]")
 	REQUIRE(!ec);
 	REQUIRE(subject.ID() != ObjectID{});
 
-	auto meta = subject.meta();
+	auto meta = subject.entry();
 	REQUIRE(meta.mime() == "image/jpeg");
 	REQUIRE(meta.filename() == "black.jpeg");
 
@@ -105,7 +105,7 @@ TEST_CASE("upload big upright image BlobFile", "[normal]")
 	REQUIRE(!ec);
 	REQUIRE(subject.ID() != ObjectID{});
 
-	auto meta = subject.meta();
+	auto meta = subject.entry();
 	REQUIRE(meta.mime() == "image/jpeg");
 	REQUIRE(meta.filename() == "upright.jpeg");
 

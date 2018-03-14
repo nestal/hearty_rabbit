@@ -22,30 +22,7 @@
 namespace hrb {
 
 class Permission;
-
-// TODO: move to a separate header file
-class CollEntry
-{
-public:
-	CollEntry() = default;
-	explicit CollEntry(std::string_view redis_reply);
-
-	static std::string create(std::string_view perm, std::string_view filename, std::string_view mime);
-
-	bool allow(std::string_view user) const;
-
-	std::string filename() const;
-	std::string mime() 	const;
-
-	std::string_view json() const;
-
-	std::string_view raw() const {return m_raw;}
-	auto data() const {return m_raw.data();}
-	auto size() const {return m_raw.size();}
-
-private:
-	std::string_view	m_raw{" {}"};
-};
+class CollEntry;
 
 /// A set of blob objects represented by a redis set.
 class Ownership

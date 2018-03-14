@@ -31,14 +31,6 @@ const std::string default_rendition = "master";
 const std::string metafile = "meta";
 }
 
-BlobMeta BlobFile::meta() const
-{
-	rapidjson::Document json;
-	json.Parse(m_meta.data(), m_meta.size());
-
-	return BlobMeta::load(json);
-}
-
 BlobFile BlobFile::upload(
 	UploadFile&& tmp,
 	const Magic& magic,

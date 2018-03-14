@@ -110,7 +110,7 @@ void Server::get_blob(
 			if (!can_access)
 				return send(http::response<http::empty_body>{http::status::forbidden, version});
 
-			return send(m_blob_db.response(object_id, version, etag));
+			return send(m_blob_db.response(object_id, version, "image/jpeg", etag));
 		}
 	);
 }

@@ -12,6 +12,7 @@
 
 #include "Ownership.hh"
 #include "Permission.hh"
+#include "BlobMeta.hh"
 
 #include "util/Error.hh"
 

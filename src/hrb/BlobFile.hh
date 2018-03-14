@@ -46,9 +46,6 @@ public:
 	);
 	static std::string meta_string(const fs::path& dir);
 
-	BlobMeta meta() const;
-	const std::string& meta_string() const {return m_meta;}
-
 	BufferView blob() const;
 	MMap& master() {return m_master;}
 

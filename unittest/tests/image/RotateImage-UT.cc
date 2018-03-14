@@ -48,7 +48,7 @@ TEST_CASE("auto rotate will change orientation=8 images to orientation=1", "[nor
 	REQUIRE(!ec);
 
 	REQUIRE(!ec);
-	auto meta = BlobMeta::deduce_meta({rotated.data(), rotated.size()}, Magic{});
+//	auto meta = BlobMeta::deduce_meta({rotated.data(), rotated.size()}, Magic{});
 	REQUIRE(exiv2_orientation({rotated.data(), rotated.size()}) == 1);
 }
 

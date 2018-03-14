@@ -59,6 +59,7 @@ fs::path BlobDatabase::dest(const ObjectID& id, std::string_view) const
 BlobDatabase::BlobResponse BlobDatabase::response(
 	ObjectID id,
 	unsigned version,
+	std::string_view mime,
 	std::string_view etag,
 	std::string_view rendition
 ) const
@@ -87,7 +88,7 @@ BlobDatabase::BlobResponse BlobDatabase::response(
 		std::make_tuple(std::move(mmap)),
 		std::make_tuple(http::status::ok, version)
 	};
-	res.set(http::field::content_type, blob_obj.meta().mime());
+	res.set(http::field::content_type, mime);
 	set_cache_control(res, id);
 	return res;
 

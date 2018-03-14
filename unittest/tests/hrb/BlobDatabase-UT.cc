@@ -56,7 +56,7 @@ TEST_CASE("Open temp file", "[normal]")
 	REQUIRE(exists(dest/"master"));
 	REQUIRE(file_size(dest/"master") == sizeof(test));
 
-	auto res = subject.response(tmpid, 11, "");
+	auto res = subject.response(tmpid, 11, "image/jpeg", "");
 	REQUIRE(res.result() == http::status::ok);
 	REQUIRE(res[http::field::etag] != boost::string_view{});
 }
@@ -78,15 +78,4 @@ TEST_CASE("Upload JPEG file to BlobDatabase", "[normal]")
 
 	auto id = subject.save(std::move(tmp), "black.jpg", ec).ID();
 	REQUIRE(!ec);
-
-	auto meta = MMap::open(subject.dest(id)/"meta", ec);
-	REQUIRE(!ec);
-
-	rapidjson::Document json;
-	json.Parse(static_cast<const char*>(meta.data()), meta.size());
-
-	auto&& mime_node = json["mime"];
-	REQUIRE(
-		std::string_view{mime_node.GetString(), mime_node.GetStringLength()} == "image/jpeg"
-	);
 }

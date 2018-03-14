@@ -13,37 +13,32 @@
 #pragma once
 
 #include <string>
-#include <rapidjson/document.h>
-#include <boost/asio/buffer.hpp>
+#include <string_view>
 
 namespace hrb {
 
-class Magic;
-
-class BlobMeta
+// TODO: move to a separate header file
+class CollEntry
 {
 public:
-	BlobMeta() = default;
-	BlobMeta(const BlobMeta&) = default;
-	BlobMeta(BlobMeta&&) = default;
-	~BlobMeta() = default;
+	CollEntry() = default;
+	explicit CollEntry(std::string_view redis_reply);
 
-	BlobMeta& operator=(const BlobMeta&) = default;
-	BlobMeta& operator=(BlobMeta&&) = default;
+	static std::string create(std::string_view perm, std::string_view filename, std::string_view mime);
 
-	static BlobMeta deduce_meta(boost::asio::const_buffer blob, const Magic& magic);
-	static BlobMeta load(rapidjson::Document& json);
+	bool allow(std::string_view user) const;
 
-	rapidjson::Document serialize() const;
+	std::string filename() const;
+	std::string mime() 	const;
 
-	const std::string& mime() const {return m_mime;}
-	const std::string& filename() const {return m_filename;}
+	std::string_view json() const;
 
-	void filename(std::string_view fn) {m_filename = fn;}
+	std::string_view raw() const {return m_raw;}
+	auto data() const {return m_raw.data();}
+	auto size() const {return m_raw.size();}
 
 private:
-	std::string m_mime{"application/octet-stream"};
-	std::string m_filename;
+	std::string_view	m_raw{" {}"};
 };
 
 } // end of namespace hrb

@@ -11,39 +11,79 @@
 //
 
 #include "BlobMeta.hh"
+#include "Permission.hh"
 
 #include "util/Magic.hh"
-#include "util/JsonHelper.hh"
 
+#include <rapidjson/document.h>
+#include <rapidjson/ostreamwrapper.h>
 #include <rapidjson/pointer.h>
+#include <rapidjson/writer.h>
+
+#include <cassert>
+#include <sstream>
 
 namespace hrb {
 
-rapidjson::Document BlobMeta::serialize() const
+CollEntry::CollEntry(std::string_view redis_reply) : m_raw{redis_reply}
+{
+}
+
+std::string CollEntry::create(std::string_view perm, std::string_view filename, std::string_view mime)
 {
 	rapidjson::Document json;
 	json.SetObject();
-	json.AddMember("mime", rapidjson::StringRef(m_mime), json.GetAllocator());
+	json.AddMember("mime", rapidjson::StringRef(mime.data(), mime.size()), json.GetAllocator());
 
-	if (!m_filename.empty())
-		json.AddMember("filename", rapidjson::StringRef(m_filename), json.GetAllocator());
+	if (!filename.empty())
+		json.AddMember("filename", rapidjson::StringRef(filename.data(), filename.size()), json.GetAllocator());
 
+	assert(perm.size() == 1);
+	std::ostringstream ss;
+	ss << perm;
+
+	rapidjson::OStreamWrapper osw{ss};
+	rapidjson::Writer<rapidjson::OStreamWrapper> writer{osw};
+	json.Accept(writer);
+	return ss.str();
+}
+
+std::string_view CollEntry::json() const
+{
+	auto json = m_raw;
+	json.remove_prefix(1);
 	return json;
 }
 
-BlobMeta BlobMeta::load(rapidjson::Document& json)
+std::string CollEntry::filename() const
 {
-	BlobMeta meta;
-	meta.m_mime         = GetValueByPointerWithDefault(json, "/mime",     meta.m_mime).GetString();
-	meta.m_filename     = GetValueByPointerWithDefault(json, "/filename", meta.m_filename).GetString();
-	return meta;
+	auto json = CollEntry::json();
+
+	rapidjson::Document doc;
+	doc.Parse(json.data(), json.size());
+	if (doc.HasParseError())
+		return {};
+
+	auto&& val = GetValueByPointerWithDefault(doc, "/filename", "");
+	return std::string{val.GetString(), val.GetStringLength()};
 }
 
-BlobMeta BlobMeta::deduce_meta(boost::asio::const_buffer blob, const Magic& magic)
+std::string CollEntry::mime() const
 {
-	BlobMeta meta;
-	meta.m_mime = magic.mime(blob);
-	return meta;
+	auto json = CollEntry::json();
+
+	rapidjson::Document doc;
+	doc.Parse(json.data(), json.size());
+	if (doc.HasParseError())
+		return {};
+
+	auto&& val = GetValueByPointerWithDefault(doc, "/mime", "");
+	return std::string{val.GetString(), val.GetStringLength()};
+}
+
+bool CollEntry::allow(std::string_view user) const
+{
+	return Permission{m_raw.substr(0, 1)}.allow(user);
 }
 
 } // end of namespace hrb
