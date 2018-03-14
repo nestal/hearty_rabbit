@@ -82,14 +82,14 @@ void Ownership::Collection::watch(redis::Connection& db)
 	);
 }
 
-void Ownership::Collection::link(redis::Connection& db, const ObjectID& id, std::string_view perm)
+void Ownership::Collection::link(redis::Connection& db, const ObjectID& id, const CollEntry& entry)
 {
 	db.command("HSET %b%b:%b %b %b",
 		m_prefix.data(), m_prefix.size(),
 		m_user.data(), m_user.size(),
 		m_path.data(), m_path.size(),
 		id.data(), id.size(),
-		perm.data(), perm.size()
+		entry.data(), entry.size()
 	);
 }
 
@@ -138,6 +138,8 @@ std::string CollEntry::filename() const
 
 	rapidjson::Document doc;
 	doc.Parse(json.data(), json.size());
+	if (doc.HasParseError())
+		return {};
 
 	auto&& val = GetValueByPointerWithDefault(doc, "/filename", "");
 	return std::string{val.GetString(), val.GetStringLength()};
@@ -149,6 +151,8 @@ std::string CollEntry::mime() const
 
 	rapidjson::Document doc;
 	doc.Parse(json.data(), json.size());
+	if (doc.HasParseError())
+		return {};
 
 	auto&& val = GetValueByPointerWithDefault(doc, "/mime", "");
 	return std::string{val.GetString(), val.GetStringLength()};

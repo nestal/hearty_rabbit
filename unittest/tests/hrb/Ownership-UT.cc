@@ -37,7 +37,7 @@ TEST_CASE("add blob to Ownership", "[normal]")
 
 	Ownership subject{"test"};
 
-	subject.link(*redis, "/", blobid, [&tested](std::error_code ec)
+	subject.link(*redis, "/", blobid, CollEntry{}, [&tested](std::error_code ec)
 	{
 		REQUIRE(!ec);
 		tested++;
@@ -89,7 +89,7 @@ TEST_CASE("Load 3 images in json", "[normal]")
 	Ownership subject{"testuser"};
 
 	for (auto&& blobid : blobids)
-		subject.link(*redis, "/", blobid, [&added](auto ec)
+		subject.link(*redis, "/", blobid, CollEntry{}, [&added](auto ec)
 		{
 			REQUIRE(!ec);
 			added++;
@@ -147,7 +147,7 @@ TEST_CASE("Scan for all containers from testuser")
 	Ownership subject{"testuser"};
 
 	bool added = false;
-	subject.link(*redis, "/", insecure_random<ObjectID>(), [&added](auto ec)
+	subject.link(*redis, "/", insecure_random<ObjectID>(), CollEntry{}, [&added](auto ec)
 	{
 		REQUIRE(!ec);
 		added = true;

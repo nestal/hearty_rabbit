@@ -56,7 +56,7 @@ public:
 
 	void watch(redis::Connection& db);
 
-	void link(redis::Connection& db, const ObjectID& id, std::string_view perm="");
+	void link(redis::Connection& db, const ObjectID& id, const CollEntry& entry);
 	void unlink(redis::Connection& db, const ObjectID& id);
 
 	template <typename Complete>
@@ -146,7 +146,7 @@ void Ownership::Collection::allow(
 			comp(
 				// true if granted access, false if deny
 				// always allow access to owner
-				!perm.is_nil() && (requested_by_owner || Permission{perm.as_string()}.allow(requester)),
+				!perm.is_nil() && (requested_by_owner || CollEntry{perm.as_string()}.allow(requester)),
 				std::move(ec)
 			);
 		},
@@ -243,6 +243,7 @@ void Ownership::link(
 	redis::Connection& db,
 	std::string_view path,
 	const ObjectID& blobid,
+	const CollEntry& entry,
 	bool add,
 	Complete&& complete
 )
@@ -254,7 +255,7 @@ void Ownership::link(
 	if (add)
 	{
 		blob.link(db, coll.path());
-		coll.link(db, blob.blob());
+		coll.link(db, blob.blob(), entry);
 	}
 	else
 	{

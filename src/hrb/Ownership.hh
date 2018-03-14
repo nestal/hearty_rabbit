@@ -27,7 +27,8 @@ class Permission;
 class CollEntry
 {
 public:
-	CollEntry(std::string_view redis_reply);
+	CollEntry() = default;
+	explicit CollEntry(std::string_view redis_reply);
 
 	static std::string create(std::string_view perm, std::string_view filename, std::string_view mime);
 
@@ -39,6 +40,8 @@ public:
 	std::string_view json() const;
 
 	std::string_view raw() const {return m_raw;}
+	auto data() const {return m_raw.data();}
+	auto size() const {return m_raw.size();}
 
 private:
 	std::string_view	m_raw;
@@ -61,10 +64,11 @@ public:
 		redis::Connection& db,
 		std::string_view coll,
 		const ObjectID& blobid,
+		const CollEntry& entry,
 		Complete&& complete
 	)
 	{
-		link(db, coll, blobid, true, std::forward<Complete>(complete));
+		link(db, coll, blobid, entry, true, std::forward<Complete>(complete));
 	}
 
 	template <typename Complete>
@@ -75,7 +79,7 @@ public:
 		Complete&& complete
 	)
 	{
-		link(db, coll, blobid, false, std::forward<Complete>(complete));
+		link(db, coll, blobid, CollEntry{}, false, std::forward<Complete>(complete));
 	}
 
 	template <typename Complete>
@@ -119,6 +123,7 @@ private:
 		redis::Connection& db,
 		std::string_view path,
 		const ObjectID& blobid,
+		const CollEntry& entry,
 		bool add,
 		Complete&& complete
 	);

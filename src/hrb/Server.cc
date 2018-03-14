@@ -176,7 +176,7 @@ void Server::on_upload(UploadRequest&& req, EmptyResponseSender&& send, const Au
 	// The user's ownership table contains all the blobs that is owned by the user.
 	// It will be used for authorizing the user's request on these blob later.
 	Ownership{auth.user()}.link(
-		*m_db.alloc(), path_url.collection(), id, [
+		*m_db.alloc(), path_url.collection(), id, CollEntry{}, [
 			location = URLIntent{"blob", auth.user(), path_url.collection(), to_hex(id)}.str(),
 			send = std::move(send),
 			version = req.version()
