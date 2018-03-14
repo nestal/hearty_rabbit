@@ -280,7 +280,6 @@ void Server::serve_view(const EmptyRequest& req, Server::FileResponseSender&& se
 	Ownership{auth.user()}.serialize(
 		*m_db.alloc(),
 		path_url.collection(),
-		m_blob_db,
 		[send=std::move(send), version=req.version(), auth, this](auto&& json, auto ec)
 	{
 		std::ostringstream ss;
@@ -411,7 +410,6 @@ void Server::serve_collection(const EmptyRequest& req, StringResponseSender&& se
 	Ownership{path_url.user()}.serialize(
 		*m_db.alloc(),
 		path_url.collection(),
-		m_blob_db,
 		[send=std::move(send), version=req.version()](auto&& json, auto ec)
 		{
 			http::response<http::string_body> res{

@@ -18,6 +18,7 @@
 #include "image/JPEG.hh"
 #include "util/MMap.hh"
 #include "util/Log.hh"
+#include "util/Magic.hh"
 
 #include <rapidjson/ostreamwrapper.h>
 #include <rapidjson/writer.h>
@@ -56,10 +57,9 @@ BlobFile BlobFile::upload(
 		return result;
 	}
 
-	auto meta = BlobMeta::deduce_meta(master.blob(), magic);
-	meta.filename(filename);
+	auto mime = magic.mime(master.blob());
 
-	if (meta.mime() == "image/jpeg")
+	if (mime == "image/jpeg")
 	{
 		RotateImage transform;
 		auto rotated = transform.auto_rotate(master.buffer(), ec);
@@ -88,13 +88,7 @@ BlobFile BlobFile::upload(
 	result.m_id     = tmp.ID();
 	result.m_tmp    = std::move(tmp);
 	result.m_master = std::move(master);
-
-	// write meta to file
-	std::ostringstream ss;
-	rapidjson::OStreamWrapper osw{ss};
-	rapidjson::Writer<rapidjson::OStreamWrapper> writer{osw};
-	meta.serialize().Accept(writer);
-	result.m_meta = ss.str();
+	result.m_meta = CollEntry::create(" ", filename, mime);
 
 	return result;
 }

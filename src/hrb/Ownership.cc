@@ -20,6 +20,7 @@
 #include <rapidjson/writer.h>
 
 #include <sstream>
+#include <cassert>
 
 namespace hrb {
 
@@ -103,6 +104,33 @@ void Ownership::Collection::unlink(redis::Connection& db, const ObjectID& id)
 	);
 }
 
+std::string Ownership::Collection::serialize(redis::Reply& reply) const
+{
+	std::ostringstream ss;
+	ss  << R"__({"username":")__"      << m_user
+		<< R"__(", "collection":")__"  << m_path
+		<< R"__(", "elements":)__" << "{";
+
+	bool first = true;
+	reply.foreach_kv_pair([&ss, &first](auto&& blob, auto&& perm)
+	{
+		// TODO: check perm
+
+		if (first)
+			first = false;
+		else
+			ss << ",\n";
+
+		auto blob_id = raw_to_object_id(blob);
+
+		if (blob_id)
+			ss  << to_quoted_hex(*blob_id) << ":"
+				<< CollEntry{perm.as_string()}.json();
+	});
+	ss << "}}";
+	return ss.str();
+}
+
 CollEntry::CollEntry(std::string_view redis_reply) : m_raw{redis_reply}
 {
 }
@@ -116,6 +144,7 @@ std::string CollEntry::create(std::string_view perm, std::string_view filename, 
 	if (!filename.empty())
 		json.AddMember("filename", rapidjson::StringRef(filename.data(), filename.size()), json.GetAllocator());
 
+	assert(perm.size() == 1);
 	std::ostringstream ss;
 	ss << perm;
 

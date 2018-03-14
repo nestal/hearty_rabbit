@@ -65,10 +65,9 @@ public:
 	template <typename Complete>
 	void allow(redis::Connection& db, std::string_view requester, const ObjectID& blob, Complete&& complete) const;
 
-	template <typename Complete, typename BlobDb>
+	template <typename Complete>
 	void serialize(
 		redis::Connection& db,
-		const BlobDb& blobdb,
 		Complete&& complete
 	) const ;
 
@@ -79,8 +78,7 @@ public:
 	const std::string& path() const {return m_path;}
 
 private:
-	template <typename BlobDb>
-	std::string serialize(const BlobDb& blobdb, redis::Reply& reply) const;
+	std::string serialize(redis::Reply& reply) const;
 
 private:
 	std::string m_user;
@@ -186,10 +184,9 @@ void Ownership::Collection::set_permission(
 	);
 }
 
-template <typename Complete, typename BlobDb>
+template <typename Complete>
 void Ownership::Collection::serialize(
 	redis::Connection& db,
-	const BlobDb& blobdb,
 	Complete&& complete
 ) const
 {
@@ -197,45 +194,16 @@ void Ownership::Collection::serialize(
 		[
 			comp=std::forward<Complete>(complete),
 			user=std::string{m_user},
-			path=std::string{m_path},
-			&blobdb
+			path=std::string{m_path}
 		](auto&& reply, std::error_code&& ec) mutable
 		{
-			comp(Collection{user,path}.serialize(blobdb, reply), std::move(ec));
+			comp(Collection{user,path}.serialize(reply), std::move(ec));
 		},
 		"HGETALL %b%b:%b",
 		m_prefix.data(), m_prefix.size(),
 		m_user.data(), m_user.size(),
 		m_path.data(), m_path.size()
 	);
-}
-
-template <typename BlobDb>
-std::string Ownership::Collection::serialize(const BlobDb& blobdb, redis::Reply& reply) const
-{
-	std::ostringstream ss;
-	ss  << R"__({"username":")__"      << m_user
-		<< R"__(", "collection":")__"  << m_path
-		<< R"__(", "elements":)__" << "{";
-
-	bool first = true;
-	reply.foreach_kv_pair([&ss, &blobdb, &first](auto&& blob, auto&& perm)
-	{
-		// TODO: check perm
-
-		if (first)
-			first = false;
-		else
-			ss << ",\n";
-
-		auto blob_id = raw_to_object_id(blob);
-
-		if (blob_id)
-			ss  << to_quoted_hex(*blob_id) << ":"
-				<< blobdb.load_meta_json(*blob_id);
-	});
-	ss << "}}";
-	return ss.str();
 }
 
 template <typename Complete>
@@ -269,15 +237,14 @@ void Ownership::link(
 	}, "EXEC");
 }
 
-template <typename Complete, typename BlobDb>
+template <typename Complete>
 void Ownership::serialize(
 	redis::Connection& db,
 	std::string_view coll,
-	const BlobDb& blobdb,
 	Complete&& complete
 ) const
 {
-	return Collection{m_user, coll}.serialize(db, blobdb, std::forward<Complete>(complete));
+	return Collection{m_user, coll}.serialize(db, std::forward<Complete>(complete));
 }
 
 template <typename Complete>

@@ -100,16 +100,8 @@ TEST_CASE("Load 3 images in json", "[normal]")
 
 	ioc.restart();
 
-	struct MockBlobDb
-	{
-		std::string load_meta_json(const ObjectID& blob) const
-		{
-			return to_quoted_hex(blob);
-		}
-	};
-
 	bool tested = false;
-	subject.serialize(*redis, "/", MockBlobDb{}, [&tested](auto&& json, auto ec)
+	subject.serialize(*redis, "/", [&tested](auto&& json, auto ec)
 	{
 		INFO("serialize() error_code: " << ec << " " << ec.message());
 		REQUIRE(!ec);

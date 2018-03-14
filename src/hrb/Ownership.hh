@@ -21,7 +21,6 @@
 
 namespace hrb {
 
-class BlobDatabase;
 class Permission;
 
 // TODO: move to a separate header file
@@ -45,7 +44,7 @@ public:
 	auto size() const {return m_raw.size();}
 
 private:
-	std::string_view	m_raw;
+	std::string_view	m_raw{" {}"};
 };
 
 /// A set of blob objects represented by a redis set.
@@ -92,11 +91,10 @@ public:
 		Complete&& complete
 	);
 
-	template <typename Complete, typename BlobDb>
+	template <typename Complete>
 	void serialize(
 		redis::Connection& db,
 		std::string_view coll,
-		const BlobDb& blobdb,
 		Complete&& complete
 	) const;
 
