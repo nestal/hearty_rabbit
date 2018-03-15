@@ -14,7 +14,7 @@
 
 namespace hrb {
 
-BlobRequest::BlobRequest(BlobRequest&& other) :
+BlobRequest::BlobRequest(BlobRequest&& other) noexcept :
 	m_requester{std::move(other.m_requester)}, m_target{std::move(other.m_target)}, m_url{m_target},
 	m_version{other.m_version}, m_etag{std::move(other.m_etag)}, m_body{std::move(other.m_body)}
 {
@@ -26,7 +26,7 @@ BlobRequest::BlobRequest(const BlobRequest& other) :
 {
 }
 
-BlobRequest& BlobRequest::operator=(BlobRequest&& other)
+BlobRequest& BlobRequest::operator=(BlobRequest&& other) noexcept
 {
 	BlobRequest tmp{std::move(other)};
 	swap(tmp);
@@ -39,7 +39,7 @@ BlobRequest& BlobRequest::operator=(const BlobRequest& other)
 	return *this;
 }
 
-void BlobRequest::swap(BlobRequest& tmp)
+void BlobRequest::swap(BlobRequest& tmp) noexcept
 {
 	m_requester.swap(tmp.m_requester);
 	m_target.swap(tmp.m_target);

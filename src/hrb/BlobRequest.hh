@@ -34,12 +34,12 @@ public:
 				m_body = std::move(req.body());
 		}
 	}
-	BlobRequest(BlobRequest&& other);
+	BlobRequest(BlobRequest&& other) noexcept ;
 	BlobRequest(const BlobRequest& other);
-	BlobRequest& operator=(BlobRequest&& other);
+	BlobRequest& operator=(BlobRequest&& other) noexcept ;
 	BlobRequest& operator=(const BlobRequest& other);
 
-	void swap(BlobRequest& tmp);
+	void swap(BlobRequest& tmp) noexcept ;
 
 	std::optional<ObjectID> blob() const {return hex_to_object_id(m_url.filename());}
 	std::string_view requester() const {return m_requester;}
