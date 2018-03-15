@@ -98,7 +98,7 @@ void Server::on_valid_session(Request&& req, Send&& send, const Authentication& 
 		if (req.target().starts_with(url::collection))
 			return serve_collection(std::forward<Request>(req), std::forward<Send>(send), auth);
 
-		if (req.target() == url::logout && auth.valid())
+		if (req.target() == url::logout)
 			return on_logout(std::forward<Request>(req), std::forward<Send>(send), auth);
 	}
 
