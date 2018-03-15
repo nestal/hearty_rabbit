@@ -117,7 +117,7 @@ TEST_CASE("Load 3 images in json", "[normal]")
 	ioc.restart();
 
 	bool tested = false;
-	subject.serialize(*redis, "some/collection", [&tested](auto&& json, auto ec)
+	subject.serialize(*redis, "testuser", "some/collection", [&tested](auto&& json, auto ec)
 	{
 		INFO("serialize() error_code: " << ec << " " << ec.message());
 		REQUIRE(!ec);

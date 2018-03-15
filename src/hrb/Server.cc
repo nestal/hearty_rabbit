@@ -294,11 +294,9 @@ void Server::serve_view(const EmptyRequest& req, Server::FileResponseSender&& se
 
 	URLIntent path_url{req.target()};
 
-	if (path_url.user() != auth.user())
-		return send(http::response<SplitBuffers>{http::status::forbidden, req.version()});
-
-	Ownership{auth.user()}.serialize(
+	Ownership{path_url.user()}.serialize(
 		*m_db.alloc(),
+		auth.user(),
 		path_url.collection(),
 		[send=std::move(send), version=req.version(), auth, this](auto&& json, auto ec)
 	{
@@ -424,11 +422,9 @@ void Server::serve_collection(const EmptyRequest& req, StringResponseSender&& se
 		return send(http::response<http::string_body>{http::status::bad_request, req.version()});
 
 	URLIntent path_url{req.target()};
-	if (path_url.user() != auth.user())
-		return send(http::response<http::string_body>{http::status::forbidden, req.version()});
-
 	Ownership{path_url.user()}.serialize(
 		*m_db.alloc(),
+		auth.user(),
 		path_url.collection(),
 		[send=std::move(send), version=req.version()](auto&& json, auto ec)
 		{

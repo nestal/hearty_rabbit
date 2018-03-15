@@ -103,7 +103,7 @@ void Ownership::Collection::unlink(redis::Connection& db, const ObjectID& id)
 	);
 }
 
-std::string Ownership::Collection::serialize(redis::Reply& reply) const
+std::string Ownership::Collection::serialize(redis::Reply& reply, std::string_view requester) const
 {
 	std::ostringstream ss;
 	ss  << R"__({"username":")__"      << m_user
@@ -111,7 +111,7 @@ std::string Ownership::Collection::serialize(redis::Reply& reply) const
 		<< R"__(", "elements":)__" << "{";
 
 	bool first = true;
-	reply.foreach_kv_pair([&ss, &first](auto&& blob, auto&& perm)
+	reply.foreach_kv_pair([&ss, &first, requester, this](auto&& blob, auto&& perm)
 	{
 		// TODO: check perm
 
@@ -121,10 +121,11 @@ std::string Ownership::Collection::serialize(redis::Reply& reply) const
 			ss << ",\n";
 
 		auto blob_id = raw_to_object_id(blob);
+		CollEntry entry{perm.as_string()};
 
-		if (blob_id)
+		if (blob_id && (m_user == requester || entry.permission().allow(requester)))
 			ss  << to_quoted_hex(*blob_id) << ":"
-				<< CollEntry{perm.as_string()}.json();
+				<< entry.json();
 	});
 	ss << "}}";
 	return ss.str();

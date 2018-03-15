@@ -69,6 +69,7 @@ public:
 	template <typename Complete>
 	void serialize(
 		redis::Connection& db,
+		std::string_view requester,
 		Complete&& complete
 	) const ;
 
@@ -79,7 +80,7 @@ public:
 	const std::string& path() const {return m_path;}
 
 private:
-	std::string serialize(redis::Reply& reply) const;
+	std::string serialize(redis::Reply& reply, std::string_view requester) const;
 
 private:
 	std::string m_user;
@@ -215,15 +216,17 @@ void Ownership::Collection::set_permission(
 template <typename Complete>
 void Ownership::Collection::serialize(
 	redis::Connection& db,
+	std::string_view requester,
 	Complete&& complete
 ) const
 {
 	db.command(
 		[
-			comp=std::forward<Complete>(complete), *this
+			comp=std::forward<Complete>(complete), *this,
+			requester=std::string{requester}
 		](auto&& reply, std::error_code&& ec) mutable
 		{
-			comp(serialize(reply), std::move(ec));
+			comp(serialize(reply, requester), std::move(ec));
 		},
 		"HGETALL %b%b:%b",
 		m_prefix.data(), m_prefix.size(),
@@ -266,11 +269,12 @@ void Ownership::link(
 template <typename Complete>
 void Ownership::serialize(
 	redis::Connection& db,
+	std::string_view requester,
 	std::string_view coll,
 	Complete&& complete
 ) const
 {
-	return Collection{m_user, coll}.serialize(db, std::forward<Complete>(complete));
+	return Collection{m_user, coll}.serialize(db, requester, std::forward<Complete>(complete));
 }
 
 template <typename Complete>

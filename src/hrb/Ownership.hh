@@ -72,6 +72,7 @@ public:
 	template <typename Complete>
 	void serialize(
 		redis::Connection& db,
+		std::string_view requester,
 		std::string_view coll,
 		Complete&& complete
 	) const;
