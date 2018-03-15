@@ -42,16 +42,17 @@ void Server::handle_https(Request&& req, Send&& send, const Authentication& auth
 			return send(on_login_incorrect(req));
 	}
 
-	if constexpr (std::is_same<std::remove_reference_t<Request>, StringRequest>::value)
+	if (req.target() == hrb::url::login)
 	{
-		if (is_login(req))
-			return on_login(req, std::forward<Send>(send));
-	}
+		if constexpr (std::is_same<std::remove_reference_t<Request>, StringRequest>::value)
+		{
+			if (req.method() == http::verb::post)
+				return on_login(req, std::forward<Send>(send));
+		}
 
-	// Everything else require a valid session.
-	return auth.valid() ?
-		on_valid_session(std::move(req), std::forward<decltype(send)>(send), auth) :
-		on_invalid_session(std::move(req), std::forward<decltype(send)>(send));
+		return send(http::response<http::empty_body>{http::status::bad_request, req.version()});
+	}
+	return on_valid_session(std::move(req), std::forward<decltype(send)>(send), auth);
 }
 
 template <class Request, class Send>
@@ -97,7 +98,7 @@ void Server::on_valid_session(Request&& req, Send&& send, const Authentication& 
 		if (req.target().starts_with(url::collection))
 			return serve_collection(std::forward<Request>(req), std::forward<Send>(send), auth);
 
-		if (req.target() == url::logout)
+		if (req.target() == url::logout && auth.valid())
 			return on_logout(std::forward<Request>(req), std::forward<Send>(send), auth);
 	}
 
@@ -125,7 +126,8 @@ void Server::get_blob(BlobRequest&& req, Send&& send)
 			this
 		](CollEntry entry, auto ec) mutable
 		{
-			// Only owner is allow to know whether an object exists or not
+			// Only allow the owner to know whether an object exists or not.
+			// Always reply forbidden for everyone else.
 			if (ec == Error::object_not_exist)
 				return send(http::response<http::empty_body>{
 					req.request_by_owner() ? http::status::not_found : http::status::forbidden,

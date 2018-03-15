@@ -182,7 +182,18 @@ void Server::on_upload(UploadRequest&& req, EmptyResponseSender&& send, const Au
 
 	URLIntent path_url{req.target()};
 	if (auth.user() != path_url.user())
-		return send(http::response<http::empty_body>{http::status::forbidden, req.version()});
+	{
+		// Introduce a small delay when responsing to requests with invalid session ID.
+		// This is to slow down bruce-force attacks on the session ID.
+		boost::asio::deadline_timer t{m_ioc, boost::posix_time::milliseconds{500}};
+		return t.async_wait([version=req.version(), send=std::move(send)](auto ec)
+		{
+			if (!ec)
+				Log(LOG_WARNING, "timer error %1% (%2%)", ec, ec.message());
+
+			send(http::response<http::empty_body>{http::status::forbidden, version});
+		});
+	}
 
 	Log(LOG_INFO, "uploading %1% bytes to path(%2%) file(%3%)", req.body().size(bec), path_url.collection(), path_url.filename());
 
@@ -213,33 +224,6 @@ void Server::on_upload(UploadRequest&& req, EmptyResponseSender&& send, const Au
 			return send(std::move(res));
 		}
 	);
-}
-
-void Server::on_invalid_session(const RequestHeader& req, FileResponseSender&& send)
-{
-	// If the target is home (i.e. "/"), show them the login page.
-	// Do not penalize the user, because their session may be expired.
-	// It may also be the first visit of an anonymous user.
-	if (req.target() == "/")
-		return send(m_lib.find_dynamic("index.html", req.version()));
-
-	if (req.target().starts_with(url::view))
-	{
-		http::response<SplitBuffers> res{http::status::see_other, req.version()};
-		res.set(http::field::location, "/");
-		return send(std::move(res));
-	}
-
-	// Introduce a small delay when responsing to requests with invalid session ID.
-	// This is to slow down bruce-force attacks on the session ID.
-	boost::asio::deadline_timer t{m_ioc, boost::posix_time::milliseconds{500}};
-	t.async_wait([version=req.version(), send=std::move(send), target=req.target().to_string()](auto ec)
-	{
-		if (!ec)
-			Log(LOG_WARNING, "timer error %1% (%2%)", ec, ec.message());
-
-		send(http::response<SplitBuffers>{http::status::forbidden, version});
-	});
 }
 
 http::response<http::string_body> Server::bad_request(boost::beast::string_view why, unsigned version)
