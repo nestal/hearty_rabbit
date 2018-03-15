@@ -15,6 +15,7 @@
 #include "ObjectID.hh"
 #include "URLIntent.hh"
 #include "net/Request.hh"
+#include "util/Log.hh"
 
 #include <string_view>
 
@@ -28,9 +29,12 @@ public:
 		m_requester{requester}, m_target{req.target()}, m_url{m_target}, m_version{req.version()},
 		m_etag{req[http::field::if_none_match]}
 	{
+		Log(LOG_NOTICE, "%1% request type %2%", m_target, typeid(Request).name());
 		if constexpr (std::is_same<std::remove_reference_t<Request>, StringRequest>::value)
 		{
-			m_body = std::move(req.body());
+			Log(LOG_NOTICE, "post data in blob \'%1%\'", req.body());
+			if (req[http::field::content_type] == "application/x-www-form-urlencoded")
+				m_body = std::move(req.body());
 		}
 	}
 	BlobRequest(BlobRequest&& other) :
@@ -75,6 +79,8 @@ public:
 	unsigned version() const {return m_version;}
 
 	bool request_by_owner() const {return m_requester == owner();}
+
+	std::string_view body() const {return m_body;}
 
 private:
 	std::string m_requester;

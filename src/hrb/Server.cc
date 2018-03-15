@@ -135,7 +135,7 @@ void Server::unlink(BlobRequest&& req, EmptyResponseSender&& send)
 		*m_db.alloc(), req.collection(), *req.blob(),
 		[send = std::move(send), version=req.version()](auto ec)
 		{
-			auto status = http::status::accepted;
+			auto status = http::status::no_content;
 			if (ec == Error::object_not_exist)
 				status = http::status::bad_request;
 			else if (ec)
@@ -146,9 +146,34 @@ void Server::unlink(BlobRequest&& req, EmptyResponseSender&& send)
 	);
 }
 
-void Server::update_blob(BlobRequest&& req, Server::EmptyResponseSender&& send)
+void Server::update_blob(BlobRequest&& req, EmptyResponseSender&& send)
 {
-	send(http::response<http::empty_body>{http::status::accepted, req.version()});
+	if (!req.request_by_owner())
+		return send(http::response<http::empty_body>{http::status::forbidden, req.version()});
+
+	assert(req.blob());
+	auto [perm_str] = find_fields(req.body(), "perm");
+	Log(LOG_NOTICE, "updating blob %1% to %2%", *req.blob(), perm_str);
+
+	Permission perm;
+	if (perm_str == "public")
+		perm = Permission::public_();
+	else if (perm_str == "private")
+		perm = Permission::public_();
+	else if (perm_str == "shared")
+		perm = Permission::shared();
+	else
+		return send(http::response<http::empty_body>{http::status::bad_request, req.version()});
+
+	Ownership{req.owner()}.set_permission(
+		*m_db.alloc(), req.collection(), *req.blob(), perm, [send=std::move(send), version=req.version()](auto&& ec)
+		{
+			send(http::response<http::empty_body>{
+				ec ? http::status::internal_server_error : http::status::no_content,
+				version
+			});
+		}
+	);
 }
 
 void Server::on_upload(UploadRequest&& req, EmptyResponseSender&& send, const Authentication& auth)

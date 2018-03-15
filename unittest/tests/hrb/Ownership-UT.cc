@@ -105,7 +105,7 @@ TEST_CASE("Load 3 images in json", "[normal]")
 	Ownership subject{"testuser"};
 
 	for (auto&& blobid : blobids)
-		subject.link(*redis, "/", blobid, CollEntry{}, [&added](auto ec)
+		subject.link(*redis, "some/collection", blobid, CollEntry{}, [&added](auto ec)
 		{
 			REQUIRE(!ec);
 			added++;
@@ -117,7 +117,7 @@ TEST_CASE("Load 3 images in json", "[normal]")
 	ioc.restart();
 
 	bool tested = false;
-	subject.serialize(*redis, "/", [&tested](auto&& json, auto ec)
+	subject.serialize(*redis, "some/collection", [&tested](auto&& json, auto ec)
 	{
 		INFO("serialize() error_code: " << ec << " " << ec.message());
 		REQUIRE(!ec);
@@ -137,7 +137,7 @@ TEST_CASE("Load 3 images in json", "[normal]")
 	ioc.restart();
 
 	for (auto&& blobid : blobids)
-		subject.unlink(*redis, "/", blobid, [&added](auto ec)
+		subject.unlink(*redis, "some/collection", blobid, [&added](auto ec)
 		{
 			REQUIRE(!ec);
 			added--;

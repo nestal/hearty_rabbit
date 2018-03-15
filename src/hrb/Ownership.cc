@@ -14,6 +14,8 @@
 #include "Ownership.ipp"
 #include "BlobDatabase.hh"
 
+#include "util/Log.hh"
+
 #include <sstream>
 
 namespace hrb {
@@ -79,7 +81,10 @@ void Ownership::Collection::watch(redis::Connection& db)
 
 void Ownership::Collection::link(redis::Connection& db, const ObjectID& id, const CollEntry& entry)
 {
-	db.command("HSET %b%b:%b %b %b",
+	Log(LOG_NOTICE, "Collection::link() %1%", m_path);
+	db.command(
+		[](auto&& reply, auto&& ec){Log(LOG_NOTICE, "Collection::link()'ed %1% %2%", ec, reply.as_int());},
+		"HSET %b%b:%b %b %b",
 		m_prefix.data(), m_prefix.size(),
 		m_user.data(), m_user.size(),
 		m_path.data(), m_path.size(),
