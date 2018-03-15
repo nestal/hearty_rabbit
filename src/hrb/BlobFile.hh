@@ -44,7 +44,6 @@ public:
 		int quality,
 		std::error_code& ec
 	);
-	static std::string meta_string(const fs::path& dir);
 
 	BufferView blob() const;
 	MMap& master() {return m_master;}

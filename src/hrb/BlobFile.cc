@@ -21,15 +21,10 @@
 #include "util/Log.hh"
 #include "util/Magic.hh"
 
-#include <rapidjson/ostreamwrapper.h>
-#include <rapidjson/writer.h>
-#include <rapidjson/pointer.h>
-
 namespace hrb {
 
 namespace {
 const std::string default_rendition = "master";
-const std::string metafile = "meta";
 }
 
 BlobFile BlobFile::upload(
@@ -138,9 +133,6 @@ void BlobFile::save(const fs::path& dir, std::error_code& ec) const
 			break;
 		}
 	}
-
-	if (!ec)
-		save_blob(m_meta, dir/metafile, ec);
 }
 
 BlobFile::BlobFile(const fs::path& dir, const ObjectID& id, const Size2D& resize_img, std::error_code& ec) :
@@ -151,16 +143,6 @@ BlobFile::BlobFile(const fs::path& dir, const ObjectID& id, const Size2D& resize
 
 	auto resized = dir/fn.str();
 	m_master = MMap::open(exists(resized) ? resized : dir/default_rendition, ec);
-
-	if (!ec)
-		m_meta = meta_string(dir);
-}
-
-std::string BlobFile::meta_string(const fs::path& dir)
-{
-	std::error_code ec;
-	auto meta = MMap::open(dir/metafile, ec);
-	return ec ? std::string{"\"\""} : std::string{meta.string()};
 }
 
 CollEntry BlobFile::entry() const

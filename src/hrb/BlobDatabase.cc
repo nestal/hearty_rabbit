@@ -100,9 +100,4 @@ void BlobDatabase::set_cache_control(BlobResponse& res, const ObjectID& id)
 	res.set(http::field::etag, to_quoted_hex(id));
 }
 
-std::string BlobDatabase::load_meta_json(const ObjectID& id) const
-{
-	return BlobFile::meta_string(dest(id));
-}
-
 } // end of namespace hrb

@@ -43,7 +43,6 @@ public:
 	BlobFile save(UploadFile&& tmp, std::string_view filename, std::error_code& ec);
 
 	fs::path dest(const ObjectID& id, std::string_view rendition = {}) const;
-	std::string load_meta_json(const ObjectID& id) const;
 
 	BlobResponse response(
 		ObjectID id,
