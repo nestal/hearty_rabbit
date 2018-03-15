@@ -44,6 +44,15 @@ enum class Error
 
 std::error_code make_error_code(Error err);
 const std::error_category& redis_error_category();
+}}
+
+namespace std
+{
+	template <> struct is_error_code_enum<hrb::redis::Error> : true_type {};
+}
+
+namespace hrb {
+namespace redis {
 
 class Reply
 {
@@ -335,8 +344,3 @@ private:
 };
 
 }} // end of namespace
-
-namespace std
-{
-	template <> struct is_error_code_enum<hrb::redis::Error> : true_type {};
-}

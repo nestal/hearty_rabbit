@@ -153,7 +153,7 @@ void Connection::on_read(boost::system::error_code ec, std::size_t bytes)
 			Log(LOG_WARNING, "Redis sends more replies than requested. Disconnecting. %1% %2%", reply.type(), reply.as_any_string());
 
 			// clear callback
-			result == ReplyReader::Result::error;
+			result = ReplyReader::Result::error;
 		}
 
 		// Report parse error as protocol errors in the callbacks

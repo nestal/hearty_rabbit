@@ -37,8 +37,8 @@ public:
 
 public:
 	JPEG(const void *data, std::size_t size, const Size2D& max_dim);
-	JPEG(JPEG&&) = default;
-	JPEG(const JPEG&) noexcept = default;
+	JPEG(JPEG&&) noexcept = default;
+	JPEG(const JPEG&) = default;
 	~JPEG() = default;
 
 	JPEG& operator=(JPEG&&) noexcept = default;
