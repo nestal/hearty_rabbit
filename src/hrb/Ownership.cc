@@ -14,8 +14,6 @@
 #include "Ownership.ipp"
 #include "BlobDatabase.hh"
 
-#include "util/Log.hh"
-
 #include <sstream>
 
 namespace hrb {
@@ -81,9 +79,7 @@ void Ownership::Collection::watch(redis::Connection& db)
 
 void Ownership::Collection::link(redis::Connection& db, const ObjectID& id, const CollEntry& entry)
 {
-	Log(LOG_NOTICE, "Collection::link() %1%", m_path);
 	db.command(
-		[](auto&& reply, auto&& ec){Log(LOG_NOTICE, "Collection::link()'ed %1% %2%", ec, reply.as_int());},
 		"HSET %b%b:%b %b %b",
 		m_prefix.data(), m_prefix.size(),
 		m_user.data(), m_user.size(),
@@ -113,19 +109,19 @@ std::string Ownership::Collection::serialize(redis::Reply& reply, std::string_vi
 	bool first = true;
 	reply.foreach_kv_pair([&ss, &first, requester, this](auto&& blob, auto&& perm)
 	{
-		// TODO: check perm
-
-		if (first)
-			first = false;
-		else
-			ss << ",\n";
-
 		auto blob_id = raw_to_object_id(blob);
 		CollEntry entry{perm.as_string()};
 
+		// check permission: allow allow owner (i.e. m_user)
 		if (blob_id && (m_user == requester || entry.permission().allow(requester)))
-			ss  << to_quoted_hex(*blob_id) << ":"
-				<< entry.json();
+		{
+			if (first)
+				first = false;
+			else
+				ss << ",\n";
+
+			ss << to_quoted_hex(*blob_id) << ":" << entry.json();
+		}
 	});
 	ss << "}}";
 	return ss.str();
