@@ -14,7 +14,6 @@
 
 #include "util/Size2D.hh"
 
-#include <algorithm>
 #include <exception>
 #include <string_view>
 #include <vector>
@@ -37,16 +36,10 @@ public:
 	};
 
 public:
-	JPEG(const void *data, std::size_t size, const Size2D& max_dim);
+	JPEG(const void *jpeg_data, std::size_t jpeg_size, const Size2D& max_dim);
 	JPEG(JPEG&&) noexcept;
 	JPEG(const JPEG&) = default;
 	~JPEG() = default;
-
-	template <class Random>
-	JPEG(const Size2D& dim, Random gen) : m_pixels(dim.width() * dim.height() * 3ULL)
-	{
-		std::generate(m_pixels.begin(), m_pixels.end(), gen);
-	}
 
 	JPEG& operator=(JPEG&&) noexcept;
 	JPEG& operator=(const JPEG&) = default;
@@ -57,15 +50,12 @@ public:
 private:
 	static Size2D select_scaling_factor(const Size2D& max, const Size2D& actual);
 
-	static int default_subsample();
-	static int default_colorspace();
-
 private:
-	std::vector<unsigned char> m_pixels;
+	std::vector<unsigned char> m_yuv;
 
 	Size2D m_size;
-	int m_subsample{default_subsample()};
-	int m_colorspace{default_colorspace()};
+	int m_subsample{};
+	int m_colorspace{};
 };
 
 } // end of namespace hrb
