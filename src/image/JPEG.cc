@@ -98,4 +98,31 @@ TurboBuffer JPEG::compress(int quality) const
 	return {jpeg, size};
 }
 
+JPEG::JPEG(JPEG&& src) noexcept :
+	m_pixels{std::move(src.m_pixels)}, m_size{src.m_size},
+	m_subsample{src.m_subsample}, m_colorspace{src.m_colorspace}
+{
+	src.m_size.assign(0,0);
+}
+
+JPEG& JPEG::operator=(JPEG&& src) noexcept
+{
+	auto tmp{std::move(src)};
+	m_pixels.swap(tmp.m_pixels);
+	m_size = tmp.m_size;
+	m_subsample  = tmp.m_subsample;
+	m_colorspace = tmp.m_colorspace;
+	return *this;
+}
+
+int JPEG::default_subsample()
+{
+	return TJSAMP_420;
+}
+
+int JPEG::default_colorspace()
+{
+	return TJCS_RGB;
+}
+
 } // end of namespace hrb
