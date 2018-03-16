@@ -14,7 +14,6 @@
 #include "TurboBuffer.hh"
 
 #include <turbojpeg.h>
-
 #include <memory>
 
 namespace hrb {
@@ -53,10 +52,9 @@ JPEG::JPEG(const void *data, std::size_t size, const Size2D& max_dim)
 // width, height: target size of the image.
 Size2D JPEG::select_scaling_factor(const Size2D& max, const Size2D& actual)
 {
-	auto selected = actual;
-	if (selected.width() > max.width() || selected.height() > max.height())
+	Size2D selected, minimum = actual;
+	if (actual.width() > max.width() || actual.height() > max.height())
 	{
-
 		int count{};
 		auto factors = tjGetScalingFactors(&count);
 		for (int i = 0; i < count; i++)
@@ -66,14 +64,22 @@ Size2D JPEG::select_scaling_factor(const Size2D& max, const Size2D& actual)
 
 			// width and height within limits, and total area larger
 			// than precious accepted values
-			if (w < max.width() && h < max.height() && w*h > selected.width() * selected.height())
+			if (
+				w <= actual.width() && h <= actual.height() &&
+				w <= max.width()    && h <= max.height()    &&
+				w*h > selected.area()
+			)
 			{
 				// remember this scaling factor
 				selected.assign(w, h);
 			}
+
+			if (w*h < minimum.area())
+				minimum.assign(w, h);
 		}
 	}
-	return selected;
+
+	return selected.area() == 0 ? minimum : selected;
 }
 
 TurboBuffer JPEG::compress(int quality) const

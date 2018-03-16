@@ -49,7 +49,7 @@ class NormalTestCase(unittest.TestCase):
 
 	def test_upload_jpeg(self):
 		# upload to server
-		r1 = self.user1.put("https://localhost:4433/upload/sumsum/test.jpg", data=random_image(72, 72))
+		r1 = self.user1.put("https://localhost:4433/upload/sumsum/test.jpg", data=random_image(72, 36))
 		self.assertEqual(r1.status_code, 201)
 		self.assertNotEqual(r1.headers["Location"], "")
 
@@ -60,8 +60,9 @@ class NormalTestCase(unittest.TestCase):
 		jpeg = Image.open(BytesIO(r2.content))
 
 		# the size of the images should be the same
+		self.assertEqual(jpeg.format, "JPEG")
 		self.assertEqual(jpeg.width, 72)
-		self.assertEqual(jpeg.height, 72)
+		self.assertEqual(jpeg.height, 36)
 
 		# cannot get the same image without credential
 		r3 = self.session_no_cred.get("https://localhost:4433" + r1.headers["Location"])
@@ -72,6 +73,35 @@ class NormalTestCase(unittest.TestCase):
 		r1 = self.user1.put("https://localhost:4433/upload/sumsum/black.png", data=random_image(100, 120, format="png"))
 		self.assertEqual(r1.status_code, 201)
 		self.assertNotEqual(r1.headers["Location"], "")
+
+		# read back the upload image
+		r2 = self.user1.get("https://localhost:4433" + r1.headers["Location"])
+		self.assertEqual(r2.status_code, 200)
+		self.assertEqual(r2.headers["Content-type"], "image/png")
+
+		png = Image.open(BytesIO(r2.content))
+
+		# the size of the images should be the same
+		self.assertEqual(png.format, "PNG")
+		self.assertEqual(png.width, 100)
+		self.assertEqual(png.height, 120)
+
+	def test_resize_jpeg(self):
+		# upload a big JPEG image to server
+		r1 = self.user1.put("https://localhost:4433/upload/sumsum/big_dir/big_image.jpg", data=random_image(4096, 2048))
+		self.assertEqual(r1.status_code, 201)
+		self.assertNotEqual(r1.headers["Location"], "")
+
+		# read back the upload image
+		r2 = self.user1.get("https://localhost:4433" + r1.headers["Location"])
+		self.assertEqual(r2.status_code, 200)
+		self.assertEqual(r2.headers["Content-type"], "image/jpeg")
+		jpeg = Image.open(BytesIO(r2.content))
+
+		# the size of the images should be the same
+		self.assertEqual(jpeg.format, "JPEG")
+		self.assertEqual(jpeg.width, 2048)
+		self.assertEqual(jpeg.height, 1024)
 
 	def test_not_found(self):
 		# resource not exist
@@ -119,6 +149,7 @@ class NormalTestCase(unittest.TestCase):
 		r2 = self.user1.get("https://localhost:4433/coll/sumsum/some/collection/")
 		self.assertEqual(r2.status_code, 200)
 		self.assertEqual(r2.json()["elements"][blob_id]["filename"], "abc.jpg")
+		self.assertEqual(r2.json()["elements"][blob_id]["mime"], "image/jpeg")
 
 		blob_url = "https://localhost:4433" + r1.headers["Location"]
 
