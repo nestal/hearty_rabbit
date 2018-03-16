@@ -53,9 +53,9 @@ JPEG::JPEG(const void *data, std::size_t size, const Size2D& max_dim)
 // width, height: target size of the image.
 Size2D JPEG::select_scaling_factor(const Size2D& max, const Size2D& actual)
 {
-	if (actual.width() > max.width() || actual.height() > max.height())
+	auto selected = actual;
+	if (selected.width() > max.width() || selected.height() > max.height())
 	{
-		Size2D selected;
 
 		int count{};
 		auto factors = tjGetScalingFactors(&count);
@@ -72,12 +72,8 @@ Size2D JPEG::select_scaling_factor(const Size2D& max, const Size2D& actual)
 				selected.assign(w, h);
 			}
 		}
-		return selected;
 	}
-	else
-	{
-		return actual;
-	}
+	return selected;
 }
 
 TurboBuffer JPEG::compress(int quality) const
