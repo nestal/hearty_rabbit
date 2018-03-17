@@ -41,16 +41,16 @@ public:
 
 	void swap(BlobRequest& tmp) noexcept ;
 
-	std::optional<ObjectID> blob() const {return hex_to_object_id(m_url.filename());}
-	std::string_view requester() const {return m_requester;}
-	std::string_view owner() const {return m_url.user();}
-	std::string_view collection() const {return m_url.collection();}
-	std::string_view etag() const {return m_etag;}
-	unsigned version() const {return m_version;}
+	std::optional<ObjectID> blob() const    {return hex_to_object_id(m_url.filename());}
+	std::string_view requester() const      {return m_requester;}
+	std::string_view owner() const          {return m_url.user();}
+	std::string_view collection() const     {return m_url.collection();}
+	std::string_view etag() const           {return m_etag;}
+	unsigned version() const                {return m_version;}
 
-	bool request_by_owner() const {return m_requester == owner();}
+	bool request_by_owner() const           {return m_requester == owner();}
 
-	std::string_view body() const {return m_body;}
+	std::string_view body() const           {return m_body;}
 
 private:
 	std::string m_requester;

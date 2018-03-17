@@ -151,6 +151,8 @@ void Server::update_blob(BlobRequest&& req, EmptyResponseSender&& send)
 	if (!req.request_by_owner())
 		return send(http::response<http::empty_body>{http::status::forbidden, req.version()});
 
+	Log(LOG_NOTICE, "receving form string for updating blob %1%: %2%", *req.blob(), req.body());
+
 	assert(req.blob());
 	auto [perm_str] = find_fields(req.body(), "perm");
 	Log(LOG_NOTICE, "updating blob %1% to %2%", *req.blob(), perm_str);
