@@ -22,6 +22,8 @@ public:
 	Permission() = default;
 	explicit Permission(char perm);
 
+	static Permission from_description(std::string_view description);
+
 	static Permission shared();
 	static Permission public_();
 	static Permission private_();
@@ -29,6 +31,7 @@ public:
 	bool allow(std::string_view user);
 
 	std::string_view str() const {return {&m_perm, 1};}
+	std::string_view description() const;
 
 	constexpr const char* data() const {return &m_perm;}
 	constexpr std::size_t size() const {return 1;}

@@ -148,6 +148,7 @@ class NormalTestCase(unittest.TestCase):
 		# should find it in the new collection
 		r2 = self.user1.get("https://localhost:4433/coll/sumsum/some/collection/")
 		self.assertEqual(r2.status_code, 200)
+		print(r2.content)
 		self.assertEqual(r2.json()["elements"][blob_id]["filename"], "abc.jpg")
 		self.assertEqual(r2.json()["elements"][blob_id]["mime"], "image/jpeg")
 

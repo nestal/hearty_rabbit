@@ -157,15 +157,7 @@ void Server::update_blob(BlobRequest&& req, EmptyResponseSender&& send)
 	auto [perm_str] = find_fields(req.body(), "perm");
 	Log(LOG_NOTICE, "updating blob %1% to %2%", *req.blob(), perm_str);
 
-	Permission perm;
-	if (perm_str == "public")
-		perm = Permission::public_();
-	else if (perm_str == "private")
-		perm = Permission::public_();
-	else if (perm_str == "shared")
-		perm = Permission::shared();
-	else
-		return send(http::response<http::empty_body>{http::status::bad_request, req.version()});
+	auto perm = Permission::from_description(perm_str);
 
 	Ownership{req.owner()}.set_permission(
 		*m_db.alloc(), req.collection(), *req.blob(), perm, [send=std::move(send), version=req.version()](auto&& ec)

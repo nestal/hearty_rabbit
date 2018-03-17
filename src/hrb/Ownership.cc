@@ -116,12 +116,22 @@ std::string Ownership::Collection::serialize(redis::Reply& reply, std::string_vi
 		// check permission: allow allow owner (i.e. m_user)
 		if (blob_id && (m_user == requester || entry.permission().allow(requester)))
 		{
-			if (first)
-				first = false;
-			else
-				ss << ",\n";
+			// entry string must be json. skip the { in the front and } in the back
+			// and prepend the "perm"="public"
+			auto json = entry.json();
+			if (json.size() > 2 && json.front() == '{' && json.back() == '}')
+			{
+				if (first)
+					first = false;
+				else
+					ss << ",\n";
 
-			ss << to_quoted_hex(*blob_id) << ":" << entry.json();
+				json.remove_prefix(1);
+				json.remove_suffix(1);
+				ss  << to_quoted_hex(*blob_id)
+					<< ":{ \"perm\":\"" << entry.permission().description() << "\","
+					<< json << "}";
+			}
 		}
 	});
 	ss << "}}";
