@@ -1,8 +1,16 @@
 import requests
 import unittest
 from PIL import Image
-import io
+from io import BytesIO
+import numpy
 import json
+
+def random_image(width, height, format="jpeg"):
+	imarray = numpy.random.rand(height, width, 3) * 255
+	img = Image.fromarray(imarray.astype("uint8")).convert("RGB")
+	temp = BytesIO()
+	img.save(temp, format=format)
+	return temp.getvalue()
 
 class NormalTestCase(unittest.TestCase):
 	def setUp(self):
@@ -40,37 +48,60 @@ class NormalTestCase(unittest.TestCase):
 		self.assertEqual(r1.status_code, 200)
 
 	def test_upload_jpeg(self):
-		with open("../tests/image/black.jpg", 'rb') as black:
+		# upload to server
+		r1 = self.user1.put("https://localhost:4433/upload/sumsum/test.jpg", data=random_image(72, 36))
+		self.assertEqual(r1.status_code, 201)
+		self.assertNotEqual(r1.headers["Location"], "")
 
-			# read source image
-			in_img = black.read()
-			source_jpeg = Image.open(io.BytesIO(in_img))
+		# read back the upload image
+		r2 = self.user1.get("https://localhost:4433" + r1.headers["Location"])
+		self.assertEqual(r2.status_code, 200)
+		self.assertEqual(r2.headers["Content-type"], "image/jpeg")
+		jpeg = Image.open(BytesIO(r2.content))
 
-			# upload to server
-			r1 = self.user1.put("https://localhost:4433/upload/sumsum/test.jpg", data=in_img)
-			self.assertEqual(r1.status_code, 201)
-			self.assertNotEqual(r1.headers["Location"], "")
+		# the size of the images should be the same
+		self.assertEqual(jpeg.format, "JPEG")
+		self.assertEqual(jpeg.width, 72)
+		self.assertEqual(jpeg.height, 36)
 
-			# read back the upload image
-			r2 = self.user1.get("https://localhost:4433" + r1.headers["Location"])
-			self.assertEqual(r2.status_code, 200)
-			self.assertEqual(r2.headers["Content-type"], "image/jpeg")
-			jpeg = Image.open(io.BytesIO(r2.content))
-
-			# the size of the images should be the same
-			self.assertEqual(jpeg.width, source_jpeg.width)
-			self.assertEqual(jpeg.height, source_jpeg.height)
-
-			# cannot get the same image without credential
-			r3 = self.session_no_cred.get("https://localhost:4433" + r1.headers["Location"])
-			self.assertEqual(r3.status_code, 403)
+		# cannot get the same image without credential
+		r3 = self.session_no_cred.get("https://localhost:4433" + r1.headers["Location"])
+		self.assertEqual(r3.status_code, 403)
 
 	def test_upload_png(self):
-		with open("../tests/image/black_20x20.png", 'rb') as black:
-			# upload to server
-			r1 = self.user1.put("https://localhost:4433/upload/sumsum/black.png", data=black)
-			self.assertEqual(r1.status_code, 201)
-			self.assertNotEqual(r1.headers["Location"], "")
+		# upload random PNG to server
+		r1 = self.user1.put("https://localhost:4433/upload/sumsum/black.png", data=random_image(100, 120, format="png"))
+		self.assertEqual(r1.status_code, 201)
+		self.assertNotEqual(r1.headers["Location"], "")
+
+		# read back the upload image
+		r2 = self.user1.get("https://localhost:4433" + r1.headers["Location"])
+		self.assertEqual(r2.status_code, 200)
+		self.assertEqual(r2.headers["Content-type"], "image/png")
+
+		png = Image.open(BytesIO(r2.content))
+
+		# the size of the images should be the same
+		self.assertEqual(png.format, "PNG")
+		self.assertEqual(png.width, 100)
+		self.assertEqual(png.height, 120)
+
+	def test_resize_jpeg(self):
+		# upload a big JPEG image to server
+		r1 = self.user1.put("https://localhost:4433/upload/sumsum/big_dir/big_image.jpg", data=random_image(4096, 2048))
+		self.assertEqual(r1.status_code, 201)
+		self.assertNotEqual(r1.headers["Location"], "")
+
+		# read back the upload image
+		r2 = self.user1.get("https://localhost:4433" + r1.headers["Location"])
+		self.assertEqual(r2.status_code, 200)
+		self.assertEqual(r2.headers["Content-type"], "image/jpeg")
+		jpeg = Image.open(BytesIO(r2.content))
+
+		# the size of the images should be the same
+		self.assertEqual(jpeg.format, "JPEG")
+		self.assertEqual(jpeg.width, 2048)
+		self.assertEqual(jpeg.height, 1024)
 
 	def test_not_found(self):
 		# resource not exist
@@ -104,24 +135,21 @@ class NormalTestCase(unittest.TestCase):
 		self.assertEqual(r1.json()["username"], "sumsum")
 
 	def test_upload_to_other_users_collection(self):
-		with open("../tests/image/up_f_rot90.jpg", 'rb') as up:
-
-			# forbidden
-			r1 = self.user1.put("https://localhost:4433/upload/yungyung/abc/up.jpg", data=up)
-			self.assertEqual(r1.status_code, 403)
+		# forbidden
+		r1 = self.user1.put("https://localhost:4433/upload/yungyung/abc/image.jpg", data=random_image(32, 16))
+		self.assertEqual(r1.status_code, 403)
 
 	def test_upload_jpeg_to_other_collection(self):
-		with open("../tests/image/up_f_rot90.jpg", 'rb') as up:
-
-			# upload to server
-			r1 = self.user1.put("https://localhost:4433/upload/sumsum/some/collection/up.jpg", data=up)
-			self.assertEqual(r1.status_code, 201)
-			blob_id = r1.headers["Location"][-40:]
+		# upload to server
+		r1 = self.user1.put("https://localhost:4433/upload/sumsum/some/collection/abc.jpg", data=random_image(300, 200))
+		self.assertEqual(r1.status_code, 201)
+		blob_id = r1.headers["Location"][-40:]
 
 		# should find it in the new collection
 		r2 = self.user1.get("https://localhost:4433/coll/sumsum/some/collection/")
 		self.assertEqual(r2.status_code, 200)
-		self.assertEqual(r2.json()["elements"][blob_id]["filename"], "up.jpg")
+		self.assertEqual(r2.json()["elements"][blob_id]["filename"], "abc.jpg")
+		self.assertEqual(r2.json()["elements"][blob_id]["mime"], "image/jpeg")
 
 		blob_url = "https://localhost:4433" + r1.headers["Location"]
 
@@ -135,40 +163,38 @@ class NormalTestCase(unittest.TestCase):
 		self.assertFalse(blob_id in r4.json()["elements"])
 
 	def test_set_permission(self):
-		with open("../tests/image/up_f_upright.jpg", 'rb') as up:
+		# upload to server
+		r1 = self.user1.put("https://localhost:4433/upload/sumsum/some/collection/random.jpg", data=random_image(100, 120))
+		self.assertEqual(r1.status_code, 201)
+		blob_id = r1.headers["Location"][-40:]
 
-			# upload to server
-			r1 = self.user1.put("https://localhost:4433/upload/sumsum/some/collection/up.jpg", data=up)
-			self.assertEqual(r1.status_code, 201)
-			blob_id = r1.headers["Location"][-40:]
+		# owner get successfully
+		r2 = self.user1.get("https://localhost:4433" + r1.headers["Location"])
+		self.assertEqual(r2.status_code, 200)
 
-			# owner get successfully
-			r2 = self.user1.get("https://localhost:4433" + r1.headers["Location"])
-			self.assertEqual(r2.status_code, 200)
+		# owner set permission to public
+		r3 = self.user1.post(
+			"https://localhost:4433" + r1.headers["Location"],
+			data="perm=public",
+			headers={"Content-type": "application/x-www-form-urlencoded"}
+		)
+		self.assertEqual(r3.status_code, 204)
 
-			# owner set permission to public
-			r3 = self.user1.post(
-				"https://localhost:4433" + r1.headers["Location"],
-				data="perm=public",
-				headers={"Content-type": "application/x-www-form-urlencoded"}
-			)
-			self.assertEqual(r3.status_code, 204)
+		# other user can get the image
+		r4 = self.user2.get("https://localhost:4433" + r1.headers["Location"])
+		self.assertEqual(r4.status_code, 200)
 
-			# other user can get the image
-			r4 = self.user2.get("https://localhost:4433" + r1.headers["Location"])
-			self.assertEqual(r4.status_code, 200)
+		# owner set permission to shared
+		r5 = self.user1.post(
+			"https://localhost:4433" + r1.headers["Location"],
+			data="perm=shared",
+			headers={"Content-type": "application/x-www-form-urlencoded"}
+		)
+		self.assertEqual(r5.status_code, 204)
 
-			# owner set permission to shared
-			r5 = self.user1.post(
-				"https://localhost:4433" + r1.headers["Location"],
-				data="perm=shared",
-				headers={"Content-type": "application/x-www-form-urlencoded"}
-			)
-			self.assertEqual(r5.status_code, 204)
-
-			# other user can get the image
-			r6 = self.user2.get("https://localhost:4433" + r1.headers["Location"])
-			self.assertEqual(r6.status_code, 200)
+		# other user can get the image
+		r6 = self.user2.get("https://localhost:4433" + r1.headers["Location"])
+		self.assertEqual(r6.status_code, 200)
 
 if __name__ == '__main__':
 	unittest.main()
