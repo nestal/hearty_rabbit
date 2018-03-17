@@ -180,6 +180,12 @@ div.login form input {
 	font-size: 3em;
 }
 
+/* The lightbox buttons*/
+.light-box-button.material-icons.highlighted {
+	color: black;
+	background-color: white;
+}
+
 .light-box-button-bar {
 	position: absolute;
 	background-color: black;
