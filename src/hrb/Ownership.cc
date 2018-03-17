@@ -102,9 +102,10 @@ void Ownership::Collection::unlink(redis::Connection& db, const ObjectID& id)
 std::string Ownership::Collection::serialize(redis::Reply& reply, std::string_view requester) const
 {
 	std::ostringstream ss;
-	ss  << R"__({"username":")__"      << m_user
+	ss  << R"__({"owner":")__"          << m_user
 		<< R"__(", "collection":")__"  << m_path
-		<< R"__(", "elements":)__" << "{";
+		<< R"__(", "username":")__"    << requester
+		<< R"__(", "elements":)__"     << "{";
 
 	bool first = true;
 	reply.foreach_kv_pair([&ss, &first, requester, this](auto&& blob, auto&& perm)
