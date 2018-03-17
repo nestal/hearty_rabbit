@@ -62,7 +62,7 @@ Permission Permission::from_description(std::string_view description)
 	if (description == "public")
 		return Permission::public_();
 	else if (description == "private")
-		return Permission::public_();
+		return Permission::private_();
 	else if (description == "shared")
 		return Permission::shared();
 	else

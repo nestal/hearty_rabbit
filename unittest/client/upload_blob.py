@@ -148,7 +148,6 @@ class NormalTestCase(unittest.TestCase):
 		# should find it in the new collection
 		r2 = self.user1.get("https://localhost:4433/coll/sumsum/some/collection/")
 		self.assertEqual(r2.status_code, 200)
-		print(r2.content)
 		self.assertEqual(r2.json()["elements"][blob_id]["filename"], "abc.jpg")
 		self.assertEqual(r2.json()["elements"][blob_id]["mime"], "image/jpeg")
 
@@ -197,16 +196,37 @@ class NormalTestCase(unittest.TestCase):
 		r6 = self.user2.get("https://localhost:4433" + r1.headers["Location"])
 		self.assertEqual(r6.status_code, 200)
 		
+		# owner set permission to public
+		r7 = self.user1.post(
+			"https://localhost:4433" + r1.headers["Location"],
+			data="perm=public",
+			headers={"Content-type": "application/x-www-form-urlencoded"}
+		)
+		self.assertEqual(r7.status_code, 204)
+
 		# anonymous user can find it in collection
-		r7 = self.anon.get("https://localhost:4433/coll/sumsum/")
-		self.assertEqual(r7.status_code, 200)
-		self.assertEqual(r7.headers["Content-type"], "application/json")
-		self.assertGreater(len(r7.json()["elements"]), 0)
-		self.assertEqual(r7.json()["collection"], "")
-		self.assertEqual(r7.json()["owner"], "sumsum")
-		self.assertEqual(r7.json()["username"], "")
-		self.assertEqual(r7.json()["elements"][blob_id]["filename"], "random.jpg")
-		self.assertEqual(r7.json()["elements"][blob_id]["mime"], "image/jpeg")
+		r8 = self.anon.get("https://localhost:4433/coll/sumsum/some/collection/")
+		self.assertEqual(r8.status_code, 200)
+		self.assertEqual(r8.headers["Content-type"], "application/json")
+		self.assertGreater(len(r8.json()["elements"]), 0)
+		self.assertEqual(r8.json()["collection"], "some/collection")
+		self.assertEqual(r8.json()["owner"], "sumsum")
+		self.assertEqual(r8.json()["username"], "")
+		self.assertEqual(r8.json()["elements"][blob_id]["filename"], "random.jpg")
+		self.assertEqual(r8.json()["elements"][blob_id]["mime"], "image/jpeg")
+
+		# owner set permission to private
+		r9 = self.user1.post(
+			"https://localhost:4433" + r1.headers["Location"],
+			data="perm=private",
+			headers={"Content-type": "application/x-www-form-urlencoded"}
+		)
+		self.assertEqual(r9.status_code, 204)
+
+		# anonymous user will not find it in collection
+		r10 = self.anon.get("https://localhost:4433/coll/sumsum/some/collection/")
+		self.assertEqual(r10.status_code, 200)
+		self.assertFalse(blob_id in r10.json()["elements"])
 
 if __name__ == '__main__':
 	unittest.main()
