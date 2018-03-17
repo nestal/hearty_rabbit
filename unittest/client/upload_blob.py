@@ -35,13 +35,13 @@ class NormalTestCase(unittest.TestCase):
 		)
 
 		# set up a session without valid credential
-		self.session_no_cred = requests.Session()
-		self.session_no_cred.verify = "../../etc/hearty_rabbit/certificate.pem"
+		self.anon = requests.Session()
+		self.anon.verify = "../../etc/hearty_rabbit/certificate.pem"
 
 	def tearDown(self):
 		self.user1.close()
 		self.user2.close()
-		self.session_no_cred.close()
+		self.anon.close()
 
 	def test_fetch_home_page(self):
 		r1 = self.user1.get("https://localhost:4433")
@@ -65,7 +65,7 @@ class NormalTestCase(unittest.TestCase):
 		self.assertEqual(jpeg.height, 36)
 
 		# cannot get the same image without credential
-		r3 = self.session_no_cred.get("https://localhost:4433" + r1.headers["Location"])
+		r3 = self.anon.get("https://localhost:4433" + r1.headers["Location"])
 		self.assertEqual(r3.status_code, 403)
 
 	def test_upload_png(self):
@@ -195,6 +195,17 @@ class NormalTestCase(unittest.TestCase):
 		# other user can get the image
 		r6 = self.user2.get("https://localhost:4433" + r1.headers["Location"])
 		self.assertEqual(r6.status_code, 200)
+		
+		# anonymous user can find it in collection
+		r7 = self.anon.get("https://localhost:4433/coll/sumsum/")
+		self.assertEqual(r7.status_code, 200)
+		self.assertEqual(r7.headers["Content-type"], "application/json")
+		self.assertGreater(len(r7.json()["elements"]), 0)
+		self.assertEqual(r7.json()["collection"], "")
+		self.assertEqual(r7.json()["owner"], "sumsum")
+		self.assertEqual(r7.json()["username"], "")
+		self.assertEqual(r7.json()["elements"][blob_id]["filename"], "random.jpg")
+		self.assertEqual(r7.json()["elements"][blob_id]["mime"], "image/jpeg")
 
 if __name__ == '__main__':
 	unittest.main()
