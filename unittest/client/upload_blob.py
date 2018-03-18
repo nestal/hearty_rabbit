@@ -226,7 +226,6 @@ class NormalTestCase(unittest.TestCase):
 
 		r1 = self.user1.get("https://localhost:4433/listcolls/sumsum/")
 		self.assertEqual(r1.status_code, 200)
-		print(r1.content)
 		self.assertTrue("colls" in r1.json())
 		self.assertTrue("collection1" in r1.json()["colls"])
 
