@@ -32,6 +32,7 @@
 #include "util/Log.hh"
 #include "util/FS.hh"
 #include "util/Escape.hh"
+#include "util/JsonHelper.hh"
 
 #include <boost/exception/errinfo_api_function.hpp>
 #include <boost/exception/info.hpp>
@@ -430,27 +431,15 @@ void Server::scan_collection(const EmptyRequest& req, Server::StringResponseSend
 		return send(http::response<http::string_body>{http::status::forbidden, req.version()});
 
 	auto colls = std::make_shared<rapidjson::Document>();
-	colls->SetArray();
-/*	json->AddMember("mime", rapidjson::StringRef(mime.data(), mime.size()), json.GetAllocator());
-
-	if (!filename.empty())
-		json.AddMember("filename", rapidjson::StringRef(filename.data(), filename.size()), json.GetAllocator());
-
-	std::ostringstream ss;
-	ss << perm.perm();
-
-	rapidjson::OStreamWrapper osw{ss};
-	rapidjson::Writer<rapidjson::OStreamWrapper> writer{osw};
-	json.Accept(writer);
-	return ss.str();
-*/
+	colls->SetObject();
 
 	Ownership{path_url.user()}.scan_collections(
 		*m_db.alloc(), 0,
-		[colls](auto coll, auto&&)
+		[colls](auto coll, auto&& json)
 		{
-			colls->PushBack(
-				rapidjson::Value().SetString(coll.data(), coll.size(), colls->GetAllocator()),
+			colls->AddMember(
+				json::string_ref(coll),
+				json,
 				colls->GetAllocator()
 			);
 		},

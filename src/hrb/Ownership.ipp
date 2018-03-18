@@ -119,7 +119,18 @@ void Ownership::Collection::scan(
 					// call the callback once to handle one collection
 					dirs.foreach_kv_pair([&cb](auto&& key, auto&& value)
 					{
-						cb(key, value.as_string());
+						auto sv = value.as_string();
+						if (sv.empty())
+							return;
+
+						// although we can modify the string inside value, rapidjson does not
+						// support insitu parsing with non-null-terminated string, so we must
+						// use the slower Parse() instead of ParseInsitu()
+						rapidjson::Document mdoc;
+						mdoc.Parse(sv.data(), sv.size());
+
+						if (!mdoc.HasParseError())
+							cb(key, std::move(mdoc));
 					});
 
 					// if comp return true, keep scanning with the same callback and
