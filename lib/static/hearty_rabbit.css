@@ -2,7 +2,7 @@
 	text-align:center;
 }
 
-#login-box {
+#login-dialog, #create-album-dialog {
 	display: none;
 }
 
@@ -127,7 +127,7 @@ div.login form input {
 }
 
 /* Style the links inside the navigation bar */
-.topnav a, .topnav label {
+.topnav .nav-level1 {
 	float: left;
 	display: inline-block;
 	color: #f2f2f2;
@@ -154,15 +154,9 @@ div.login form input {
 }
 
 /* Change the color of links on hover */
-.topnav a:hover, .topnav label:hover {
+.topnav a:hover, .topnav label:hover, .topnav span:hover  {
 	background-color: #ddd;
 	color: black;
-}
-
-/* Add an active class to highlight the current page */
-.active {
-	background-color: #4CAF50;
-	color: white;
 }
 
 /* Hide the link that should open and close the topnav on small screens */
