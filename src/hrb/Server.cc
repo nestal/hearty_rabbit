@@ -39,6 +39,7 @@
 #include <boost/beast/http/message.hpp>
 #include <boost/beast/http/empty_body.hpp>
 
+#include <rapidjson/document.h>
 #include <rapidjson/ostreamwrapper.h>
 #include <rapidjson/writer.h>
 
@@ -413,6 +414,64 @@ void Server::serve_collection(const EmptyRequest& req, StringResponseSender&& se
 			};
 			res.set(http::field::content_type, "application/json");
 			return send(std::move(res));
+		}
+	);
+}
+
+void Server::scan_collection(const EmptyRequest& req, Server::StringResponseSender&& send, const Authentication& auth)
+{
+	if (req.method() != http::verb::get)
+		return send(http::response<http::string_body>{http::status::bad_request, req.version()});
+
+	URLIntent path_url{req.target()};
+
+	// TODO: allow other users to query another user's shared collections
+	if (auth.user() != path_url.user())
+		return send(http::response<http::string_body>{http::status::forbidden, req.version()});
+
+	auto colls = std::make_shared<rapidjson::Document>();
+	colls->SetArray();
+/*	json->AddMember("mime", rapidjson::StringRef(mime.data(), mime.size()), json.GetAllocator());
+
+	if (!filename.empty())
+		json.AddMember("filename", rapidjson::StringRef(filename.data(), filename.size()), json.GetAllocator());
+
+	std::ostringstream ss;
+	ss << perm.perm();
+
+	rapidjson::OStreamWrapper osw{ss};
+	rapidjson::Writer<rapidjson::OStreamWrapper> writer{osw};
+	json.Accept(writer);
+	return ss.str();
+*/
+
+	Ownership{path_url.user()}.scan_collections(
+		*m_db.alloc(), 0,
+		[colls](auto coll, auto&&)
+		{
+			colls->PushBack(
+				rapidjson::Value().SetString(coll.data(), coll.size(), colls->GetAllocator()),
+				colls->GetAllocator()
+			);
+		},
+		[colls, send=std::move(send), ver=req.version()](long cursor, auto ec)
+		{
+			if (cursor == 0)
+			{
+				std::ostringstream ss;
+				rapidjson::OStreamWrapper osw{ss};
+				rapidjson::Writer<rapidjson::OStreamWrapper> writer{osw};
+				colls->Accept(writer);
+
+				http::response<http::string_body> res{
+					std::piecewise_construct,
+					std::make_tuple(ss.str()),
+					std::make_tuple(http::status::ok, ver)
+				};
+				res.set(http::field::content_type, "application/json");
+				send(std::move(res));
+			}
+			return true;
 		}
 	);
 }

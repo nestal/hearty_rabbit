@@ -208,6 +208,17 @@ class NormalTestCase(unittest.TestCase):
 		# anonymous user cannot
 		self.assertEqual(self.anon.get("https://localhost:4433" + r1.headers["Location"]).status_code, 403)
 		self.assertFalse(blob_id in self.get_collection(self.anon,  "sumsum", "some/collection")["elements"])
-		
+
+	def test_scan_collections(self):
+		# upload random image to 10 different collections
+		for x in range(10):
+			coll = "https://localhost:4433/upload/sumsum/collection{}/random.jpg".format(x)
+			res = self.user1.put(coll, data=self.random_image(100, 120))
+			self.assertEqual(res.status_code, 201)
+
+		r1 = self.user1.get("https://localhost:4433/listcolls/sumsum/")
+		self.assertEqual(r1.status_code, 200)
+		self.assertTrue("collection1" in r1.json())
+
 if __name__ == '__main__':
 	unittest.main()

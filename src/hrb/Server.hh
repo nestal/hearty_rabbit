@@ -31,6 +31,7 @@ const boost::string_view login{"/login"};
 const boost::string_view logout{"/logout"};
 const boost::string_view blob{"/blob"};
 const boost::string_view collection{"/coll"};
+const boost::string_view list_coll{"/listcolls"};
 const boost::string_view upload{"/upload"};
 }
 
@@ -100,6 +101,7 @@ private:
 	bool is_static_resource(boost::string_view target) const;
 	void serve_view(const EmptyRequest& req, FileResponseSender&& send, const Authentication& auth);
 	void serve_collection(const EmptyRequest& req, StringResponseSender&& send, const Authentication& auth);
+	void scan_collection(const EmptyRequest& req, StringResponseSender&& send, const Authentication& auth);
 	void prepare_upload(UploadFile& result, std::error_code& ec);
 
 	template <class Request, class Send>
