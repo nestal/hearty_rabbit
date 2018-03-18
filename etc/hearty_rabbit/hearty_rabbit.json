@@ -1,41 +1,21 @@
 {
-	// Note that all file path are relative to the location of this
-	// configuration file, not the working directory of the server process.
-
-	// HTTPS is mandatory for HRB. The certificate and private key
-	// in the source repository is self-signed. It's for testing purpose.
-	"cert_chain": "certificate.pem",
-	"private_key": "key.pem",
-
-	// Location of the "lib" directory which stores the HTML and CSS files.
-	// By default, this directory will be the /lib of the docker image.
-	// For testing, the server process may not run inside docker, so here
-	// we choose a relative path that works in both places.
-	"web_root": "../../lib",
-
-	// The directory that stores the files uploaded by users. It must be
-	// writeable by the server process.
-	"blob_path": "/tmp",
-
-	// Host name of the server
-	"server_name": "localhost",
-
-	// Maximum size of file upload in MiB (1024x1024)
-	"upload_limit_mb": 20,
-
-	// Number of threads spawn by server process. Since HRB is asynchronous
-	// there is no need to use a large number of threads. Set it to #CPU + 2
-	"thread_count": 8,
-	"http": {
-		"address": "0.0.0.0",
-		"port": 8080
-	},
-	"https": {
-		"address": "0.0.0.0",
-		"port": 4433
-	},
-	"redis": {
-		"address": "127.0.0.1",
-		"port": 6379
-	}
+  "cert_chain": "certificate.pem",
+  "private_key": "key.pem",
+  "web_root": "../../lib",
+  "blob_path": "/tmp",
+  "server_name" : "localhost",
+  "upload_limit_mb" : 20,
+  "thread_count": 8,
+  "http": {
+    "address": "0.0.0.0",
+    "port": 8080
+  },
+  "https": {
+    "address": "0.0.0.0",
+    "port": 4433
+  },
+  "redis" : {
+    "address": "127.0.0.1",
+    "port": 6379
+  }
 }

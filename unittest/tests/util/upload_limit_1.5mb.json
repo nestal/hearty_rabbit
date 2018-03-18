@@ -2,7 +2,8 @@
   "cert_chain": "certificate.pem",
   "private_key": "key.pem",
   "web_root": "/usr/lib/hearty_rabbit",
-    "blob_path": "/var/hearty_rabbit",
+  "server_name" : "example.com",
+  "blob_path": "/var/hearty_rabbit",
   "upload_limit_mb" : 1.5,
   "http": {
     "address": "0.0.0.0",

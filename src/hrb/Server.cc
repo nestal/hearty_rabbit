@@ -403,9 +403,11 @@ bool Server::is_static_resource(boost::string_view target) const
 	return m_lib.is_static(target.to_string());
 }
 
-unsigned short Server::https_port() const
+std::string Server::https_root() const
 {
-	return m_cfg.listen_https().port();
+	using namespace std::literals;
+	return "https://" + m_cfg.server_name()
+		+ (m_cfg.listen_https().port() == 443 ? ""s : (":"s + std::to_string(m_cfg.listen_https().port())));
 }
 
 std::size_t Server::upload_limit() const

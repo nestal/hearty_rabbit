@@ -17,11 +17,13 @@
 
 namespace hrb {
 
-InsecureSession::InsecureSession(boost::asio::ip::tcp::socket socket, unsigned short https_port) :
+InsecureSession::InsecureSession(boost::asio::ip::tcp::socket socket, std::string_view redirect) :
 	m_socket{std::move(socket)},
 	m_strand{m_socket.get_executor()},
-	m_https_port{https_port}
+	m_response{http::status::moved_permanently, 11}
 {
+	m_response.set(http::field::location, redirect);
+	m_response.prepare_payload();
 }
 
 void InsecureSession::run()
@@ -39,31 +41,14 @@ void InsecureSession::do_read()
 
 void InsecureSession::on_read(boost::beast::error_code ec, std::size_t)
 {
-	std::cout << "on insecure request: \"" << m_request[http::field::host] << "\" " << m_request.target() << std::endl;
-
-	http::response<http::empty_body> res{http::status::moved_permanently, m_request.version()};
-	res.set(http::field::location, redirect(
-		{m_request[http::field::host].data(), m_request[http::field::host].size()},
-		m_https_port)
-	);
-	res.prepare_payload();
-
-	async_write(m_socket, res, boost::asio::bind_executor(
+	std::cout << "on request: " << m_request.target() << std::endl;
+	async_write(m_socket, m_response, boost::asio::bind_executor(
 		m_strand,
 		[self=shared_from_this()](auto&& ec, auto)
 		{
 			self->m_socket.shutdown(tcp::socket::shutdown_send, ec);
 		}
 	));
-}
-
-std::string InsecureSession::redirect(std::string_view host, unsigned short port)
-{
-	std::ostringstream oss;
-	oss << "https://" << host.substr(0, host.find(':'));
-	if (port != 443)
-		oss << ':' << port;
-	return oss.str();
 }
 
 } // end of namespace hrb

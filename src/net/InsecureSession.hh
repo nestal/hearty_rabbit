@@ -30,12 +30,10 @@ class InsecureSession : public std::enable_shared_from_this<InsecureSession>
 public:
 	InsecureSession(
 		boost::asio::ip::tcp::socket socket,
-		unsigned short https_port
+		std::string_view redirect
 	);
 
 	void run();
-
-	static std::string redirect(std::string_view host, unsigned short https_port);
 
 private:
 	void do_read();
@@ -46,8 +44,8 @@ private:
 	boost::asio::strand<boost::asio::io_context::executor_type> m_strand;
 	boost::beast::flat_buffer                                   m_buffer;
 
-	EmptyRequest	m_request;
-	unsigned short	m_https_port;
+	EmptyRequest                        m_request;
+	http::response<http::empty_body>    m_response;
 };
 
 } // end of namespace hrb
