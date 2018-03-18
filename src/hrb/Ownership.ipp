@@ -177,7 +177,7 @@ void Ownership::Collection::scan_all(
 		{
 			colls.AddMember(
 				json::string_ref(coll),
-				json,
+				rapidjson::Value{}.CopyFrom(json, jdoc->GetAllocator()),
 				jdoc->GetAllocator()
 			);
 		},

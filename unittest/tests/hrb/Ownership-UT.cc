@@ -201,9 +201,11 @@ TEST_CASE("Scan for all containers from testuser")
 		added = true;
 	});
 
+	std::vector<std::string> dirs;
+
 	bool tested = false;
 	subject.scan_all_collections(*redis, "",
-		[&tested](auto&& jdoc, auto ec)
+		[&dirs, &tested](auto&& jdoc, auto ec)
 		{
 			INFO("scan() error: " << ec << " " << ec.message());
 			REQUIRE(!ec);
@@ -211,15 +213,18 @@ TEST_CASE("Scan for all containers from testuser")
 
 			REQUIRE(jdoc["username"] == "");
 			REQUIRE(jdoc["owner"]    == "testuser");
+
+			for (auto&& coll : jdoc["colls"].GetObject())
+				dirs.push_back(coll.name.GetString());
 		}
 	);
 
 	REQUIRE(ioc.run_for(10s) > 0);
 	REQUIRE(added);
 	REQUIRE(tested);
-//	REQUIRE(!dirs.empty());
-//	INFO("dirs.size() " << dirs.size());
-//	REQUIRE(std::find(dirs.begin(), dirs.end(), "/") != dirs.end());
+	REQUIRE(!dirs.empty());
+	INFO("dirs.size() " << dirs.size());
+	REQUIRE(std::find(dirs.begin(), dirs.end(), "/") != dirs.end());
 }
 
 TEST_CASE("collection entry", "[normal]")
