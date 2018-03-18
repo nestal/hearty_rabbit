@@ -82,8 +82,17 @@
 	</div>
 </div>
 
-<div id="create-album-dialog" class="model">
-	<div>Hello!</div>
+<div id="create-album-dialog" class="modal">
+	<div class="light-box-button-bar">
+		<span class="close cursor" onclick="cancel_create_album();"><i class="light-box-button material-icons">close</i></span>
+	</div>
+	<div class="login">
+		<div class="login-form">
+			<div>Name of the new album:</div>
+			<div><input id="new-album-name" type="text" placeholder="album name"></div>
+			<button onclick="new_album()">Create</button>
+		</div>
+	</div>
 </div>
 
 <script>

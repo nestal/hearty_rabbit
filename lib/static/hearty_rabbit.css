@@ -1,7 +1,3 @@
-.login-body {
-	text-align:center;
-}
-
 #login-dialog, #create-album-dialog {
 	display: none;
 }
@@ -15,7 +11,7 @@ div.login {
 div.login-form {
 	position: relative;
 	z-index: 1;
-	background: #FFFFFF;
+	background: white;
 	max-width: 640px;
 	margin: 0 auto 100px;
 	padding: 45px;
