@@ -30,6 +30,21 @@ TEST_CASE("redis server not started", "[normal]")
 	REQUIRE_THROWS(connect(ioc, {boost::asio::ip::make_address("127.0.0.1"), 1})); // assume no one listen to this port
 }
 
+TEST_CASE("redis command", "[normal]")
+{
+	std::string_view dir{"dir:"}, user{"testuser"}, path{"some/collection"}, blob{"abc"}, val{"10"};
+	CommandString cmd{"HSET %b%b:%b %b %b",
+		dir.data(), dir.size(),
+		user.data(), user.size(),
+		path.data(), path.size(),
+		blob.data(), blob.size(),
+		val.data(), val.size()
+	};
+
+	INFO("str = " << cmd.str());
+	REQUIRE(cmd.get());
+}
+
 TEST_CASE("simple redis", "[normal]")
 {
 	boost::asio::io_context ioc;

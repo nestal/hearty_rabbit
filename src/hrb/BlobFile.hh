@@ -16,7 +16,7 @@
 #include "UploadFile.hh"
 
 #include "image/TurboBuffer.hh"
-#include "util/Size.hh"
+#include "util/Size2D.hh"
 #include "util/FS.hh"
 #include "util/MMap.hh"
 
@@ -26,32 +26,30 @@
 namespace hrb {
 
 class UploadFile;
-class BlobMeta;
+class CollEntry;
 class Magic;
+class CollEntry;
 
-class BlobObject
+class BlobFile
 {
 public:
-	BlobObject() = default;
-	BlobObject(const fs::path& dir, const ObjectID& id, const Size& resize_img, std::error_code& ec);
+	BlobFile() = default;
+	BlobFile(const fs::path& dir, const ObjectID& id, const Size2D& resize_img, std::error_code& ec);
 
-	static BlobObject upload(
+	static BlobFile upload(
 		UploadFile&& tmp,
 		const Magic& magic,
-		const Size& resize_img,
+		const Size2D& resize_img,
 		std::string_view filename,
 		int quality,
 		std::error_code& ec
 	);
-	static std::string meta_string(const fs::path& dir);
-
-	BlobMeta meta() const;
-	const std::string& meta_string() const {return m_meta;}
 
 	BufferView blob() const;
 	MMap& master() {return m_master;}
 
 	const ObjectID& ID() const {return m_id;}
+	CollEntry entry() const;
 
 	void save(const fs::path& dir, std::error_code& ec) const;
 

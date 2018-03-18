@@ -15,47 +15,74 @@
 #include "net/Request.hh"
 
 #include "util/MMap.hh"
+#include "util/Exception.hh"
+#include "util/FS.hh"
 #include "net/SplitBuffers.hh"
 
-#include <boost/filesystem/path.hpp>
 #include <boost/utility/string_view.hpp>
-#include <unordered_map>
+#include <boost/multi_index_container.hpp>
+#include <boost/multi_index/hashed_index.hpp>
+#include <boost/multi_index/mem_fun.hpp>
+
+#include <functional>
 
 namespace hrb {
 
 class WebResources
 {
 public:
+	struct Error : virtual Exception {};
+	using MissingResource = boost::error_info<struct missing_resource, fs::path>;
+
 	using Response = http::response<SplitBuffers>;
 
-	explicit WebResources(const boost::filesystem::path& web_root);
+	explicit WebResources(const fs::path& web_root);
 
-	Response find_static(const std::string& filename, boost::string_view etag, int version) const;
-	Response find_dynamic(const std::string& filename, int version) const;
+	Response find_static(std::string_view filename, boost::string_view etag, int version) const;
+	Response find_dynamic(std::string_view filename, int version) const;
+
+	bool is_static(const std::string& filename) const;
 
 private:
 	class Resource
 	{
 	public:
-		Resource(MMap&& file, std::string&& mime, boost::string_view etag) :
-			m_file{std::move(file)}, m_mime{std::move(mime)}, m_etag{etag} {}
+		Resource(std::string_view name, MMap&& file, std::string&& mime, boost::string_view etag) :
+			m_name{name}, m_file{std::move(file)}, m_mime{std::move(mime)}, m_etag{etag} {}
 
 		http::response<SplitBuffers> get(int version, bool dynamic) const;
 
 		boost::string_view etag() const {return m_etag;}
+		std::string_view name() const {return m_name;}
 
 	private:
+		std::string m_name;
+
 		MMap        m_file;
 		std::string m_mime;
 		std::string m_etag;
 	};
 
 	template <typename Iterator>
-	static auto load(const boost::filesystem::path& base, Iterator first, Iterator last);
+	static auto load(const fs::path& base, Iterator first, Iterator last);
 
 private:
-	const std::unordered_map<std::string, Resource>   m_static;
-	const std::unordered_map<std::string, Resource>   m_dynamic;
+	using Container = boost::multi_index_container<
+		Resource,
+		boost::multi_index::indexed_by<
+			boost::multi_index::hashed_unique<
+				boost::multi_index::const_mem_fun<
+					Resource,
+					std::string_view,
+					&Resource::name
+				>,
+				std::hash<std::string_view>
+			>
+		>
+	>;
+
+	const Container   m_static;
+	const Container   m_dynamic;
 };
 
 } // end of namespace hrb

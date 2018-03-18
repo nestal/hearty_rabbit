@@ -11,30 +11,43 @@
 //
 
 #include "Server.hh"
-#include "ResourcesList.hh"
-#include "Collection.hh"
+
+#include "Ownership.hh"
+#include "Ownership.ipp"
+#include "UploadFile.hh"
+#include "BlobFile.hh"
+#include "URLIntent.hh"
+#include "BlobRequest.hh"
 
 #include "crypto/Password.hh"
 #include "crypto/Authentication.hh"
+
 #include "net/Listener.hh"
+#include "net/SplitBuffers.hh"
+#include "net/MMapResponseBody.hh"
+
 #include "util/Error.hh"
 #include "util/Configuration.hh"
 #include "util/Exception.hh"
 #include "util/Log.hh"
+#include "util/FS.hh"
+#include "util/Escape.hh"
+#include "util/JsonHelper.hh"
 
 #include <boost/exception/errinfo_api_function.hpp>
 #include <boost/exception/info.hpp>
-#include <boost/filesystem.hpp>
+#include <boost/beast/http/fields.hpp>
+#include <boost/beast/http/message.hpp>
+#include <boost/beast/http/empty_body.hpp>
 
+#include <rapidjson/document.h>
 #include <rapidjson/ostreamwrapper.h>
 #include <rapidjson/writer.h>
-
-#include <turbojpeg.h>
 
 namespace hrb {
 
 namespace {
-const std::string_view index_needle{"<meta charset=\"utf-8\">"};
+const std::string_view index_needle{"<meta charset=\"utf-8\"><script>"};
 }
 
 Server::Server(const Configuration& cfg) :
@@ -49,10 +62,10 @@ Server::Server(const Configuration& cfg) :
 
 http::response<SplitBuffers> Server::on_login_incorrect(const EmptyRequest& req)
 {
-	auto res = m_lib.find_dynamic("login.html", req.version());
+	auto res = m_lib.find_dynamic("index.html", req.version());
 	res.body().extra(
-		R"_(<meta charset="UTF-8">)_",
-		R"_(<script>const message = "Login incorrect... Try again?";</script>)_"
+		index_needle,
+		R"_(var login_message = "Login incorrect... Try again?";)_"
 	);
 	return res;
 }
@@ -75,7 +88,7 @@ void Server::on_login(const StringRequest& req, EmptyResponseSender&& send)
 			{
 				Log(LOG_INFO, "login result: %1% %2%", ec, ec.message());
 
-				auto&& res = see_other(ec ? "/login_incorrect.html" : user_view(session.user()), version);
+				auto&& res = see_other(ec ? "/login_incorrect.html" : "/", version);
 				if (!ec)
 					res.set(http::field::set_cookie, session.set_cookie());
 
@@ -111,16 +124,20 @@ http::response<http::empty_body> Server::see_other(boost::beast::string_view whe
 	return res;
 }
 
-void Server::unlink(std::string_view user, std::string_view coll, const ObjectID& blob_id, unsigned version, EmptyResponseSender&& send)
+void Server::unlink(BlobRequest&& req, EmptyResponseSender&& send)
 {
-	Log(LOG_INFO, "unlinking object %1% from path(%2%)", blob_id, coll);
+	assert(req.blob());
+	Log(LOG_INFO, "unlinking object %1% from path(%2%)", *req.blob(), req.collection());
+
+	if (!req.request_by_owner())
+		return send(http::response<http::empty_body>{http::status::forbidden, req.version()});
 
 	// remove from user's container
-	Ownership{user}.link(
-		*m_db.alloc(), coll, blob_id, false,
-		[send = std::move(send), version](auto ec)
+	Ownership{req.owner()}.unlink(
+		*m_db.alloc(), req.collection(), *req.blob(),
+		[send = std::move(send), version=req.version()](auto ec)
 		{
-			auto status = http::status::accepted;
+			auto status = http::status::no_content;
 			if (ec == Error::object_not_exist)
 				status = http::status::bad_request;
 			else if (ec)
@@ -131,19 +148,54 @@ void Server::unlink(std::string_view user, std::string_view coll, const ObjectID
 	);
 }
 
+void Server::update_blob(BlobRequest&& req, EmptyResponseSender&& send)
+{
+	if (!req.request_by_owner())
+		return send(http::response<http::empty_body>{http::status::forbidden, req.version()});
+
+	Log(LOG_NOTICE, "receving form string for updating blob %1%: %2%", *req.blob(), req.body());
+
+	assert(req.blob());
+	auto [perm_str] = find_fields(req.body(), "perm");
+	Log(LOG_NOTICE, "updating blob %1% to %2%", *req.blob(), perm_str);
+
+	auto perm = Permission::from_description(perm_str);
+
+	Ownership{req.owner()}.set_permission(
+		*m_db.alloc(), req.collection(), *req.blob(), perm, [send=std::move(send), version=req.version()](auto&& ec)
+		{
+			send(http::response<http::empty_body>{
+				ec ? http::status::internal_server_error : http::status::no_content,
+				version
+			});
+		}
+	);
+}
+
 void Server::on_upload(UploadRequest&& req, EmptyResponseSender&& send, const Authentication& auth)
 {
 	boost::system::error_code bec;
 
-	PathURL path_url{req.target()};
+	URLIntent path_url{req.target()};
 	if (auth.user() != path_url.user())
-		return send(http::response<http::empty_body>{http::status::forbidden, req.version()});
+	{
+		// Introduce a small delay when responsing to requests with invalid session ID.
+		// This is to slow down bruce-force attacks on the session ID.
+		boost::asio::deadline_timer t{m_ioc, boost::posix_time::milliseconds{500}};
+		return t.async_wait([version=req.version(), send=std::move(send)](auto ec)
+		{
+			if (!ec)
+				Log(LOG_WARNING, "timer error %1% (%2%)", ec, ec.message());
+
+			send(http::response<http::empty_body>{http::status::forbidden, version});
+		});
+	}
 
 	Log(LOG_INFO, "uploading %1% bytes to path(%2%) file(%3%)", req.body().size(bec), path_url.collection(), path_url.filename());
 
 	std::error_code ec;
-	auto id = m_blob_db.save(std::move(req.body()), path_url.filename(), ec);
-	Log(LOG_INFO, "%5% uploaded %1% to %2% (%3% %4%)", req.target(), id, ec, ec.message(), auth.user());
+	auto blob = m_blob_db.save(std::move(req.body()), path_url.filename(), ec);
+	Log(LOG_INFO, "%5% uploaded %1% to %2% (%3% %4%)", req.target(), blob.ID(), ec, ec.message(), auth.user());
 
 	if (ec)
 		return send(http::response<http::empty_body>{http::status::internal_server_error, req.version()});
@@ -152,11 +204,8 @@ void Server::on_upload(UploadRequest&& req, EmptyResponseSender&& send, const Au
 	// The user's ownership table contains all the blobs that is owned by the user.
 	// It will be used for authorizing the user's request on these blob later.
 	Ownership{auth.user()}.link(
-		*m_db.alloc(), path_url.collection(), id, true, [
-			id,
-			this,
-			auth,
-			coll=std::string{path_url.collection()},
+		*m_db.alloc(), path_url.collection(), blob.ID(), blob.entry(), [
+			location = URLIntent{"blob", auth.user(), path_url.collection(), to_hex(blob.ID())}.str(),
 			send = std::move(send),
 			version = req.version()
 		](auto ec)
@@ -166,38 +215,11 @@ void Server::on_upload(UploadRequest&& req, EmptyResponseSender&& send, const Au
 				version
 			};
 			if (!ec)
-				res.set(http::field::location, "/blob/" + auth.user() + '/' + (coll.empty() ? "" : coll + '/') + to_hex(id));
+				res.set(http::field::location, location);
 			res.set(http::field::cache_control, "no-cache, no-store, must-revalidate");
 			return send(std::move(res));
 		}
 	);
-}
-
-void Server::on_invalid_session(const RequestHeader& req, FileResponseSender&& send)
-{
-	// If the target is home (i.e. "/"), show them the login page.
-	// Do not penalize the user, because their session may be expired.
-	// It may also be the first visit of an anonymous user.
-	if (req.target() == "/")
-		return send(m_lib.find_dynamic("login.html", req.version()));
-
-	if (req.target().starts_with(url::view))
-	{
-		http::response<SplitBuffers> res{http::status::see_other, req.version()};
-		res.set(http::field::location, "/");
-		return send(std::move(res));
-	}
-
-	// Introduce a small delay when responsing to requests with invalid session ID.
-	// This is to slow down bruce-force attacks on the session ID.
-	boost::asio::deadline_timer t{m_ioc, boost::posix_time::milliseconds{500}};
-	t.async_wait([version=req.version(), send=std::move(send), target=req.target().to_string()](auto ec)
-	{
-		if (!ec)
-			Log(LOG_WARNING, "timer error %1% (%2%)", ec, ec.message());
-
-		send(http::response<SplitBuffers>{http::status::forbidden, version});
-	});
 }
 
 http::response<http::string_body> Server::bad_request(boost::beast::string_view why, unsigned version)
@@ -240,6 +262,9 @@ void Server::serve_view(const EmptyRequest& req, Server::FileResponseSender&& se
 	if (req.method() != http::verb::get)
 		return send(http::response<SplitBuffers>{http::status::bad_request, req.version()});
 
+	// The trailing slash for views is mandatory.
+	// Otherwise PathURL will treat the last segment as the filename, not part of
+	// the collection name.
 	if (req.target().back() != '/')
 	{
 		http::response<SplitBuffers> res{http::status::moved_permanently, req.version()};
@@ -247,33 +272,58 @@ void Server::serve_view(const EmptyRequest& req, Server::FileResponseSender&& se
 		return send(std::move(res));
 	}
 
-	PathURL path_url{req.target()};
+	URLIntent path_url{req.target()};
 
-	if (path_url.user() != auth.user())
-		return send(http::response<SplitBuffers>{http::status::forbidden, req.version()});
-
-	Collection{auth.user(), path_url.collection()}.serialize(
+	Ownership{path_url.user()}.serialize(
 		*m_db.alloc(),
-		m_blob_db,
+		auth.user(),
+		path_url.collection(),
 		[send=std::move(send), version=req.version(), auth, this](auto&& json, auto ec)
 	{
 		std::ostringstream ss;
-		ss  << "<script>var dir = " << json << ";</script>";
+		ss  << "var dir = " << json << ";";
 
 		auto res = m_lib.find_dynamic("index.html", version);
 		res.body().extra(index_needle, ss.str());
-		send(std::move(res));
+		return send(std::move(res));
 	});
+}
+
+void Server::serve_home(const EmptyRequest& req, FileResponseSender&& send, const Authentication& auth)
+{
+	if (req.method() != http::verb::get)
+		return send(http::response<SplitBuffers>{http::status::bad_request, req.version()});
+
+	Ownership{auth.user()}.scan_all_collections(
+		*m_db.alloc(),
+		auth.user(),
+		[send=std::move(send), ver=req.version(), this](auto&& colls, auto ec)
+		{
+			std::ostringstream ss;
+			ss << "var dir = ";
+
+			rapidjson::OStreamWrapper osw{ss};
+			rapidjson::Writer<rapidjson::OStreamWrapper> writer{osw};
+			colls.Accept(writer);
+
+			ss << ";";
+
+			auto res = m_lib.find_dynamic("index.html", ver);
+			res.body().extra(index_needle, ss.str());
+			return send(std::move(res));
+		}
+	);
+
 }
 
 http::response<SplitBuffers> Server::static_file_request(const EmptyRequest& req)
 {
 	Log(LOG_NOTICE, "requesting path %1% %2%", req.target(), req[http::field::if_none_match]);
 
-	auto filepath = req.target();
+	std::string_view filepath{req.target().data(), req.target().size()};
 	filepath.remove_prefix(1);
 
-	return m_lib.find_static(std::string{filepath}, req[http::field::if_none_match], req.version());
+	return m_lib.find_static(filepath, req[http::field::if_none_match], req.version());
 }
 
 void Server::run()
@@ -344,105 +394,23 @@ boost::asio::io_context& Server::get_io_context()
 	return m_ioc;
 }
 
-bool Server::is_static_resource(boost::string_view target)
+bool Server::is_static_resource(boost::string_view target) const
 {
 	assert(!target.empty());
 	assert(target.front() == '/');
 	target.remove_prefix(1);
 
-	return static_resources.find(target.to_string()) != static_resources.end();
+	return m_lib.is_static(target.to_string());
 }
 
-std::tuple<
-	std::string_view,
-	std::string_view
-> Server::extract_prefix(const RequestHeader& req)
+unsigned short Server::https_port() const
 {
-	auto target = req.target();
-	auto sv = std::string_view{target.data(), target.size()};
-	if (!sv.empty() && sv.front() == '/')
-		sv.remove_prefix(1);
-
-	auto prefix = std::get<0>(split_front(sv, "/?$"));
-	return std::make_tuple(prefix, sv);
-}
-
-std::string Server::https_root() const
-{
-	using namespace std::literals;
-	return "https://" + m_cfg.server_name()
-		+ (m_cfg.listen_https().port() == 443 ? ""s : (":"s + std::to_string(m_cfg.listen_https().port())));
+	return m_cfg.listen_https().port();
 }
 
 std::size_t Server::upload_limit() const
 {
 	return m_cfg.upload_limit();
-}
-
-/// \arg    header      The header we just received. This reference must be valid
-///						until \a complete() is called.
-/// \arg    src         The request_parser that produce \a header. It will be moved
-///                     to \a dest. Must be valid until \a complete() is called.
-void Server::on_request_header(
-	const RequestHeader& header,
-	EmptyRequestParser& src,
-	RequestBodyParsers& dest,
-	std::function<void(const Authentication&)>&& complete
-)
-{
-	// Use StringRequestParser to parser login requests.
-	// The username/password will be stored in the string body.
-	// No need to verify session.
-	if (is_login(header))
-	{
-		dest.emplace<StringRequestParser>(std::move(src));
-		return complete(Authentication{});
-	}
-
-	if (is_static_resource(header.target()))
-	{
-		dest.emplace<EmptyRequestParser>(std::move(src));
-		return complete(Authentication{});
-	}
-
-	// Everything else require a valid session.
-	auto cookie = header[http::field::cookie];
-	auto session = parse_cookie({cookie.data(), cookie.size()});
-	if (!session)
-	{
-		dest.emplace<EmptyRequestParser>(std::move(src));
-		return complete(Authentication{});
-	}
-
-	Authentication::verify_session(
-		*session,
-		*m_db.alloc(),
-		[
-			this,
-			&header,
-			&dest,
-			&src,
-			complete=std::move(complete)
-		](std::error_code ec, const Authentication& auth) mutable
-		{
-			// Use a UploadRequestParse to parser upload requests, only when the session is authenicated.
-			if (!ec && is_upload(header))
-			{
-				// Need to call prepare_upload() before using UploadRequestBody.
-				m_blob_db.prepare_upload(dest.emplace<UploadRequestParser>(std::move(src)).get().body(), ec);
-				if (ec)
-					Log(LOG_WARNING, "error opening file %1%: %2% (%3%)", m_cfg.blob_path(), ec, ec.message());
-			}
-
-			// Other requests use EmptyRequestParser, because they don't have a body.
-			else
-			{
-				dest.emplace<EmptyRequestParser>(std::move(src));
-			}
-
-			complete(auth);
-		}
-	);
 }
 
 bool Server::is_upload(const RequestHeader& header)
@@ -455,31 +423,16 @@ bool Server::is_login(const RequestHeader& header)
 	return header.target() == hrb::url::login && header.method() == http::verb::post;
 }
 
-std::string Server::user_view(std::string_view user, std::string_view path)
-{
-	assert(!user.empty());
-
-	static const auto url_view = std::string{url::view} + "/";
-	auto result = url_view + std::string{user};
-	if (path.empty() || path.front() != '/')
-		result.push_back('/');
-	result.append(path.data(), path.size());
-
-	return result;
-}
-
 void Server::serve_collection(const EmptyRequest& req, StringResponseSender&& send, const Authentication& auth)
 {
 	if (req.method() != http::verb::get)
 		return send(http::response<http::string_body>{http::status::bad_request, req.version()});
 
-	PathURL path_url{req.target()};
-	if (path_url.user() != auth.user())
-		return send(http::response<http::string_body>{http::status::forbidden, req.version()});
-
-	Collection{path_url.user(), path_url.collection()}.serialize(
+	URLIntent path_url{req.target()};
+	Ownership{path_url.user()}.serialize(
 		*m_db.alloc(),
-		m_blob_db,
+		auth.user(),
+		path_url.collection(),
 		[send=std::move(send), version=req.version()](auto&& json, auto ec)
 		{
 			http::response<http::string_body> res{
@@ -491,6 +444,46 @@ void Server::serve_collection(const EmptyRequest& req, StringResponseSender&& se
 			return send(std::move(res));
 		}
 	);
+}
+
+void Server::scan_collection(const EmptyRequest& req, Server::StringResponseSender&& send, const Authentication& auth)
+{
+	if (req.method() != http::verb::get)
+		return send(http::response<http::string_body>{http::status::bad_request, req.version()});
+
+	URLIntent path_url{req.target()};
+
+	// TODO: allow other users to query another user's shared collections
+	if (auth.user() != path_url.user())
+		return send(http::response<http::string_body>{http::status::forbidden, req.version()});
+
+	Ownership{path_url.user()}.scan_all_collections(
+		*m_db.alloc(),
+		auth.user(),
+		[send=std::move(send), ver=req.version()](auto&& colls, auto ec)
+		{
+			std::ostringstream ss;
+			rapidjson::OStreamWrapper osw{ss};
+			rapidjson::Writer<rapidjson::OStreamWrapper> writer{osw};
+			colls.Accept(writer);
+
+			http::response<http::string_body> res{
+				std::piecewise_construct,
+				std::make_tuple(ss.str()),
+				std::make_tuple(http::status::ok, ver)
+			};
+			res.set(http::field::content_type, "application/json");
+			return send(std::move(res));
+		}
+	);
+}
+
+void Server::prepare_upload(UploadFile& result, std::error_code& ec)
+{
+	// Need to call prepare_upload() before using UploadRequestBody.
+	m_blob_db.prepare_upload(result, ec);
+	if (ec)
+		Log(LOG_WARNING, "error opening file %1%: %2% (%3%)", m_cfg.blob_path(), ec, ec.message());
 }
 
 } // end of namespace

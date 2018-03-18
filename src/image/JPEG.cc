@@ -14,14 +14,13 @@
 #include "TurboBuffer.hh"
 
 #include <turbojpeg.h>
-
 #include <memory>
 
 namespace hrb {
 
 using Handle = std::unique_ptr<void, decltype(&tjDestroy)>;
 
-JPEG::JPEG(const void *data, std::size_t size, const Size& max_dim)
+JPEG::JPEG(const void *data, std::size_t size, const Size2D& max_dim)
 {
 	Handle handle{tjInitDecompress(), &tjDestroy};
 	auto result = tjDecompressHeader3(
@@ -51,12 +50,11 @@ JPEG::JPEG(const void *data, std::size_t size, const Size& max_dim)
 }
 
 // width, height: target size of the image.
-Size JPEG::select_scaling_factor(const Size& max, const Size& actual)
+Size2D JPEG::select_scaling_factor(const Size2D& max, const Size2D& actual)
 {
+	Size2D selected, minimum = actual;
 	if (actual.width() > max.width() || actual.height() > max.height())
 	{
-		Size selected;
-
 		int count{};
 		auto factors = tjGetScalingFactors(&count);
 		for (int i = 0; i < count; i++)
@@ -66,18 +64,22 @@ Size JPEG::select_scaling_factor(const Size& max, const Size& actual)
 
 			// width and height within limits, and total area larger
 			// than precious accepted values
-			if (w < max.width() && h < max.height() && w*h > selected.width() * selected.height())
+			if (
+				w <= actual.width() && h <= actual.height() &&
+				w <= max.width()    && h <= max.height()    &&
+				w*h > selected.area()
+			)
 			{
 				// remember this scaling factor
 				selected.assign(w, h);
 			}
+
+			if (w*h < minimum.area())
+				minimum.assign(w, h);
 		}
-		return selected;
 	}
-	else
-	{
-		return actual;
-	}
+
+	return selected.area() == 0 ? minimum : selected;
 }
 
 TurboBuffer JPEG::compress(int quality) const

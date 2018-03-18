@@ -12,20 +12,16 @@
 
 #include "BlobDatabase.hh"
 #include "UploadFile.hh"
-#include "BlobMeta.hh"
-#include "BlobObject.hh"
+#include "CollEntry.hh"
+#include "BlobFile.hh"
 
 #include "net/MMapResponseBody.hh"
 
 #include "util/Log.hh"
 
-#include <rapidjson/ostreamwrapper.h>
-#include <rapidjson/writer.h>
-#include <rapidjson/pointer.h>
-
 namespace hrb {
 
-BlobDatabase::BlobDatabase(const fs::path& base, const Size& img_resize) : m_base{base}, m_resize_img{img_resize}
+BlobDatabase::BlobDatabase(const fs::path& base, const Size2D& img_resize) : m_base{base}, m_resize_img{img_resize}
 {
 	if (exists(base) && !is_directory(base))
 		throw std::system_error(std::make_error_code(std::errc::file_exists));
@@ -43,13 +39,13 @@ void BlobDatabase::prepare_upload(UploadFile& result, std::error_code& ec) const
 		ec.assign(err.value(), err.category());
 }
 
-ObjectID BlobDatabase::save(UploadFile&& tmp, std::string_view filename, std::error_code& ec)
+BlobFile BlobDatabase::save(UploadFile&& tmp, std::string_view filename, std::error_code& ec)
 {
-	auto blob_obj = BlobObject::upload(std::move(tmp), m_magic, m_resize_img, filename, 70, ec);
+	auto blob_obj = BlobFile::upload(std::move(tmp), m_magic, m_resize_img, filename, 70, ec);
 	if (!ec)
 		blob_obj.save(dest(blob_obj.ID()), ec);
 
-	return blob_obj.ID();
+	return blob_obj;
 }
 
 fs::path BlobDatabase::dest(const ObjectID& id, std::string_view) const
@@ -63,6 +59,7 @@ fs::path BlobDatabase::dest(const ObjectID& id, std::string_view) const
 BlobDatabase::BlobResponse BlobDatabase::response(
 	ObjectID id,
 	unsigned version,
+	std::string_view mime,
 	std::string_view etag,
 	std::string_view rendition
 ) const
@@ -77,7 +74,7 @@ BlobDatabase::BlobResponse BlobDatabase::response(
 	auto path = dest(id);
 
 	std::error_code ec;
-	BlobObject blob_obj{path, id, m_resize_img, ec};
+	BlobFile blob_obj{path, id, m_resize_img, ec};
 
 	if (ec)
 		return BlobResponse{http::status::not_found, version};
@@ -91,7 +88,7 @@ BlobDatabase::BlobResponse BlobDatabase::response(
 		std::make_tuple(std::move(mmap)),
 		std::make_tuple(http::status::ok, version)
 	};
-	res.set(http::field::content_type, blob_obj.meta().mime());
+	res.set(http::field::content_type, mime);
 	set_cache_control(res, id);
 	return res;
 
@@ -101,11 +98,6 @@ void BlobDatabase::set_cache_control(BlobResponse& res, const ObjectID& id)
 {
 	res.set(http::field::cache_control, "private, max-age=31536000, immutable");
 	res.set(http::field::etag, to_quoted_hex(id));
-}
-
-std::string BlobDatabase::load_meta_json(const ObjectID& id) const
-{
-	return BlobObject::meta_string(dest(id));
 }
 
 } // end of namespace hrb

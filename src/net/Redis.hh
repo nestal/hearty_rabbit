@@ -44,6 +44,15 @@ enum class Error
 
 std::error_code make_error_code(Error err);
 const std::error_category& redis_error_category();
+}}
+
+namespace std
+{
+	template <> struct is_error_code_enum<hrb::redis::Error> : true_type {};
+}
+
+namespace hrb {
+namespace redis {
 
 class Reply
 {
@@ -69,7 +78,8 @@ public:
 	std::string_view as_error() const noexcept;
 	std::string_view as_any_string() const noexcept;
 	boost::asio::const_buffer as_buffer() const noexcept;
-	int type() const {return m_reply->type;}
+	auto type() const {return m_reply->type;}
+	std::size_t length() const;
 
 	explicit operator bool() const noexcept ;
 
@@ -88,6 +98,7 @@ public:
 			func(as_array(i).as_string(), as_array(i+1));
 	}
 
+	// Return a tuple of replies, one for each field in the parameter list
 	template <typename... Field>
 	auto map_kv_pair(Field... fields) const
 	{
@@ -97,11 +108,14 @@ public:
 		return result;
 	}
 
+	/// Return a tuple of the first \a count replies in the array.
 	template <std::size_t count>
 	auto as_tuple(std::error_code& ec) const
 	{
 		return as_tuple_impl(ec, std::make_index_sequence<count>{});
 	}
+
+	char* as_mutable_string();
 
 private:
 	template <std::size_t... index>
@@ -140,8 +154,13 @@ private:
 class CommandString
 {
 public:
-	template <typename... Args>
-	CommandString(Args... args) : m_length{::redisFormatCommand(&m_cmd, args...)}
+	/// The first argument MUST be the command string. For security
+	/// reason, this class does not accept std::string and const char*.
+	/// It expects a hard-coded string literal. However in C++ we can't
+	/// make it mandatory. We can only specify a const char array.
+	template <std::size_t N, typename... Args>
+	explicit CommandString(const char (&cmd)[N], Args... args) :
+		m_length{::redisFormatCommand(&m_cmd, cmd, args...)}
 	{
 		if (m_length < 0)
 			throw std::logic_error("invalid command string");
@@ -157,6 +176,7 @@ public:
 	char* get() const {return m_cmd;}
 	std::size_t length() const {return static_cast<std::size_t>(m_length);}
 	auto buffer() const {return boost::asio::buffer(m_cmd, length());}
+	std::string_view str() const {return {m_cmd, length()};}
 
 private:
 	char    *m_cmd{};
@@ -196,6 +216,7 @@ public:
 
 	template <
 		typename Callback,
+		std::size_t N,
 		typename... Args
 	>
 
@@ -209,12 +230,12 @@ public:
 		std::is_invocable<Callback, Reply, std::error_code>::value &&
 		std::is_copy_constructible<Callback>::value
 	>
-	command(Callback&& callback, Args... args)
+	command(Callback&& callback, const char (&cmd)[N], Args... args)
 	{
 		try
 		{
 			do_write(
-				CommandString{args...},
+				CommandString{cmd, args...},
 				[
 					callback=std::forward<Callback>(callback),
 					self=shared_from_this()
@@ -232,6 +253,7 @@ public:
 
 	template <
 		typename Callback,
+		std::size_t N,
 		typename... Args
 	>
 
@@ -244,12 +266,12 @@ public:
 		std::is_move_constructible<Callback>::value &&
 		!std::is_copy_constructible<Callback>::value
 	>
-	command(Callback&& callback, Args... args)
+	command(Callback&& callback, const char (&cmd)[N], Args... args)
 	{
 		try
 		{
 			do_write(
-				CommandString{args...},
+				CommandString{cmd, args...},
 				[
 					cb=std::make_shared<std::remove_reference_t<Callback>>(std::forward<Callback>(callback)),
 					self=shared_from_this()
@@ -265,8 +287,8 @@ public:
 		}
 	}
 
-	template <typename... Args>
-	void command(const char *cmd, Args... args)
+	template <std::size_t N, typename... Args>
+	void command(const char (&cmd)[N], Args... args)
 	{
 		try
 		{
@@ -277,11 +299,6 @@ public:
 		}
 	}
 
-	template <typename... Args>
-	void command(const std::string& cmd, Args... args)
-	{
-		return command(cmd.c_str(), args...);
-	}
 
 	boost::asio::io_context& get_io_context() {return m_socket.get_io_context();}
 	void disconnect() ;
@@ -330,8 +347,3 @@ private:
 };
 
 }} // end of namespace
-
-namespace std
-{
-	template <> struct is_error_code_enum<hrb::redis::Error> : true_type {};
-}

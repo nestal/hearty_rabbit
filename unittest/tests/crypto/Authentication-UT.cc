@@ -42,6 +42,11 @@ TEST_CASE("Test password init", "[normal]")
 	REQUIRE_NOTHROW(subject.derive_key("salt", 100, "sha512" ));
 }
 
+TEST_CASE("Default Authenication ctor construct invalid authenication", "[normal]")
+{
+	REQUIRE(!Authentication{}.valid());
+}
+
 TEST_CASE("Test normal user login", "[normal]")
 {
 	boost::asio::io_context ioc;
@@ -49,7 +54,10 @@ TEST_CASE("Test normal user login", "[normal]")
 
 	bool tested = false;
 
-	Authentication::add_user("sumsum", Password{"bearbear"}, *redis, [redis, &tested](std::error_code ec)
+	// for system test
+	Authentication::add_user("siuyung", Password{"rabbit"}, *redis, [](auto&&) {});
+
+	Authentication::add_user("sumsum",  Password{"bearbear"}, *redis, [redis, &tested](std::error_code ec)
 	{
 		INFO("add_user() result = " << ec.message());
 		REQUIRE(!ec);
@@ -76,10 +84,10 @@ TEST_CASE("Test normal user login", "[normal]")
 				}
 			);
 		}
-		SECTION("incorrect user")
+		SECTION("incorrect password")
 		{
 			Authentication::verify_user(
-				"siuyung", Password{"rabbit"}, *redis, [&tested](std::error_code ec, auto&& session)
+				"siuyung", Password{"not rabbit"}, *redis, [&tested](std::error_code ec, auto&& session)
 				{
 					INFO("verify_user(incorrect) result = " << ec.message());
 					REQUIRE(ec == Error::login_incorrect);

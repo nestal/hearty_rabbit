@@ -13,62 +13,26 @@
 #pragma once
 
 #include "ObjectID.hh"
+#include "CollEntry.hh"
 
-#include "Collection.hh"
 #include "net/Redis.hh"
-#include "util/Log.hh"
-
-#include <rapidjson/document.h>
 
 #include <string_view>
 #include <functional>
-#include <vector>
 
 namespace hrb {
 
-class BlobDatabase;
+class Permission;
+class CollEntry;
 
 /// A set of blob objects represented by a redis set.
 class Ownership
 {
 private:
-	class Blob
-	{
-	private:
-		static const std::string_view m_prefix;
+	class BlobBackLink;
 
-	public:
-		Blob(std::string_view user, const ObjectID& blob);
-
-		void watch(redis::Connection& db) const;
-
-		// expect to be done inside a transaction
-		void link(redis::Connection& db, std::string_view path) const;
-		void unlink(redis::Connection& db, std::string_view path) const;
-
-		template <typename Complete>
-		void is_owned(redis::Connection& db, Complete&& complete)
-		{
-			db.command(
-				[comp=std::forward<Complete>(complete)](auto&& reply, std::error_code&& ec) mutable
-				{
-					comp(reply.as_int() > 0, std::move(ec));
-				},
-
-				"EXISTS %b%b:%b",
-				m_prefix.data(), m_prefix.size(),
-				m_user.data(), m_user.size(),
-				m_blob.data(), m_blob.size()
-			);
-		}
-
-		const std::string& user() const {return m_user;}
-		const ObjectID& blob() const {return m_blob;}
-
-	private:
-		std::string m_user;
-		ObjectID    m_blob;
-	};
+	/// A set of blob objects represented by a redis set.
+	class Collection;
 
 public:
 	explicit Ownership(std::string_view name);
@@ -76,53 +40,81 @@ public:
 	template <typename Complete>
 	void link(
 		redis::Connection& db,
-		std::string_view path,
+		std::string_view coll,
 		const ObjectID& blobid,
-		bool add,
+		const CollEntry& entry,
 		Complete&& complete
 	)
 	{
-		Blob  blob{m_user, blobid};
-		Collection coll{m_user, path};
-
-		// watch everything that will be modified
-		blob.watch(db);
-		coll.watch(db);
-
-		db.command("MULTI");
-		if (add)
-		{
-			blob.link(db, coll.path());
-			coll.link(db, blob.blob());
-		}
-		else
-		{
-			blob.unlink(db, coll.path());
-			coll.unlink(db, blob.blob());
-		}
-
-		db.command([comp=std::forward<Complete>(complete)](auto&&, std::error_code ec)
-		{
-			Log(LOG_INFO, "transaction completed %1%", ec);
-			comp(ec);
-		}, "EXEC");
+		link(db, coll, blobid, entry, true, std::forward<Complete>(complete));
 	}
 
 	template <typename Complete>
-	void is_owned(
+	void unlink(
 		redis::Connection& db,
-		const ObjectID& blob,
+		std::string_view coll,
+		const ObjectID& blobid,
 		Complete&& complete
 	)
 	{
-		Blob{m_user, blob}.is_owned(db, std::forward<Complete>(complete));
+		link(db, coll, blobid, CollEntry{}, false, std::forward<Complete>(complete));
 	}
+
+	template <typename Complete>
+	void set_permission(
+		redis::Connection& db,
+		std::string_view coll,
+		const ObjectID& blobid,
+		const Permission& perm,
+		Complete&& complete
+	);
+
+	template <typename Complete>
+	void serialize(
+		redis::Connection& db,
+		std::string_view requester,
+		std::string_view coll,
+		Complete&& complete
+	) const;
+
+	template <typename Complete>
+	void find(
+		redis::Connection& db,
+		std::string_view coll,
+		const ObjectID& blob,
+		Complete&& complete
+	) const;
+
+	template <typename CollectionCallback, typename Complete>
+	void scan_collections(
+		redis::Connection& db,
+		long cursor,
+		CollectionCallback&& callback,
+		Complete&& complete
+	) const;
+
+	template <typename Complete>
+	void scan_all_collections(
+		redis::Connection& db,
+		std::string_view requester,
+		Complete&& complete
+	) const;
 
 	const std::string& user() const {return m_user;}
 
 private:
-	std::string             m_user;
-};
+	template <typename Complete>
+	void link(
+		redis::Connection& db,
+		std::string_view path,
+		const ObjectID& blobid,
+		const CollEntry& entry,
+		bool add,
+		Complete&& complete
+	);
 
+private:
+	std::string m_user;
+};
 
 } // end of namespace hrb

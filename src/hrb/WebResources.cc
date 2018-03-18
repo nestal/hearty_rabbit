@@ -16,6 +16,8 @@
 #include "ResourcesList.hh"
 #include "crypto/Blake2.hh"
 
+#include <boost/exception/info.hpp>
+
 namespace hrb {
 namespace {
 std::string_view resource_mime(const std::string& ext)
@@ -33,24 +35,23 @@ template <typename Iterator>
 auto WebResources::load(const boost::filesystem::path& base, Iterator first, Iterator last)
 {
 	std::error_code ec;
-	std::unordered_map<std::string, Resource> result;
+	Container result;
 	for (auto it = first; it != last && !ec; ++it)
 	{
 		auto path = base / *it;
 		auto mmap = MMap::open(path, ec);
+		if (ec)
+			BOOST_THROW_EXCEPTION(Error() << ErrorCode(ec) << MissingResource(path));
 
 		Blake2 hasher;
 		hasher.update(mmap.data(), mmap.size());
 		auto etag = to_quoted_hex(ObjectID{hasher.finalize()});
 
 		result.emplace(
-			std::piecewise_construct,
-			std::forward_as_tuple(*it),
-			std::forward_as_tuple(
-				std::move(mmap),
-				std::string{resource_mime(path.extension().string())},
-				std::move(etag)
-			)
+			*it,
+			std::move(mmap),
+			std::string{resource_mime(path.extension().string())},
+			std::move(etag)
 		);
 	}
 	return result;
@@ -62,29 +63,34 @@ WebResources::WebResources(const boost::filesystem::path& web_root) :
 {
 }
 
-WebResources::Response WebResources::find_static(const std::string& filename, boost::string_view etag, int version) const
+WebResources::Response WebResources::find_static(std::string_view filename, boost::string_view etag, int version) const
 {
 	auto it = m_static.find(filename);
 	if (it == m_static.end())
 		return Response{http::status::not_found, version};
 
-	if (!etag.empty() && etag == it->second.etag())
+	if (!etag.empty() && etag == it->etag())
 	{
 		Response res{http::status::not_modified, version};
 		res.set(http::field::cache_control, "private, max-age=0, must-revalidate");
-		res.set(http::field::etag, it->second.etag());
+		res.set(http::field::etag, it->etag());
 		return res;
 	}
 
-	return it->second.get(version, false);
+	return it->get(version, false);
 }
 
-WebResources::Response WebResources::find_dynamic(const std::string& filename, int version) const
+WebResources::Response WebResources::find_dynamic(std::string_view filename, int version) const
 {
 	auto it = m_dynamic.find(filename);
 	return it != m_dynamic.end() ?
-		it->second.get(version, true) :
+		it->get(version, true) :
 		Response{http::status::not_found, version};
+}
+
+bool WebResources::is_static(const std::string& filename) const
+{
+	return m_static.find(filename) != m_static.end();
 }
 
 WebResources::Response WebResources::Resource::get(int version, bool dynamic) const

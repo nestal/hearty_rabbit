@@ -1,19 +1,20 @@
 {
-  "cert_chain": "certificate.pem",
-  "private_key": "key.pem",
-  "web_root": "/usr/lib/hearty_rabbit",
-  "server_name" : "example.com",
-  "blob_path": "/var/hearty_rabbit",
-  "http": {
-    "address": "0.0.0.0",
-    "port": 8080
-  },
-  "https": {
-    "address": "0.0.0.0",
-    "port": 4433
-  },
-  "redis": {
-    "address": "192.168.1.1",
-    "port": 9181
-  }
+	// Comments are allowed.
+	"cert_chain": "certificate.pem",
+	"private_key": "key.pem",
+	"web_root": "/usr/lib/hearty_rabbit",
+	"server_name": "example.com",
+	"blob_path": "/var/hearty_rabbit",
+	"http": {
+		"address": "0.0.0.0",
+		"port": 8080
+	},
+	"https": {
+		"address": "0.0.0.0",
+		"port": 4433
+	},
+	"redis": {
+		"address": "192.168.1.1",
+		"port": 9181
+	}
 }

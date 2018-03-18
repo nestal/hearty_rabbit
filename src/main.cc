@@ -49,7 +49,7 @@ int Main(int argc, const char* const* argv)
 
 	else if (cfg.blob_id([&server](auto&& filename)
 	{
-//		BlobObject blob{boost::filesystem::path{filename}};
+//		BlobFile blob{boost::filesystem::path{filename}};
 //		std::cout << blob.ID() << std::endl;
 	})) { return EXIT_SUCCESS;}
 

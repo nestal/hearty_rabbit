@@ -10,62 +10,50 @@
 // Created by nestal on 3/3/18.
 //
 
-#include "BlobObject.hh"
-#include "BlobMeta.hh"
+#include "BlobFile.hh"
+#include "CollEntry.hh"
+#include "Ownership.hh"
+#include "Permission.hh"
 
 #include "image/RotateImage.hh"
 #include "image/JPEG.hh"
 #include "util/MMap.hh"
 #include "util/Log.hh"
-
-#include <rapidjson/ostreamwrapper.h>
-#include <rapidjson/writer.h>
-#include <rapidjson/pointer.h>
-#include <iostream>
+#include "util/Magic.hh"
 
 namespace hrb {
 
 namespace {
 const std::string default_rendition = "master";
-const std::string metafile = "meta";
 }
 
-BlobMeta BlobObject::meta() const
-{
-	rapidjson::Document json;
-	json.Parse(m_meta.data(), m_meta.size());
-
-	return BlobMeta::load(json);
-}
-
-BlobObject BlobObject::upload(
+BlobFile BlobFile::upload(
 	UploadFile&& tmp,
 	const Magic& magic,
-	const Size& resize_img,
+	const Size2D& resize_img,
 	std::string_view filename,
 	int quality,
 	std::error_code& ec
 )
 {
-	BlobObject result;
+	BlobFile result;
 
 	auto master = MMap::open(tmp.native_handle(), ec);
 	if (ec)
 	{
-		Log(LOG_WARNING, "BlobObject::upload(): cannot mmap temporary file %1% %2%", ec, ec.message());
+		Log(LOG_WARNING, "BlobFile::upload(): cannot mmap temporary file %1% %2%", ec, ec.message());
 		return result;
 	}
 
-	auto meta = BlobMeta::deduce_meta(master.blob(), magic);
-	meta.filename(filename);
+	auto mime = magic.mime(master.blob());
 
-	if (meta.mime() == "image/jpeg")
+	if (mime == "image/jpeg")
 	{
 		RotateImage transform;
 		auto rotated = transform.auto_rotate(master.buffer(), ec);
 		if (ec)
 		{
-			Log(LOG_WARNING, "BlobObject::upload(): cannot rotate image %1% %2%", ec, ec.message());
+			Log(LOG_WARNING, "BlobFile::upload(): cannot rotate image %1% %2%", ec, ec.message());
 			return result;
 		}
 
@@ -88,18 +76,12 @@ BlobObject BlobObject::upload(
 	result.m_id     = tmp.ID();
 	result.m_tmp    = std::move(tmp);
 	result.m_master = std::move(master);
-
-	// write meta to file
-	std::ostringstream ss;
-	rapidjson::OStreamWrapper osw{ss};
-	rapidjson::Writer<rapidjson::OStreamWrapper> writer{osw};
-	meta.serialize().Accept(writer);
-	result.m_meta = ss.str();
+	result.m_meta = CollEntry::create(Permission{}, filename, mime);
 
 	return result;
 }
 
-BufferView BlobObject::blob() const
+BufferView BlobFile::blob() const
 {
 	return m_master.buffer();
 }
@@ -127,7 +109,7 @@ void save_blob(const Blob& blob, const fs::path& dest, std::error_code& ec)
 		ec.assign(0, ec.category());
 }
 
-void BlobObject::save(const fs::path& dir, std::error_code& ec) const
+void BlobFile::save(const fs::path& dir, std::error_code& ec) const
 {
 	boost::system::error_code bec;
 	fs::create_directories(dir, bec);
@@ -151,12 +133,9 @@ void BlobObject::save(const fs::path& dir, std::error_code& ec) const
 			break;
 		}
 	}
-
-	if (!ec)
-		save_blob(m_meta, dir/metafile, ec);
 }
 
-BlobObject::BlobObject(const fs::path& dir, const ObjectID& id, const Size& resize_img, std::error_code& ec) :
+BlobFile::BlobFile(const fs::path& dir, const ObjectID& id, const Size2D& resize_img, std::error_code& ec) :
 	m_id{id}
 {
 	std::ostringstream fn;
@@ -164,16 +143,11 @@ BlobObject::BlobObject(const fs::path& dir, const ObjectID& id, const Size& resi
 
 	auto resized = dir/fn.str();
 	m_master = MMap::open(exists(resized) ? resized : dir/default_rendition, ec);
-
-	if (!ec)
-		m_meta = meta_string(dir);
 }
 
-std::string BlobObject::meta_string(const fs::path& dir)
+CollEntry BlobFile::entry() const
 {
-	std::error_code ec;
-	auto meta = MMap::open(dir/metafile, ec);
-	return ec ? std::string{"\"\""} : std::string{meta.string()};
+	return CollEntry{m_meta};
 }
 
 } // end of namespace hrb

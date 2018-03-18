@@ -13,6 +13,7 @@
 #include <catch.hpp>
 
 #include "hrb/BlobDatabase.hh"
+#include "hrb/BlobFile.hh"
 #include "hrb/UploadFile.hh"
 #include "net/MMapResponseBody.hh"
 #include "util/Magic.hh"
@@ -49,13 +50,13 @@ TEST_CASE("Open temp file", "[normal]")
 	REQUIRE(tmpid != ObjectID{});
 	REQUIRE(tmpid == tmp.ID());
 
-	auto dest = subject.dest(subject.save(std::move(tmp), "testfile", sec));
+	auto dest = subject.dest(subject.save(std::move(tmp), "testfile", sec).ID());
 	INFO("save() error_code = " << sec << " " << sec.message());
 	REQUIRE(!sec);
 	REQUIRE(exists(dest/"master"));
 	REQUIRE(file_size(dest/"master") == sizeof(test));
 
-	auto res = subject.response(tmpid, 11, "");
+	auto res = subject.response(tmpid, 11, "image/jpeg", "");
 	REQUIRE(res.result() == http::status::ok);
 	REQUIRE(res[http::field::etag] != boost::string_view{});
 }
@@ -75,17 +76,6 @@ TEST_CASE("Upload JPEG file to BlobDatabase", "[normal]")
 	tmp.write(black.data(), black.size(), bec);
 	REQUIRE(!bec);
 
-	auto id = subject.save(std::move(tmp), "black.jpg", ec);
+	auto id = subject.save(std::move(tmp), "black.jpg", ec).ID();
 	REQUIRE(!ec);
-
-	auto meta = MMap::open(subject.dest(id)/"meta", ec);
-	REQUIRE(!ec);
-
-	rapidjson::Document json;
-	json.Parse(static_cast<const char*>(meta.data()), meta.size());
-
-	auto&& mime_node = json["mime"];
-	REQUIRE(
-		std::string_view{mime_node.GetString(), mime_node.GetStringLength()} == "image/jpeg"
-	);
 }

@@ -14,7 +14,6 @@
 
 #include "Request.hh"
 #include "hrb/UploadFile.hh"
-#include "crypto/Authentication.hh"
 
 #include <boost/beast/core.hpp>
 #include <boost/beast/http.hpp>
@@ -24,13 +23,13 @@
 #include <boost/asio/strand.hpp>
 #include <boost/asio/ssl/context.hpp>
 #include <boost/asio/ssl/stream.hpp>
-#include <boost/filesystem/path.hpp>
 
 #include <optional>
 
 namespace hrb {
 
 class Server;
+class Authentication;
 
 // Handles an HTTP server connection
 class Session : public std::enable_shared_from_this<Session>

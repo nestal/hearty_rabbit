@@ -15,6 +15,8 @@
 #include "CheckResource.hh"
 
 #include "hrb/Server.hh"
+#include "hrb/Server.ipp"
+#include "hrb/Ownership.ipp"
 
 #include "crypto/Random.hh"
 #include "crypto/Password.hh"
@@ -150,13 +152,15 @@ TEST_CASE("General server tests", "[normal]")
 	{
 		EmptyRequest req;
 		req.version(11);
+		req.method(http::verb::get);
 
-		SECTION("Request login.html success without login")
+		SECTION("Request index.html success without login")
 		{
-			FileResponseChecker checker{http::status::ok, cfg.web_root() / "dynamic/login.html"};
+			GenericStatusChecker checker{http::status::ok};
 
 			req.target("/");
 			subject.handle_https(std::move(req), std::ref(checker), {});
+			REQUIRE(subject.get_io_context().run_for(10s) > 0);
 			REQUIRE(checker.tested());
 		}
 
@@ -181,63 +185,61 @@ TEST_CASE("General server tests", "[normal]")
 
 		SECTION("Request index.html failed without login")
 		{
-			GenericStatusChecker checker{http::status::forbidden};
+			GenericStatusChecker checker{http::status::not_found};
 
 			req.target("/index.html");
 			subject.handle_https(std::move(req), std::ref(checker), {});
-			REQUIRE(subject.get_io_context().run_for(10s) > 0);
 			REQUIRE(checker.tested());
 		}
 
 		SECTION("Request index.html success with login")
 		{
 			// TODO: check index.html file content
-			MovedResponseChecker checker{"/view/testuser/"};
+			GenericStatusChecker checker{http::status::ok};
 
 			req.target("/");
 			req.set(boost::beast::http::field::cookie, session.set_cookie());
 			subject.handle_https(std::move(req), std::ref(checker), session);
+			REQUIRE(subject.get_io_context().run_for(10s) > 0);
 			REQUIRE(checker.tested());
 		}
 
 		SECTION("requesting something not exist")
 		{
-			GenericStatusChecker checker{http::status::forbidden};
+			GenericStatusChecker checker{http::status::not_found};
 
 			req.target("/something_not_exist.html");
 			subject.handle_https(std::move(req), std::ref(checker), {});
-			REQUIRE(subject.get_io_context().run_for(10s) > 0);
 			REQUIRE(checker.tested());
 		}
 
-		SECTION("Only allow login with POST: redirect GET request to login.html")
+		SECTION("Only allow login with POST: GET request is bad request")
 		{
-			GenericStatusChecker checker{http::status::forbidden};
+			GenericStatusChecker checker{http::status::bad_request};
 
 			req.target("/login");
 			subject.handle_https(std::move(req), std::ref(checker), {});
-			REQUIRE(subject.get_io_context().run_for(10s) > 0);
 			REQUIRE(checker.tested());
 		}
 
 		SECTION("requesting other resources without a session")
 		{
-			FileResponseChecker login{http::status::ok, cfg.web_root() / "dynamic/login.html"};
-			GenericStatusChecker forbidden{http::status::forbidden};
+			GenericStatusChecker home_page{http::status::ok};
+			GenericStatusChecker not_found{http::status::not_found};
 			Checker *expected{nullptr};
 
 			SECTION("requests for / will see login page without delay")
 			{
 				req.target("/");
-				subject.handle_https(std::move(req), std::ref(login), {});
-				expected = &login;
+				subject.handle_https(std::move(req), std::ref(home_page), {});
+				REQUIRE(subject.get_io_context().run_for(10s) > 0);
+				expected = &home_page;
 			}
-			SECTION("requests to others will get 403 forbidden with delay")
+			SECTION("requests to others will get not found")
 			{
 				req.target("/something");
-				subject.handle_https(std::move(req), std::ref(forbidden), {});
-				REQUIRE(subject.get_io_context().run_for(10s) > 0);
-				expected = &forbidden;
+				subject.handle_https(std::move(req), std::ref(not_found), {});
+				expected = &not_found;
 			}
 			REQUIRE(expected != nullptr);
 			REQUIRE(expected->tested());
@@ -245,9 +247,7 @@ TEST_CASE("General server tests", "[normal]")
 
 		SECTION("requesting invalid blob")
 		{
-			GenericStatusChecker valid_session{http::status::not_found};
-			GenericStatusChecker invalid_session{http::status::forbidden};
-			Checker *expected{nullptr};
+			GenericStatusChecker bad_request{http::status::bad_request};
 
 			SECTION("blob ID too short")
 			{
@@ -255,15 +255,11 @@ TEST_CASE("General server tests", "[normal]")
 				SECTION("with valid session")
 				{
 					req.set(boost::beast::http::field::cookie, session.set_cookie());
-					subject.handle_https(std::move(req), std::ref(valid_session), session);
-					REQUIRE(valid_session.tested());
-					expected = &valid_session;
+					subject.handle_https(std::move(req), std::ref(bad_request), session);
 				}
 				SECTION("with invalid session")
 				{
-					subject.handle_https(std::move(req), std::ref(invalid_session), {});
-					REQUIRE(subject.get_io_context().run_for(10s) > 0);
-					expected = &invalid_session;
+					subject.handle_https(std::move(req), std::ref(bad_request), {});
 				}
 			}
 			SECTION("empty blob ID")
@@ -272,19 +268,16 @@ TEST_CASE("General server tests", "[normal]")
 				SECTION("with valid session")
 				{
 					req.set(boost::beast::http::field::cookie, session.set_cookie());
-					subject.handle_https(std::move(req), std::ref(valid_session), session);
-					expected = &valid_session;
+					subject.handle_https(std::move(req), std::ref(bad_request), session);
 				}
 				SECTION("with invalid session")
 				{
-					subject.handle_https(std::move(req), std::ref(invalid_session), {});
-					REQUIRE(subject.get_io_context().run_for(10s) > 0);
-					expected = &invalid_session;
+					subject.handle_https(std::move(req), std::ref(bad_request), {});
 				}
 			}
 
 			INFO("Request target: " << req.target() << " session user: " << session.user());
-			REQUIRE(expected->tested());
+			REQUIRE(bad_request.tested());
 		}
 	}
 	SECTION("Request with string body")
@@ -384,27 +377,5 @@ TEST_CASE("General server tests", "[normal]")
 			REQUIRE(subject.get_io_context().run_for(10s) > 0);
 			REQUIRE(checker.tested());
 		}
-	}
-}
-
-TEST_CASE("Extract prefix from URL until '/'", "[normal]")
-{
-	EmptyRequest req;
-	SECTION("No suffix")
-	{
-		req.target("/target");
-		REQUIRE(Server::extract_prefix(req) == std::make_tuple("target", ""));
-	}
-	SECTION("2 levels")
-	{
-		req.target("/level1/level2");
-		auto [prefix, remain] = Server::extract_prefix(req);
-		REQUIRE(prefix == "level1");
-		REQUIRE(remain == "level2");
-	}
-	SECTION("1 levels with ?")
-	{
-		req.target("/blob?q=s");
-		REQUIRE(Server::extract_prefix(req) == std::make_tuple("blob", "q=s"));
 	}
 }
