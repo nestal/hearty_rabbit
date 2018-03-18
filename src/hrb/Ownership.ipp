@@ -20,6 +20,7 @@
 #include <rapidjson/document.h>
 
 #include <vector>
+#include <util/Log.hh>
 
 #pragma once
 
@@ -82,7 +83,7 @@ public:
 	);
 
 	template <typename Complete>
-	static void scan_all(redis::Connection& db, std::string_view user, Complete&& complete);
+	static void scan_all(redis::Connection& db, std::string_view owner, std::string_view requester, Complete&& complete);
 
 	const std::string& user() const {return m_user;}
 	const std::string& path() const {return m_path;}
@@ -157,26 +158,33 @@ void Ownership::Collection::scan(
 template <typename Complete>
 void Ownership::Collection::scan_all(
 	redis::Connection& db,
-	std::string_view user,
+	std::string_view owner,
+	std::string_view requester,
 	Complete&& complete
 )
 {
-	auto colls = std::make_shared<rapidjson::Document>();
-	colls->SetObject();
+	auto jdoc = std::make_shared<rapidjson::Document>();
+	jdoc->SetObject();
 
-	scan(db, user, 0,
-		[colls](auto coll, auto&& json)
+	Log(LOG_NOTICE, "scan_all(): requester = %1%", requester);
+
+	jdoc->AddMember("owner",    std::string{owner},     jdoc->GetAllocator());
+	jdoc->AddMember("username", std::string{requester}, jdoc->GetAllocator());
+	jdoc->AddMember("colls",    rapidjson::Value{}.SetObject(), jdoc->GetAllocator());
+
+	scan(db, owner, 0,
+		[&colls=(*jdoc)["colls"], jdoc](auto coll, auto&& json)
 		{
-			colls->AddMember(
+			colls.AddMember(
 				json::string_ref(coll),
 				json,
-				colls->GetAllocator()
+				jdoc->GetAllocator()
 			);
 		},
-		[colls, comp=std::forward<Complete>(complete)](long cursor, auto ec)
+		[jdoc, comp=std::forward<Complete>(complete)](long cursor, auto ec)
 		{
 			if (cursor == 0)
-				comp(std::move(*colls), ec);
+				comp(std::move(*jdoc), ec);
 			return true;
 		}
 	);
@@ -363,10 +371,11 @@ void Ownership::scan_collections(
 template <typename Complete>
 void Ownership::scan_all_collections(
 	redis::Connection& db,
+	std::string_view requester,
 	Complete&& complete
 ) const
 {
-	return Collection::scan_all(db, m_user, std::forward<Complete>(complete));
+	return Collection::scan_all(db, m_user, requester, std::forward<Complete>(complete));
 }
 
 template <typename Complete>

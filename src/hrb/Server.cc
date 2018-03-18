@@ -285,12 +285,35 @@ void Server::serve_view(const EmptyRequest& req, Server::FileResponseSender&& se
 
 		auto res = m_lib.find_dynamic("index.html", version);
 		res.body().extra(index_needle, ss.str());
-		send(std::move(res));
+		return send(std::move(res));
 	});
 }
 
 void Server::serve_home(const EmptyRequest& req, FileResponseSender&& send, const Authentication& auth)
 {
+	if (req.method() != http::verb::get)
+		return send(http::response<SplitBuffers>{http::status::bad_request, req.version()});
+
+	Ownership{auth.user()}.scan_all_collections(
+		*m_db.alloc(),
+		auth.user(),
+		[send=std::move(send), ver=req.version(), this](auto&& colls, auto ec)
+		{
+			std::ostringstream ss;
+			ss << "var dir = ";
+
+			rapidjson::OStreamWrapper osw{ss};
+			rapidjson::Writer<rapidjson::OStreamWrapper> writer{osw};
+			colls.Accept(writer);
+
+			ss << ";";
+
+			auto res = m_lib.find_dynamic("index.html", ver);
+			res.body().extra(index_needle, ss.str());
+			return send(std::move(res));
+		}
+	);
+
 }
 
 http::response<SplitBuffers> Server::static_file_request(const EmptyRequest& req)
@@ -436,6 +459,7 @@ void Server::scan_collection(const EmptyRequest& req, Server::StringResponseSend
 
 	Ownership{path_url.user()}.scan_all_collections(
 		*m_db.alloc(),
+		auth.user(),
 		[send=std::move(send), ver=req.version()](auto&& colls, auto ec)
 		{
 			std::ostringstream ss;

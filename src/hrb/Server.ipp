@@ -90,7 +90,7 @@ void Server::on_valid_session(Request&& req, Send&& send, const Authentication& 
 	if constexpr (std::is_same<std::remove_reference_t<Request>, EmptyRequest>::value)
 	{
 		if (req.target() == "/")
-			return send(see_other(URLIntent{"view", auth.user(), "", ""}.str(), req.version()));
+			return serve_home(std::forward<Request>(req), std::forward<Send>(send), auth);
 
 		if (req.target().starts_with(url::view))
 			return serve_view(std::forward<Request>(req), std::forward<Send>(send), auth);
