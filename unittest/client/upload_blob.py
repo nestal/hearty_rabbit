@@ -3,7 +3,6 @@ import unittest
 from PIL import Image, ImageOps, ImageColor
 from io import BytesIO
 import numpy
-import json
 import random
 
 class NormalTestCase(unittest.TestCase):

@@ -88,7 +88,7 @@ void Server::on_login(const StringRequest& req, EmptyResponseSender&& send)
 			{
 				Log(LOG_INFO, "login result: %1% %2%", ec, ec.message());
 
-				auto&& res = see_other(ec ? "/login_incorrect.html" : URLIntent{"view", session.user(), "", ""}.str(), version);
+				auto&& res = see_other(ec ? "/login_incorrect.html" : "/", version);
 				if (!ec)
 					res.set(http::field::set_cookie, session.set_cookie());
 
