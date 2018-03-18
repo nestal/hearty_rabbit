@@ -204,20 +204,19 @@ TEST_CASE("Scan for all containers from testuser")
 	std::vector<std::string> dirs;
 
 	bool tested = false;
-	subject.scan_collections(*redis, 0, [&tested, &dirs](auto begin, auto end, long cursor, auto ec)
-	{
-		INFO("scan() error: " << ec << " " << ec.message());
-		REQUIRE(!ec);
-
-		while (begin != end)
+	subject.scan_collections(*redis, 0,
+		[&dirs](auto dir, auto&&)
 		{
-			dirs.emplace_back(begin->as_string());
-			begin++;
-		};
-
-		tested = true;
-		return true;
-	});
+			dirs.emplace_back(dir);
+		},
+		[&tested, &dirs](long cursor, auto ec)
+		{
+			INFO("scan() error: " << ec << " " << ec.message());
+			REQUIRE(!ec);
+			tested = true;
+			return true;
+		}
+	);
 
 	REQUIRE(ioc.run_for(10s) > 0);
 	REQUIRE(added);

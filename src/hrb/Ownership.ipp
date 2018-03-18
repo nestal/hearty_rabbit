@@ -74,8 +74,11 @@ public:
 		Complete&& complete
 	) const ;
 
-	template <typename Complete>
-	static void scan(redis::Connection& db, std::string_view user, long cursor, Complete&& complete);
+	template <typename CollectionCallback, typename Complete>
+	static void scan(redis::Connection& db, std::string_view user, long cursor,
+		CollectionCallback&& callback,
+		Complete&& complete
+	);
 
 	const std::string& user() const {return m_user;}
 	const std::string& path() const {return m_path;}
@@ -88,17 +91,20 @@ private:
 	std::string m_path;
 };
 
-template <typename Complete>
+template <typename CollectionCallback, typename Complete>
 void Ownership::Collection::scan(
 	redis::Connection& db,
 	std::string_view user,
 	long cursor,
+	CollectionCallback&& callback,
 	Complete&& complete
 )
 {
 	db.command(
 		[
-			comp=std::forward<Complete>(complete), &db, user=std::string{user}
+			comp=std::forward<Complete>(complete),
+			cb=std::forward<CollectionCallback>(callback),
+			&db, user=std::string{user}
 		](redis::Reply&& reply, std::error_code&& ec) mutable
 		{
 			if (!ec)
@@ -109,14 +115,22 @@ void Ownership::Collection::scan(
 					// Repeat scanning only when the cycle is not completed yet (i.e.
 					// cursor != 0), and the completion callback return true.
 					auto cursor = cursor_reply.to_int();
-					if (comp(dirs.begin(), dirs.end(), cursor, ec) && cursor != 0)
-						scan(db, user, cursor, std::move(comp));
+
+					// call the callback once to handle one collection
+					dirs.foreach_kv_pair([&cb](auto&& key, auto&& value)
+					{
+						cb(key, value.as_string());
+					});
+
+					// if comp return true, keep scanning with the same callback and
+					// comp as completion routine
+					if (comp(cursor, ec) && cursor != 0)
+						scan(db, user, cursor, std::move(cb), std::move(comp));
 					return;
 				}
 			}
 
-			redis::Reply empty{};
-			comp(empty.begin(), empty.end(), 0, ec);
+			comp(0, ec);
 		},
 		"HSCAN %b%b %d",
 		m_list_prefix.data(), m_list_prefix.size(),
@@ -289,14 +303,18 @@ void Ownership::find(
 	return Collection{m_user, coll}.find(db, blob, std::forward<Complete>(complete));
 }
 
-template <typename Complete>
+template <typename CollectionCallback, typename Complete>
 void Ownership::scan_collections(
 	redis::Connection& db,
 	long cursor,
+	CollectionCallback&& callback,
 	Complete&& complete
 ) const
 {
-	return Collection::scan(db, m_user, cursor, std::forward<Complete>(complete));
+	return Collection::scan(db, m_user, cursor,
+		std::forward<CollectionCallback>(callback),
+		std::forward<Complete>(complete)
+	);
 }
 
 template <typename Complete>

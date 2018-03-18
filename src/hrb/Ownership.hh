@@ -85,10 +85,11 @@ public:
 		Complete&& complete
 	) const;
 
-	template <typename Complete>
+	template <typename CollectionCallback, typename Complete>
 	void scan_collections(
 		redis::Connection& db,
 		long cursor,
+		CollectionCallback&& callback,
 		Complete&& complete
 	) const;
 
