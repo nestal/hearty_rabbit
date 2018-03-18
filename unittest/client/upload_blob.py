@@ -1,22 +1,26 @@
 import requests
 import unittest
-from PIL import Image, ImageOps
+from PIL import Image, ImageOps, ImageColor
 from io import BytesIO
 import numpy
 import json
+import random
 
 class NormalTestCase(unittest.TestCase):
 	# without the "test" prefix in the method, it is not treated as a test routine
 	@staticmethod
 	def random_image(width, height, format="jpeg"):
-		border = max(20, int(width/5), int(height/5))
-		if border*2 > width or border*2 > height:
-			border = 0
-		imarray = numpy.random.rand(height-border*2, width-border*2, 3) * 255
-		img = ImageOps.expand(Image.fromarray(imarray.astype("uint8")).convert("RGB"), border=border, fill='blue')
+		border = min(20, int(width/5), int(height/5))
+
+		imarray = numpy.random.rand(128, 128, 3) * 255
+		img = ImageOps.expand(
+			Image.fromarray(imarray.astype("uint8")).convert("RGB").resize((width - border*2, height - border*2)),
+			border=border,
+			fill="hsl({}, {}%, {}%)".format(random.randint(0,100), random.randint(0,100), random.randint(0,100))
+		)
 
 		temp = BytesIO()
-		img.save(temp, format=format)
+		img.save(temp, format=format, quality=50)
 		return temp.getvalue()
 
 	def get_collection(self, session, owner, coll):
@@ -64,7 +68,7 @@ class NormalTestCase(unittest.TestCase):
 
 	def test_upload_jpeg(self):
 		# upload to server
-		r1 = self.user1.put("https://localhost:4433/upload/sumsum/test.jpg", data=self.random_image(72, 36))
+		r1 = self.user1.put("https://localhost:4433/upload/sumsum/test.jpg", data=self.random_image(1024, 768))
 		self.assertEqual(r1.status_code, 201)
 		self.assertNotEqual(r1.headers["Location"], "")
 
@@ -76,8 +80,8 @@ class NormalTestCase(unittest.TestCase):
 
 		# the size of the images should be the same
 		self.assertEqual(jpeg.format, "JPEG")
-		self.assertEqual(jpeg.width, 72)
-		self.assertEqual(jpeg.height, 36)
+		self.assertEqual(jpeg.width, 1024)
+		self.assertEqual(jpeg.height, 768)
 
 		# cannot get the same image without credential
 		r3 = self.anon.get("https://localhost:4433" + r1.headers["Location"])
@@ -85,7 +89,7 @@ class NormalTestCase(unittest.TestCase):
 
 	def test_upload_png(self):
 		# upload random PNG to server
-		r1 = self.user1.put("https://localhost:4433/upload/sumsum/black.png", data=self.random_image(100, 120, format="png"))
+		r1 = self.user1.put("https://localhost:4433/upload/sumsum/black.png", data=self.random_image(800, 600, format="png"))
 		self.assertEqual(r1.status_code, 201)
 		self.assertNotEqual(r1.headers["Location"], "")
 
@@ -98,8 +102,8 @@ class NormalTestCase(unittest.TestCase):
 
 		# the size of the images should be the same
 		self.assertEqual(png.format, "PNG")
-		self.assertEqual(png.width, 100)
-		self.assertEqual(png.height, 120)
+		self.assertEqual(png.width, 800)
+		self.assertEqual(png.height, 600)
 
 	def test_resize_jpeg(self):
 		# upload a big JPEG image to server
@@ -146,7 +150,7 @@ class NormalTestCase(unittest.TestCase):
 
 	def test_upload_to_other_users_collection(self):
 		# forbidden
-		r1 = self.user1.put("https://localhost:4433/upload/yungyung/abc/image.jpg", data=self.random_image(320, 160))
+		r1 = self.user1.put("https://localhost:4433/upload/yungyung/abc/image.jpg", data=self.random_image(320, 640))
 		self.assertEqual(r1.status_code, 403)
 
 	def test_upload_jpeg_to_other_collection(self):
@@ -174,7 +178,7 @@ class NormalTestCase(unittest.TestCase):
 
 	def test_set_permission(self):
 		# upload to server
-		r1 = self.user1.put("https://localhost:4433/upload/sumsum/some/collection/random.jpg", data=self.random_image(100, 120))
+		r1 = self.user1.put("https://localhost:4433/upload/sumsum/some/collection/random.jpg", data=self.random_image(1000, 1200))
 		self.assertEqual(r1.status_code, 201)
 		blob_id = r1.headers["Location"][-40:]
 
@@ -217,7 +221,7 @@ class NormalTestCase(unittest.TestCase):
 		# upload random image to 10 different collections
 		for x in range(10):
 			coll = "https://localhost:4433/upload/sumsum/collection{}/random.jpg".format(x)
-			res = self.user1.put(coll, data=self.random_image(100, 120))
+			res = self.user1.put(coll, data=self.random_image(480, 320))
 			self.assertEqual(res.status_code, 201)
 
 		r1 = self.user1.get("https://localhost:4433/listcolls/sumsum/")
