@@ -224,7 +224,7 @@ TEST_CASE("Scan for all containers from testuser")
 	REQUIRE(tested);
 	REQUIRE(!dirs.empty());
 	INFO("dirs.size() " << dirs.size());
-	REQUIRE(std::find(dirs.begin(), dirs.end(), "dir:testuser:/") != dirs.end());
+	REQUIRE(std::find(dirs.begin(), dirs.end(), "/") != dirs.end());
 }
 
 TEST_CASE("collection entry", "[normal]")

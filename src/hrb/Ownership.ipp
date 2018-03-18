@@ -50,7 +50,8 @@ private:
 class Ownership::Collection
 {
 private:
-	static const std::string_view m_prefix;
+	static const std::string_view m_dir_prefix;
+	static const std::string_view m_list_prefix;
 
 public:
 	explicit Collection(std::string_view user, std::string_view path);
@@ -117,10 +118,10 @@ void Ownership::Collection::scan(
 			redis::Reply empty{};
 			comp(empty.begin(), empty.end(), 0, ec);
 		},
-		"SCAN %d MATCH %b%b:*",
-		cursor,
-		m_prefix.data(), m_prefix.size(),
-		user.data(), user.size()
+		"HSCAN %b%b %d",
+		m_list_prefix.data(), m_list_prefix.size(),
+		user.data(), user.size(),
+		cursor
 	);
 }
 
@@ -146,7 +147,7 @@ void Ownership::Collection::find(
 		},
 
 		"HGET %b%b:%b %b",
-		m_prefix.data(), m_prefix.size(),
+		m_dir_prefix.data(), m_dir_prefix.size(),
 		m_user.data(), m_user.size(),
 		m_path.data(), m_path.size(),
 		blob.data(), blob.size()
@@ -165,7 +166,7 @@ void Ownership::Collection::set_permission(
 	// we can't lock a field in the hash table, so lock a dummy key instead
 	db.command(
 		"WATCH lock:%b%b:%b:%b",
-		m_prefix.data(), m_prefix.size(),
+		m_dir_prefix.data(), m_dir_prefix.size(),
 		m_user.data(), m_user.size(),
 		m_path.data(), m_path.size(),
 		blob.data(), blob.size()
@@ -182,7 +183,7 @@ void Ownership::Collection::set_permission(
 			db->command("MULTI");
 			db->command(
 				"SETEX lock:%b%b:%b:%b 3600 %b",
-				m_prefix.data(), m_prefix.size(),
+				m_dir_prefix.data(), m_dir_prefix.size(),
 				m_user.data(), m_user.size(),
 				m_path.data(), m_path.size(),
 				blob.data(), blob.size(),
@@ -190,7 +191,7 @@ void Ownership::Collection::set_permission(
 			);
 			db->command(
 				"HSET %b%b:%b %b %b",
-				m_prefix.data(), m_prefix.size(),
+				m_dir_prefix.data(), m_dir_prefix.size(),
 				m_user.data(), m_user.size(),
 				m_path.data(), m_path.size(),
 				blob.data(), blob.size(),
@@ -206,7 +207,7 @@ void Ownership::Collection::set_permission(
 		},
 
 		"HGET %b%b:%b %b",
-		m_prefix.data(), m_prefix.size(),
+		m_dir_prefix.data(), m_dir_prefix.size(),
 		m_user.data(), m_user.size(),
 		m_path.data(), m_path.size(),
 		blob.data(), blob.size()
@@ -229,7 +230,7 @@ void Ownership::Collection::serialize(
 			comp(serialize(reply, requester), std::move(ec));
 		},
 		"HGETALL %b%b:%b",
-		m_prefix.data(), m_prefix.size(),
+		m_dir_prefix.data(), m_dir_prefix.size(),
 		m_user.data(), m_user.size(),
 		m_path.data(), m_path.size()
 	);

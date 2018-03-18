@@ -19,6 +19,9 @@ class NormalTestCase(unittest.TestCase):
 		response = session.get("https://localhost:4433/coll/" + owner + "/" + coll + "/")
 		self.assertEqual(response.status_code, 200)
 		self.assertEqual(response.headers["Content-type"], "application/json")
+		self.assertEqual(response.json()["collection"], coll)
+		self.assertEqual(response.json()["owner"], owner)
+		self.assertTrue("elements" in response.json())
 		return response.json()
 
 	def setUp(self):
@@ -134,13 +137,8 @@ class NormalTestCase(unittest.TestCase):
 		self.assertEqual(r5.status_code, 400)
 
 	def test_view_collection(self):
-		# resource not exist
-		r1 = self.user1.get("https://localhost:4433/coll/sumsum/")
-		self.assertEqual(r1.status_code, 200)
-		self.assertEqual(r1.headers["Content-type"], "application/json")
-		self.assertGreater(len(r1.json()["elements"]), 0)
-		self.assertEqual(r1.json()["collection"], "")
-		self.assertEqual(r1.json()["username"], "sumsum")
+		elements = self.get_collection(self.user1, "sumsum", "")
+		self.assertEqual(elements["username"], "sumsum")
 
 	def test_upload_to_other_users_collection(self):
 		# forbidden
@@ -190,6 +188,11 @@ class NormalTestCase(unittest.TestCase):
 
 		# other user can get the image
 		self.assertEqual(self.user2.get("https://localhost:4433" + r1.headers["Location"]).status_code, 200)
+		self.assertTrue(blob_id in self.get_collection(self.user2, "sumsum", "some/collection")["elements"])
+
+		# anonymous user can find it in collection
+		self.assertEqual(self.anon.get("https://localhost:4433" + r1.headers["Location"]).status_code, 200)
+		self.assertTrue(blob_id in self.get_collection(self.anon,  "sumsum", "some/collection")["elements"])
 
 		# owner set permission to shared
 		self.assertEqual(self.user1.post(
@@ -199,40 +202,12 @@ class NormalTestCase(unittest.TestCase):
 		).status_code, 204)
 
 		# other user can get the image
-		r6 = self.user2.get("https://localhost:4433" + r1.headers["Location"])
-		self.assertEqual(r6.status_code, 200)
+		self.assertEqual(self.user2.get("https://localhost:4433" + r1.headers["Location"]).status_code, 200)
+		self.assertTrue(blob_id in self.get_collection(self.user2,  "sumsum", "some/collection")["elements"])
+
+		# anonymous user cannot
+		self.assertEqual(self.anon.get("https://localhost:4433" + r1.headers["Location"]).status_code, 403)
+		self.assertFalse(blob_id in self.get_collection(self.anon,  "sumsum", "some/collection")["elements"])
 		
-		# owner set permission to public
-		r7 = self.user1.post(
-			"https://localhost:4433" + r1.headers["Location"],
-			data="perm=public",
-			headers={"Content-type": "application/x-www-form-urlencoded"}
-		)
-		self.assertEqual(r7.status_code, 204)
-
-		# anonymous user can find it in collection
-		r8 = self.anon.get("https://localhost:4433/coll/sumsum/some/collection/")
-		self.assertEqual(r8.status_code, 200)
-		self.assertEqual(r8.headers["Content-type"], "application/json")
-		self.assertGreater(len(r8.json()["elements"]), 0)
-		self.assertEqual(r8.json()["collection"], "some/collection")
-		self.assertEqual(r8.json()["owner"], "sumsum")
-		self.assertEqual(r8.json()["username"], "")
-		self.assertEqual(r8.json()["elements"][blob_id]["filename"], "random.jpg")
-		self.assertEqual(r8.json()["elements"][blob_id]["mime"], "image/jpeg")
-
-		# owner set permission to private
-		r9 = self.user1.post(
-			"https://localhost:4433" + r1.headers["Location"],
-			data="perm=private",
-			headers={"Content-type": "application/x-www-form-urlencoded"}
-		)
-		self.assertEqual(r9.status_code, 204)
-
-		# anonymous user will not find it in collection
-		r10 = self.anon.get("https://localhost:4433/coll/sumsum/some/collection/")
-		self.assertEqual(r10.status_code, 200)
-		self.assertFalse(blob_id in r10.json()["elements"])
-
 if __name__ == '__main__':
 	unittest.main()
