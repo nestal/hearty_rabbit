@@ -1,6 +1,6 @@
 import requests
 import unittest
-from PIL import Image
+from PIL import Image, ImageOps
 from io import BytesIO
 import numpy
 import json
@@ -9,8 +9,12 @@ class NormalTestCase(unittest.TestCase):
 	# without the "test" prefix in the method, it is not treated as a test routine
 	@staticmethod
 	def random_image(width, height, format="jpeg"):
-		imarray = numpy.random.rand(height, width, 3) * 255
-		img = Image.fromarray(imarray.astype("uint8")).convert("RGB")
+		border = max(20, int(width/5), int(height/5))
+		if border*2 > width or border*2 > height:
+			border = 0
+		imarray = numpy.random.rand(height-border*2, width-border*2, 3) * 255
+		img = ImageOps.expand(Image.fromarray(imarray.astype("uint8")).convert("RGB"), border=border, fill='blue')
+
 		temp = BytesIO()
 		img.save(temp, format=format)
 		return temp.getvalue()
@@ -142,7 +146,7 @@ class NormalTestCase(unittest.TestCase):
 
 	def test_upload_to_other_users_collection(self):
 		# forbidden
-		r1 = self.user1.put("https://localhost:4433/upload/yungyung/abc/image.jpg", data=self.random_image(32, 16))
+		r1 = self.user1.put("https://localhost:4433/upload/yungyung/abc/image.jpg", data=self.random_image(320, 160))
 		self.assertEqual(r1.status_code, 403)
 
 	def test_upload_jpeg_to_other_collection(self):
