@@ -50,9 +50,36 @@ div.login form input {
 	height: auto;
 }
 
-#hrb-entry-root img:hover,
-#hrb-entry-root img:focus {
+.hrb-entry {
+	position: relative;
+	width: 100%;
+	height: auto;
+}
+
+.hrb-entry .text-overlay-box {
+	position: absolute;
+	bottom: 1.1em;
+	left: 0;
+	width: 100%;
+
+	font-size: 1em;
+}
+
+.hrb-entry .text-overlay-box span {
+	color: white;
+	background-color: rgba(0, 0, 0, 0.7);
+	padding: 5px;
+	opacity: 0.20;
+}
+
+#hrb-entry-root .hrb-entry:hover,
+#hrb-entry-root .hrb-entry:focus {
 	cursor: pointer;
+}
+
+#hrb-entry-root .hrb-entry:hover .text-overlay-box span,
+#hrb-entry-root .hrb-entry:focus .text-overlay-box span{
+	opacity: 0.8;
 }
 
 #hrb-entry-prototype {
