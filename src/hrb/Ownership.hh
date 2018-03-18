@@ -93,6 +93,12 @@ public:
 		Complete&& complete
 	) const;
 
+	template <typename Complete>
+	void scan_all_collections(
+		redis::Connection& db,
+		Complete&& complete
+	) const;
+
 	const std::string& user() const {return m_user;}
 
 private:

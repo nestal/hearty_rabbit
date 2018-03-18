@@ -15,6 +15,7 @@
 #include "CollEntry.hh"
 
 #include "util/Error.hh"
+#include "util/JsonHelper.hh"
 
 #include <rapidjson/document.h>
 
@@ -79,6 +80,9 @@ public:
 		CollectionCallback&& callback,
 		Complete&& complete
 	);
+
+	template <typename Complete>
+	static void scan_all(redis::Connection& db, std::string_view user, Complete&& complete);
 
 	const std::string& user() const {return m_user;}
 	const std::string& path() const {return m_path;}
@@ -147,6 +151,34 @@ void Ownership::Collection::scan(
 		m_list_prefix.data(), m_list_prefix.size(),
 		user.data(), user.size(),
 		cursor
+	);
+}
+
+template <typename Complete>
+void Ownership::Collection::scan_all(
+	redis::Connection& db,
+	std::string_view user,
+	Complete&& complete
+)
+{
+	auto colls = std::make_shared<rapidjson::Document>();
+	colls->SetObject();
+
+	scan(db, user, 0,
+		[colls](auto coll, auto&& json)
+		{
+			colls->AddMember(
+				json::string_ref(coll),
+				json,
+				colls->GetAllocator()
+			);
+		},
+		[colls, comp=std::forward<Complete>(complete)](long cursor, auto ec)
+		{
+			if (cursor == 0)
+				comp(std::move(*colls), ec);
+			return true;
+		}
 	);
 }
 
@@ -326,6 +358,15 @@ void Ownership::scan_collections(
 		std::forward<CollectionCallback>(callback),
 		std::forward<Complete>(complete)
 	);
+}
+
+template <typename Complete>
+void Ownership::scan_all_collections(
+	redis::Connection& db,
+	Complete&& complete
+) const
+{
+	return Collection::scan_all(db, m_user, std::forward<Complete>(complete));
 }
 
 template <typename Complete>

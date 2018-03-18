@@ -289,6 +289,10 @@ void Server::serve_view(const EmptyRequest& req, Server::FileResponseSender&& se
 	});
 }
 
+void Server::serve_home(const EmptyRequest& req, FileResponseSender&& send, const Authentication& auth)
+{
+}
+
 http::response<SplitBuffers> Server::static_file_request(const EmptyRequest& req)
 {
 	Log(LOG_NOTICE, "requesting path %1% %2%", req.target(), req[http::field::if_none_match]);
@@ -430,37 +434,22 @@ void Server::scan_collection(const EmptyRequest& req, Server::StringResponseSend
 	if (auth.user() != path_url.user())
 		return send(http::response<http::string_body>{http::status::forbidden, req.version()});
 
-	auto colls = std::make_shared<rapidjson::Document>();
-	colls->SetObject();
-
-	Ownership{path_url.user()}.scan_collections(
-		*m_db.alloc(), 0,
-		[colls](auto coll, auto&& json)
+	Ownership{path_url.user()}.scan_all_collections(
+		*m_db.alloc(),
+		[send=std::move(send), ver=req.version()](auto&& colls, auto ec)
 		{
-			colls->AddMember(
-				json::string_ref(coll),
-				json,
-				colls->GetAllocator()
-			);
-		},
-		[colls, send=std::move(send), ver=req.version()](long cursor, auto ec)
-		{
-			if (cursor == 0)
-			{
-				std::ostringstream ss;
-				rapidjson::OStreamWrapper osw{ss};
-				rapidjson::Writer<rapidjson::OStreamWrapper> writer{osw};
-				colls->Accept(writer);
+			std::ostringstream ss;
+			rapidjson::OStreamWrapper osw{ss};
+			rapidjson::Writer<rapidjson::OStreamWrapper> writer{osw};
+			colls.Accept(writer);
 
-				http::response<http::string_body> res{
-					std::piecewise_construct,
-					std::make_tuple(ss.str()),
-					std::make_tuple(http::status::ok, ver)
-				};
-				res.set(http::field::content_type, "application/json");
-				send(std::move(res));
-			}
-			return true;
+			http::response<http::string_body> res{
+				std::piecewise_construct,
+				std::make_tuple(ss.str()),
+				std::make_tuple(http::status::ok, ver)
+			};
+			res.set(http::field::content_type, "application/json");
+			return send(std::move(res));
 		}
 	);
 }

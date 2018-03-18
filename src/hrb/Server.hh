@@ -100,6 +100,7 @@ private:
 	void update_blob(BlobRequest&& req, EmptyResponseSender&& send);
 	bool is_static_resource(boost::string_view target) const;
 	void serve_view(const EmptyRequest& req, FileResponseSender&& send, const Authentication& auth);
+	void serve_home(const EmptyRequest& req, FileResponseSender&& send, const Authentication& auth);
 	void serve_collection(const EmptyRequest& req, StringResponseSender&& send, const Authentication& auth);
 	void scan_collection(const EmptyRequest& req, StringResponseSender&& send, const Authentication& auth);
 	void prepare_upload(UploadFile& result, std::error_code& ec);
