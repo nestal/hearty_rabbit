@@ -15,15 +15,19 @@
 <body class="index-body">
 <div class="topnav">
 	<img class="nav-logo" src="/logo.svg">
-	<div id="username-nav" class="nav-level1" >
+	<div id="username-nav" class="nav-level1 show-only-after-logged-in" >
 		<a href="/"><span id="show-username"></span>'s Photo <i class="material-icons">arrow_drop_down</i></a>
 	</div>
-	<label class="nav-level1" id="login-nav">Login</label>
-	<label class="nav-level1" for="file-upload">
+	<label class="nav-level1 show-only-before-logged-in" id="login-nav">Login</label>
+	<label class="nav-level1 show-only-after-logged-in" for="file-upload" id="upload-nav">
 		<i class="nav-icons material-icons">file_upload</i>
 	</label>
-	<div class="nav-level1" id="create-album-nav"><i class="nav-icons material-icons">create_new_folder</i></div>
-	<div class="nav-level1"><a id="logout-nav" href="/logout"><i class="nav-icons material-icons">exit_to_app</i></a></div>
+	<div class="nav-level1 show-only-after-logged-in" id="create-album-nav">
+		<i class="nav-icons material-icons">create_new_folder</i>
+	</div>
+	<div class="nav-level1 show-only-after-logged-in" id="logout-nav">
+		<a href="/logout"><i class="nav-icons material-icons">exit_to_app</i></a>
+	</div>
 </div>
 
 <section>
@@ -79,8 +83,9 @@
 			<h1>Welcome to HeartyRabbit!</h1>
 			<div id="login-message">Please login:</div>
 			<form action="/login" method="post">
-				<input id="username" name="username" type="text" placeholder="Username">
-				<input id="password" name="password" type="password" placeholder="Password">
+				<input name="username" type="text" placeholder="Username">
+				<input name="password" type="password" placeholder="Password">
+				<input id="login-redirect" name="redirect" type="hidden">
 				<button type="submit">Login</button>
 			</form>
 		</div>
