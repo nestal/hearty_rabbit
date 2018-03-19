@@ -1,3 +1,7 @@
+body {
+	font-family: 'Mukta Mahee', sans-serif;
+}
+
 #login-dialog, #create-album-dialog {
 	display: none;
 }
@@ -17,15 +21,30 @@ div.login-form {
 	margin: 0 auto 100px;
 	padding: 45px;
 	text-align: center;
+	font-size: 130%;
 }
 
-div.login form input {
+div.login input {
 	width: 100%;
 	box-sizing: border-box;
 	border: 0;
 	margin: 0 0 15px;
 	padding: 15px;
 	background: #f2f2f2;
+}
+
+div.login button {
+	background-color: #4CAF50;
+    color: white;
+    padding: 14px 20px;
+	border: none;
+    cursor: pointer;
+    width: 100%;
+	font-size: 100%;
+}
+
+div.login button:hover {
+	 opacity: 0.8;
 }
 
 /* Refer to: https://css-tricks.com/seamless-responsive-photo-grid/ */
@@ -67,7 +86,6 @@ div.login form input {
 	opacity: 0.20;
 
 	font-size: 1em;
-	font-family: 'Mukta Mahee', sans-serif;
 }
 
 #hrb-entry-root .hrb-entry:hover,
@@ -138,7 +156,6 @@ div.login form input {
 	padding-left: 0.5em;
 	padding-right: 0.5em;
 	font-size: 100%;
-	font-family: 'Mukta Mahee', sans-serif;
 	cursor: pointer;
 }
 
@@ -265,7 +282,6 @@ div.login form input {
 /* Tooltip text */
 .tooltip .tooltiptext {
 	font-size: 0.3em;
-	font-family: 'Mukta Mahee', sans-serif;
 	visibility: hidden;
 	background-color: white;
 	color: black;
@@ -286,5 +302,4 @@ div.login form input {
 
 #headline {
 	margin-top: 4rem;
-	font-family: 'Mukta Mahee', sans-serif;
 }
