@@ -20,7 +20,6 @@
 #include <rapidjson/document.h>
 
 #include <vector>
-#include <util/Log.hh>
 
 #pragma once
 
@@ -165,8 +164,6 @@ void Ownership::Collection::scan_all(
 {
 	auto jdoc = std::make_shared<rapidjson::Document>();
 	jdoc->SetObject();
-
-	Log(LOG_NOTICE, "scan_all(): requester = %1%", requester);
 
 	jdoc->AddMember("owner",    std::string{owner},     jdoc->GetAllocator());
 	jdoc->AddMember("username", std::string{requester}, jdoc->GetAllocator());

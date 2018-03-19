@@ -128,6 +128,7 @@ div.login form input {
 /* Style the links inside the navigation bar */
 .topnav .nav-level1 {
 	float: left;
+	overflow: auto;
 	display: inline-block;
 	color: #f2f2f2;
 	text-align: center;
@@ -138,6 +139,16 @@ div.login form input {
 	font-size: 100%;
 	font-family: 'Mukta Mahee', sans-serif;
 	cursor: pointer;
+}
+
+.topnav .nav-level1 a {
+	color: inherit;
+	text-decoration: none;
+}
+
+.topnav .nav-level1 .nav-icons {
+	font-size: 150%;
+	vertical-align: middle;
 }
 
 /* hide the ugly file upload form */
@@ -153,7 +164,7 @@ div.login form input {
 }
 
 /* Change the color of links on hover */
-.topnav a:hover, .topnav label:hover, .topnav span:hover  {
+.topnav .nav-level1:hover {
 	background-color: #ddd;
 	color: black;
 }
@@ -261,7 +272,6 @@ div.login form input {
 	padding: 0.2em;
 	border-radius: 6px;
 
-	/* Position the tooltip text - see examples below! */
 	position: absolute;
 	z-index: 1;
 	left: 0;
@@ -271,4 +281,9 @@ div.login form input {
 /* Show the tooltip text when you mouse over the tooltip container */
 .tooltip:hover .tooltiptext {
 	visibility: visible;
+}
+
+#headline {
+	margin-top: 4rem;
+	font-family: 'Mukta Mahee', sans-serif;
 }
