@@ -79,6 +79,7 @@ public:
 	std::string_view as_any_string() const noexcept;
 	boost::asio::const_buffer as_buffer() const noexcept;
 	auto type() const {return m_reply->type;}
+	std::size_t length() const;
 
 	explicit operator bool() const noexcept ;
 
@@ -113,6 +114,8 @@ public:
 	{
 		return as_tuple_impl(ec, std::make_index_sequence<count>{});
 	}
+
+	char* as_mutable_string();
 
 private:
 	template <std::size_t... index>

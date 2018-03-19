@@ -46,4 +46,28 @@ Permission Permission::private_()
 	return Permission{' '};
 }
 
+std::string_view Permission::description() const
+{
+	switch (m_perm)
+	{
+		case '*':   return "public";
+		case '+':   return "shared";
+		case ' ':	return "private";
+		default:    return "acl";
+	}
+}
+
+Permission Permission::from_description(std::string_view description)
+{
+	if (description == "public")
+		return Permission::public_();
+	else if (description == "private")
+		return Permission::private_();
+	else if (description == "shared")
+		return Permission::shared();
+	else
+		// default is private
+		return Permission{};
+}
+
 } // end of namespace hrb

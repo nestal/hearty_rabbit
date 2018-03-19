@@ -31,6 +31,8 @@ std::string_view string_view(const rapidjson::Value& value);
 std::string string(const rapidjson::Value& value);
 const rapidjson::Value& required(const rapidjson::Value& object, std::string_view field);
 
+// Note that AddMember(StringRef) does not deep-copy the string.
+// Use AddMember(std::string) to deep-copy
 template <typename Ch>
 rapidjson::GenericStringRef<Ch> string_ref(std::basic_string_view<Ch> sv)
 {

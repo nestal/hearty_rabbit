@@ -11,6 +11,7 @@
 //
 
 #include "CollEntry.hh"
+#include "util/JsonHelper.hh"
 
 #include <rapidjson/document.h>
 #include <rapidjson/ostreamwrapper.h>
@@ -30,10 +31,10 @@ std::string CollEntry::create(Permission perm, std::string_view filename, std::s
 {
 	rapidjson::Document json;
 	json.SetObject();
-	json.AddMember("mime", rapidjson::StringRef(mime.data(), mime.size()), json.GetAllocator());
+	json.AddMember("mime", json::string_ref(mime), json.GetAllocator());
 
 	if (!filename.empty())
-		json.AddMember("filename", rapidjson::StringRef(filename.data(), filename.size()), json.GetAllocator());
+		json.AddMember("filename", json::string_ref(filename), json.GetAllocator());
 
 	std::ostringstream ss;
 	ss << perm.perm();

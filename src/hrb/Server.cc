@@ -32,6 +32,7 @@
 #include "util/Log.hh"
 #include "util/FS.hh"
 #include "util/Escape.hh"
+#include "util/JsonHelper.hh"
 
 #include <boost/exception/errinfo_api_function.hpp>
 #include <boost/exception/info.hpp>
@@ -39,6 +40,7 @@
 #include <boost/beast/http/message.hpp>
 #include <boost/beast/http/empty_body.hpp>
 
+#include <rapidjson/document.h>
 #include <rapidjson/ostreamwrapper.h>
 #include <rapidjson/writer.h>
 
@@ -86,7 +88,7 @@ void Server::on_login(const StringRequest& req, EmptyResponseSender&& send)
 			{
 				Log(LOG_INFO, "login result: %1% %2%", ec, ec.message());
 
-				auto&& res = see_other(ec ? "/login_incorrect.html" : URLIntent{"view", session.user(), "", ""}.str(), version);
+				auto&& res = see_other(ec ? "/login_incorrect.html" : "/", version);
 				if (!ec)
 					res.set(http::field::set_cookie, session.set_cookie());
 
@@ -151,19 +153,13 @@ void Server::update_blob(BlobRequest&& req, EmptyResponseSender&& send)
 	if (!req.request_by_owner())
 		return send(http::response<http::empty_body>{http::status::forbidden, req.version()});
 
+	Log(LOG_NOTICE, "receving form string for updating blob %1%: %2%", *req.blob(), req.body());
+
 	assert(req.blob());
 	auto [perm_str] = find_fields(req.body(), "perm");
 	Log(LOG_NOTICE, "updating blob %1% to %2%", *req.blob(), perm_str);
 
-	Permission perm;
-	if (perm_str == "public")
-		perm = Permission::public_();
-	else if (perm_str == "private")
-		perm = Permission::public_();
-	else if (perm_str == "shared")
-		perm = Permission::shared();
-	else
-		return send(http::response<http::empty_body>{http::status::bad_request, req.version()});
+	auto perm = Permission::from_description(perm_str);
 
 	Ownership{req.owner()}.set_permission(
 		*m_db.alloc(), req.collection(), *req.blob(), perm, [send=std::move(send), version=req.version()](auto&& ec)
@@ -289,8 +285,35 @@ void Server::serve_view(const EmptyRequest& req, Server::FileResponseSender&& se
 
 		auto res = m_lib.find_dynamic("index.html", version);
 		res.body().extra(index_needle, ss.str());
-		send(std::move(res));
+		return send(std::move(res));
 	});
+}
+
+void Server::serve_home(const EmptyRequest& req, FileResponseSender&& send, const Authentication& auth)
+{
+	if (req.method() != http::verb::get)
+		return send(http::response<SplitBuffers>{http::status::bad_request, req.version()});
+
+	Ownership{auth.user()}.scan_all_collections(
+		*m_db.alloc(),
+		auth.user(),
+		[send=std::move(send), ver=req.version(), this](auto&& colls, auto ec)
+		{
+			std::ostringstream ss;
+			ss << "var dir = ";
+
+			rapidjson::OStreamWrapper osw{ss};
+			rapidjson::Writer<rapidjson::OStreamWrapper> writer{osw};
+			colls.Accept(writer);
+
+			ss << ";";
+
+			auto res = m_lib.find_dynamic("index.html", ver);
+			res.body().extra(index_needle, ss.str());
+			return send(std::move(res));
+		}
+	);
+
 }
 
 http::response<SplitBuffers> Server::static_file_request(const EmptyRequest& req)
@@ -380,9 +403,11 @@ bool Server::is_static_resource(boost::string_view target) const
 	return m_lib.is_static(target.to_string());
 }
 
-unsigned short Server::https_port() const
+std::string Server::https_root() const
 {
-	return m_cfg.listen_https().port();
+	using namespace std::literals;
+	return "https://" + m_cfg.server_name()
+		+ (m_cfg.listen_https().port() == 443 ? ""s : (":"s + std::to_string(m_cfg.listen_https().port())));
 }
 
 std::size_t Server::upload_limit() const
@@ -416,6 +441,38 @@ void Server::serve_collection(const EmptyRequest& req, StringResponseSender&& se
 				std::piecewise_construct,
 				std::make_tuple(std::move(json)),
 				std::make_tuple(http::status::ok, version)
+			};
+			res.set(http::field::content_type, "application/json");
+			return send(std::move(res));
+		}
+	);
+}
+
+void Server::scan_collection(const EmptyRequest& req, Server::StringResponseSender&& send, const Authentication& auth)
+{
+	if (req.method() != http::verb::get)
+		return send(http::response<http::string_body>{http::status::bad_request, req.version()});
+
+	URLIntent path_url{req.target()};
+
+	// TODO: allow other users to query another user's shared collections
+	if (auth.user() != path_url.user())
+		return send(http::response<http::string_body>{http::status::forbidden, req.version()});
+
+	Ownership{path_url.user()}.scan_all_collections(
+		*m_db.alloc(),
+		auth.user(),
+		[send=std::move(send), ver=req.version()](auto&& colls, auto ec)
+		{
+			std::ostringstream ss;
+			rapidjson::OStreamWrapper osw{ss};
+			rapidjson::Writer<rapidjson::OStreamWrapper> writer{osw};
+			colls.Accept(writer);
+
+			http::response<http::string_body> res{
+				std::piecewise_construct,
+				std::make_tuple(ss.str()),
+				std::make_tuple(http::status::ok, ver)
 			};
 			res.set(http::field::content_type, "application/json");
 			return send(std::move(res));

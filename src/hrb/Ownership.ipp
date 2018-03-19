@@ -15,10 +15,12 @@
 #include "CollEntry.hh"
 
 #include "util/Error.hh"
+#include "util/JsonHelper.hh"
 
 #include <rapidjson/document.h>
 
 #include <vector>
+#include <util/Log.hh>
 
 #pragma once
 
@@ -50,7 +52,8 @@ private:
 class Ownership::Collection
 {
 private:
-	static const std::string_view m_prefix;
+	static const std::string_view m_dir_prefix;
+	static const std::string_view m_list_prefix;
 
 public:
 	explicit Collection(std::string_view user, std::string_view path);
@@ -73,8 +76,14 @@ public:
 		Complete&& complete
 	) const ;
 
+	template <typename CollectionCallback, typename Complete>
+	static void scan(redis::Connection& db, std::string_view user, long cursor,
+		CollectionCallback&& callback,
+		Complete&& complete
+	);
+
 	template <typename Complete>
-	static void scan(redis::Connection& db, std::string_view user, long cursor, Complete&& complete);
+	static void scan_all(redis::Connection& db, std::string_view owner, std::string_view requester, Complete&& complete);
 
 	const std::string& user() const {return m_user;}
 	const std::string& path() const {return m_path;}
@@ -87,17 +96,20 @@ private:
 	std::string m_path;
 };
 
-template <typename Complete>
+template <typename CollectionCallback, typename Complete>
 void Ownership::Collection::scan(
 	redis::Connection& db,
 	std::string_view user,
 	long cursor,
+	CollectionCallback&& callback,
 	Complete&& complete
 )
 {
 	db.command(
 		[
-			comp=std::forward<Complete>(complete), &db, user=std::string{user}
+			comp=std::forward<Complete>(complete),
+			cb=std::forward<CollectionCallback>(callback),
+			&db, user=std::string{user}
 		](redis::Reply&& reply, std::error_code&& ec) mutable
 		{
 			if (!ec)
@@ -108,19 +120,73 @@ void Ownership::Collection::scan(
 					// Repeat scanning only when the cycle is not completed yet (i.e.
 					// cursor != 0), and the completion callback return true.
 					auto cursor = cursor_reply.to_int();
-					if (comp(dirs.begin(), dirs.end(), cursor, ec) && cursor != 0)
-						scan(db, user, cursor, std::move(comp));
+
+					// call the callback once to handle one collection
+					dirs.foreach_kv_pair([&cb](auto&& key, auto&& value)
+					{
+						auto sv = value.as_string();
+						if (sv.empty())
+							return;
+
+						// although we can modify the string inside value, rapidjson does not
+						// support insitu parsing with non-null-terminated string, so we must
+						// use the slower Parse() instead of ParseInsitu()
+						rapidjson::Document mdoc;
+						mdoc.Parse(sv.data(), sv.size());
+
+						if (!mdoc.HasParseError())
+							cb(key, std::move(mdoc));
+					});
+
+					// if comp return true, keep scanning with the same callback and
+					// comp as completion routine
+					if (comp(cursor, ec) && cursor != 0)
+						scan(db, user, cursor, std::move(cb), std::move(comp));
 					return;
 				}
 			}
 
-			redis::Reply empty{};
-			comp(empty.begin(), empty.end(), 0, ec);
+			comp(0, ec);
 		},
-		"SCAN %d MATCH %b%b:*",
-		cursor,
-		m_prefix.data(), m_prefix.size(),
-		user.data(), user.size()
+		"HSCAN %b%b %d",
+		m_list_prefix.data(), m_list_prefix.size(),
+		user.data(), user.size(),
+		cursor
+	);
+}
+
+template <typename Complete>
+void Ownership::Collection::scan_all(
+	redis::Connection& db,
+	std::string_view owner,
+	std::string_view requester,
+	Complete&& complete
+)
+{
+	auto jdoc = std::make_shared<rapidjson::Document>();
+	jdoc->SetObject();
+
+	Log(LOG_NOTICE, "scan_all(): requester = %1%", requester);
+
+	jdoc->AddMember("owner",    std::string{owner},     jdoc->GetAllocator());
+	jdoc->AddMember("username", std::string{requester}, jdoc->GetAllocator());
+	jdoc->AddMember("colls",    rapidjson::Value{}.SetObject(), jdoc->GetAllocator());
+
+	scan(db, owner, 0,
+		[&colls=(*jdoc)["colls"], jdoc](auto coll, auto&& json)
+		{
+			colls.AddMember(
+				json::string_ref(coll),
+				rapidjson::Value{}.CopyFrom(json, jdoc->GetAllocator()),
+				jdoc->GetAllocator()
+			);
+		},
+		[jdoc, comp=std::forward<Complete>(complete)](long cursor, auto ec)
+		{
+			if (cursor == 0)
+				comp(std::move(*jdoc), ec);
+			return true;
+		}
 	);
 }
 
@@ -146,7 +212,7 @@ void Ownership::Collection::find(
 		},
 
 		"HGET %b%b:%b %b",
-		m_prefix.data(), m_prefix.size(),
+		m_dir_prefix.data(), m_dir_prefix.size(),
 		m_user.data(), m_user.size(),
 		m_path.data(), m_path.size(),
 		blob.data(), blob.size()
@@ -165,7 +231,7 @@ void Ownership::Collection::set_permission(
 	// we can't lock a field in the hash table, so lock a dummy key instead
 	db.command(
 		"WATCH lock:%b%b:%b:%b",
-		m_prefix.data(), m_prefix.size(),
+		m_dir_prefix.data(), m_dir_prefix.size(),
 		m_user.data(), m_user.size(),
 		m_path.data(), m_path.size(),
 		blob.data(), blob.size()
@@ -182,7 +248,7 @@ void Ownership::Collection::set_permission(
 			db->command("MULTI");
 			db->command(
 				"SETEX lock:%b%b:%b:%b 3600 %b",
-				m_prefix.data(), m_prefix.size(),
+				m_dir_prefix.data(), m_dir_prefix.size(),
 				m_user.data(), m_user.size(),
 				m_path.data(), m_path.size(),
 				blob.data(), blob.size(),
@@ -190,7 +256,7 @@ void Ownership::Collection::set_permission(
 			);
 			db->command(
 				"HSET %b%b:%b %b %b",
-				m_prefix.data(), m_prefix.size(),
+				m_dir_prefix.data(), m_dir_prefix.size(),
 				m_user.data(), m_user.size(),
 				m_path.data(), m_path.size(),
 				blob.data(), blob.size(),
@@ -206,7 +272,7 @@ void Ownership::Collection::set_permission(
 		},
 
 		"HGET %b%b:%b %b",
-		m_prefix.data(), m_prefix.size(),
+		m_dir_prefix.data(), m_dir_prefix.size(),
 		m_user.data(), m_user.size(),
 		m_path.data(), m_path.size(),
 		blob.data(), blob.size()
@@ -229,7 +295,7 @@ void Ownership::Collection::serialize(
 			comp(serialize(reply, requester), std::move(ec));
 		},
 		"HGETALL %b%b:%b",
-		m_prefix.data(), m_prefix.size(),
+		m_dir_prefix.data(), m_dir_prefix.size(),
 		m_user.data(), m_user.size(),
 		m_path.data(), m_path.size()
 	);
@@ -288,14 +354,28 @@ void Ownership::find(
 	return Collection{m_user, coll}.find(db, blob, std::forward<Complete>(complete));
 }
 
-template <typename Complete>
+template <typename CollectionCallback, typename Complete>
 void Ownership::scan_collections(
 	redis::Connection& db,
 	long cursor,
+	CollectionCallback&& callback,
 	Complete&& complete
 ) const
 {
-	return Collection::scan(db, m_user, cursor, std::forward<Complete>(complete));
+	return Collection::scan(db, m_user, cursor,
+		std::forward<CollectionCallback>(callback),
+		std::forward<Complete>(complete)
+	);
+}
+
+template <typename Complete>
+void Ownership::scan_all_collections(
+	redis::Connection& db,
+	std::string_view requester,
+	Complete&& complete
+) const
+{
+	return Collection::scan_all(db, m_user, requester, std::forward<Complete>(complete));
 }
 
 template <typename Complete>

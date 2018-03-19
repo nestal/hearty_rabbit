@@ -3,6 +3,7 @@
   "private_key": "key.pem",
   "web_root": 15.37,
   "blob_path": ".",
+  "server_name" : "example.com",
   "http": {
     "address": "0.0.0.0",
     "port": 8080

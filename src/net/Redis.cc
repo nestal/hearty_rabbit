@@ -336,6 +336,16 @@ long Reply::to_int() const noexcept
 	return s.empty() ? 0 : std::stol(std::string{s});
 }
 
+char* Reply::as_mutable_string()
+{
+	return m_reply && m_reply->type == REDIS_REPLY_STRING ? m_reply->str : nullptr;
+}
+
+std::size_t Reply::length() const
+{
+	return m_reply && m_reply->type == REDIS_REPLY_STRING ? static_cast<std::size_t>(m_reply->len) : 0;
+}
+
 const std::error_category& redis_error_category()
 {
 	struct Cat : std::error_category

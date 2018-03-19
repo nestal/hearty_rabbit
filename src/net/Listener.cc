@@ -81,7 +81,7 @@ void Listener::on_accept(boost::system::error_code ec)
 	}
 	else
 	{
-		std::make_shared<InsecureSession>(std::move(m_socket), m_server.https_port())->run();
+		std::make_shared<InsecureSession>(std::move(m_socket), m_server.https_root())->run();
 	}
 
 	// Accept another connection

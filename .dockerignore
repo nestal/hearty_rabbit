@@ -1,6 +1,5 @@
 .git
 build
-docker-build-release
-cmake-build-debug
-cmake-build-release
+docker-build-*
+cmake-build-*
 Dockerfile

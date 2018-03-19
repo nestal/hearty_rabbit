@@ -152,13 +152,15 @@ TEST_CASE("General server tests", "[normal]")
 	{
 		EmptyRequest req;
 		req.version(11);
+		req.method(http::verb::get);
 
 		SECTION("Request index.html success without login")
 		{
-			MovedResponseChecker checker{"/view/"};
+			GenericStatusChecker checker{http::status::ok};
 
 			req.target("/");
 			subject.handle_https(std::move(req), std::ref(checker), {});
+			REQUIRE(subject.get_io_context().run_for(10s) > 0);
 			REQUIRE(checker.tested());
 		}
 
@@ -193,11 +195,12 @@ TEST_CASE("General server tests", "[normal]")
 		SECTION("Request index.html success with login")
 		{
 			// TODO: check index.html file content
-			MovedResponseChecker checker{"/view/testuser/"};
+			GenericStatusChecker checker{http::status::ok};
 
 			req.target("/");
 			req.set(boost::beast::http::field::cookie, session.set_cookie());
 			subject.handle_https(std::move(req), std::ref(checker), session);
+			REQUIRE(subject.get_io_context().run_for(10s) > 0);
 			REQUIRE(checker.tested());
 		}
 
@@ -221,15 +224,16 @@ TEST_CASE("General server tests", "[normal]")
 
 		SECTION("requesting other resources without a session")
 		{
-			GenericStatusChecker login{http::status::see_other};
+			GenericStatusChecker home_page{http::status::ok};
 			GenericStatusChecker not_found{http::status::not_found};
 			Checker *expected{nullptr};
 
 			SECTION("requests for / will see login page without delay")
 			{
 				req.target("/");
-				subject.handle_https(std::move(req), std::ref(login), {});
-				expected = &login;
+				subject.handle_https(std::move(req), std::ref(home_page), {});
+				REQUIRE(subject.get_io_context().run_for(10s) > 0);
+				expected = &home_page;
 			}
 			SECTION("requests to others will get not found")
 			{

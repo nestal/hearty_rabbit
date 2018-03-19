@@ -20,6 +20,7 @@
 #include "crypto/Random.hh"
 
 #include <rapidjson/document.h>
+#include <rapidjson/pointer.h>
 
 #include <iostream>
 
@@ -105,11 +106,16 @@ TEST_CASE("Load 3 images in json", "[normal]")
 	Ownership subject{"testuser"};
 
 	for (auto&& blobid : blobids)
-		subject.link(*redis, "some/collection", blobid, CollEntry{}, [&added](auto ec)
-		{
-			REQUIRE(!ec);
-			added++;
-		});
+	{
+		auto s = CollEntry::create(Permission::private_(), "file.jpg", "image/jpeg");
+		subject.link(
+			*redis, "some/collection", blobid, CollEntry{s}, [&added](auto ec)
+			{
+				REQUIRE(!ec);
+				added++;
+			}
+		);
+	}
 
 	REQUIRE(ioc.run_for(10s) > 0);
 	REQUIRE(added == blobids.size());
@@ -117,7 +123,7 @@ TEST_CASE("Load 3 images in json", "[normal]")
 	ioc.restart();
 
 	bool tested = false;
-	subject.serialize(*redis, "testuser", "some/collection", [&tested](auto&& json, auto ec)
+	subject.serialize(*redis, "testuser", "some/collection", [&tested, &blobids](auto&& json, auto ec)
 	{
 		INFO("serialize() error_code: " << ec << " " << ec.message());
 		REQUIRE(!ec);
@@ -128,6 +134,40 @@ TEST_CASE("Load 3 images in json", "[normal]")
 		doc.Parse(json.data(), json.size());
 
 		REQUIRE(!doc.HasParseError());
+		REQUIRE(
+			GetValueByPointerWithDefault(doc, "/owner", "").GetString() == std::string{"testuser"}
+		);
+		REQUIRE(
+			GetValueByPointerWithDefault(doc, "/username", "").GetString() == std::string{"testuser"}
+		);
+		REQUIRE(
+			GetValueByPointerWithDefault(doc, "/collection", "").GetString() == std::string{"some/collection"}
+		);
+
+		for (auto&& blobid : blobids)
+		{
+			REQUIRE(
+				GetValueByPointerWithDefault(
+					doc,
+					rapidjson::Pointer{"/elements/" + to_hex(blobid) + "/perm"},
+					""
+				).GetString() == std::string{"private"}
+			);
+			REQUIRE(
+				GetValueByPointerWithDefault(
+					doc,
+					rapidjson::Pointer{"/elements/" + to_hex(blobid) + "/filename"},
+					""
+				).GetString() == std::string{"file.jpg"}
+			);
+			REQUIRE(
+				GetValueByPointerWithDefault(
+					doc,
+					rapidjson::Pointer{"/elements/" + to_hex(blobid) + "/mime"},
+					""
+				).GetString() == std::string{"image/jpeg"}
+			);
+		}
 
 		tested = true;
 	});
@@ -164,27 +204,27 @@ TEST_CASE("Scan for all containers from testuser")
 	std::vector<std::string> dirs;
 
 	bool tested = false;
-	subject.scan_collections(*redis, 0, [&tested, &dirs](auto begin, auto end, long cursor, auto ec)
-	{
-		INFO("scan() error: " << ec << " " << ec.message());
-		REQUIRE(!ec);
-
-		while (begin != end)
+	subject.scan_all_collections(*redis, "",
+		[&dirs, &tested](auto&& jdoc, auto ec)
 		{
-			dirs.emplace_back(begin->as_string());
-			begin++;
-		};
+			INFO("scan() error: " << ec << " " << ec.message());
+			REQUIRE(!ec);
+			tested = true;
 
-		tested = true;
-		return true;
-	});
+			REQUIRE(jdoc["username"] == "");
+			REQUIRE(jdoc["owner"]    == "testuser");
+
+			for (auto&& coll : jdoc["colls"].GetObject())
+				dirs.push_back(coll.name.GetString());
+		}
+	);
 
 	REQUIRE(ioc.run_for(10s) > 0);
 	REQUIRE(added);
 	REQUIRE(tested);
 	REQUIRE(!dirs.empty());
 	INFO("dirs.size() " << dirs.size());
-	REQUIRE(std::find(dirs.begin(), dirs.end(), "dir:testuser:/") != dirs.end());
+	REQUIRE(std::find(dirs.begin(), dirs.end(), "/") != dirs.end());
 }
 
 TEST_CASE("collection entry", "[normal]")

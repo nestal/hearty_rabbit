@@ -31,6 +31,7 @@ const boost::string_view login{"/login"};
 const boost::string_view logout{"/logout"};
 const boost::string_view blob{"/blob"};
 const boost::string_view collection{"/coll"};
+const boost::string_view list_coll{"/listcolls"};
 const boost::string_view upload{"/upload"};
 }
 
@@ -73,7 +74,7 @@ public:
 
 	// Administrative commands and configurations
 	void add_user(std::string_view username, Password&& password, std::function<void(std::error_code)> complete);
-	unsigned short https_port() const;
+	std::string https_root() const;
 	std::size_t upload_limit() const;
 
 private:
@@ -99,7 +100,9 @@ private:
 	void update_blob(BlobRequest&& req, EmptyResponseSender&& send);
 	bool is_static_resource(boost::string_view target) const;
 	void serve_view(const EmptyRequest& req, FileResponseSender&& send, const Authentication& auth);
+	void serve_home(const EmptyRequest& req, FileResponseSender&& send, const Authentication& auth);
 	void serve_collection(const EmptyRequest& req, StringResponseSender&& send, const Authentication& auth);
+	void scan_collection(const EmptyRequest& req, StringResponseSender&& send, const Authentication& auth);
 	void prepare_upload(UploadFile& result, std::error_code& ec);
 
 	template <class Request, class Send>

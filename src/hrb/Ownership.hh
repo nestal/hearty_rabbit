@@ -85,10 +85,18 @@ public:
 		Complete&& complete
 	) const;
 
-	template <typename Complete>
+	template <typename CollectionCallback, typename Complete>
 	void scan_collections(
 		redis::Connection& db,
 		long cursor,
+		CollectionCallback&& callback,
+		Complete&& complete
+	) const;
+
+	template <typename Complete>
+	void scan_all_collections(
+		redis::Connection& db,
+		std::string_view requester,
 		Complete&& complete
 	) const;
 
