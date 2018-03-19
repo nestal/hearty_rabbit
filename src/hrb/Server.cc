@@ -89,7 +89,15 @@ void Server::on_login(const StringRequest& req, EmptyResponseSender&& send)
 			{
 				Log(LOG_INFO, "login result: %1% %2% (from %3%)", ec, ec.message(), login_from);
 
-				auto&& res = see_other(ec ? "/login_incorrect.html" : (login_from.empty() ? "/" : login_from), version);
+				// we want to redirect people to the page they login from. e.g. when they press the
+				// login button from /view/user/collection, we want to redirect them to
+				// /view/user/collection after they login successfully.
+				// Except when they login from /login_incorrect.html: even if they login from that page
+				// we won't redirect them back there, because it would look like they failed.
+				if (login_from == url::login_incorrect)
+					login_from.clear();
+
+				auto&& res = see_other(ec ? url::login_incorrect : (login_from.empty() ? "/" : login_from), version);
 				if (!ec)
 					res.set(http::field::set_cookie, session.set_cookie());
 
