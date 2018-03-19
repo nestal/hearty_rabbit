@@ -14,8 +14,8 @@
 
 #include "util/Size2D.hh"
 
-#include <string_view>
 #include <exception>
+#include <string_view>
 #include <vector>
 
 namespace hrb {
@@ -36,12 +36,12 @@ public:
 	};
 
 public:
-	JPEG(const void *data, std::size_t size, const Size2D& max_dim);
-	JPEG(JPEG&&) noexcept = default;
+	JPEG(const void *jpeg_data, std::size_t jpeg_size, const Size2D& max_dim);
+	JPEG(JPEG&&) noexcept;
 	JPEG(const JPEG&) = default;
 	~JPEG() = default;
 
-	JPEG& operator=(JPEG&&) noexcept = default;
+	JPEG& operator=(JPEG&&) noexcept;
 	JPEG& operator=(const JPEG&) = default;
 
 	Size2D size() const {return m_size;}
@@ -51,7 +51,7 @@ private:
 	static Size2D select_scaling_factor(const Size2D& max, const Size2D& actual);
 
 private:
-	std::vector<unsigned char> m_pixels;
+	std::vector<unsigned char> m_yuv;
 
 	Size2D m_size;
 	int m_subsample{};

@@ -17,14 +17,17 @@
 #include <memory>
 
 namespace hrb {
+namespace {
+const int yuv_pad = 2;
+}
 
 using Handle = std::unique_ptr<void, decltype(&tjDestroy)>;
 
-JPEG::JPEG(const void *data, std::size_t size, const Size2D& max_dim)
+JPEG::JPEG(const void *jpeg_data, std::size_t jpeg_size, const Size2D& max_dim)
 {
 	Handle handle{tjInitDecompress(), &tjDestroy};
 	auto result = tjDecompressHeader3(
-		handle.get(), static_cast<const unsigned char*>(data), size,
+		handle.get(), static_cast<const unsigned char*>(jpeg_data), jpeg_size,
 		&m_size.width(), &m_size.height(), &m_subsample, &m_colorspace
 	);
 
@@ -33,19 +36,18 @@ JPEG::JPEG(const void *data, std::size_t size, const Size2D& max_dim)
 
 	auto selected_size = select_scaling_factor(max_dim, m_size);
 
-	// allocate pixels
-	auto pixel_size = static_cast<std::size_t>(selected_size.height() * selected_size.width() * tjPixelSize[TJPF_RGB]);
-	std::vector<unsigned char> pixels(pixel_size);
+	// allocate yuv planar buffer
+	std::vector<unsigned char> yuv(tjBufSizeYUV2(selected_size.width(), yuv_pad, selected_size.height(), m_subsample));
 
-	result = tjDecompress2(
-		handle.get(), static_cast<const unsigned char*>(data), size,
-		&pixels[0], selected_size.width(), 0, selected_size.height(), TJPF_RGB, TJFLAG_FASTDCT
+	result = tjDecompressToYUV2(
+		handle.get(), static_cast<const unsigned char*>(jpeg_data), jpeg_size,
+		&yuv[0], selected_size.width(), yuv_pad, selected_size.height(), TJFLAG_FASTDCT
 	);
 	if (result != 0)
 		throw Exception(tjGetErrorStr());
 
 	// commit result
-	m_pixels = std::move(pixels);
+	m_yuv  = std::move(yuv);
 	m_size = selected_size;
 }
 
@@ -88,14 +90,31 @@ TurboBuffer JPEG::compress(int quality) const
 
 	unsigned char *jpeg{};
 	std::size_t size{};
-	auto result = tjCompress2(
-		handle.get(), &m_pixels[0], m_size.width(), 0, m_size.height(), TJPF_RGB, &jpeg, &size,
-		m_subsample, quality, TJFLAG_FASTDCT
+	auto result = tjCompressFromYUV(
+		handle.get(), &m_yuv[0], m_size.width(), yuv_pad, m_size.height(), m_subsample, &jpeg, &size,
+		quality, TJFLAG_FASTDCT
 	);
 	if (result != 0)
 		throw Exception(tjGetErrorStr());
 
 	return {jpeg, size};
+}
+
+JPEG::JPEG(JPEG&& src) noexcept :
+	m_yuv{std::move(src.m_yuv)}, m_size{src.m_size},
+	m_subsample{src.m_subsample}, m_colorspace{src.m_colorspace}
+{
+	src.m_size.assign(0,0);
+}
+
+JPEG& JPEG::operator=(JPEG&& src) noexcept
+{
+	auto tmp{std::move(src)};
+	m_yuv.swap(tmp.m_yuv);
+	m_size = tmp.m_size;
+	m_subsample  = tmp.m_subsample;
+	m_colorspace = tmp.m_colorspace;
+	return *this;
 }
 
 } // end of namespace hrb
