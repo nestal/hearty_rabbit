@@ -129,3 +129,10 @@ TEST_CASE("URL parsing with tokenize()")
 	auto path4 = root_view.substr(view4.size() + user4.size() + 2);
 	REQUIRE(path4 == "");
 }
+
+TEST_CASE("decode URI", "[normal]")
+{
+	REQUIRE(url_decode("%2Fview%2Fsumsum%2F") == "/view/sumsum/");
+	REQUIRE(url_decode("%2Fview%2Fsumsum%2") == "/view/sumsum");
+	REQUIRE(url_decode("%2Fview%OOsumsum%2F") == "/view");
+}
