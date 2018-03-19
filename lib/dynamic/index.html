@@ -19,13 +19,13 @@
 		<a href="/"><span id="show-username"></span>'s Photo <i class="material-icons">arrow_drop_down</i></a>
 	</div>
 	<label class="nav-level1 show-only-before-logged-in" id="login-nav">Login</label>
-	<label class="nav-level1 show-only-after-logged-in" for="file-upload" id="upload-nav">
+	<label class="nav-level1 show-only-after-logged-in has-tooltip" for="file-upload" id="upload-nav" title="File upload">
 		<i class="nav-icons material-icons">file_upload</i>
 	</label>
-	<div class="nav-level1 show-only-after-logged-in" id="create-album-nav">
+	<div class="nav-level1 show-only-after-logged-in" id="create-album-nav" title="Create new album">
 		<i class="nav-icons material-icons">create_new_folder</i>
 	</div>
-	<div class="nav-level1 show-only-after-logged-in" id="logout-nav">
+	<div class="nav-level1 show-only-after-logged-in" id="logout-nav" title="Log out">
 		<a href="/logout"><i class="nav-icons material-icons">exit_to_app</i></a>
 	</div>
 </div>
@@ -67,10 +67,10 @@
 
 	<!-- Next/previous controls -->
 	<a class="prev" onclick="next_image(-1)">
-		<i class="tooltip light-box-button material-icons">skip_previous<span class="tooltiptext">Previous</span></i>
+		<i class="tooltip light-box-button material-icons">chevron_left<span class="tooltiptext">Previous</span></i>
 	</a>
 	<a class="next" onclick="next_image(1)">
-		<i class="tooltip light-box-button material-icons">skip_next<span class="tooltiptext">Next</span></i>
+		<i class="tooltip light-box-button material-icons">chevron_right<span class="tooltiptext">Next</span></i>
 	</a>
 </div>
 
