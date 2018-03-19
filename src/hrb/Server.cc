@@ -75,7 +75,7 @@ void Server::on_login(const StringRequest& req, EmptyResponseSender&& send)
 	auto&& body = req.body();
 	if (req[http::field::content_type] == "application/x-www-form-urlencoded")
 	{
-		auto [username, password] = find_fields(body, "username", "password");
+		auto [username, password, login_from] = find_fields(body, "username", "password", "login-from");
 
 		Authentication::verify_user(
 			username,
@@ -83,12 +83,21 @@ void Server::on_login(const StringRequest& req, EmptyResponseSender&& send)
 			*m_db.alloc(),
 			[
 				version=req.version(),
-				send=std::move(send)
+				send=std::move(send),
+				login_from=url_decode(login_from)
 			](std::error_code ec, auto&& session) mutable
 			{
-				Log(LOG_INFO, "login result: %1% %2%", ec, ec.message());
+				Log(LOG_INFO, "login result: %1% %2% (from %3%)", ec, ec.message(), login_from);
 
-				auto&& res = see_other(ec ? "/login_incorrect.html" : "/", version);
+				// we want to redirect people to the page they login from. e.g. when they press the
+				// login button from /view/user/collection, we want to redirect them to
+				// /view/user/collection after they login successfully.
+				// Except when they login from /login_incorrect.html: even if they login from that page
+				// we won't redirect them back there, because it would look like they failed.
+				if (login_from == url::login_incorrect)
+					login_from.clear();
+
+				auto&& res = see_other(ec ? url::login_incorrect : (login_from.empty() ? "/" : login_from), version);
 				if (!ec)
 					res.set(http::field::set_cookie, session.set_cookie());
 

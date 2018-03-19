@@ -38,7 +38,7 @@ void Server::handle_https(Request&& req, Send&& send, const Authentication& auth
 		if (is_static_resource(req.target()))
 			return send(static_file_request(req));
 
-		if (req.target() == "/login_incorrect.html")
+		if (req.target() == url::login_incorrect)
 			return send(on_login_incorrect(req));
 	}
 

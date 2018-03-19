@@ -10,6 +10,8 @@
 
 #include "Escape.hh"
 
+#include <optional>
+
 namespace {
 
 // Copied from libcurl
@@ -42,6 +44,24 @@ bool is_unreserved(unsigned char in)
 
 namespace hrb {
 
+std::optional<char> hex_digit(char c)
+{
+	if      ( c >= '0' && c <= '9' ) return c - '0';
+    else if ( c >= 'A' && c <= 'F' ) return c - 'A' + 10;
+    else if ( c >= 'a' && c <= 'f' ) return c - 'a' + 10;
+	else return std::nullopt;
+}
+
+std::optional<char> from_hex(char msb, char lsb)
+{
+	auto big = hex_digit(msb);
+	auto sml = hex_digit(lsb);
+	if (big && sml)
+		return *big * 16 + *sml;
+	else
+		return std::nullopt;
+}
+
 std::string url_encode(std::string_view in)
 {
 	return {};
@@ -49,8 +69,27 @@ std::string url_encode(std::string_view in)
 
 std::string url_decode(std::string_view in)
 {
-//	visit_form_string(in, [](auto, auto){return true;});
-	return {};
+	std::string result;
+	while (!in.empty())
+	{
+		if (in.front() != '%')
+		{
+			result.push_back(in.front());
+			in.remove_prefix(1);
+		}
+		else if (in.size() >= 3)
+		{
+			auto ch = from_hex(in[1], in[2]);
+			if (!ch)
+				break;
+
+			result.push_back(*ch);
+			in.remove_prefix(3);
+		}
+		else
+			break;
+	}
+	return result;
 }
 
 std::tuple<std::string_view, char> split_front(std::string_view& in, std::string_view value)

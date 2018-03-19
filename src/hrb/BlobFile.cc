@@ -51,25 +51,30 @@ BlobFile BlobFile::upload(
 	{
 		RotateImage transform;
 		auto rotated = transform.auto_rotate(master.buffer(), ec);
+
 		if (ec)
 		{
+			// just keep the file as-is if we can't auto-rotate it
 			Log(LOG_WARNING, "BlobFile::upload(): cannot rotate image %1% %2%", ec, ec.message());
-			return result;
+			ec.clear();
 		}
 
-		JPEG img{
-			rotated.empty() ? master.buffer().data() : rotated.data(),
-			rotated.empty() ? master.size()          : rotated.size(),
-			resize_img
-		};
+		else
+		{
+			JPEG img{
+				rotated.empty() ? master.buffer().data() : rotated.data(),
+				rotated.empty() ? master.size() : rotated.size(),
+				resize_img
+			};
 
-		if (resize_img != img.size())
-			rotated = img.compress(quality);
+			if (resize_img != img.size())
+				rotated = img.compress(quality);
 
-		std::ostringstream fn;
-		fn << resize_img.width() << "x" << resize_img.height();
+			std::ostringstream fn;
+			fn << resize_img.width() << "x" << resize_img.height();
 
-		result.m_rend.emplace(fn.str(), std::move(rotated));
+			result.m_rend.emplace(fn.str(), std::move(rotated));
+		}
 	}
 
 	// commit result
