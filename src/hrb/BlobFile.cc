@@ -51,11 +51,14 @@ BlobFile BlobFile::upload(
 	{
 		RotateImage transform;
 		auto rotated = transform.auto_rotate(master.buffer(), ec);
+
 		if (ec)
 		{
+			// just keep the file as-is if we can't auto-rotate it
 			Log(LOG_WARNING, "BlobFile::upload(): cannot rotate image %1% %2%", ec, ec.message());
 			ec.clear();
 		}
+
 		else
 		{
 			JPEG img{

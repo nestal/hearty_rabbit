@@ -148,3 +148,13 @@ TEST_CASE("read exif from image without EXIF", "[normal]")
 	EXIF2 subject{mmap.buffer().data(), mmap.size(), ec};
 	REQUIRE(ec == EXIF2::Error::not_found);
 }
+
+TEST_CASE("EXIF2 read profile picture", "[normal]")
+{
+	std::error_code ec;
+	auto mmap = MMap::open(fs::path{__FILE__}.parent_path()/"XMP_only_6.jpg", ec);
+	REQUIRE(!ec);
+
+	EXIF2 subject{mmap.buffer().data(), mmap.size(), ec};
+	REQUIRE(ec == EXIF2::Error::not_supported);
+}

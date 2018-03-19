@@ -141,18 +141,22 @@ void find_app1(buffer_view& buffer, std::error_code& error)
 
 const unsigned char* read_EXIF_and_TIFF_header(buffer_view& buffer, order& byte_order, std::error_code& error)
 {
-	// "Exif" header
-	std::array<unsigned char, 6> exif{};
-	read(buffer, exif, error);
-	if (error)
-		return nullptr;
+	const char adobe[] = "http://ns.adobe.com/xap/1.0/\0";
+	const char exif_[] = "Exif\0\0";
 
-	if (exif[0] != 0x45 ||
-		exif[1] != 0x78 ||
-		exif[2] != 0x69 ||
-		exif[3] != 0x66 ||
-		exif[4] != 0 ||
-		exif[5] != 0)
+	// easy to count
+	static_assert(sizeof(exif_)-1 == 6);
+
+	if (buffer.size() >= sizeof(exif_)-1 && memcmp(buffer.data(), exif_, std::min(sizeof(exif_)-1, buffer.size())) == 0)
+	{
+		buffer.remove_prefix(sizeof(exif_)-1);
+	}
+	else if (buffer.size() >= sizeof(adobe)-1 && memcmp(buffer.data(), adobe, std::min(sizeof(adobe)-1, buffer.size())) == 0)
+	{
+		error = EXIF2::Error::not_supported;
+		return nullptr;
+	}
+	else
 	{
 		error = EXIF2::Error::invalid_header;
 		return nullptr;
