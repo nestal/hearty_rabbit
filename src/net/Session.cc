@@ -87,38 +87,44 @@ void Session::on_read_header(boost::system::error_code ec, std::size_t bytes_tra
 		auto&& header = m_parser->get();
 		m_keep_alive = header.keep_alive();
 
-		m_server.on_request_header(header, m_auth, *m_parser, m_body, [self=shared_from_this(), this](const Authentication& auth)
-		{
-			// remember existing credential
-			m_auth = auth;
-
-			// Call async_read() using the chosen parser to read and parse the request body.
-			std::visit([&self, this](auto&& parser)
+		m_server.on_request_header(
+			header, m_auth, *m_parser, m_body,
+			[self=shared_from_this(), this](const Authentication& auth, bool auth_renewed)
 			{
-				async_read(m_stream, m_buffer, parser, boost::asio::bind_executor(
-					m_strand,
-					[self](auto ec, auto bytes){self->on_read(ec, bytes);}
-				));
-			}, m_body);
-		});
+				// remember existing credential
+				m_auth = auth;
+
+				// Call async_read() using the chosen parser to read and parse the request body.
+				std::visit([&self, this, auth_renewed](auto&& parser)
+				{
+					async_read(m_stream, m_buffer, parser, boost::asio::bind_executor(
+						m_strand,
+						[self, auth_renewed](auto ec, auto bytes){self->on_read(ec, bytes, auth_renewed);}
+					));
+				}, m_body);
+			}
+		);
 	}
 }
 
 
-void Session::on_read(boost::system::error_code ec, std::size_t)
+void Session::on_read(boost::system::error_code ec, std::size_t, bool auth_renewed)
 {
 	// This means they closed the connection
 	if (ec)
 		return handle_read_error(__PRETTY_FUNCTION__, ec);
 	else
 	{
-		std::visit([self=shared_from_this(), this](auto&& parser)
+		std::visit([self=shared_from_this(), this, auth_renewed](auto&& parser)
 		{
 			auto req = parser.release();
 			if (validate_request(req))
 			{
-				m_server.handle_https(std::move(req), [self](auto&& response)
+				m_server.handle_request(std::move(req), [self, auth_renewed](auto&& response)
 				{
+					if (auth_renewed && self->m_auth.valid())
+						response.set(http::field::set_cookie, self->m_auth.set_cookie());
+
 					self->send_response(std::forward<decltype(response)>(response));
 				}, m_auth);
 			}
@@ -181,7 +187,7 @@ void Session::send_response(Response&& response)
 	// The lifetime of the message has to extend
 	// for the duration of the async operation so
 	// we use a shared_ptr to manage it.
-	auto sp = std::make_shared<std::remove_reference_t<decltype(response)>>(std::forward<decltype(response)>(response));
+	auto sp = std::make_shared<std::remove_reference_t<Response>>(std::forward<Response>(response));
 	sp->set(http::field::server, BOOST_BEAST_VERSION_STRING);
 	sp->keep_alive(m_keep_alive);
 	sp->prepare_payload();
