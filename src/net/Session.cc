@@ -141,13 +141,13 @@ bool Session::validate_request(const Request& req)
 
 	Log(
 		LOG_INFO,
-		"%1%:%2% %7% request %3% from %4% (version %5%) %6% bytes",
+		"%1%:%2% %7% request %3% from %4% (user \"%5%\") %6% bytes",
 		m_nth_session,
 		m_nth_transaction,
 		req.target(),
 		endpoint,
-		req.version(),
-		req[http::field::content_length],
+		m_auth.user(),
+		req[http::field::content_length].empty() ? "0" : req[http::field::content_length],
 		req.method_string()
 	);
 

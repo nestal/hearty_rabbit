@@ -327,8 +327,6 @@ void Server::serve_home(const EmptyRequest& req, FileResponseSender&& send, cons
 
 http::response<SplitBuffers> Server::static_file_request(const EmptyRequest& req)
 {
-	Log(LOG_NOTICE, "requesting path %1% %2%", req.target(), req[http::field::if_none_match]);
-
 	std::string_view filepath{req.target().data(), req.target().size()};
 	filepath.remove_prefix(1);
 
