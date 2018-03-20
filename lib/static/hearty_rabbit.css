@@ -7,20 +7,19 @@ body {
 }
 
 div.login {
-	width: 640px;
-	max-width: 100%;
-	padding: 8% 0 0;
+	max-width: 90%;
 	margin: auto;
 }
 
 div.login-form {
 	position: relative;
 	background: white;
-	max-width: 640px;
-	margin: 0 auto 100px;
 	padding: 45px;
-	text-align: center;
 	font-size: 130%;
+}
+
+div.login-form h1 {
+	text-align: center;
 }
 
 div.login input {
@@ -205,7 +204,6 @@ div.login button:hover {
 	display: none;
 	position: fixed;
 	z-index: 2;
-	padding-top: 1vh;
 	left: 0;
 	top: 0;
 	width: 100%;
@@ -216,18 +214,16 @@ div.login button:hover {
 
 /* Modal Content */
 .modal-content {
-	position: relative;
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translateX(-50%) translateY(-50%);
+
 	background-color: black;
 	margin: auto;
 	padding: 0;
-	width: 90%;
-	height: 90%;
 	object-fit: contain;
-	text-align: center;
-}
 
-.modal-content img {
-	vertical-align: middle;
 	max-width: 100%;
 	max-height: 100%;
 }
@@ -235,6 +231,8 @@ div.login button:hover {
 /* The lightbox buttons*/
 .light-box-button.material-icons {
 	font-size: 3em;
+	user-select: none;
+	-webkit-user-select: none;
 }
 
 /* The lightbox buttons*/
@@ -250,6 +248,8 @@ div.login button:hover {
 	right: 25px;
 	color: white;
 	z-index: 3;
+	user-select: none;
+	-webkit-user-select: none;
 }
 
 .light-box-button.material-icons:hover,
