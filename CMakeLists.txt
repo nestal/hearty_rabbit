@@ -24,6 +24,13 @@ set(CMAKE_CXX_STANDARD 17)
 set(VERSION "0.1")
 set(CONFIG_FILENAME "hearty_rabbit.json")
 
+# Get build number from environment variable. It should be set by travis.
+if (DEFINED ENV{BUILD_NUMBER})
+	set(BUILD_NUMBER $ENV{BUILD_NUMBER})
+else()
+	string(TIMESTAMP BUILD_NUMBER "%Y%m%d%H%M%S")
+endif()
+
 # Enable std::string support in rapidjson
 add_definitions(-DRAPIDJSON_HAS_STDSTRING=1)
 
@@ -134,11 +141,9 @@ set(CPACK_PACKAGING_INSTALL_PREFIX ${CMAKE_INSTALL_PREFIX})
 set(CPACK_RPM_FILE_NAME RPM-DEFAULT)
 
 # Get build number from environment variable. It should be set by travis.
-if (DEFINED ENV{BUILD_NUMBER})
-	set(CPACK_RPM_PACKAGE_RELEASE $ENV{BUILD_NUMBER})
-else()
-	string(TIMESTAMP CPACK_RPM_PACKAGE_RELEASE "%Y%m%d%H%M%S")
-endif()
+set(CPACK_RPM_PACKAGE_RELEASE ${BUILD_NUMBER})
+
+message(STATUS "build = ${BUILD_NUMBER}")
 
 set(CPACK_RPM_PACKAGE_AUTOREQ ON)
 set(CPACK_RPM_PACKAGE_RELEASE_DIST ON)

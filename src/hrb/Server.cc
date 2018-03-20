@@ -81,6 +81,7 @@ void Server::on_login(const StringRequest& req, EmptyResponseSender&& send)
 			username,
 			Password{password},
 			*m_db.alloc(),
+			m_cfg.session_length(),
 			[
 				version=req.version(),
 				send=std::move(send),
@@ -93,7 +94,7 @@ void Server::on_login(const StringRequest& req, EmptyResponseSender&& send)
 				// login button from /view/user/collection, we want to redirect them to
 				// /view/user/collection after they login successfully.
 				// Except when they login from /login_incorrect.html: even if they login from that page
-				// we won't redirect them back there, because it would look like they failed.
+				// we won't redirect them back there, because it would look like the login failed.
 				if (login_from == url::login_incorrect)
 					login_from.clear();
 
@@ -327,8 +328,6 @@ void Server::serve_home(const EmptyRequest& req, FileResponseSender&& send, cons
 
 http::response<SplitBuffers> Server::static_file_request(const EmptyRequest& req)
 {
-	Log(LOG_NOTICE, "requesting path %1% %2%", req.target(), req[http::field::if_none_match]);
-
 	std::string_view filepath{req.target().data(), req.target().size()};
 	filepath.remove_prefix(1);
 

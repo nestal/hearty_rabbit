@@ -21,6 +21,7 @@
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/filesystem/path.hpp>
 
+#include <chrono>
 #include <iosfwd>
 
 namespace hrb {
@@ -52,6 +53,7 @@ public:
 	std::size_t upload_limit() const {return m_upload_limit;}
 	Size2D image_dimension() const {return m_img_dim;}
 	const std::string& server_name() const {return m_server_name;}
+	std::chrono::seconds session_length() const {return m_session_length;}
 
 	bool help() const {return m_args.count("help") > 0;}
 
@@ -93,6 +95,8 @@ private:
 	std::size_t m_upload_limit{10 * 1024 * 1024};
 
 	Size2D m_img_dim{2048, 2048};
+
+	std::chrono::seconds m_session_length{3600};
 };
 
 } // end of namespace

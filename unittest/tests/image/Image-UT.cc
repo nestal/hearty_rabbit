@@ -139,22 +139,31 @@ TEST_CASE("read exif", "[normal]")
 	REQUIRE(exiv2_orientation({&img[0], img.size()}) == 8);
 }
 
-TEST_CASE("read exif from image without EXIF", "[normal]")
+TEST_CASE("read all images successfully", "[normal]")
 {
-	std::error_code ec;
-	auto mmap = MMap::open(fs::path{__FILE__}.parent_path()/"black.jpg", ec);
-	REQUIRE(!ec);
+	std::unordered_map<std::string, EXIF2::Error> expected{
+		{"XMP_only_6.jpg", EXIF2::Error::not_supported},
+		{"black.jpg", EXIF2::Error::not_found},
+		{"mspaint.jpg", EXIF2::Error::not_found}
+	};
 
-	EXIF2 subject{mmap.buffer().data(), mmap.size(), ec};
-	REQUIRE(ec == EXIF2::Error::not_found);
-}
+	for (auto&& img : fs::directory_iterator{fs::path{__FILE__}.parent_path()})
+	{
+		if (img.path().extension() == ".jpg")
+		{
+			INFO("loading " << img);
+			std::error_code ec;
+			auto mmap = MMap::open(img, ec);
+			REQUIRE(!ec);
 
-TEST_CASE("EXIF2 read profile picture", "[normal]")
-{
-	std::error_code ec;
-	auto mmap = MMap::open(fs::path{__FILE__}.parent_path()/"XMP_only_6.jpg", ec);
-	REQUIRE(!ec);
+			EXIF2 subject{mmap.buffer().data(), mmap.size(), ec};
+			INFO("EXIF2 of " << img << " load result = " << ec << " " <<  ec.message());
 
-	EXIF2 subject{mmap.buffer().data(), mmap.size(), ec};
-	REQUIRE(ec == EXIF2::Error::not_supported);
+			auto eit = expected.find(img.path().filename().string());
+			if (eit != expected.end())
+				REQUIRE(ec == eit->second);
+			else
+				REQUIRE(!ec);
+		}
+	}
 }

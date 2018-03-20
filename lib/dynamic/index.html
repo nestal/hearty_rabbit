@@ -38,32 +38,21 @@
 	<div id="hrb-entry-prototype" class="hrb-entry">
 		<img src="/loading.svg">
 		<div class="text-overlay-box"><span></span></div>
+		<div class="perm-overlay-box"><i class="material-icons"></i></div>
 	</div>
 </section>
 
-<input id="file-upload" type="file" multiple onchange="upload_file(this.files[0])">
+<input id="file-upload" type="file" multiple>
 
 <div id="light-box" class="modal">
 	<div class="light-box-button-bar">
-		<span class="close cursor" id="make-image-private">
-			<i class="tooltip light-box-button material-icons">person<span class="tooltiptext">Only you can see this image</span></i>
-		</span>
-		<span class="close cursor" id="share-image">
-			<i class="tooltip light-box-button material-icons">people<span class="tooltiptext">Only valid users can see this image</span></i>
-		</span>
-		<span class="close cursor" id="make-image-public">
-			<i class="tooltip light-box-button material-icons">public<span class="tooltiptext">Everyone can see this image</span></i>
-		</span>
-		<span class="close cursor" id="delete-image">
-			<i class="tooltip light-box-button material-icons">delete<span class="tooltiptext">Delete picture</span></i>
-		</span>
-		<span class="close cursor" id="close-lightbox">
-			<i class="tooltip light-box-button material-icons">close<span class="tooltiptext">Close</span></i>
-		</span>
+		<i id="make-image-private" class="tooltip light-box-button material-icons">person<span class="tooltiptext">Only you can see this image</span></i>
+		<i id="share-image" class="tooltip light-box-button material-icons">people<span class="tooltiptext">Only valid users can see this image</span></i>
+		<i id="make-image-public" class="tooltip light-box-button material-icons">public<span class="tooltiptext">Everyone can see this image</span></i>
+		<i id="delete-image" class="tooltip light-box-button material-icons">delete<span class="tooltiptext">Delete picture</span></i>
+		<i id="close-lightbox" class="tooltip light-box-button material-icons">close<span class="tooltiptext">Close</span></i>
 	</div>
-	<div class="modal-content">
-		<img id="light-box-image" class="hrb-blob-image" src="/loading.svg">
-	</div>
+	<img id="light-box-image" class="modal-content hrb-blob-image" src="/loading.svg">
 
 	<!-- Next/previous controls -->
 	<a class="prev" onclick="next_image(-1)">
@@ -76,25 +65,23 @@
 
 <div id="login-dialog" class="modal">
 	<div class="light-box-button-bar">
-		<span class="close cursor" onclick="cancel_login();"><i class="light-box-button material-icons">close</i></span>
+		<i class="light-box-button material-icons" onclick="cancel_login();">close</i>
 	</div>
-	<div class="login">
-		<div class="login-form">
-			<h1>Welcome to HeartyRabbit!</h1>
-			<div id="login-message">Please login:</div>
-			<form action="/login" method="post">
-				<input name="username" type="text" placeholder="Username">
-				<input name="password" type="password" placeholder="Password">
-				<input id="login-from" name="login-from" type="hidden">
-				<button type="submit">Login</button>
-			</form>
-		</div>
+	<div class="modal-content login-form">
+		<h1>Welcome to HeartyRabbit!</h1>
+		<div id="login-message">Please login:</div>
+		<form action="/login" method="post">
+			<input name="username" type="text" placeholder="Username">
+			<input name="password" type="password" placeholder="Password">
+			<input id="login-from" name="login-from" type="hidden">
+			<button type="submit">Login</button>
+		</form>
 	</div>
 </div>
 
 <div id="create-album-dialog" class="modal">
 	<div class="light-box-button-bar">
-		<span class="close cursor" onclick="cancel_create_album();"><i class="light-box-button material-icons">close</i></span>
+		<i class="light-box-button material-icons" onclick="cancel_create_album();">close</i>
 	</div>
 	<div class="login">
 		<div class="login-form">

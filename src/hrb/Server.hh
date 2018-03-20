@@ -53,6 +53,7 @@ public:
 	template <class Complete>
 	void on_request_header(
 		const RequestHeader& header,
+		const Authentication& existing_auth,
 		EmptyRequestParser& src,
 		RequestBodyParsers& dest,
 		Complete&& complete

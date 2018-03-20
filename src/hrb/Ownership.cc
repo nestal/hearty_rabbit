@@ -88,8 +88,8 @@ void Ownership::Collection::link(redis::Connection& db, const ObjectID& id, cons
 		id.data(), id.size(),
 		entry.data(), entry.size()
 	);
+
 	auto cover = R"({"cover":)" + to_quoted_hex(id) + "}";
-//	auto cover = std::string{"{}"};
 	db.command(
 		R"(HSETNX %b%b %b %b)",
 		m_list_prefix.data(), m_list_prefix.size(),

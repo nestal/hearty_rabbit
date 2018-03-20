@@ -55,7 +55,7 @@ int Main(int argc, const char* const* argv)
 
 	else
 	{
-		Log(LOG_NOTICE, "hearty_rabbit starting");
+		Log(LOG_NOTICE, "hearty_rabbit (version %1%) starting", constants::version);
 		server.run();
 		return EXIT_SUCCESS;
 	}
