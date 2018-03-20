@@ -84,10 +84,10 @@ void create_session(
 		[
 			auth,
 			completion = std::forward<Completion>(completion)
-		](redis::Reply, std::error_code ec)
+		](redis::Reply, std::error_code ec) mutable
 		{
 			// TODO: handle errors from "reply"
-			completion(ec, auth);
+			completion(ec, std::move(auth));
 		},
 
 		"SETEX session:%b %d %b",
@@ -140,13 +140,21 @@ void Authentication::add_user(
 void Authentication::verify_session(
 	const Cookie& cookie,
 	redis::Connection& db,
+	std::chrono::seconds session_length,
 	std::function<void(std::error_code, Authentication&&)>&& completion
 )
 {
-	db.command(
-		[comp=std::move(completion), cookie](redis::Reply reply, auto&& ec) mutable
+	db.command([
+			db=db.shared_from_this(),
+			comp=std::move(completion),
+			cookie, session_length
+		](redis::Reply reply, auto&& ec) mutable
 		{
-			comp(std::move(ec), Authentication{cookie, reply.as_string()});
+			// testing only! always create a new session
+			if (!ec)
+				create_session(std::move(comp), std::string{reply.as_string()}, *db, session_length);
+			else
+				comp(std::move(ec), Authentication{cookie, reply.as_string()});
 		},
 		"GET session:%b", cookie.data(), cookie.size()
 	);

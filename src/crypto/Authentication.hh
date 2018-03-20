@@ -61,6 +61,7 @@ public:
 	static void verify_session(
 		const Cookie& cookie,
 		redis::Connection& db,
+		std::chrono::seconds session_length,
 		std::function<void(std::error_code, Authentication&&)>&& completion
 	);
 

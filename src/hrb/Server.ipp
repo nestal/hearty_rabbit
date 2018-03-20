@@ -22,6 +22,7 @@
 
 #include "crypto/Authentication.hh"
 #include "net/MMapResponseBody.hh"
+#include "util/Configuration.hh"
 
 #include <boost/beast/http/fields.hpp>
 #include <boost/beast/http/message.hpp>
@@ -101,6 +102,7 @@ void Server::on_request_header(
 		Authentication::verify_session(
 			*session,
 			*m_db.alloc(),
+			m_cfg.session_length(),
 			std::move(on_verify_session)
 		);
 }

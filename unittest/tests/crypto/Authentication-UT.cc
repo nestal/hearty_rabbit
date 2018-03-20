@@ -74,7 +74,7 @@ TEST_CASE("Test normal user login", "[normal]")
 					REQUIRE(!ec);
 					REQUIRE(session.valid());
 
-					Authentication::verify_session(session.cookie(), *redis, [&tested](std::error_code ec, auto&& auth)
+					Authentication::verify_session(session.cookie(), *redis, 60s, [&tested](std::error_code ec, auto&& auth)
 					{
 						// Username returned is always lower case.
 						REQUIRE(!ec);
@@ -102,7 +102,8 @@ TEST_CASE("Test normal user login", "[normal]")
 		{
 			auto cookie = insecure_random<Authentication::Cookie>();
 
-			Authentication::verify_session(cookie, *redis, [&tested](std::error_code ec, auto&& session)
+			using namespace std::chrono_literals;
+			Authentication::verify_session(cookie, *redis, 60s, [&tested](std::error_code ec, auto&& session)
 				{
 					INFO("verify_session(incorrect) result = " << ec.message());
 					REQUIRE(!ec);
