@@ -197,11 +197,12 @@ void Authentication::verify_user(
 	);
 }
 
-std::string Authentication::set_cookie() const
+std::string Authentication::set_cookie(std::chrono::seconds session_length) const
 {
 	std::string result = "id=";
 	boost::algorithm::hex_lower(m_cookie.begin(), m_cookie.end(), std::back_inserter(result));
-	result.append("; Secure; HttpOnly; SameSite=Strict; Max-Age=3600");
+	result.append("; Secure; HttpOnly; SameSite=Strict; Max-Age=");
+	result.append(std::to_string(session_length.count()));
 	return result;
 }
 

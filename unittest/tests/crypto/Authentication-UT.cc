@@ -134,9 +134,11 @@ TEST_CASE("Parsing cookie", "[normal]")
 	REQUIRE(session.has_value());
 	REQUIRE(*session == Authentication::Cookie{0x01,0x23,0x45, 0x67, 0x89,0xAB,0xCD,0xEF,0x01,0x23,0x45,0x67,0x89,0xAB,0xCD,0xEF});
 
+	using namespace std::literals;
+
 	// Random round-trip
 	auto rand = insecure_random<Authentication::Cookie>();
-	auto cookie = Authentication{rand, "test"}.set_cookie();
+	auto cookie = Authentication{rand, "test"}.set_cookie(600s);
 	INFO("cookie for random session ID is " << cookie);
 	session = parse_cookie(cookie);
 	REQUIRE(session.has_value());

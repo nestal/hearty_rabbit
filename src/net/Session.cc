@@ -120,12 +120,12 @@ void Session::on_read(boost::system::error_code ec, std::size_t, bool auth_renew
 			auto req = parser.release();
 			if (validate_request(req))
 			{
-				m_server.handle_request(std::move(req), [self, auth_renewed](auto&& response)
+				m_server.handle_request(std::move(req), [this, self, auth_renewed](auto&& response)
 				{
-					if (auth_renewed && self->m_auth.valid())
-						response.set(http::field::set_cookie, self->m_auth.set_cookie());
+					if (auth_renewed && m_auth.valid())
+						response.set(http::field::set_cookie, m_auth.set_cookie(m_server.session_length()));
 
-					self->send_response(std::forward<decltype(response)>(response));
+					send_response(std::forward<decltype(response)>(response));
 				}, m_auth);
 			}
 		}, m_body);
