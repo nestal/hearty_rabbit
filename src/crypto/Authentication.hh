@@ -17,6 +17,7 @@
 #include <optional>
 #include <string_view>
 #include <system_error>
+#include <chrono>
 
 namespace hrb {
 
@@ -53,6 +54,7 @@ public:
 		std::string_view username_mixed_case,
 		Password&& password,
 		redis::Connection& db,
+		std::chrono::seconds session_length,
 		std::function<void(std::error_code, const Authentication&)> completion
 	);
 

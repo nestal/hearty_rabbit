@@ -122,7 +122,8 @@ Authentication create_session(std::string_view username, std::string_view passwo
 	{
 		REQUIRE(!ec);
 
-		Authentication::verify_user(username, Password{password}, *db, [&result, db](std::error_code ec, auto&& auth)
+		using namespace std::chrono_literals;
+		Authentication::verify_user(username, Password{password}, *db, 60s, [&result, db](std::error_code ec, auto&& auth)
 		{
 			REQUIRE(!ec);
 			REQUIRE(auth.valid());

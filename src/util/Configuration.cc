@@ -110,6 +110,9 @@ void Configuration::load_config(const boost::filesystem::path& path)
 			GetValueByPointerWithDefault(json, "/image_dimension/width", m_img_dim.width()).GetInt(),
 			GetValueByPointerWithDefault(json, "/image_dimension/height", m_img_dim.height()).GetInt()
 		);
+		m_session_length = std::chrono::seconds{
+			GetValueByPointerWithDefault(json, "/session_length_in_sec", 3600L).GetInt64(),
+		};
 
 		m_listen_http   = parse_endpoint(required(json, "/http"));
 		m_listen_https  = parse_endpoint(required(json, "/https"));

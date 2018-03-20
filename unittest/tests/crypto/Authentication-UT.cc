@@ -64,10 +64,11 @@ TEST_CASE("Test normal user login", "[normal]")
 
 		SECTION("correct user")
 		{
+			using namespace std::chrono_literals;
 			// Verify user with a username in a different case.
 			// Since username is case-insensitive, it should still work.
 			Authentication::verify_user(
-				"suMSum", Password{"bearbear"}, *redis, [redis, &tested](std::error_code ec, auto&& session)
+				"suMSum", Password{"bearbear"}, *redis, 60s, [redis, &tested](std::error_code ec, auto&& session)
 				{
 					INFO("verify_user(correct) result = " << ec.message());
 					REQUIRE(!ec);
@@ -86,8 +87,9 @@ TEST_CASE("Test normal user login", "[normal]")
 		}
 		SECTION("incorrect password")
 		{
+			using namespace std::chrono_literals;
 			Authentication::verify_user(
-				"siuyung", Password{"not rabbit"}, *redis, [&tested](std::error_code ec, auto&& session)
+				"siuyung", Password{"not rabbit"}, *redis, 60s, [&tested](std::error_code ec, auto&& session)
 				{
 					INFO("verify_user(incorrect) result = " << ec.message());
 					REQUIRE(ec == Error::login_incorrect);

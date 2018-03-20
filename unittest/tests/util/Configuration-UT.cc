@@ -56,6 +56,7 @@ TEST_CASE( "Load normal.json", "[normal]" )
 	REQUIRE(cfg.redis().address() == boost::asio::ip::make_address("192.168.1.1"));
 	REQUIRE(cfg.redis().port() == 9181);
 	REQUIRE(cfg.upload_limit() == 10*1024*1024);
+	REQUIRE(cfg.session_length() == std::chrono::hours{1});
 }
 
 TEST_CASE( "Missing server name", "[error]" )
