@@ -6,13 +6,7 @@ body {
 	display: none;
 }
 
-div.login {
-	max-width: 90%;
-	margin: auto;
-}
-
 div.login-form {
-	position: relative;
 	background: white;
 	padding: 45px;
 	font-size: 130%;
@@ -22,7 +16,7 @@ div.login-form h1 {
 	text-align: center;
 }
 
-div.login input {
+div.login-form input {
 	width: 100%;
 	box-sizing: border-box;
 	border: 0;
@@ -31,7 +25,7 @@ div.login input {
 	background: #f2f2f2;
 }
 
-div.login button {
+div.login-form button {
 	background-color: #4CAF50;
     color: white;
     padding: 14px 20px;
@@ -41,7 +35,7 @@ div.login button {
 	font-size: 100%;
 }
 
-div.login button:hover {
+div.login-form button:hover {
 	 opacity: 0.8;
 }
 
@@ -214,16 +208,7 @@ div.login button:hover {
 
 /* Modal Content */
 .modal-content {
-	position: absolute;
-	top: 50%;
-	left: 50%;
-	transform: translateX(-50%) translateY(-50%);
-
-	background-color: black;
 	margin: auto;
-	padding: 0;
-	object-fit: contain;
-
 	max-width: 100%;
 	max-height: 100%;
 }
