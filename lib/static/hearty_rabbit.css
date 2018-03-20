@@ -216,6 +216,8 @@ div.login-form button:hover {
 /* The lightbox buttons*/
 .light-box-button.material-icons {
 	font-size: 3em;
+	background-color: rgba(0, 0, 0, 0);
+	mix-blend-mode: difference;
 	user-select: none;
 	-webkit-user-select: none;
 }
@@ -227,8 +229,8 @@ div.login-form button:hover {
 }
 
 .light-box-button-bar {
+	background-color: rgba(0, 0, 0, 0.5);
 	position: absolute;
-	background-color: black;
 	top: 10px;
 	right: 25px;
 	color: white;
