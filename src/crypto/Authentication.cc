@@ -151,26 +151,11 @@ void Authentication::verify_session(
 			cookie, session_length
 		](redis::Reply reply, auto&& ec) mutable
 		{
-			// try to get the TTL of the session
+			Authentication auth{cookie, reply.as_string()};
 			if (!ec && !reply.is_nil())
-			{
-				db->command([
-						db, comp=std::move(comp), session_length, cookie,
-						username=std::string{reply.as_string()}
-					](auto&& reply, auto&& ec)
-					{
-						Log(LOG_NOTICE, "TTL reply %1% (type:%2%)", reply.as_int(), reply.type());
-
-						if (reply.as_int() < session_length.count()/2)
-							create_session(std::move(comp), username, *db, session_length);
-						else
-							comp(std::move(ec), Authentication{cookie, username});
-					},
-					"TTL session:%b", cookie.data(), cookie.size()
-				);
-			}
+				auth.renew_session(*db, session_length, std::move(comp));
 			else
-				comp(std::move(ec), Authentication{cookie, reply.as_string()});
+				comp(std::move(ec), std::move(auth));
 		},
 		"GET session:%b", cookie.data(), cookie.size()
 	);
@@ -260,6 +245,41 @@ bool Authentication::valid() const
 	assert((m_cookie == Cookie{}) == m_user.empty() );
 
 	return m_cookie != Cookie{} && !m_user.empty();
+}
+
+void Authentication::renew_session(
+	redis::Connection& db,
+	std::chrono::seconds session_length,
+	std::function<void(std::error_code, Authentication&&)>&& completion
+) const
+{
+	// try to get the TTL of the session
+	db.command([
+			db=db.shared_from_this(), *this,
+			comp=std::move(completion), session_length
+		](auto&& reply, auto&& ec)
+		{
+			// The old session is more than half-way expired. Renew the session by
+			// creating a new one and deleting the old one.
+			if (reply.as_int() < session_length.count()/2)
+			{
+				Log(LOG_NOTICE, "%1% seconds before session timeout. Renewing session", reply.as_int());
+				create_session(std::move(comp), m_user, *db, session_length);
+
+				// Expire the old session cookie in 30 seconds.
+				// This is to avoid session error for the pending requests in the
+				// pipeline. These requests should still be using the old session.
+				db->command("EXPIRE session:%b 30", m_cookie.data(), m_cookie.size());
+			}
+
+			// No need to renew, can keep using the old one
+			else
+			{
+				comp(std::move(ec), Authentication{*this});
+			}
+		},
+		"TTL session:%b", m_cookie.data(), m_cookie.size()
+	);
 }
 
 } // end of namespace hrb

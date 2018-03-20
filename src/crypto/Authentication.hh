@@ -76,6 +76,13 @@ public:
 	const std::string& user() const {return m_user;}
 
 private:
+	void renew_session(
+		redis::Connection& db,
+		std::chrono::seconds session_length,
+		std::function<void(std::error_code, Authentication&&)>&& completion
+	) const;
+
+private:
 	Cookie      m_cookie{};
 	std::string m_user;
 };
