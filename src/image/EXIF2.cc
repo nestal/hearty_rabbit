@@ -324,6 +324,8 @@ const std::error_category& EXIF2::error_category()
 			{
 				case Error::ok: return "Success";
 				case Error::invalid_header: return "Invalid header";
+				case Error::not_found: return "EXIF2 not found";
+				case Error::not_supported: return "Metadata format not supported";
 				case Error::too_small: return "Not enough data";
 				default: return "Unknown";
 			}
