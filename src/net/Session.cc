@@ -209,9 +209,6 @@ void Session::on_write(
 	std::size_t,
 	bool close)
 {
-//	if (ec)
-//		Log(LOG_WARNING, "write error: %1%", ec);
-
 	if (close)
 	{
 		// This means we should close the connection, usually because
@@ -238,9 +235,6 @@ void Session::do_close()
 
 void Session::on_shutdown(boost::system::error_code)
 {
-//	if (ec)
-//		Log(LOG_WARNING, "shutdown error: %1% (%2%)", ec, ec.message());
-
 	// At this point the connection is closed gracefully
 }
 
