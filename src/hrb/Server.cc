@@ -85,7 +85,8 @@ void Server::on_login(const StringRequest& req, EmptyResponseSender&& send)
 			[
 				version=req.version(),
 				send=std::move(send),
-				login_from=url_decode(login_from)
+				login_from=url_decode(login_from),
+				session_length=session_length()
 			](std::error_code ec, auto&& session) mutable
 			{
 				Log(LOG_INFO, "login result: %1% %2% (from %3%)", ec, ec.message(), login_from);
@@ -100,7 +101,7 @@ void Server::on_login(const StringRequest& req, EmptyResponseSender&& send)
 
 				auto&& res = see_other(ec ? url::login_incorrect : (login_from.empty() ? "/" : login_from), version);
 				if (!ec)
-					res.set(http::field::set_cookie, session.set_cookie());
+					res.set(http::field::set_cookie, session.set_cookie(session_length));
 
 				res.set(http::field::cache_control, "no-cache, no-store, must-revalidate");
 				send(std::move(res));
@@ -421,6 +422,11 @@ std::string Server::https_root() const
 std::size_t Server::upload_limit() const
 {
 	return m_cfg.upload_limit();
+}
+
+std::chrono::seconds Server::session_length() const
+{
+	return m_cfg.session_length();
 }
 
 bool Server::is_upload(const RequestHeader& header)

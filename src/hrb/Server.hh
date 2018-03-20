@@ -78,6 +78,7 @@ public:
 	void add_user(std::string_view username, Password&& password, std::function<void(std::error_code)> complete);
 	std::string https_root() const;
 	std::size_t upload_limit() const;
+	std::chrono::seconds session_length() const;
 
 private:
 	http::response<SplitBuffers> static_file_request(const EmptyRequest& req);

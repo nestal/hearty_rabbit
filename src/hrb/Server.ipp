@@ -101,6 +101,7 @@ void Server::on_request_header(
 		Authentication::verify_session(
 			*session,
 			*m_db.alloc(),
+			session_length(),
 			std::move(on_verify_session)
 		);
 }

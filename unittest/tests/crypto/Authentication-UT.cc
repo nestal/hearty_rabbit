@@ -74,7 +74,7 @@ TEST_CASE("Test normal user login", "[normal]")
 					REQUIRE(!ec);
 					REQUIRE(session.valid());
 
-					Authentication::verify_session(session.cookie(), *redis, [&tested](std::error_code ec, auto&& auth)
+					Authentication::verify_session(session.cookie(), *redis, 60s, [&tested](std::error_code ec, auto&& auth)
 					{
 						// Username returned is always lower case.
 						REQUIRE(!ec);
@@ -102,7 +102,8 @@ TEST_CASE("Test normal user login", "[normal]")
 		{
 			auto cookie = insecure_random<Authentication::Cookie>();
 
-			Authentication::verify_session(cookie, *redis, [&tested](std::error_code ec, auto&& session)
+			using namespace std::chrono_literals;
+			Authentication::verify_session(cookie, *redis, 60s, [&tested](std::error_code ec, auto&& session)
 				{
 					INFO("verify_session(incorrect) result = " << ec.message());
 					REQUIRE(!ec);
@@ -133,9 +134,11 @@ TEST_CASE("Parsing cookie", "[normal]")
 	REQUIRE(session.has_value());
 	REQUIRE(*session == Authentication::Cookie{0x01,0x23,0x45, 0x67, 0x89,0xAB,0xCD,0xEF,0x01,0x23,0x45,0x67,0x89,0xAB,0xCD,0xEF});
 
+	using namespace std::literals;
+
 	// Random round-trip
 	auto rand = insecure_random<Authentication::Cookie>();
-	auto cookie = Authentication{rand, "test"}.set_cookie();
+	auto cookie = Authentication{rand, "test"}.set_cookie(600s);
 	INFO("cookie for random session ID is " << cookie);
 	session = parse_cookie(cookie);
 	REQUIRE(session.has_value());
