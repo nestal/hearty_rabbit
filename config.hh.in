@@ -20,8 +20,7 @@ namespace hrb {
 namespace constants {
 
 const std::string_view config_filename = "@CONFIG_FILENAME@";
-const std::string_view version         = "@VERSION@";
+const std::string_view version         = "@VERSION@ Build @BUILD_NUMBER@";
 
-@HTTP_SERVED_FILES@
 
 }} // end of namespace
