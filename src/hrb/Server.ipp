@@ -155,6 +155,7 @@ void Server::get_blob(BlobRequest&& req, Send&& send)
 template <class Complete>
 void Server::on_request_header(
 	const RequestHeader& header,
+	const Authentication& existing_auth,
 	EmptyRequestParser& src,
 	RequestBodyParsers& dest,
 	Complete&& complete
@@ -184,32 +185,38 @@ void Server::on_request_header(
 		return complete(Authentication{});
 	}
 
-	Authentication::verify_session(
-		*session,
-		*m_db.alloc(),
-		[
-			this,
-			&header,
-			&dest,
-			&src,
-			complete=std::forward<Complete>(complete)
-		](std::error_code ec, const Authentication& auth) mutable
-		{
-			// Use a UploadRequestParse to parser upload requests, only when the session is authenicated.
-			if (!ec && is_upload(header))
-				prepare_upload(dest.emplace<UploadRequestParser>(std::move(src)).get().body(), ec);
+	auto on_verify_session = [
+		this,
+		&header,
+		&dest,
+		&src,
+		complete=std::forward<Complete>(complete)
+	](std::error_code ec, const Authentication& auth) mutable
+	{
+		// Use a UploadRequestParse to parser upload requests, only when the session is authenicated.
+		if (!ec && is_upload(header))
+			prepare_upload(dest.emplace<UploadRequestParser>(std::move(src)).get().body(), ec);
 
-			// blobs support post request
-			else if (!ec && header.target().starts_with(url::blob) && header.method() == http::verb::post)
-				dest.emplace<StringRequestParser>(std::move(src));
+		// blobs support post request
+		else if (!ec && header.target().starts_with(url::blob) && header.method() == http::verb::post)
+			dest.emplace<StringRequestParser>(std::move(src));
 
-			// Other requests use EmptyRequestParser, because they don't have a body.
-			else
-				dest.emplace<EmptyRequestParser>(std::move(src));
+		// Other requests use EmptyRequestParser, because they don't have a body.
+		else
+			dest.emplace<EmptyRequestParser>(std::move(src));
 
-			complete(auth);
-		}
-	);
+		complete(auth);
+	};
+
+	// no need to verify the session again if it is the same as previous one
+	if (existing_auth.cookie() == *session)
+		on_verify_session(std::error_code{}, existing_auth);
+	else
+		Authentication::verify_session(
+			*session,
+			*m_db.alloc(),
+			std::move(on_verify_session)
+		);
 }
 
 } // end of namespace

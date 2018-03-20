@@ -13,6 +13,7 @@
 #pragma once
 
 #include "Request.hh"
+#include "crypto/Authentication.hh"
 #include "hrb/UploadFile.hh"
 
 #include <boost/beast/core.hpp>
@@ -48,7 +49,7 @@ public:
 	void on_handshake(boost::system::error_code ec);
 	void do_read();
 	void on_read_header(boost::system::error_code ec, std::size_t bytes_transferred);
-	void on_read(boost::system::error_code ec, std::size_t bytes_transferred, const Authentication& auth);
+	void on_read(boost::system::error_code ec, std::size_t bytes_transferred);
 	void on_write(boost::system::error_code ec, std::size_t bytes_transferred, bool close);
 	void do_close();
 	void on_shutdown(boost::system::error_code ec);
@@ -71,6 +72,8 @@ private:
 	boost::asio::ssl::stream<tcp::socket&> 		                m_stream;
 	boost::asio::strand<boost::asio::io_context::executor_type> m_strand;
 	boost::beast::flat_buffer                                   m_buffer;
+
+	Authentication	m_auth;
 
 	bool m_keep_alive{false};
 

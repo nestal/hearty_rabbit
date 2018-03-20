@@ -87,14 +87,17 @@ void Session::on_read_header(boost::system::error_code ec, std::size_t bytes_tra
 		auto&& header = m_parser->get();
 		m_keep_alive = header.keep_alive();
 
-		m_server.on_request_header(header, *m_parser, m_body, [self=shared_from_this(), this](const Authentication& auth)
+		m_server.on_request_header(header, m_auth, *m_parser, m_body, [self=shared_from_this(), this](const Authentication& auth)
 		{
+			// remember existing credential
+			m_auth = auth;
+
 			// Call async_read() using the chosen parser to read and parse the request body.
-			std::visit([&self, this, &auth](auto&& parser)
+			std::visit([&self, this](auto&& parser)
 			{
 				async_read(m_stream, m_buffer, parser, boost::asio::bind_executor(
 					m_strand,
-					[self, auth](auto ec, auto bytes){self->on_read(ec, bytes, auth);}
+					[self](auto ec, auto bytes){self->on_read(ec, bytes);}
 				));
 			}, m_body);
 		});
@@ -102,14 +105,14 @@ void Session::on_read_header(boost::system::error_code ec, std::size_t bytes_tra
 }
 
 
-void Session::on_read(boost::system::error_code ec, std::size_t, const Authentication& auth)
+void Session::on_read(boost::system::error_code ec, std::size_t)
 {
 	// This means they closed the connection
 	if (ec)
 		return handle_read_error(__PRETTY_FUNCTION__, ec);
 	else
 	{
-		std::visit([self=shared_from_this(), this, &auth](auto&& parser)
+		std::visit([self=shared_from_this(), this](auto&& parser)
 		{
 			auto req = parser.release();
 			if (validate_request(req))
@@ -117,7 +120,7 @@ void Session::on_read(boost::system::error_code ec, std::size_t, const Authentic
 				m_server.handle_https(std::move(req), [self](auto&& response)
 				{
 					self->send_response(std::forward<decltype(response)>(response));
-				}, auth);
+				}, m_auth);
 			}
 		}, m_body);
 	}
