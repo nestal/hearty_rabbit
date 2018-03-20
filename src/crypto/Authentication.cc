@@ -17,6 +17,7 @@
 #include "net/Redis.hh"
 #include "util/Error.hh"
 #include "util/Escape.hh"
+#include "util/Log.hh"
 
 #include <boost/algorithm/hex.hpp>
 #include <boost/algorithm/string.hpp>
@@ -150,9 +151,24 @@ void Authentication::verify_session(
 			cookie, session_length
 		](redis::Reply reply, auto&& ec) mutable
 		{
-			// testing only! always create a new session
-			if (!ec)
-				create_session(std::move(comp), std::string{reply.as_string()}, *db, session_length);
+			// try to get the TTL of the session
+			if (!ec && !reply.is_nil())
+			{
+				db->command([
+						db, comp=std::move(comp), session_length, cookie,
+						username=std::string{reply.as_string()}
+					](auto&& reply, auto&& ec)
+					{
+						Log(LOG_NOTICE, "TTL reply %1% (type:%2%)", reply.as_int(), reply.type());
+
+						if (reply.as_int() < session_length.count()/2)
+							create_session(std::move(comp), username, *db, session_length);
+						else
+							comp(std::move(ec), Authentication{cookie, username});
+					},
+					"TTL session:%b", cookie.data(), cookie.size()
+				);
+			}
 			else
 				comp(std::move(ec), Authentication{cookie, reply.as_string()});
 		},
