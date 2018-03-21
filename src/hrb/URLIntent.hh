@@ -23,20 +23,20 @@ class URLIntent
 {
 public:
 	// TODO: narrow down the possibility of actions in these enum
-	enum class Action {login, logout, blob, view, coll, upload, none};
+	enum class Action {login, logout, blob, view, coll, upload, home, lib, listcolls, none};
 
 private:
-	// Allowed HTTP methods
-	static const std::array<bool, static_cast<int>(Action::none)> allow_get, allow_post, allow_put;
-
 	// Required URL components
-	static const std::array<bool, static_cast<int>(Action::none)> require_user, require_coll, require_filename;
+	static const std::array<bool, static_cast<int>(Action::none)> require_user, require_filename;
 
 public:
+	URLIntent() = default;
 	explicit URLIntent(boost::string_view target);
-	URLIntent(std::string_view action, std::string_view user, std::string_view coll, std::string_view name);
+	URLIntent(Action act, std::string_view user, std::string_view coll, std::string_view name);
 
-	std::string_view action() const {return m_action;}
+	bool parse(boost::string_view target);
+
+	Action action() const {return m_action;}
 	std::string_view user() const {return m_user;}
 	std::string_view collection() const {return m_coll;}
 	std::string_view filename() const {return m_filename;}
@@ -48,12 +48,10 @@ public:
 
 private:
 	static std::string_view trim(std::string_view s);
-
 	static Action parse_action(std::string_view str);
 
 private:
-	// "view" or "upload"
-	std::string_view m_action;
+	Action  m_action{Action::none};
 
 	std::string_view m_user;
 

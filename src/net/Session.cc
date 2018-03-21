@@ -87,8 +87,11 @@ void Session::on_read_header(boost::system::error_code ec, std::size_t bytes_tra
 		auto&& header = m_parser->get();
 		m_keep_alive = header.keep_alive();
 
+		if (!m_intent.parse(header.target()) || !m_intent.valid())
+			return send_response(m_server.not_found("not found", header.version()));
+
 		m_server.on_request_header(
-			header, m_auth, *m_parser, m_body,
+			header, m_intent, m_auth, *m_parser, m_body,
 			[self=shared_from_this(), this](const Authentication& auth, bool auth_renewed)
 			{
 				// remember existing credential

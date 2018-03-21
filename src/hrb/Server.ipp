@@ -37,6 +37,7 @@ namespace hrb {
 template <class Complete>
 void Server::on_request_header(
 	const RequestHeader& header,
+	const URLIntent& intent,
 	const Authentication& existing_auth,
 	EmptyRequestParser& src,
 	RequestBodyParsers& dest,
@@ -46,13 +47,13 @@ void Server::on_request_header(
 	// Use StringRequestParser to parser login requests.
 	// The username/password will be stored in the string body.
 	// No need to verify session.
-	if (is_login(header))
+	if (intent.action() == URLIntent::Action::login)
 	{
 		dest.emplace<StringRequestParser>(std::move(src));
 		return complete(Authentication{}, false);
 	}
 
-	if (is_static_resource(header.target()))
+	if (intent.action() == URLIntent::Action::lib)
 	{
 		dest.emplace<EmptyRequestParser>(std::move(src));
 		return complete(Authentication{}, false);
@@ -111,8 +112,9 @@ void Server::handle_request(Request&& req, Send&& send, const Authentication& au
 {
 	if constexpr (std::is_same<std::remove_reference_t<Request>, EmptyRequest>::value)
 	{
-		if (is_static_resource(req.target()))
-			return send(static_file_request(req));
+		URLIntent intent{req.target()};
+		if (intent.action() == URLIntent::Action::lib && is_static_resource(intent.filename()))
+			return send(static_file_request(req, intent.filename()));
 
 		if (req.target() == url::login_incorrect)
 			return send(on_login_incorrect(req));

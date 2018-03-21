@@ -169,7 +169,7 @@ TEST_CASE("General server tests", "[normal]")
 		{
 			FileResponseChecker checker{http::status::ok, cfg.web_root() / "static/logo.svg"};
 
-			req.target("/logo.svg");
+			req.target("/lib/logo.svg");
 			subject.handle_request(std::move(req), std::ref(checker), {});
 			REQUIRE(checker.tested());
 		}
@@ -178,7 +178,7 @@ TEST_CASE("General server tests", "[normal]")
 		{
 			FileResponseChecker checker{http::status::ok, cfg.web_root() / "static/hearty_rabbit.js"};
 
-			req.target("/hearty_rabbit.js");
+			req.target("/lib/hearty_rabbit.js");
 			req.set(boost::beast::http::field::cookie, session.set_cookie());
 			subject.handle_request(std::move(req), std::ref(checker), session);
 			REQUIRE(checker.tested());

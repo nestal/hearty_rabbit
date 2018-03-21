@@ -6,15 +6,15 @@
 	<meta name="description" content="Hearty Rabbit photo gallery">
 	<title>Hearty Rabbit</title>
 
-	<link rel="stylesheet" href="/hearty_rabbit.css">
-	<link rel="icon" href="/logo.svg" type="image/svg+xml">
+	<link rel="stylesheet" href="/lib/hearty_rabbit.css">
+	<link rel="icon" href="/lib/logo.svg" type="image/svg+xml">
 	<link href="https://fonts.googleapis.com/css?family=Mukta+Mahee" rel="stylesheet">
 	<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
-	<script src="/hearty_rabbit.js"></script>
+	<script src="/lib/hearty_rabbit.js"></script>
 </head>
 <body class="index-body">
 <div class="topnav">
-	<img class="nav-logo" src="/logo.svg">
+	<img class="nav-logo" src="/lib/logo.svg">
 	<div id="username-nav" class="nav-level1 show-only-after-logged-in" >
 		<a href="/"><span id="show-username"></span>'s Photo <i class="material-icons">arrow_drop_down</i></a>
 	</div>
@@ -36,7 +36,7 @@
 
 <section id="hrb-entry-root">
 	<div id="hrb-entry-prototype" class="hrb-entry">
-		<img src="/loading.svg">
+		<img src="/lib/loading.svg">
 		<span class="text-overlay-box"></span>
 		<i class="perm-overlay-box material-icons"></i>
 	</div>
@@ -52,7 +52,7 @@
 		<i id="delete-image" class="tooltip light-box-button material-icons">delete<span class="tooltiptext">Delete picture</span></i>
 		<i class="close-overlays tooltip light-box-button material-icons">close<span class="tooltiptext">Close</span></i>
 	</div>
-	<img id="light-box-image" class="modal-content hrb-blob-image" src="/loading.svg">
+	<img id="light-box-image" class="modal-content hrb-blob-image" src="/lib/loading.svg">
 
 	<!-- Next/previous controls -->
 	<a class="prev" onclick="next_image(-1)">

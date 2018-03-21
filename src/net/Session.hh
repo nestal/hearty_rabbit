@@ -15,6 +15,7 @@
 #include "Request.hh"
 #include "crypto/Authentication.hh"
 #include "hrb/UploadFile.hh"
+#include "hrb/URLIntent.hh"
 
 #include <boost/beast/core.hpp>
 #include <boost/beast/http.hpp>
@@ -82,7 +83,9 @@ private:
 	std::optional<EmptyRequestParser> m_parser;
 	std::variant<StringRequestParser, UploadRequestParser, EmptyRequestParser> m_body;
 
-	Server& m_server;
+	URLIntent   m_intent;
+
+	Server&     m_server;
 
 	// stats
 	std::size_t m_nth_session;

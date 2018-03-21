@@ -216,7 +216,7 @@ void Server::on_upload(UploadRequest&& req, EmptyResponseSender&& send, const Au
 	// It will be used for authorizing the user's request on these blob later.
 	Ownership{auth.user()}.link(
 		*m_db.alloc(), path_url.collection(), blob.ID(), blob.entry(), [
-			location = URLIntent{"blob", auth.user(), path_url.collection(), to_hex(blob.ID())}.str(),
+			location = URLIntent{URLIntent::Action::blob, auth.user(), path_url.collection(), to_hex(blob.ID())}.str(),
 			send = std::move(send),
 			version = req.version()
 		](auto ec)
@@ -327,12 +327,9 @@ void Server::serve_home(const EmptyRequest& req, FileResponseSender&& send, cons
 
 }
 
-http::response<SplitBuffers> Server::static_file_request(const EmptyRequest& req)
+http::response<SplitBuffers> Server::static_file_request(const EmptyRequest& req, std::string_view file)
 {
-	std::string_view filepath{req.target().data(), req.target().size()};
-	filepath.remove_prefix(1);
-
-	return m_lib.find_static(filepath, req[http::field::if_none_match], req.version());
+	return m_lib.find_static(file, req[http::field::if_none_match], req.version());
 }
 
 void Server::run()
@@ -403,13 +400,10 @@ boost::asio::io_context& Server::get_io_context()
 	return m_ioc;
 }
 
-bool Server::is_static_resource(boost::string_view target) const
+bool Server::is_static_resource(std::string_view target) const
 {
-	assert(!target.empty());
-	assert(target.front() == '/');
-	target.remove_prefix(1);
-
-	return m_lib.is_static(target.to_string());
+	std::cout << "resource = " << target << " " << m_lib.is_static(target) << std::endl;
+	return m_lib.is_static(target);
 }
 
 std::string Server::https_root() const
