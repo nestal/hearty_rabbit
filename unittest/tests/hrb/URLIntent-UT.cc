@@ -104,6 +104,20 @@ TEST_CASE("path URL")
 	REQUIRE(path_with_2slashes.filename() == "image.jpeg");
 	REQUIRE(path_with_2slashes.str() == "/upload/path/something/////wrong/image.jpeg");
 
+	URLIntent path_with_option{"/blob/user/path/id?rendition"};
+	REQUIRE(path_with_option.action() == "blob");
+	REQUIRE(path_with_option.user() == "user");
+	REQUIRE(path_with_option.collection() == "path");
+	REQUIRE(path_with_option.filename() == "id");
+	REQUIRE(path_with_option.option() == "rendition");
+
+	URLIntent path_with_question{"/blob/user/path/big_id?"};
+	REQUIRE(path_with_question.action() == "blob");
+	REQUIRE(path_with_question.user() == "user");
+	REQUIRE(path_with_question.collection() == "path");
+	REQUIRE(path_with_question.filename() == "big_id");
+	REQUIRE(path_with_question.option() == "");
+
 	URLIntent trim_action{"/action", "user", "", ""};
 	REQUIRE(trim_action.str() == "/action/user/");
 

@@ -43,10 +43,27 @@ URLIntent::URLIntent(boost::string_view boost_target)
 	if (target.empty())
 		return;
 
+	auto option_start = target.find_last_of('?');
+	if (option_start != target.npos)
+	{
+		option_start++;
+		m_option = target.substr(option_start, target.size());
+		target.remove_suffix(m_option.size());
+	}
+
+	if (target.empty())
+		return;
+
+	if (target.back() == '?')
+		target.remove_suffix(1);
+
 	auto file_start = target.find_last_of('/');
-	if (file_start != target.npos) file_start++;
-	m_filename = target.substr(file_start, target.size());
-	target.remove_suffix(m_filename.size());
+	if (file_start != target.npos)
+	{
+		file_start++;
+		m_filename = target.substr(file_start, target.size());
+		target.remove_suffix(m_filename.size());
+	}
 
 	if (target.empty())
 		return;

@@ -40,6 +40,7 @@ public:
 	std::string_view user() const {return m_user;}
 	std::string_view collection() const {return m_coll;}
 	std::string_view filename() const {return m_filename;}
+	std::string_view option() const {return m_option;}
 
 	std::string str() const;
 
@@ -61,6 +62,9 @@ private:
 
 	// filename
 	std::string_view m_filename;
+
+	// option
+	std::string_view m_option;
 };
 
 } // end of namespace hrb
