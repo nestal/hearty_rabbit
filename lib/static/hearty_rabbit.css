@@ -6,17 +6,17 @@ body {
 	display: none;
 }
 
-div.login-form {
+div.dialog-container {
 	background: white;
 	padding: 45px;
 	font-size: 130%;
 }
 
-div.login-form h1 {
+div.dialog-container h1 {
 	text-align: center;
 }
 
-div.login-form input {
+div.dialog-container input {
 	width: 100%;
 	box-sizing: border-box;
 	border: 0;
@@ -25,7 +25,7 @@ div.login-form input {
 	background: #f2f2f2;
 }
 
-div.login-form button {
+div.dialog-container button {
 	background-color: #4CAF50;
     color: white;
     padding: 14px 20px;
@@ -35,7 +35,7 @@ div.login-form button {
 	font-size: 100%;
 }
 
-div.login-form button:hover {
+div.dialog-container button:hover {
 	 opacity: 0.8;
 }
 

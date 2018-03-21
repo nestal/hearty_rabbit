@@ -67,7 +67,7 @@
 	<div class="light-box-button-bar">
 		<i class="light-box-button material-icons" onclick="cancel_login();">close</i>
 	</div>
-	<div class="modal-content login-form">
+	<div class="modal-content dialog-container">
 		<h1>Welcome to HeartyRabbit!</h1>
 		<div id="login-message">Please login:</div>
 		<form action="/login" method="post">
@@ -83,12 +83,10 @@
 	<div class="light-box-button-bar">
 		<i class="light-box-button material-icons" onclick="cancel_create_album();">close</i>
 	</div>
-	<div class="login">
-		<div class="login-form">
-			<h1>Name of the new album:</h1>
-			<div><input id="new-album-name" type="text" placeholder="album name"></div>
-			<button onclick="new_album()">Create</button>
-		</div>
+	<div class="modal-content dialog-container">
+		<h1>Name of the new album:</h1>
+		<div><input id="new-album-name" type="text" placeholder="album name"></div>
+		<button onclick="new_album()">Create</button>
 	</div>
 </div>
 
