@@ -402,7 +402,6 @@ boost::asio::io_context& Server::get_io_context()
 
 bool Server::is_static_resource(std::string_view target) const
 {
-	std::cout << "resource = " << target << " " << m_lib.is_static(target) << std::endl;
 	return m_lib.is_static(target);
 }
 

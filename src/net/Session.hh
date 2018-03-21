@@ -83,8 +83,6 @@ private:
 	std::optional<EmptyRequestParser> m_parser;
 	std::variant<StringRequestParser, UploadRequestParser, EmptyRequestParser> m_body;
 
-	URLIntent   m_intent;
-
 	Server&     m_server;
 
 	// stats

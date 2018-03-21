@@ -20,17 +20,10 @@ namespace hrb {
 
 URLIntent::URLIntent(boost::string_view boost_target)
 {
-	parse(boost_target);
-}
-
-bool URLIntent::parse(boost::string_view boost_target)
-{
-	m_action = Action::none;
-
 	// order is important here
 	// All URL path must start with slash
 	if (boost_target.empty() || boost_target.front() != '/')
-		return false;
+		return;
 
 	// skip the first slash
 	std::string_view target{boost_target.data(), boost_target.size()};
@@ -40,10 +33,10 @@ bool URLIntent::parse(boost::string_view boost_target)
 	target.remove_prefix(action_str.size());
 	m_action = parse_action(action_str);
 	if (m_action == Action::none)
-		return false;
+		return;
 
 	if (target.empty())
-		return true;
+		return;
 
 	if (require_user.at(static_cast<std::size_t>(m_action)))
 	{
@@ -53,7 +46,7 @@ bool URLIntent::parse(boost::string_view boost_target)
 	}
 
 	if (target.empty())
-		return true;
+		return;
 
 	auto option_start = target.find_last_of('?');
 	if (option_start != target.npos)
@@ -64,7 +57,7 @@ bool URLIntent::parse(boost::string_view boost_target)
 	}
 
 	if (target.empty())
-		return true;
+		return;
 
 	if (target.back() == '?')
 		target.remove_suffix(1);
@@ -78,10 +71,10 @@ bool URLIntent::parse(boost::string_view boost_target)
 	}
 
 	if (target.empty())
-		return true;
+		return;
 
 	m_coll = trim(target);
-	return true;
+	return;
 }
 
 URLIntent::URLIntent(Action act, std::string_view user, std::string_view coll, std::string_view name) :

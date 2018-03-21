@@ -34,8 +34,6 @@ public:
 	explicit URLIntent(boost::string_view target);
 	URLIntent(Action act, std::string_view user, std::string_view coll, std::string_view name);
 
-	bool parse(boost::string_view target);
-
 	Action action() const {return m_action;}
 	std::string_view user() const {return m_user;}
 	std::string_view collection() const {return m_coll;}
