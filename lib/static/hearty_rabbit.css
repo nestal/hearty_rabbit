@@ -215,7 +215,7 @@ div.dialog-container button:hover {
 
 /* The lightbox buttons*/
 .light-box-button.material-icons {
-	font-size: 8.0vmin;
+	font-size: 72px;
 	user-select: none;
 	-webkit-user-select: none;
 	background-color: transparent;
@@ -226,6 +226,12 @@ div.dialog-container button:hover {
 .light-box-button.material-icons.highlighted {
 	color: black;
 	background-color: rgba(255, 255, 255, 0.5);
+}
+
+.light-box-button.material-icons.highlighted:hover,
+.light-box-button.material-icons.highlighted:focus {
+	color: black;
+	background-color: white;
 }
 
 /* font size set to 0 to avoid extra space between icons */
