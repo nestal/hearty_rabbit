@@ -50,13 +50,13 @@ void Server::on_request_header(
 	if (intent.action() == URLIntent::Action::login)
 	{
 		dest.emplace<StringRequestParser>(std::move(src));
-		return complete(Authentication{}, false);
+		return complete(std::nullopt);
 	}
 
 	if (intent.action() == URLIntent::Action::lib)
 	{
 		dest.emplace<EmptyRequestParser>(std::move(src));
-		return complete(Authentication{}, false);
+		return complete(std::nullopt);
 	}
 
 	// Everything else require a valid session.
@@ -65,7 +65,7 @@ void Server::on_request_header(
 	if (!session)
 	{
 		dest.emplace<EmptyRequestParser>(std::move(src));
-		return complete(Authentication{}, false);
+		return complete(Authentication{});
 	}
 
 	Authentication::verify_session(
@@ -77,11 +77,10 @@ void Server::on_request_header(
 			&header,
 			&dest,
 			&src,
-			old_session=*session,
 			complete=std::forward<Complete>(complete)
 		](std::error_code ec, const Authentication& auth) mutable
 		{
-			// Use a UploadRequestParse to parser upload requests, only when the session is authenicated.
+			// Use a UploadRequestParse to parser upload requests, only when the session is authenticated.
 			if (!ec && is_upload(header))
 				prepare_upload(dest.emplace<UploadRequestParser>(std::move(src)).get().body(), ec);
 
@@ -96,7 +95,7 @@ void Server::on_request_header(
 			// If the cookie returned by verify_session() is different from the one we passed to it,
 			// that mean it is going to expired and it's renewed.
 			// In this case we want to tell Session to put it in the "Set-Cookie" header.
-			complete(auth, old_session != auth.cookie());
+			complete(auth);
 		}
 	);
 }

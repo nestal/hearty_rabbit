@@ -43,6 +43,7 @@ public:
 	std::string str() const;
 
 	bool valid() const;
+	bool need_auth() const;
 
 private:
 	static std::string_view trim(std::string_view s);

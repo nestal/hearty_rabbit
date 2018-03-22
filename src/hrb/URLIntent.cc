@@ -161,4 +161,9 @@ bool URLIntent::valid() const
 	}
 }
 
+bool URLIntent::need_auth() const
+{
+	return m_action == Action::upload;
+}
+
 } // end of namespace hrb
