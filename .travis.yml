@@ -15,7 +15,7 @@ before_install:
 
 install:
   - pip install --upgrade pip
-  - pip install requests Pillow numpy
+  - pip install requests Pillow numpy redis
 
 script:
   - docker build -t nestal/hearty_rabbit --network="host" .

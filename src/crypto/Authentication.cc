@@ -151,11 +151,15 @@ void Authentication::verify_session(
 			cookie, session_length
 		](redis::Reply reply, auto&& ec) mutable
 		{
-			Authentication auth{cookie, reply.as_string()};
-			if (!ec && !reply.is_nil())
-				auth.renew_session(*db, session_length, std::move(comp));
+			if (!ec)
+			{
+				if (reply.is_nil())
+					comp(std::move(ec), Authentication{});
+				else
+					Authentication{cookie, reply.as_string()}.renew_session(*db, session_length, std::move(comp));
+			}
 			else
-				comp(std::move(ec), std::move(auth));
+				comp(std::move(ec), Authentication{});
 		},
 		"GET session:%b", cookie.data(), cookie.size()
 	);
@@ -200,9 +204,16 @@ void Authentication::verify_user(
 std::string Authentication::set_cookie(std::chrono::seconds session_length) const
 {
 	std::string result = "id=";
-	boost::algorithm::hex_lower(m_cookie.begin(), m_cookie.end(), std::back_inserter(result));
-	result.append("; Secure; HttpOnly; SameSite=Strict; Max-Age=");
-	result.append(std::to_string(session_length.count()));
+	if (valid())
+	{
+		boost::algorithm::hex_lower(m_cookie.begin(), m_cookie.end(), std::back_inserter(result));
+		result.append("; Secure; HttpOnly; SameSite=Strict; Max-Age=");
+		result.append(std::to_string(session_length.count()));
+	}
+	else
+	{
+		result.append("; expires=Thu, Jan 01 1970 00:00:00 UTC");
+	}
 	return result;
 }
 

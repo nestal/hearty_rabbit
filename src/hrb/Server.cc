@@ -117,7 +117,7 @@ void Server::on_logout(const EmptyRequest& req, EmptyResponseSender&& send, cons
 	auth.destroy_session(*m_db.alloc(), [this, send=std::move(send), version=req.version()](auto&& ec) mutable
 	{
 		auto&& res = see_other("/", version);
-		res.set(http::field::set_cookie, "id=; expires=Thu, Jan 01 1970 00:00:00 UTC;");
+		res.set(http::field::set_cookie, Authentication{}.set_cookie());
 		res.set(http::field::cache_control, "no-cache, no-store, must-revalidate");
 		res.keep_alive(false);
 		send(std::move(res));
