@@ -1,5 +1,6 @@
 body {
 	font-family: 'Mukta Mahee', sans-serif;
+	margin: 0;
 }
 
 #login-dialog, #create-album-dialog {
@@ -69,7 +70,7 @@ div.dialog-container button:hover {
 	position: absolute;
 	top: 0;
 	right: 0;
-	font-size: 8vmin;
+	font-size: 48px;
 }
 
 .hrb-entry .text-overlay-box {
@@ -214,7 +215,7 @@ div.dialog-container button:hover {
 
 /* The lightbox buttons*/
 .light-box-button.material-icons {
-	font-size: 10.0vmin;
+	font-size: 8.0vmin;
 	user-select: none;
 	-webkit-user-select: none;
 	background-color: transparent;

@@ -131,7 +131,7 @@ void Session::on_read(boost::system::error_code ec, std::size_t, std::optional<A
 
 				m_server.handle_request(std::move(req), [this, self, renwed_auth](auto&& response)
 				{
-					if (renwed_auth)
+					if (renwed_auth && response.count(http::field::set_cookie) == 0)
 						response.set(http::field::set_cookie, renwed_auth->set_cookie(m_server.session_length()));
 
 					send_response(std::forward<decltype(response)>(response));
