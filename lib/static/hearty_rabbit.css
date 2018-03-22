@@ -69,12 +69,15 @@ div.dialog-container button:hover {
 	position: absolute;
 	top: 0;
 	right: 0;
+	font-size: 8vmin;
 }
 
 .hrb-entry .text-overlay-box {
 	position: absolute;
 	bottom: 0;
 	left: 0;
+
+	font-size: 1em;
 }
 
 .hrb-entry .text-overlay-box,
@@ -83,13 +86,8 @@ div.dialog-container button:hover {
 	background-color: rgba(0.5, 0.5, 0.5, 0.5);
 	padding: 5px;
 
-	font-size: 1em;
 	line-height: normal;
 	border-radius: 10px;
-}
-
-.hrb-entry i.perm-overlay-box.material-icons {
-	font-size: 2em;
 }
 
 #hrb-entry-root .hrb-entry:hover,
@@ -139,11 +137,11 @@ div.dialog-container button:hover {
 }
 
 .topnav {
-	position: fixed;
+	position: sticky;
 	z-index: 1;
 	top: 0;
 	width: 100%;
-	background-color: #333;
+	background-color: rgba(5%, 5%, 10%, 0.8);
 	height: 3em;
 	line-height: 3em;
 }
@@ -156,9 +154,8 @@ div.dialog-container button:hover {
 	text-align: center;
 	vertical-align: middle;
 	text-decoration: none;
-	padding-left: 0.5em;
-	padding-right: 0.5em;
-	font-size: 100%;
+	padding-left: 10px;
+	padding-right: 10px;
 	cursor: pointer;
 }
 
@@ -168,7 +165,7 @@ div.dialog-container button:hover {
 }
 
 .topnav .nav-level1 .nav-icons {
-	font-size: 150%;
+	font-size: 1.5em;
 	vertical-align: middle;
 }
 
@@ -217,16 +214,17 @@ div.dialog-container button:hover {
 
 /* The lightbox buttons*/
 .light-box-button.material-icons {
-	font-size: 3rem;
+	font-size: 10.0vmin;
 	user-select: none;
 	-webkit-user-select: none;
 	background-color: transparent;
+	border-radius: 10px;
 }
 
 /* The lightbox buttons*/
 .light-box-button.material-icons.highlighted {
 	color: black;
-	background-color: white;
+	background-color: rgba(255, 255, 255, 0.5);
 }
 
 /* font size set to 0 to avoid extra space between icons */
@@ -234,7 +232,7 @@ div.dialog-container button:hover {
 	font-size: 0;
 	border-radius: 10px;
 	position: absolute;
-	background-color: rgba(0.5, 0.5, 0.5, 0.5);
+	background-color: rgba(128, 128, 128, 0.5);
 	top: 10px;
 	right: 25px;
 	color: white;
@@ -288,13 +286,13 @@ div.dialog-container button:hover {
 
 /* Tooltip text */
 .tooltip .tooltiptext {
-	font-size: 0.3em;
+	font-size: 1rem;
 	visibility: hidden;
 	background-color: white;
 	color: black;
 	text-align: center;
-	padding: 0.2em;
-	margin: 0.1em;
+	padding: 5px;
+	margin: 2px;
 	border-radius: 6px;
 
 	position: absolute;
@@ -311,5 +309,4 @@ div.dialog-container button:hover {
 }
 
 #headline {
-	margin-top: 4rem;
 }
