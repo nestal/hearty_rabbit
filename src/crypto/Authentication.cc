@@ -145,7 +145,6 @@ void Authentication::verify_session(
 	std::function<void(std::error_code, Authentication&&)>&& completion
 )
 {
-	Log(LOG_NOTICE, "verifying session %1%", boost::algorithm::hex(std::string{cookie.begin(), cookie.end()}));
 	db.command([
 			db=db.shared_from_this(),
 			comp=std::move(completion),
@@ -154,7 +153,6 @@ void Authentication::verify_session(
 		{
 			if (!ec)
 			{
-	Log(LOG_NOTICE, "verified session %1% -> %2%", boost::algorithm::hex(std::string{cookie.begin(), cookie.end()}), reply.as_string());
 				if (reply.is_nil())
 					comp(std::move(ec), Authentication{});
 				else

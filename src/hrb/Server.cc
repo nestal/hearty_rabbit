@@ -89,7 +89,7 @@ void Server::on_login(const StringRequest& req, EmptyResponseSender&& send)
 				session_length=session_length()
 			](std::error_code ec, auto&& session) mutable
 			{
-				Log(LOG_INFO, "login result: %1% %2% (from %3%)", ec, ec.message(), login_from);
+				Log(LOG_INFO, "%4% login result: %1% %2% (from %3%)", ec, ec.message(), login_from, session.user());
 
 				// we want to redirect people to the page they login from. e.g. when they press the
 				// login button from /view/user/collection, we want to redirect them to

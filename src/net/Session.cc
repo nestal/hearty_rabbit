@@ -123,8 +123,8 @@ void Session::on_read(boost::system::error_code ec, std::size_t, const Authentic
 			{
 				m_server.handle_request(std::move(req), [this, self, auth, auth_changed](auto&& response)
 				{
-//					if (auth_changed)
-//						response.set(http::field::set_cookie, m_auth.set_cookie(m_server.session_length()));
+					if (auth_changed)
+						response.set(http::field::set_cookie, auth.set_cookie(m_server.session_length()));
 
 					send_response(std::forward<decltype(response)>(response));
 				}, auth);
