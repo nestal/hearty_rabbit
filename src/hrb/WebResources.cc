@@ -88,7 +88,7 @@ WebResources::Response WebResources::find_dynamic(std::string_view filename, int
 		Response{http::status::not_found, version};
 }
 
-bool WebResources::is_static(const std::string& filename) const
+bool WebResources::is_static(std::string_view filename) const
 {
 	return m_static.find(filename) != m_static.end();
 }

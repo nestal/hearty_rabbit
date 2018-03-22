@@ -87,40 +87,55 @@ void Session::on_read_header(boost::system::error_code ec, std::size_t bytes_tra
 		auto&& header = m_parser->get();
 		m_keep_alive = header.keep_alive();
 
-		m_server.on_request_header(header, m_auth, *m_parser, m_body, [self=shared_from_this(), this](const Authentication& auth)
-		{
-			// remember existing credential
-			m_auth = auth;
+		URLIntent intent{header.target()};
+		if (!intent.valid())
+			return send_response(m_server.not_found("not found", header.version()));
 
-			// Call async_read() using the chosen parser to read and parse the request body.
-			std::visit([&self, this](auto&& parser)
+		m_server.on_request_header(
+			header, intent, *m_parser, m_body,
+			[self=shared_from_this(), this](std::optional<Authentication> auth)
 			{
-				async_read(m_stream, m_buffer, parser, boost::asio::bind_executor(
-					m_strand,
-					[self](auto ec, auto bytes){self->on_read(ec, bytes);}
-				));
-			}, m_body);
-		});
+				// Call async_read() using the chosen parser to read and parse the request body.
+				std::visit([&self, this, auth](auto&& parser)
+				{
+					async_read(m_stream, m_buffer, parser, boost::asio::bind_executor(
+						m_strand,
+						[self, auth](auto ec, auto bytes){self->on_read(ec, bytes, auth);}
+					));
+				}, m_body);
+			}
+		);
 	}
 }
 
 
-void Session::on_read(boost::system::error_code ec, std::size_t)
+void Session::on_read(boost::system::error_code ec, std::size_t, std::optional<Authentication> auth)
 {
 	// This means they closed the connection
 	if (ec)
 		return handle_read_error(__PRETTY_FUNCTION__, ec);
 	else
 	{
-		std::visit([self=shared_from_this(), this](auto&& parser)
+		std::visit([self=shared_from_this(), this, auth](auto&& parser)
 		{
 			auto req = parser.release();
-			if (validate_request(req))
+			if (validate_request(req, auth ? auth->user() : ""))
 			{
-				m_server.handle_https(std::move(req), [self](auto&& response)
+				auto cookie = req[http::field::cookie];
+				auto session = parse_cookie({cookie.data(), cookie.size()});
+
+				// check if auth is renewed. if yes, set it to cookie before sending
+				auto renwed_auth = auth;
+				if (session && auth && *session == auth->cookie())
+					renwed_auth = std::nullopt;
+
+				m_server.handle_request(std::move(req), [this, self, renwed_auth](auto&& response)
 				{
-					self->send_response(std::forward<decltype(response)>(response));
-				}, m_auth);
+					if (renwed_auth)
+						response.set(http::field::set_cookie, renwed_auth->set_cookie(m_server.session_length()));
+
+					send_response(std::forward<decltype(response)>(response));
+				}, auth ? *auth : Authentication{});
 			}
 		}, m_body);
 	}
@@ -132,7 +147,7 @@ void Session::on_read(boost::system::error_code ec, std::size_t)
 // contents of the request, so the interface requires the
 // caller to pass a generic lambda for receiving the response.
 template<class Request>
-bool Session::validate_request(const Request& req)
+bool Session::validate_request(const Request& req, std::string_view user)
 {
 	boost::system::error_code ec;
 	auto endpoint = m_socket.remote_endpoint(ec);
@@ -146,7 +161,7 @@ bool Session::validate_request(const Request& req)
 		m_nth_transaction,
 		req.target(),
 		endpoint,
-		m_auth.user(),
+		user,
 		req[http::field::content_length].empty() ? "0" : req[http::field::content_length],
 		req.method_string()
 	);
@@ -181,7 +196,7 @@ void Session::send_response(Response&& response)
 	// The lifetime of the message has to extend
 	// for the duration of the async operation so
 	// we use a shared_ptr to manage it.
-	auto sp = std::make_shared<std::remove_reference_t<decltype(response)>>(std::forward<decltype(response)>(response));
+	auto sp = std::make_shared<std::remove_reference_t<Response>>(std::forward<Response>(response));
 	sp->set(http::field::server, BOOST_BEAST_VERSION_STRING);
 	sp->keep_alive(m_keep_alive);
 	sp->prepare_payload();
@@ -202,7 +217,7 @@ void Session::handle_read_error(std::string_view where, boost::system::error_cod
 
 	else if (ec)
 	{
-		Log(LOG_WARNING, "read error @ %3%: %1% (%2%)", ec, ec.message(), where);
+//		Log(LOG_WARNING, "read error @ %3%: %1% (%2%)", ec, ec.message(), where);
 		return send_response(m_server.bad_request(ec.message(), 11));
 	}
 }

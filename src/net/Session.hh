@@ -15,6 +15,7 @@
 #include "Request.hh"
 #include "crypto/Authentication.hh"
 #include "hrb/UploadFile.hh"
+#include "hrb/URLIntent.hh"
 
 #include <boost/beast/core.hpp>
 #include <boost/beast/http.hpp>
@@ -49,7 +50,7 @@ public:
 	void on_handshake(boost::system::error_code ec);
 	void do_read();
 	void on_read_header(boost::system::error_code ec, std::size_t bytes_transferred);
-	void on_read(boost::system::error_code ec, std::size_t bytes_transferred);
+	void on_read(boost::system::error_code ec, std::size_t bytes_transferred, std::optional<Authentication> auth);
 	void on_write(boost::system::error_code ec, std::size_t bytes_transferred, bool close);
 	void do_close();
 	void on_shutdown(boost::system::error_code ec);
@@ -60,7 +61,7 @@ private:
 	// contents of the request, so the interface requires the
 	// caller to pass a generic lambda for receiving the response.
 	template<class Request>
-	bool validate_request(const Request& req);
+	bool validate_request(const Request& req, std::string_view user);
 
 	template <class Response>
 	void send_response(Response&& response);
@@ -73,8 +74,6 @@ private:
 	boost::asio::strand<boost::asio::io_context::executor_type> m_strand;
 	boost::beast::flat_buffer                                   m_buffer;
 
-	Authentication	m_auth;
-
 	bool m_keep_alive{false};
 
 	// The parsed message are stored inside the parsers.
@@ -82,7 +81,7 @@ private:
 	std::optional<EmptyRequestParser> m_parser;
 	std::variant<StringRequestParser, UploadRequestParser, EmptyRequestParser> m_body;
 
-	Server& m_server;
+	Server&     m_server;
 
 	// stats
 	std::size_t m_nth_session;

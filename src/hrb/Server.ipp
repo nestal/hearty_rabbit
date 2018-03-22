@@ -22,6 +22,7 @@
 
 #include "crypto/Authentication.hh"
 #include "net/MMapResponseBody.hh"
+#include "util/Log.hh"
 
 #include <boost/beast/http/fields.hpp>
 #include <boost/beast/http/message.hpp>
@@ -30,13 +31,83 @@
 
 namespace hrb {
 
+/// \arg    header      The header we just received. This reference must be valid
+///						until \a complete() is called.
+/// \arg    src         The request_parser that produce \a header. It will be moved
+///                     to \a dest. Must be valid until \a complete() is called.
+template <class Complete>
+void Server::on_request_header(
+	const RequestHeader& header,
+	const URLIntent& intent,
+	EmptyRequestParser& src,
+	RequestBodyParsers& dest,
+	Complete&& complete
+)
+{
+	// Use StringRequestParser to parser login requests.
+	// The username/password will be stored in the string body.
+	// No need to verify session.
+	if (intent.action() == URLIntent::Action::login)
+	{
+		dest.emplace<StringRequestParser>(std::move(src));
+		return complete(std::nullopt);
+	}
+
+	if (intent.action() == URLIntent::Action::lib)
+	{
+		dest.emplace<EmptyRequestParser>(std::move(src));
+		return complete(std::nullopt);
+	}
+
+	// Everything else require a valid session.
+	auto cookie = header[http::field::cookie];
+	auto session = parse_cookie({cookie.data(), cookie.size()});
+	if (!session)
+	{
+		dest.emplace<EmptyRequestParser>(std::move(src));
+		return complete(Authentication{});
+	}
+
+	Authentication::verify_session(
+		*session,
+		*m_db.alloc(),
+		session_length(),
+		[
+			this,
+			&header,
+			&dest,
+			&src,
+			complete=std::forward<Complete>(complete)
+		](std::error_code ec, const Authentication& auth) mutable
+		{
+			// Use a UploadRequestParse to parser upload requests, only when the session is authenticated.
+			if (!ec && is_upload(header))
+				prepare_upload(dest.emplace<UploadRequestParser>(std::move(src)).get().body(), ec);
+
+			// blobs support post request
+			else if (!ec && header.target().starts_with(url::blob) && header.method() == http::verb::post)
+				dest.emplace<StringRequestParser>(std::move(src));
+
+			// Other requests use EmptyRequestParser, because they don't have a body.
+			else
+				dest.emplace<EmptyRequestParser>(std::move(src));
+
+			// If the cookie returned by verify_session() is different from the one we passed to it,
+			// that mean it is going to expired and it's renewed.
+			// In this case we want to tell Session to put it in the "Set-Cookie" header.
+			complete(auth);
+		}
+	);
+}
+
 template <class Request, class Send>
-void Server::handle_https(Request&& req, Send&& send, const Authentication& auth)
+void Server::handle_request(Request&& req, Send&& send, const Authentication& auth)
 {
 	if constexpr (std::is_same<std::remove_reference_t<Request>, EmptyRequest>::value)
 	{
-		if (is_static_resource(req.target()))
-			return send(static_file_request(req));
+		URLIntent intent{req.target()};
+		if (intent.action() == URLIntent::Action::lib && is_static_resource(intent.filename()))
+			return send(static_file_request(req, intent.filename()));
 
 		if (req.target() == url::login_incorrect)
 			return send(on_login_incorrect(req));
@@ -52,35 +123,7 @@ void Server::handle_https(Request&& req, Send&& send, const Authentication& auth
 
 		return send(http::response<http::empty_body>{http::status::bad_request, req.version()});
 	}
-	return on_valid_session(std::move(req), std::forward<decltype(send)>(send), auth);
-}
 
-template <class Request, class Send>
-void Server::handle_blob(Request&& req, Send&& send, const Authentication& auth)
-{
-	BlobRequest breq{req, auth.user()};
-
-	// Return 400 bad request if the blob ID is invalid
-	auto object_id = breq.blob();
-	if (!object_id)
-		return send(http::response<http::empty_body>{http::status::bad_request, req.version()});
-
-	if (req.method() == http::verb::delete_)
-		return unlink(std::move(breq), std::move(send));
-
-	else if (req.method() == http::verb::get)
-		return get_blob(std::move(breq), std::move(send));
-
-	else if (req.method() == http::verb::post)
-		return update_blob(std::move(breq),std::move(send));
-
-	else
-		return send(http::response<http::empty_body>{http::status::bad_request, req.version()});
-}
-
-template <class Request, class Send>
-void Server::on_valid_session(Request&& req, Send&& send, const Authentication& auth)
-{
 	// handle_blob() is a function template on the request type. It can work with all
 	// request types so no need to check before calling.
 	if (req.target().starts_with(url::blob))
@@ -115,6 +158,29 @@ void Server::on_valid_session(Request&& req, Send&& send, const Authentication& 
 	return send(not_found(req.target(), req.version()));
 }
 
+template <class Request, class Send>
+void Server::handle_blob(Request&& req, Send&& send, const Authentication& auth)
+{
+	BlobRequest breq{req, auth.user()};
+
+	// Return 400 bad request if the blob ID is invalid
+	auto object_id = breq.blob();
+	if (!object_id)
+		return send(http::response<http::empty_body>{http::status::bad_request, req.version()});
+
+	if (req.method() == http::verb::delete_)
+		return unlink(std::move(breq), std::move(send));
+
+	else if (req.method() == http::verb::get)
+		return get_blob(std::move(breq), std::move(send));
+
+	else if (req.method() == http::verb::post)
+		return update_blob(std::move(breq),std::move(send));
+
+	else
+		return send(http::response<http::empty_body>{http::status::bad_request, req.version()});
+}
+
 template <class Send>
 void Server::get_blob(BlobRequest&& req, Send&& send)
 {
@@ -146,77 +212,6 @@ void Server::get_blob(BlobRequest&& req, Send&& send)
 			return send(m_blob_db.response(*req.blob(), req.version(), entry.mime(), req.etag()));
 		}
 	);
-}
-
-/// \arg    header      The header we just received. This reference must be valid
-///						until \a complete() is called.
-/// \arg    src         The request_parser that produce \a header. It will be moved
-///                     to \a dest. Must be valid until \a complete() is called.
-template <class Complete>
-void Server::on_request_header(
-	const RequestHeader& header,
-	const Authentication& existing_auth,
-	EmptyRequestParser& src,
-	RequestBodyParsers& dest,
-	Complete&& complete
-)
-{
-	// Use StringRequestParser to parser login requests.
-	// The username/password will be stored in the string body.
-	// No need to verify session.
-	if (is_login(header))
-	{
-		dest.emplace<StringRequestParser>(std::move(src));
-		return complete(Authentication{});
-	}
-
-	if (is_static_resource(header.target()))
-	{
-		dest.emplace<EmptyRequestParser>(std::move(src));
-		return complete(Authentication{});
-	}
-
-	// Everything else require a valid session.
-	auto cookie = header[http::field::cookie];
-	auto session = parse_cookie({cookie.data(), cookie.size()});
-	if (!session)
-	{
-		dest.emplace<EmptyRequestParser>(std::move(src));
-		return complete(Authentication{});
-	}
-
-	auto on_verify_session = [
-		this,
-		&header,
-		&dest,
-		&src,
-		complete=std::forward<Complete>(complete)
-	](std::error_code ec, const Authentication& auth) mutable
-	{
-		// Use a UploadRequestParse to parser upload requests, only when the session is authenicated.
-		if (!ec && is_upload(header))
-			prepare_upload(dest.emplace<UploadRequestParser>(std::move(src)).get().body(), ec);
-
-		// blobs support post request
-		else if (!ec && header.target().starts_with(url::blob) && header.method() == http::verb::post)
-			dest.emplace<StringRequestParser>(std::move(src));
-
-		// Other requests use EmptyRequestParser, because they don't have a body.
-		else
-			dest.emplace<EmptyRequestParser>(std::move(src));
-
-		complete(auth);
-	};
-
-	// no need to verify the session again if it is the same as previous one
-	if (existing_auth.cookie() == *session)
-		on_verify_session(std::error_code{}, existing_auth);
-	else
-		Authentication::verify_session(
-			*session,
-			*m_db.alloc(),
-			std::move(on_verify_session)
-		);
 }
 
 } // end of namespace

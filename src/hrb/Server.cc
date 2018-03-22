@@ -85,10 +85,11 @@ void Server::on_login(const StringRequest& req, EmptyResponseSender&& send)
 			[
 				version=req.version(),
 				send=std::move(send),
-				login_from=url_decode(login_from)
+				login_from=url_decode(login_from),
+				session_length=session_length()
 			](std::error_code ec, auto&& session) mutable
 			{
-				Log(LOG_INFO, "login result: %1% %2% (from %3%)", ec, ec.message(), login_from);
+				Log(LOG_INFO, "%4% login result: %1% %2% (from %3%)", ec, ec.message(), login_from, session.user());
 
 				// we want to redirect people to the page they login from. e.g. when they press the
 				// login button from /view/user/collection, we want to redirect them to
@@ -100,7 +101,7 @@ void Server::on_login(const StringRequest& req, EmptyResponseSender&& send)
 
 				auto&& res = see_other(ec ? url::login_incorrect : (login_from.empty() ? "/" : login_from), version);
 				if (!ec)
-					res.set(http::field::set_cookie, session.set_cookie());
+					res.set(http::field::set_cookie, session.set_cookie(session_length));
 
 				res.set(http::field::cache_control, "no-cache, no-store, must-revalidate");
 				send(std::move(res));
@@ -116,7 +117,7 @@ void Server::on_logout(const EmptyRequest& req, EmptyResponseSender&& send, cons
 	auth.destroy_session(*m_db.alloc(), [this, send=std::move(send), version=req.version()](auto&& ec) mutable
 	{
 		auto&& res = see_other("/", version);
-		res.set(http::field::set_cookie, "id=; expires=Thu, Jan 01 1970 00:00:00 UTC;");
+		res.set(http::field::set_cookie, Authentication{}.set_cookie());
 		res.set(http::field::cache_control, "no-cache, no-store, must-revalidate");
 		res.keep_alive(false);
 		send(std::move(res));
@@ -215,7 +216,7 @@ void Server::on_upload(UploadRequest&& req, EmptyResponseSender&& send, const Au
 	// It will be used for authorizing the user's request on these blob later.
 	Ownership{auth.user()}.link(
 		*m_db.alloc(), path_url.collection(), blob.ID(), blob.entry(), [
-			location = URLIntent{"blob", auth.user(), path_url.collection(), to_hex(blob.ID())}.str(),
+			location = URLIntent{URLIntent::Action::blob, auth.user(), path_url.collection(), to_hex(blob.ID())}.str(),
 			send = std::move(send),
 			version = req.version()
 		](auto ec)
@@ -326,12 +327,9 @@ void Server::serve_home(const EmptyRequest& req, FileResponseSender&& send, cons
 
 }
 
-http::response<SplitBuffers> Server::static_file_request(const EmptyRequest& req)
+http::response<SplitBuffers> Server::static_file_request(const EmptyRequest& req, std::string_view file)
 {
-	std::string_view filepath{req.target().data(), req.target().size()};
-	filepath.remove_prefix(1);
-
-	return m_lib.find_static(filepath, req[http::field::if_none_match], req.version());
+	return m_lib.find_static(file, req[http::field::if_none_match], req.version());
 }
 
 void Server::run()
@@ -402,13 +400,9 @@ boost::asio::io_context& Server::get_io_context()
 	return m_ioc;
 }
 
-bool Server::is_static_resource(boost::string_view target) const
+bool Server::is_static_resource(std::string_view target) const
 {
-	assert(!target.empty());
-	assert(target.front() == '/');
-	target.remove_prefix(1);
-
-	return m_lib.is_static(target.to_string());
+	return m_lib.is_static(target);
 }
 
 std::string Server::https_root() const
@@ -421,6 +415,11 @@ std::string Server::https_root() const
 std::size_t Server::upload_limit() const
 {
 	return m_cfg.upload_limit();
+}
+
+std::chrono::seconds Server::session_length() const
+{
+	return m_cfg.session_length();
 }
 
 bool Server::is_upload(const RequestHeader& header)

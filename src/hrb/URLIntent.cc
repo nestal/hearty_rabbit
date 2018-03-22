@@ -15,7 +15,6 @@
 #include "util/Escape.hh"
 
 #include <sstream>
-#include <utmp.h>
 
 namespace hrb {
 
@@ -23,48 +22,85 @@ URLIntent::URLIntent(boost::string_view boost_target)
 {
 	// order is important here
 	// All URL path must start with slash
-	if (boost_target.empty() || boost_target.front() != '/' || boost_target.size() == 1)
+	if (boost_target.empty() || boost_target.front() != '/')
 		return;
 
 	// skip the first slash
 	std::string_view target{boost_target.data(), boost_target.size()};
 	target.remove_prefix(1);
 
-	m_action = target.substr(0, target.find_first_of('/', 0));
-	target.remove_prefix(m_action.size());
+	auto action_str = target.substr(0, target.find_first_of('/', 0));
+	target.remove_prefix(action_str.size());
+	m_action = parse_action(action_str);
+	if (m_action == Action::none)
+		return;
 
 	if (target.empty())
 		return;
 
-	m_user   = target.substr(0, target.find_first_of('/', 1));
-	target.remove_prefix(m_user.size());
-	m_user.remove_prefix(1);
+	if (require_user.at(static_cast<std::size_t>(m_action)))
+	{
+		m_user = target.substr(0, target.find_first_of('/', 1));
+		target.remove_prefix(m_user.size());
+		m_user.remove_prefix(1);
+	}
 
 	if (target.empty())
 		return;
+
+	auto option_start = target.find_last_of('?');
+	if (option_start != target.npos)
+	{
+		option_start++;
+		m_option = target.substr(option_start, target.size());
+		target.remove_suffix(m_option.size());
+	}
+
+	if (target.empty())
+		return;
+
+	if (target.back() == '?')
+		target.remove_suffix(1);
 
 	auto file_start = target.find_last_of('/');
-	if (file_start != target.npos) file_start++;
-	m_filename = target.substr(file_start, target.size());
-	target.remove_suffix(m_filename.size());
+	if (file_start != target.npos)
+	{
+		file_start++;
+		m_filename = target.substr(file_start, target.size());
+		target.remove_suffix(m_filename.size());
+	}
 
 	if (target.empty())
 		return;
 
 	m_coll = trim(target);
+	return;
 }
 
-URLIntent::URLIntent(std::string_view action, std::string_view user, std::string_view coll, std::string_view name) :
-	m_action{trim(action)}, m_user{trim(user)}, m_coll{trim(coll)}, m_filename{trim(name)}
+URLIntent::URLIntent(Action act, std::string_view user, std::string_view coll, std::string_view name) :
+	m_action{act}, m_user{trim(user)}, m_coll{trim(coll)}, m_filename{trim(name)}
 {
 }
 
 std::string URLIntent::str() const
 {
 	std::ostringstream oss;
-	oss << '/' << m_action;
-	if (!m_action.empty())
-		oss << '/';
+	oss << '/';
+	switch (m_action)
+	{
+		case Action::login:     oss << "login";     break;
+		case Action::logout:    oss << "logout";    break;
+		case Action::blob:      oss << "blob/";     break;
+		case Action::view:      oss << "view/";     break;
+		case Action::coll:      oss << "coll/";     break;
+		case Action::upload:    oss << "upload/";   break;
+		case Action::lib:       oss << "lib/";      break;
+		case Action::listcolls: oss << "listcolls/";    break;
+
+		case Action::home:
+		case Action::none:
+			break;
+	}
 	oss << m_user;
 	if (!m_user.empty())
 		oss << '/';
@@ -72,6 +108,8 @@ std::string URLIntent::str() const
 	if (!m_coll.empty())
 		oss << '/';
 	oss << m_filename;
+	if (!m_option.empty())
+		oss << "?" << m_option;
 
 	return oss.str();
 }
@@ -94,49 +132,38 @@ URLIntent::Action URLIntent::parse_action(std::string_view str)
 	else if (str == "upload")   return Action::upload;
 	else if (str == "login")    return Action::login;
 	else if (str == "logout")   return Action::logout;
+	else if (str == "lib")      return Action::lib;
+	else if (str == "listcolls")    return Action::listcolls;
+	else if (str.empty())       return Action::home;
 	else                        return Action::none;
 }
 
-const std::array<bool, static_cast<int>(URLIntent::Action::none)> URLIntent::allow_get =
-//   login, logout, blob, view, coll, upload, none
-	{false,  true,  true, true, true, false};
-
-const std::array<bool, static_cast<int>(URLIntent::Action::none)> URLIntent::allow_post =
-//   login, logout, blob,  view,  coll,  upload, none
-	{true,  false,  false, false, false, false};
-
-const std::array<bool, static_cast<int>(URLIntent::Action::none)> URLIntent::allow_put =
-//   login, logout, blob,  view,  coll,  upload, none
-	{false, false,  false, false, false, true};
-
 const std::array<bool, static_cast<int>(URLIntent::Action::none)> URLIntent::require_user =
-//   login, logout, blob, view, coll, upload, none
-	{false, false,  true, true, true, true};
-
-const std::array<bool, static_cast<int>(URLIntent::Action::none)> URLIntent::require_coll =
-//   login, logout, blob, view, coll, upload, none
-	{false, false,  true, true, true, true};
+//   login, logout, blob, view, coll, upload, home,  lib,   listcolls, none
+	{false, false,  true, true, true, true,   false, false, true};
 
 const std::array<bool, static_cast<int>(URLIntent::Action::none)> URLIntent::require_filename =
-//   login, logout, blob, view,  coll,  upload, none
-	{false, false,  true, false, false, true};
+//   login, logout, blob, view,  coll,  upload, home,  lib,  listcolls, none
+	{false, false,  true, false, false, true,   false, true, false};
 
 bool URLIntent::valid() const
 {
-	auto action = parse_action(m_action);
-
-	if (action != Action::none)
+	if (m_action != Action::none)
 	{
 		// collection may be empty in any case
 		return
-			!m_user.empty() == require_user[static_cast<int>(action)] &&
-//			!m_coll.empty() == require_coll[static_cast<int>(action)] &&
-			!m_filename.empty() == require_filename[static_cast<int>(action)];
+			!m_user.empty()     == require_user.at(static_cast<std::size_t>(m_action)) &&
+			!m_filename.empty() == require_filename.at(static_cast<std::size_t>(m_action));
 	}
 	else
 	{
 		return false;
 	}
+}
+
+bool URLIntent::need_auth() const
+{
+	return m_action == Action::upload;
 }
 
 } // end of namespace hrb

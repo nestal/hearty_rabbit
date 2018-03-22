@@ -61,6 +61,7 @@ public:
 	static void verify_session(
 		const Cookie& cookie,
 		redis::Connection& db,
+		std::chrono::seconds session_length,
 		std::function<void(std::error_code, Authentication&&)>&& completion
 	);
 
@@ -69,10 +70,18 @@ public:
 		std::function<void(std::error_code)>&& completion
 	) const;
 
-	std::string set_cookie() const;
+	// TODO: update UT so that we don't need a default argument
+	std::string set_cookie(std::chrono::seconds session_length = std::chrono::seconds{3600}) const;
 
 	const Cookie& cookie() const {return m_cookie;}
 	const std::string& user() const {return m_user;}
+
+private:
+	void renew_session(
+		redis::Connection& db,
+		std::chrono::seconds session_length,
+		std::function<void(std::error_code, Authentication&&)>&& completion
+	) const;
 
 private:
 	Cookie      m_cookie{};

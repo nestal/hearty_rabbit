@@ -17,6 +17,7 @@
 #include "net/Redis.hh"
 #include "util/Error.hh"
 #include "util/Escape.hh"
+#include "util/Log.hh"
 
 #include <boost/algorithm/hex.hpp>
 #include <boost/algorithm/string.hpp>
@@ -84,10 +85,10 @@ void create_session(
 		[
 			auth,
 			completion = std::forward<Completion>(completion)
-		](redis::Reply, std::error_code ec)
+		](redis::Reply, std::error_code ec) mutable
 		{
 			// TODO: handle errors from "reply"
-			completion(ec, auth);
+			completion(ec, std::move(auth));
 		},
 
 		"SETEX session:%b %d %b",
@@ -140,13 +141,25 @@ void Authentication::add_user(
 void Authentication::verify_session(
 	const Cookie& cookie,
 	redis::Connection& db,
+	std::chrono::seconds session_length,
 	std::function<void(std::error_code, Authentication&&)>&& completion
 )
 {
-	db.command(
-		[comp=std::move(completion), cookie](redis::Reply reply, auto&& ec) mutable
+	db.command([
+			db=db.shared_from_this(),
+			comp=std::move(completion),
+			cookie, session_length
+		](redis::Reply reply, auto&& ec) mutable
 		{
-			comp(std::move(ec), Authentication{cookie, reply.as_string()});
+			if (!ec)
+			{
+				if (reply.is_nil())
+					comp(std::move(ec), Authentication{});
+				else
+					Authentication{cookie, reply.as_string()}.renew_session(*db, session_length, std::move(comp));
+			}
+			else
+				comp(std::move(ec), Authentication{});
 		},
 		"GET session:%b", cookie.data(), cookie.size()
 	);
@@ -188,11 +201,19 @@ void Authentication::verify_user(
 	);
 }
 
-std::string Authentication::set_cookie() const
+std::string Authentication::set_cookie(std::chrono::seconds session_length) const
 {
 	std::string result = "id=";
-	boost::algorithm::hex_lower(m_cookie.begin(), m_cookie.end(), std::back_inserter(result));
-	result.append("; Secure; HttpOnly; SameSite=Strict; Max-Age=3600");
+	if (valid())
+	{
+		boost::algorithm::hex_lower(m_cookie.begin(), m_cookie.end(), std::back_inserter(result));
+		result.append("; Secure; HttpOnly; SameSite=Strict; Path=/; Max-Age=");
+		result.append(std::to_string(session_length.count()));
+	}
+	else
+	{
+		result.append("; Path=/; expires=Thu, Jan 01 1970 00:00:00 UTC");
+	}
 	return result;
 }
 
@@ -236,6 +257,41 @@ bool Authentication::valid() const
 	assert((m_cookie == Cookie{}) == m_user.empty() );
 
 	return m_cookie != Cookie{} && !m_user.empty();
+}
+
+void Authentication::renew_session(
+	redis::Connection& db,
+	std::chrono::seconds session_length,
+	std::function<void(std::error_code, Authentication&&)>&& completion
+) const
+{
+	// try to get the TTL of the session
+	db.command([
+			db=db.shared_from_this(), *this,
+			comp=std::move(completion), session_length
+		](auto&& reply, auto&& ec)
+		{
+			// The old session is more than half-way expired. Renew the session by
+			// creating a new one and deleting the old one.
+			if (reply.as_int() < session_length.count()/2)
+			{
+				Log(LOG_NOTICE, "%1% seconds before session timeout. Renewing session", reply.as_int());
+				create_session(std::move(comp), m_user, *db, session_length);
+
+				// Expire the old session cookie in 30 seconds.
+				// This is to avoid session error for the pending requests in the
+				// pipeline. These requests should still be using the old session.
+				db->command("EXPIRE session:%b 30", m_cookie.data(), m_cookie.size());
+			}
+
+			// No need to renew, can keep using the old one
+			else
+			{
+				comp(std::move(ec), Authentication{*this});
+			}
+		},
+		"TTL session:%b", m_cookie.data(), m_cookie.size()
+	);
 }
 
 } // end of namespace hrb

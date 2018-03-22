@@ -121,6 +121,12 @@ class NormalTestCase(unittest.TestCase):
 		self.assertEqual(jpeg.width, 2048)
 		self.assertEqual(jpeg.height, 1024)
 
+	def test_lib(self):
+		# resource not exist
+		self.assertEqual(self.user1.get("https://localhost:4433/lib/logo.svg").status_code, 200)
+		self.assertEqual(self.anon.get("https://localhost:4433/lib/hearty_rabbit.css").status_code, 200)
+		self.assertEqual(self.user2.get("https://localhost:4433/lib/hearty_rabbit.js").status_code, 200)
+
 	def test_not_found(self):
 		# resource not exist
 		r1 = self.user1.get("https://localhost:4433/index.html")
@@ -227,6 +233,21 @@ class NormalTestCase(unittest.TestCase):
 		self.assertEqual(r1.status_code, 200)
 		self.assertTrue("colls" in r1.json())
 		self.assertTrue("collection1" in r1.json()["colls"])
+
+	def test_session_expired(self):
+		old_session = self.user1.cookies["id"]
+		self.user1.get("https://localhost:4433/logout")
+
+		# should give 404 instead of 403 if still login
+		self.assertEqual(
+			self.user1.get("https://localhost:4433/blob/sumsum/0000000000000000000000000000000000000000").status_code,
+			403
+		)
+
+		# reuse old cookie to simulate session expired
+		self.user1.cookies["id"] = old_session
+		r1 = self.user1.get("https://localhost:4433/blob/sumsum/0000000000000000000000000000000000000000")
+		self.assertEqual(r1.status_code, 403)
 
 if __name__ == '__main__':
 	unittest.main()

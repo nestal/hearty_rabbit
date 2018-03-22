@@ -41,6 +41,7 @@ class Configuration;
 class Password;
 class BlobFile;
 class BlobRequest;
+class URLIntent;
 
 /// The main application logic of hearty rabbit.
 /// This is the class that handles HTTP requests from and produce response to clients. The unit test
@@ -53,7 +54,7 @@ public:
 	template <class Complete>
 	void on_request_header(
 		const RequestHeader& header,
-		const Authentication& existing_auth,
+		const URLIntent& intent,
 		EmptyRequestParser& src,
 		RequestBodyParsers& dest,
 		Complete&& complete
@@ -64,7 +65,7 @@ public:
 	// contents of the request, so the interface requires the
 	// caller to pass a generic lambda for receiving the response.
 	template<class Request, class Send>
-	void handle_https(Request&& req, Send&& send, const Authentication& auth);
+	void handle_request(Request&& req, Send&& send, const Authentication& auth);
 
 	static http::response<http::string_body> bad_request(boost::string_view why, unsigned version);
 	static http::response<http::string_body> not_found(boost::string_view target, unsigned version);
@@ -78,13 +79,11 @@ public:
 	void add_user(std::string_view username, Password&& password, std::function<void(std::error_code)> complete);
 	std::string https_root() const;
 	std::size_t upload_limit() const;
+	std::chrono::seconds session_length() const;
 
 private:
-	http::response<SplitBuffers> static_file_request(const EmptyRequest& req);
+	http::response<SplitBuffers> static_file_request(const EmptyRequest& req, std::string_view file);
 	http::response<SplitBuffers> on_login_incorrect(const EmptyRequest& req);
-
-	template <class Request, class Send>
-	void on_valid_session(Request&& req, Send&& send, const Authentication& auth);
 
 	static bool is_upload(const RequestHeader& header);
 	static bool is_login(const RequestHeader& header);
@@ -100,7 +99,7 @@ private:
 	void on_upload(UploadRequest&& req, EmptyResponseSender&& send, const Authentication& auth);
 	void unlink(BlobRequest&& req, EmptyResponseSender&& send);
 	void update_blob(BlobRequest&& req, EmptyResponseSender&& send);
-	bool is_static_resource(boost::string_view target) const;
+	bool is_static_resource(std::string_view target) const;
 	void serve_view(const EmptyRequest& req, FileResponseSender&& send, const Authentication& auth);
 	void serve_home(const EmptyRequest& req, FileResponseSender&& send, const Authentication& auth);
 	void serve_collection(const EmptyRequest& req, StringResponseSender&& send, const Authentication& auth);
