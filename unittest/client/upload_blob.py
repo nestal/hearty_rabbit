@@ -235,7 +235,6 @@ class NormalTestCase(unittest.TestCase):
 		self.assertTrue("collection1" in r1.json()["colls"])
 
 	def test_session_expired(self):
-		print(self.user1.cookies["id"])
 		old_session = self.user1.cookies["id"]
 		self.user1.get("https://localhost:4433/logout")
 
@@ -249,7 +248,6 @@ class NormalTestCase(unittest.TestCase):
 		self.user1.cookies["id"] = old_session
 		r1 = self.user1.get("https://localhost:4433/blob/sumsum/0000000000000000000000000000000000000000")
 		self.assertEqual(r1.status_code, 403)
-		print(self.user1.cookies.get_dict())
 
 if __name__ == '__main__':
 	unittest.main()

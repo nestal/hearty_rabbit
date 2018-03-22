@@ -92,18 +92,15 @@ void Session::on_read_header(boost::system::error_code ec, std::size_t bytes_tra
 			return send_response(m_server.not_found("not found", header.version()));
 
 		m_server.on_request_header(
-			header, intent, m_auth, *m_parser, m_body,
+			header, intent, *m_parser, m_body,
 			[self=shared_from_this(), this](const Authentication& auth, bool auth_changed)
 			{
-				// remember existing credential
-				m_auth = auth;
-
 				// Call async_read() using the chosen parser to read and parse the request body.
-				std::visit([&self, this, auth_changed](auto&& parser)
+				std::visit([&self, this, auth, auth_changed](auto&& parser)
 				{
 					async_read(m_stream, m_buffer, parser, boost::asio::bind_executor(
 						m_strand,
-						[self, auth_changed](auto ec, auto bytes){self->on_read(ec, bytes, auth_changed);}
+						[self, auth, auth_changed](auto ec, auto bytes){self->on_read(ec, bytes, auth, auth_changed);}
 					));
 				}, m_body);
 			}
@@ -112,25 +109,25 @@ void Session::on_read_header(boost::system::error_code ec, std::size_t bytes_tra
 }
 
 
-void Session::on_read(boost::system::error_code ec, std::size_t, bool auth_changed)
+void Session::on_read(boost::system::error_code ec, std::size_t, const Authentication& auth, bool auth_changed)
 {
 	// This means they closed the connection
 	if (ec)
 		return handle_read_error(__PRETTY_FUNCTION__, ec);
 	else
 	{
-		std::visit([self=shared_from_this(), this, auth_changed](auto&& parser)
+		std::visit([self=shared_from_this(), this, auth, auth_changed](auto&& parser)
 		{
 			auto req = parser.release();
-			if (validate_request(req))
+			if (validate_request(req, auth))
 			{
-				m_server.handle_request(std::move(req), [this, self, auth_changed](auto&& response)
+				m_server.handle_request(std::move(req), [this, self, auth, auth_changed](auto&& response)
 				{
-					if (auth_changed)
-						response.set(http::field::set_cookie, m_auth.set_cookie(m_server.session_length()));
+//					if (auth_changed)
+//						response.set(http::field::set_cookie, m_auth.set_cookie(m_server.session_length()));
 
 					send_response(std::forward<decltype(response)>(response));
-				}, m_auth);
+				}, auth);
 			}
 		}, m_body);
 	}
@@ -142,7 +139,7 @@ void Session::on_read(boost::system::error_code ec, std::size_t, bool auth_chang
 // contents of the request, so the interface requires the
 // caller to pass a generic lambda for receiving the response.
 template<class Request>
-bool Session::validate_request(const Request& req)
+bool Session::validate_request(const Request& req, const Authentication& auth)
 {
 	boost::system::error_code ec;
 	auto endpoint = m_socket.remote_endpoint(ec);
@@ -156,7 +153,7 @@ bool Session::validate_request(const Request& req)
 		m_nth_transaction,
 		req.target(),
 		endpoint,
-		m_auth.user(),
+		auth.user(),
 		req[http::field::content_length].empty() ? "0" : req[http::field::content_length],
 		req.method_string()
 	);

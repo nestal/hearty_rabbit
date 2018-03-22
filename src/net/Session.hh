@@ -50,7 +50,7 @@ public:
 	void on_handshake(boost::system::error_code ec);
 	void do_read();
 	void on_read_header(boost::system::error_code ec, std::size_t bytes_transferred);
-	void on_read(boost::system::error_code ec, std::size_t bytes_transferred, bool auth_changed);
+	void on_read(boost::system::error_code ec, std::size_t bytes_transferred, const Authentication& auth, bool auth_changed);
 	void on_write(boost::system::error_code ec, std::size_t bytes_transferred, bool close);
 	void do_close();
 	void on_shutdown(boost::system::error_code ec);
@@ -61,7 +61,7 @@ private:
 	// contents of the request, so the interface requires the
 	// caller to pass a generic lambda for receiving the response.
 	template<class Request>
-	bool validate_request(const Request& req);
+	bool validate_request(const Request& req, const Authentication& auth);
 
 	template <class Response>
 	void send_response(Response&& response);
@@ -73,8 +73,6 @@ private:
 	boost::asio::ssl::stream<tcp::socket&> 		                m_stream;
 	boost::asio::strand<boost::asio::io_context::executor_type> m_strand;
 	boost::beast::flat_buffer                                   m_buffer;
-
-	Authentication	m_auth;
 
 	bool m_keep_alive{false};
 

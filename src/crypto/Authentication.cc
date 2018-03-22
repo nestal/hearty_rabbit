@@ -145,6 +145,7 @@ void Authentication::verify_session(
 	std::function<void(std::error_code, Authentication&&)>&& completion
 )
 {
+	Log(LOG_NOTICE, "verifying session %1%", boost::algorithm::hex(std::string{cookie.begin(), cookie.end()}));
 	db.command([
 			db=db.shared_from_this(),
 			comp=std::move(completion),
@@ -153,6 +154,7 @@ void Authentication::verify_session(
 		{
 			if (!ec)
 			{
+	Log(LOG_NOTICE, "verified session %1% -> %2%", boost::algorithm::hex(std::string{cookie.begin(), cookie.end()}), reply.as_string());
 				if (reply.is_nil())
 					comp(std::move(ec), Authentication{});
 				else
@@ -207,12 +209,12 @@ std::string Authentication::set_cookie(std::chrono::seconds session_length) cons
 	if (valid())
 	{
 		boost::algorithm::hex_lower(m_cookie.begin(), m_cookie.end(), std::back_inserter(result));
-		result.append("; Secure; HttpOnly; SameSite=Strict; Max-Age=");
+		result.append("; Secure; HttpOnly; SameSite=Strict; Path=/; Max-Age=");
 		result.append(std::to_string(session_length.count()));
 	}
 	else
 	{
-		result.append("; expires=Thu, Jan 01 1970 00:00:00 UTC");
+		result.append("; Path=/; expires=Thu, Jan 01 1970 00:00:00 UTC");
 	}
 	return result;
 }
