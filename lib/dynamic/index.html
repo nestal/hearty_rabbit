@@ -14,7 +14,7 @@
 	<script src="/lib/hearty_rabbit.js"></script>
 </head>
 <body class="index-body">
-<div class="topnav">
+<nav class="topnav">
 	<img class="nav-logo" src="/lib/logo.svg">
 	<span id="username-nav" class="nav-level1 show-only-after-logged-in" >
 		<a href="/"><span id="show-username"></span>'s Photo</a>
@@ -29,7 +29,7 @@
 	<span class="nav-level1 show-only-after-logged-in" id="logout-nav" title="Log out">
 		<a href="/logout"><i class="nav-icons material-icons">exit_to_app</i></a>
 	</span>
-</div>
+</nav>
 
 <section>
 <h1 id="headline">Welcome to Hearty Rabbit!</h1>
@@ -43,9 +43,11 @@
 	</div>
 </section>
 
-<input id="file-upload" type="file" multiple>
+<section>
+	<input id="file-upload" type="file" multiple>
+</section>
 
-<div id="light-box" class="modal">
+<section id="light-box" class="modal">
 	<div class="light-box-button-bar">
 		<i id="make-image-private" class="tooltip light-box-button material-icons">person<span class="tooltiptext">Only you can see this image</span></i>
 		<i id="share-image" class="tooltip light-box-button material-icons">people<span class="tooltiptext">Only valid users can see this image</span></i>
@@ -62,9 +64,9 @@
 	<a class="next" onclick="next_image(1)">
 		<i class="tooltip light-box-button material-icons">chevron_right<span class="tooltiptext">Next</span></i>
 	</a>
-</div>
+</section>
 
-<div id="login-dialog" class="modal">
+<section id="login-dialog" class="modal">
 	<div class="light-box-button-bar">
 		<i class="close-overlays light-box-button material-icons">close</i>
 	</div>
@@ -78,9 +80,9 @@
 			<button type="submit">Login</button>
 		</form>
 	</div>
-</div>
+</section>
 
-<div id="create-album-dialog" class="modal">
+<section id="create-album-dialog" class="modal">
 	<div class="light-box-button-bar">
 		<i class="close-overlays light-box-button material-icons">close</i>
 	</div>
@@ -89,7 +91,7 @@
 		<div><input id="new-album-name" type="text" placeholder="album name"></div>
 		<button onclick="new_album()">Create</button>
 	</div>
-</div>
+</section>
 
 <script>
 	// Make sure it's called after loading the DOM.

@@ -3,10 +3,6 @@ body {
 	margin: 0;
 }
 
-#username-nav {
-	font-family: 'Itim', cursive;
-}
-
 #login-dialog, #create-album-dialog {
 	display: none;
 }
@@ -172,8 +168,12 @@ div.dialog-container button:hover {
 }
 
 .topnav .nav-level1 .nav-icons {
-	font-size: 1.5em;
+	font-size: 2em;
 	vertical-align: middle;
+}
+
+.topnav #username-nav {
+	font-size: 1.5em;
 }
 
 /* hide the ugly file upload form */
