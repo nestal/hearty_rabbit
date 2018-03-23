@@ -1,6 +1,10 @@
 body {
-	font-family: 'Mukta Mahee', sans-serif;
+	font-family: 'Itim', cursive;
 	margin: 0;
+}
+
+#username-nav {
+	font-family: 'Itim', cursive;
 }
 
 #login-dialog, #create-album-dialog {
@@ -307,7 +311,7 @@ div.dialog-container button:hover {
 	left: 0;
 	top: 100%;
 
-	font-family: 'Mukta Mahee', sans-serif;
+	font-family: sans-serif;
 }
 
 /* Show the tooltip text when you mouse over the tooltip container */
@@ -316,4 +320,6 @@ div.dialog-container button:hover {
 }
 
 #headline {
+	margin-left: 20px;
+	font-family: 'Love Ya Like A Sister', cursive;
 }
