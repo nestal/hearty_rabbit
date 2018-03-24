@@ -65,7 +65,7 @@ http::response<SplitBuffers> Server::on_login_incorrect(const EmptyRequest& req)
 	auto res = m_lib.find_dynamic("index.html", req.version());
 	res.body().extra(
 		index_needle,
-		R"_(var login_message = "Login incorrect... Try again?";)_"
+		R"_(var dir = {login_message: "Login incorrect... Try again?"};)_"
 	);
 	return res;
 }
@@ -329,7 +329,10 @@ void Server::serve_home(const EmptyRequest& req, FileResponseSender&& send, cons
 
 http::response<SplitBuffers> Server::static_file_request(const EmptyRequest& req, std::string_view file)
 {
-	return m_lib.find_static(file, req[http::field::if_none_match], req.version());
+	if (req.target() == url::login_incorrect)
+		return on_login_incorrect(req);
+	else
+		return m_lib.find_static(file, req[http::field::if_none_match], req.version());
 }
 
 void Server::run()

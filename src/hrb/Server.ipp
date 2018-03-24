@@ -103,9 +103,9 @@ void Server::on_request_header(
 template <class Request, class Send>
 void Server::handle_request(Request&& req, Send&& send, const Authentication& auth)
 {
+	URLIntent intent{req.target()};
 	if constexpr (std::is_same<std::remove_reference_t<Request>, EmptyRequest>::value)
 	{
-		URLIntent intent{req.target()};
 		if (intent.action() == URLIntent::Action::lib && is_static_resource(intent.filename()))
 			return send(static_file_request(req, intent.filename()));
 

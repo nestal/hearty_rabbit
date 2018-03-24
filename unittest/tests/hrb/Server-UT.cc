@@ -288,7 +288,7 @@ TEST_CASE("General server tests", "[normal]")
 
 		SECTION("Login Incorrect")
 		{
-			MovedResponseChecker login_incorrect{"/login_incorrect.html"};
+			MovedResponseChecker login_incorrect{"/lib/login_incorrect.html"};
 			MovedResponseChecker invalid_login{"/"};
 
 			req.target("/login");

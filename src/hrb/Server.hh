@@ -33,7 +33,7 @@ const boost::string_view blob{"/blob"};
 const boost::string_view collection{"/coll"};
 const boost::string_view list_coll{"/listcolls"};
 const boost::string_view upload{"/upload"};
-const boost::string_view login_incorrect{"/login_incorrect.html"};
+const boost::string_view login_incorrect{"/lib/login_incorrect.html"};
 }
 
 class Authentication;
