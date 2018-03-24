@@ -60,16 +60,6 @@ Server::Server(const Configuration& cfg) :
 	OpenSSL_add_all_digests();
 }
 
-http::response<SplitBuffers> Server::on_login_incorrect(const EmptyRequest& req)
-{
-	auto res = m_lib.find_dynamic("index.html", req.version());
-	res.body().extra(
-		index_needle,
-		R"_(var dir = {login_message: "Login incorrect... Try again?"};)_"
-	);
-	return res;
-}
-
 void Server::on_login(const StringRequest& req, EmptyResponseSender&& send)
 {
 	auto&& body = req.body();
@@ -91,15 +81,17 @@ void Server::on_login(const StringRequest& req, EmptyResponseSender&& send)
 			{
 				Log(LOG_INFO, "%4% login result: %1% %2% (from %3%)", ec, ec.message(), login_from, session.user());
 
+				auto login_incorrect = URLIntent{URLIntent::Action::lib, "", "", "login_incorrect.html"}.str();
+
 				// we want to redirect people to the page they login from. e.g. when they press the
 				// login button from /view/user/collection, we want to redirect them to
 				// /view/user/collection after they login successfully.
 				// Except when they login from /login_incorrect.html: even if they login from that page
 				// we won't redirect them back there, because it would look like the login failed.
-				if (login_from == url::login_incorrect)
+				if (login_from == login_incorrect)
 					login_from.clear();
 
-				auto&& res = see_other(ec ? url::login_incorrect : (login_from.empty() ? "/" : login_from), version);
+				auto&& res = see_other(ec ? login_incorrect : (login_from.empty() ? "/" : login_from), version);
 				if (!ec)
 					res.set(http::field::set_cookie, session.set_cookie(session_length));
 
@@ -327,12 +319,19 @@ void Server::serve_home(const EmptyRequest& req, FileResponseSender&& send, cons
 
 }
 
-http::response<SplitBuffers> Server::static_file_request(const EmptyRequest& req, std::string_view file)
+http::response<SplitBuffers> Server::static_file_request(const URLIntent& intent, boost::string_view etag, unsigned version)
 {
-	if (req.target() == url::login_incorrect)
-		return on_login_incorrect(req);
+	if (intent.filename() == "login_incorrect.html")
+	{
+		auto res = m_lib.find_dynamic("index.html", version);
+		res.body().extra(
+			index_needle,
+			R"_(var dir = {login_message: "Login incorrect... Try again?"};)_"
+		);
+		return res;
+	}
 	else
-		return m_lib.find_static(file, req[http::field::if_none_match], req.version());
+		return m_lib.find_static(intent.filename(), etag, version);
 }
 
 void Server::run()
@@ -423,16 +422,6 @@ std::size_t Server::upload_limit() const
 std::chrono::seconds Server::session_length() const
 {
 	return m_cfg.session_length();
-}
-
-bool Server::is_upload(const RequestHeader& header)
-{
-	return header.target().starts_with(hrb::url::upload) && header.method() == http::verb::put;
-}
-
-bool Server::is_login(const RequestHeader& header)
-{
-	return header.target() == hrb::url::login && header.method() == http::verb::post;
 }
 
 void Server::serve_collection(const EmptyRequest& req, StringResponseSender&& send, const Authentication& auth)

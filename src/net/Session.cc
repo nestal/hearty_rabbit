@@ -87,6 +87,9 @@ void Session::on_read_header(boost::system::error_code ec, std::size_t bytes_tra
 		auto&& header = m_parser->get();
 		m_keep_alive = header.keep_alive();
 
+		if (!validate_request(header))
+			return;
+
 		URLIntent intent{header.target()};
 		if (!intent.valid())
 			return send_response(m_server.not_found("not found", header.version()));
@@ -119,24 +122,21 @@ void Session::on_read(boost::system::error_code ec, std::size_t, std::optional<A
 		std::visit([self=shared_from_this(), this, auth](auto&& parser)
 		{
 			auto req = parser.release();
-			if (validate_request(req, auth ? auth->user() : ""))
+			auto cookie = req[http::field::cookie];
+			auto session = parse_cookie({cookie.data(), cookie.size()});
+
+			// check if auth is renewed. if yes, set it to cookie before sending
+			auto renwed_auth = auth;
+			if (session && auth && *session == auth->cookie())
+				renwed_auth = std::nullopt;
+
+			m_server.handle_request(std::move(req), [this, self, renwed_auth](auto&& response)
 			{
-				auto cookie = req[http::field::cookie];
-				auto session = parse_cookie({cookie.data(), cookie.size()});
+				if (renwed_auth && response.count(http::field::set_cookie) == 0)
+					response.set(http::field::set_cookie, renwed_auth->set_cookie(m_server.session_length()));
 
-				// check if auth is renewed. if yes, set it to cookie before sending
-				auto renwed_auth = auth;
-				if (session && auth && *session == auth->cookie())
-					renwed_auth = std::nullopt;
-
-				m_server.handle_request(std::move(req), [this, self, renwed_auth](auto&& response)
-				{
-					if (renwed_auth && response.count(http::field::set_cookie) == 0)
-						response.set(http::field::set_cookie, renwed_auth->set_cookie(m_server.session_length()));
-
-					send_response(std::forward<decltype(response)>(response));
-				}, auth ? *auth : Authentication{});
-			}
+				send_response(std::forward<decltype(response)>(response));
+			}, auth ? *auth : Authentication{});
 		}, m_body);
 	}
 	m_nth_transaction++;
@@ -147,7 +147,7 @@ void Session::on_read(boost::system::error_code ec, std::size_t, std::optional<A
 // contents of the request, so the interface requires the
 // caller to pass a generic lambda for receiving the response.
 template<class Request>
-bool Session::validate_request(const Request& req, std::string_view user)
+bool Session::validate_request(const Request& req)
 {
 	boost::system::error_code ec;
 	auto endpoint = m_socket.remote_endpoint(ec);
@@ -156,14 +156,13 @@ bool Session::validate_request(const Request& req, std::string_view user)
 
 	Log(
 		LOG_INFO,
-		"%1%:%2% %7% request %3% from %4% (user \"%5%\") %6% bytes",
+		"%1%:%2% %3% request %4% from %5% (%6% bytes)",
 		m_nth_session,
 		m_nth_transaction,
+		req.method_string(),
 		req.target(),
 		endpoint,
-		user,
-		req[http::field::content_length].empty() ? "0" : req[http::field::content_length],
-		req.method_string()
+		req[http::field::content_length].empty() ? "0" : req[http::field::content_length]
 	);
 
 	// Make sure we can handle the method
@@ -185,7 +184,6 @@ bool Session::validate_request(const Request& req, std::string_view user)
 		send_response(m_server.bad_request("Illegal request-target", req.version()));
 		return false;
 	}
-
 	return true;
 
 }
@@ -217,7 +215,6 @@ void Session::handle_read_error(std::string_view where, boost::system::error_cod
 
 	else if (ec)
 	{
-//		Log(LOG_WARNING, "read error @ %3%: %1% (%2%)", ec, ec.message(), where);
 		return send_response(m_server.bad_request(ec.message(), 11));
 	}
 }

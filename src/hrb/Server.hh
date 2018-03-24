@@ -24,18 +24,6 @@
 
 namespace hrb {
 
-// URL prefixes
-namespace url {
-const boost::string_view view{"/view"};
-const boost::string_view login{"/login"};
-const boost::string_view logout{"/logout"};
-const boost::string_view blob{"/blob"};
-const boost::string_view collection{"/coll"};
-const boost::string_view list_coll{"/listcolls"};
-const boost::string_view upload{"/upload"};
-const boost::string_view login_incorrect{"/lib/login_incorrect.html"};
-}
-
 class Authentication;
 class Configuration;
 class Password;
@@ -82,11 +70,7 @@ public:
 	std::chrono::seconds session_length() const;
 
 private:
-	http::response<SplitBuffers> static_file_request(const EmptyRequest& req, std::string_view file);
-	http::response<SplitBuffers> on_login_incorrect(const EmptyRequest& req);
-
-	static bool is_upload(const RequestHeader& header);
-	static bool is_login(const RequestHeader& header);
+	http::response<SplitBuffers> static_file_request(const URLIntent& intent, boost::string_view etag, unsigned version);
 	static void drop_privileges();
 
 	using EmptyResponseSender  = std::function<void(http::response<http::empty_body>&&)>;
