@@ -249,5 +249,18 @@ class NormalTestCase(unittest.TestCase):
 		r1 = self.user1.get("https://localhost:4433/blob/sumsum/0000000000000000000000000000000000000000")
 		self.assertEqual(r1.status_code, 403)
 
+	def test_login_incorrect(self):
+		session = requests.Session()
+		session.verify = "../../etc/hearty_rabbit/certificate.pem"
+
+		login_response = session.post(
+			"https://localhost:4433/login",
+			data="username=invalid&password=invalid",
+			headers={"Content-type": "application/x-www-form-urlencoded"}
+		)
+		self.assertEqual(login_response.status_code, 200)
+		self.assertEqual(session.cookies.get("id"), None)
+		session.close()
+
 if __name__ == '__main__':
 	unittest.main()
