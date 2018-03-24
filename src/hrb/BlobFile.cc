@@ -141,9 +141,9 @@ BlobFile::BlobFile(const fs::path& dir, const ObjectID& id, std::string_view ren
 	if (!cfg.valid(rendition) && rendition != hrb::master_rendition)
 		rendition = cfg.default_rendition();
 
-	if (rendition != hrb::master_rendition && rendition != cfg.default_rendition() && !exists(dir/std::string{rendition}))
+	if (rendition != hrb::master_rendition && !exists(dir/std::string{rendition}))
 	{
-		auto master = MMap::open(dir/cfg.default_rendition(), ec);
+		auto master = MMap::open(dir/hrb::master_rendition, ec);
 		if (!ec)
 		{
 			auto tb = generate_rendition(master.buffer(), rendition, cfg.dimension(rendition), cfg.quality(rendition), ec);
