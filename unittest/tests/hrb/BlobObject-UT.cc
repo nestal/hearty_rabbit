@@ -51,7 +51,7 @@ TEST_CASE("upload non-image BlobFile", "[normal]")
 	auto [tmp, src] = upload(__FILE__);
 
 	std::error_code ec;
-	auto subject = BlobFile::upload(std::move(tmp), Magic{}, cfg, "unittest.cc", 70, ec);
+	auto subject = BlobFile::upload(std::move(tmp), Magic{}, cfg, "unittest.cc", ec);
 	REQUIRE(!ec);
 	REQUIRE(subject.ID() != ObjectID{});
 
@@ -77,7 +77,7 @@ TEST_CASE("upload small image BlobFile", "[normal]")
 	auto [tmp, src] = upload(image_path()/"black.jpg");
 
 	std::error_code ec;
-	auto subject = BlobFile::upload(std::move(tmp), Magic{}, RenditionSetting{}, "black.jpeg", 70, ec);
+	auto subject = BlobFile::upload(std::move(tmp), Magic{}, RenditionSetting{}, "black.jpeg", ec);
 	REQUIRE(!ec);
 	REQUIRE(subject.ID() != ObjectID{});
 
@@ -107,7 +107,7 @@ TEST_CASE("upload big upright image BlobFile", "[normal]")
 	cfg.default_rendition("128x128");
 
 	std::error_code ec;
-	auto subject = BlobFile::upload(std::move(tmp), Magic{}, cfg, "upright.jpeg", 70, ec);
+	auto subject = BlobFile::upload(std::move(tmp), Magic{}, cfg, "upright.jpeg", ec);
 	REQUIRE(!ec);
 	REQUIRE(subject.ID() != ObjectID{});
 

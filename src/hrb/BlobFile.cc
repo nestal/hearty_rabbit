@@ -33,7 +33,6 @@ BlobFile BlobFile::upload(
 	const Magic& magic,
 	const RenditionSetting& cfg,
 	std::string_view filename,
-	int quality,
 	std::error_code& ec
 )
 {
@@ -51,8 +50,13 @@ BlobFile BlobFile::upload(
 	if (mime == "image/jpeg")
 	{
 		// generate default rendition
-		auto dim = cfg.dimension(cfg.default_rendition());
-		auto rotated = generate_rendition(master.buffer(), cfg.default_rendition(), dim, quality, ec);
+		auto rotated = generate_rendition(
+			master.buffer(),
+			cfg.default_rendition(),
+			cfg.dimension(cfg.default_rendition()),
+			cfg.quality(cfg.default_rendition()),
+			ec
+		);
 
 		if (ec)
 		{

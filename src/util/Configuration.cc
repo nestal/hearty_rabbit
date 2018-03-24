@@ -141,14 +141,26 @@ void Configuration::load_config(const boost::filesystem::path& path)
 	}
 }
 
-Size2D RenditionSetting::dimension(std::string_view rend) const
+
+const RenditionSetting::Setting& RenditionSetting::find(std::string_view rend) const
 {
+	assert(m_renditions.find(std::string{m_default}) != m_renditions.end());
+
 	if (rend.empty())
 		rend = m_default;
 
 	auto it = m_renditions.find(std::string{rend});
-	assert(!rend.empty() || it != m_renditions.end());
-	return it != m_renditions.end() ? it->second : dimension(m_default);
+	return it != m_renditions.end() ? it->second : find(m_default);
+}
+
+Size2D RenditionSetting::dimension(std::string_view rend) const
+{
+	return find(rend).dim;
+}
+
+int RenditionSetting::quality(std::string_view rend) const
+{
+	return find(rend).quality;
 }
 
 bool RenditionSetting::valid(std::string_view rend) const
@@ -156,9 +168,9 @@ bool RenditionSetting::valid(std::string_view rend) const
 	return m_renditions.find(std::string{rend}) != m_renditions.end();
 }
 
-void RenditionSetting::add(std::string_view rend, Size2D dim)
+void RenditionSetting::add(std::string_view rend, Size2D dim, int quality)
 {
-	m_renditions.insert_or_assign(std::string{rend}, dim);
+	m_renditions.insert_or_assign(std::string{rend}, Setting{dim, quality});
 }
 
 } // end of namespace

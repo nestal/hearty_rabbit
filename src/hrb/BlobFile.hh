@@ -42,7 +42,6 @@ public:
 		const Magic& magic,
 		const RenditionSetting& cfg,
 		std::string_view filename,
-		int quality,
 		std::error_code& ec
 	);
 
