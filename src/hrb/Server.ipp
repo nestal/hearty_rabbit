@@ -105,7 +105,7 @@ void Server::handle_request(Request&& req, Send&& send, const Authentication& au
 	URLIntent intent{req.target()};
 	if constexpr (std::is_same<std::remove_reference_t<Request>, EmptyRequest>::value)
 	{
-		if (intent.action() == URLIntent::Action::lib && is_static_resource(intent.filename()))
+		if (intent.action() == URLIntent::Action::lib)
 			return send(static_file_request(intent, req[http::field::if_none_match], req.version()));
 	}
 

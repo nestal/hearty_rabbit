@@ -83,7 +83,6 @@ private:
 	void on_upload(UploadRequest&& req, EmptyResponseSender&& send, const Authentication& auth);
 	void unlink(BlobRequest&& req, EmptyResponseSender&& send);
 	void update_blob(BlobRequest&& req, EmptyResponseSender&& send);
-	bool is_static_resource(std::string_view target) const;
 	void serve_view(const EmptyRequest& req, FileResponseSender&& send, const Authentication& auth);
 	void serve_home(const EmptyRequest& req, FileResponseSender&& send, const Authentication& auth);
 	void serve_collection(const EmptyRequest& req, StringResponseSender&& send, const Authentication& auth);

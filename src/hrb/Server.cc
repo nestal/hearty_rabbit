@@ -402,11 +402,6 @@ boost::asio::io_context& Server::get_io_context()
 	return m_ioc;
 }
 
-bool Server::is_static_resource(std::string_view target) const
-{
-	return m_lib.is_static(target);
-}
-
 std::string Server::https_root() const
 {
 	using namespace std::literals;
