@@ -22,7 +22,7 @@ script:
   - ./automation/start_tests
 
 after_success:
-  - if [ "$TRAVIS_BRANCH" == "master" ]; then
+  - if [ "$TRAVIS_BRANCH" == "master" ] || [ "$TRAVIS_BRANCH" == "release_v0.1" ]; then
     docker login -u "$DOCKER_USER" -p "$DOCKER_PASSWORD";
     docker tag nestal/hearty_rabbit nestal/hearty_rabbit:$TRAVIS_BUILD_NUMBER;
     docker tag nestal/hearty_rabbit nestal/hearty_rabbit:latest;
