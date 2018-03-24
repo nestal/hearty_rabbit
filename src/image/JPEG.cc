@@ -13,6 +13,8 @@
 #include "JPEG.hh"
 #include "TurboBuffer.hh"
 
+#include "util/Log.hh"
+
 #include <turbojpeg.h>
 #include <memory>
 
@@ -75,6 +77,7 @@ JPEG::JPEG(const void *jpeg_data, std::size_t jpeg_size, const Size2D& max_dim)
 		throw Exception(tjGetErrorStr());
 
 	auto selected_size = select_scaling_factor(max_dim, m_size);
+	Log(LOG_NOTICE, "Resizing JPEG from %1% to %2%", m_size, selected_size);
 
 	// allocate yuv planar buffer
 	std::vector<unsigned char> yuv(tjBufSizeYUV2(selected_size.width(), yuv_pad, selected_size.height(), m_subsample));
