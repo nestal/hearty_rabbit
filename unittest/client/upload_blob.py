@@ -132,6 +132,14 @@ class NormalTestCase(unittest.TestCase):
 		self.assertEqual(master.width, 4096)
 		self.assertEqual(master.height, 2048)
 
+		# generated thumbnail should be less than 200x200
+		r4 = self.user1.get("https://localhost:4433" + r1.headers["Location"] + "?thumbnail")
+		self.assertEqual(r4.status_code, 200)
+
+		thumb = Image.open(BytesIO(r4.content))
+		self.assertLessEqual(thumb.width, 4096/8)
+		self.assertLessEqual(thumb.height, 2048/8)
+
 	def test_lib(self):
 		# resource not exist
 		self.assertEqual(self.user1.get("https://localhost:4433/lib/logo.svg").status_code, 200)

@@ -74,7 +74,7 @@ BlobFile BlobFile::upload(
 	// commit result
 	result.m_id     = tmp.ID();
 	result.m_tmp    = std::move(tmp);
-	result.m_master = std::move(master);
+	result.m_mmap   = std::move(master);
 	result.m_meta   = CollEntry::create(Permission{}, filename, mime);
 
 	return result;
@@ -82,7 +82,7 @@ BlobFile BlobFile::upload(
 
 BufferView BlobFile::blob() const
 {
-	return m_master.buffer();
+	return m_mmap.buffer();
 }
 
 template <typename Blob>
@@ -134,21 +134,34 @@ void BlobFile::save(const fs::path& dir, std::error_code& ec) const
 	}
 }
 
-BlobFile::BlobFile(const fs::path& dir, const ObjectID& id, std::string_view rendition, std::error_code& ec) :
+BlobFile::BlobFile(const fs::path& dir, const ObjectID& id, std::string_view rendition, const RenditionSetting& cfg, std::error_code& ec) :
 	m_id{id}
 {
+	// check if rendition is allowed by config
+	if (!cfg.valid(rendition) && rendition != hrb::master_rendition)
+		rendition = cfg.default_rendition();
+
+	if (rendition != hrb::master_rendition && !exists(dir/std::string{rendition}))
+	{
+		auto master = MMap::open(dir/hrb::master_rendition, ec);
+		if (!ec)
+		{
+			auto tb = generate_rendition(master.buffer(), rendition, cfg.dimension(rendition), cfg.quality(rendition), ec);
+			if (!tb.empty())
+			{
+				Log(LOG_INFO, "generated new rendition %1% for %2%", rendition, id);
+				save_blob(tb, dir / std::string{rendition}, ec);
+			}
+		}
+	}
+
 	auto resized = dir/std::string{rendition};
-	m_master = MMap::open(exists(resized) ? resized : dir/hrb::master_rendition, ec);
+	m_mmap = MMap::open(exists(resized) ? resized : dir/hrb::master_rendition, ec);
 }
 
 CollEntry BlobFile::entry() const
 {
 	return CollEntry{m_meta};
-}
-
-std::string_view BlobFile::master_rendition()
-{
-	return hrb::master_rendition;
 }
 
 TurboBuffer BlobFile::generate_rendition(BufferView master, std::string_view rend, Size2D dim, int quality, std::error_code& ec)

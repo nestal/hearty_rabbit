@@ -35,7 +35,7 @@ class BlobFile
 {
 public:
 	BlobFile() = default;
-	BlobFile(const fs::path& dir, const ObjectID& id, std::string_view rendition, std::error_code& ec);
+	BlobFile(const fs::path& dir, const ObjectID& id, std::string_view rendition, const RenditionSetting& cfg, std::error_code& ec);
 
 	static BlobFile upload(
 		UploadFile&& tmp,
@@ -46,9 +46,7 @@ public:
 	);
 
 	BufferView blob() const;
-	MMap& master() {return m_master;}
-
-	static std::string_view master_rendition();
+	MMap& mmap() {return m_mmap;}
 
 	const ObjectID& ID() const {return m_id;}
 	CollEntry entry() const;
@@ -63,7 +61,7 @@ private:
 	std::string m_meta;
 
 	mutable UploadFile  m_tmp;
-	MMap                m_master;
+	MMap                m_mmap;
 	std::unordered_map<std::string, TurboBuffer> m_rend;
 };
 

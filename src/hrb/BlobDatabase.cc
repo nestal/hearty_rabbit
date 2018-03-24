@@ -73,10 +73,6 @@ BlobDatabase::BlobResponse BlobDatabase::response(
 	if (invalid != rendition.end())
 		return http::response<MMapResponseBody>{http::status::bad_request, version};
 
-	// check if rendition is allowed by config
-	if (!m_cfg.renditions().valid(rendition) && rendition != BlobFile::master_rendition())
-		rendition = m_cfg.renditions().default_rendition();
-
 	if (etag == to_quoted_hex(id))
 	{
 		http::response<MMapResponseBody> res{http::status::not_modified, version};
@@ -87,13 +83,13 @@ BlobDatabase::BlobResponse BlobDatabase::response(
 	auto path = dest(id);
 
 	std::error_code ec;
-	BlobFile blob_obj{path, id, rendition, ec};
+	BlobFile blob_obj{path, id, rendition, m_cfg.renditions(), ec};
 
 	if (ec)
 		return BlobResponse{http::status::not_found, version};
 
 	// Advice the kernel that we only read the memory in one pass
-	auto mmap{std::move(blob_obj.master())};
+	auto mmap{std::move(blob_obj.mmap())};
 	mmap.cache();
 
 	BlobResponse res{
