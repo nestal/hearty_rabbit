@@ -5,9 +5,10 @@
   "blob_path": ".",
   "server_name" : "example.com",
   "rendition" : {
-    "": {"width":1024, "height" : 1024},
+    "default": {"width":1024, "height" : 1024},
     "thumbnail": {"width":200, "height" : 300}
   },
+  "default_rendition": "default",
   "http": {
     "address": "0.0.0.0",
     "port": 18080

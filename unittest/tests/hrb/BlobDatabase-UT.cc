@@ -16,16 +16,20 @@
 #include "hrb/BlobFile.hh"
 #include "hrb/UploadFile.hh"
 #include "net/MMapResponseBody.hh"
+#include "util/Configuration.hh"
 #include "util/Magic.hh"
 
 using namespace hrb;
 
 TEST_CASE("Open temp file", "[normal]")
 {
-	fs::remove_all("/tmp/BlobDatabase-UT");
+	Configuration cfg;
+	cfg.blob_path("/tmp/BlobDatabase-UT");
+
+	fs::remove_all(cfg.blob_path());
 
 	std::error_code sec;
-	BlobDatabase subject{"/tmp/BlobDatabase-UT", {2048, 2048}};
+	BlobDatabase subject{cfg};
 	UploadFile tmp;
 	subject.prepare_upload(tmp, sec);
 
@@ -67,7 +71,10 @@ TEST_CASE("Upload JPEG file to BlobDatabase", "[normal]")
 	auto black = MMap::open(fs::path{__FILE__}.parent_path().parent_path() / "image" / "black.jpg", ec);
 	REQUIRE(!ec);
 
-	BlobDatabase subject{"/tmp/BlobDatabase-UT", {2048,2048}};
+	Configuration cfg;
+	cfg.blob_path("/tmp/BlobDatabase-UT");
+
+	BlobDatabase subject{cfg};
 	UploadFile tmp;
 	subject.prepare_upload(tmp, ec);
 	REQUIRE(!ec);

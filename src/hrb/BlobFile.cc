@@ -24,7 +24,7 @@
 namespace hrb {
 
 namespace {
-const std::string default_rendition = "master";
+const std::string master_rendition = "master";
 }
 
 BlobFile BlobFile::upload(
@@ -126,7 +126,7 @@ void BlobFile::save(const fs::path& dir, std::error_code& ec) const
 
 	// Try moving the temp file to our destination first. If failed, use
 	// deep copy instead.
-	m_tmp.move(dir/default_rendition, ec);
+	m_tmp.move(dir/hrb::master_rendition, ec);
 
 	// Save the renditions, if any.
 	for (auto&& [name, rend] : m_rend)
@@ -140,19 +140,21 @@ void BlobFile::save(const fs::path& dir, std::error_code& ec) const
 	}
 }
 
-BlobFile::BlobFile(const fs::path& dir, const ObjectID& id, const Size2D& resize_img, std::error_code& ec) :
+BlobFile::BlobFile(const fs::path& dir, const ObjectID& id, std::string_view rendition, std::error_code& ec) :
 	m_id{id}
 {
-	std::ostringstream fn;
-	fn << resize_img.width() << "x" << resize_img.height();
-
-	auto resized = dir/fn.str();
-	m_master = MMap::open(exists(resized) ? resized : dir/default_rendition, ec);
+	auto resized = dir/std::string{rendition};
+	m_master = MMap::open(exists(resized) ? resized : dir/hrb::master_rendition, ec);
 }
 
 CollEntry BlobFile::entry() const
 {
 	return CollEntry{m_meta};
+}
+
+std::string_view BlobFile::master_rendition()
+{
+	return hrb::master_rendition;
 }
 
 } // end of namespace hrb

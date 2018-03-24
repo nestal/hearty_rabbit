@@ -34,7 +34,7 @@ class BlobFile
 {
 public:
 	BlobFile() = default;
-	BlobFile(const fs::path& dir, const ObjectID& id, const Size2D& resize_img, std::error_code& ec);
+	BlobFile(const fs::path& dir, const ObjectID& id, std::string_view rendition, std::error_code& ec);
 
 	static BlobFile upload(
 		UploadFile&& tmp,
@@ -47,6 +47,8 @@ public:
 
 	BufferView blob() const;
 	MMap& master() {return m_master;}
+
+	static std::string_view master_rendition();
 
 	const ObjectID& ID() const {return m_id;}
 	CollEntry entry() const;

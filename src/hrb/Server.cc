@@ -55,7 +55,7 @@ Server::Server(const Configuration& cfg) :
 	m_ioc{static_cast<int>(std::max(1UL, cfg.thread_count()))},
 	m_db{m_ioc, cfg.redis()},
 	m_lib{cfg.web_root()},
-	m_blob_db{cfg.blob_path(), cfg.image_dimension()}
+	m_blob_db{cfg}
 {
 	OpenSSL_add_all_digests();
 }

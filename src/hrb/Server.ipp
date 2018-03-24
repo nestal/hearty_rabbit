@@ -208,7 +208,7 @@ void Server::get_blob(BlobRequest&& req, Send&& send)
 			if (!req.request_by_owner() && !entry.permission().allow(req.requester()))
 				return send(http::response<http::empty_body>{http::status::forbidden, req.version()});
 
-			return send(m_blob_db.response(*req.blob(), req.version(), entry.mime(), req.etag()));
+			return send(m_blob_db.response(*req.blob(), req.version(), entry.mime(), req.etag(), req.rendition()));
 		}
 	);
 }
