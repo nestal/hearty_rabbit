@@ -106,10 +106,17 @@ void Configuration::load_config(const boost::filesystem::path& path)
 			GetValueByPointerWithDefault(json, "/upload_limit_mb", m_upload_limit/1024.0/1024.0).GetDouble() *
 				1024 * 1024
 		);
-		m_img_dim.assign(
-			GetValueByPointerWithDefault(json, "/image_dimension/width", m_img_dim.width()).GetInt(),
-			GetValueByPointerWithDefault(json, "/image_dimension/height", m_img_dim.height()).GetInt()
-		);
+		if (json.HasMember("rendition"))
+		{
+			for (auto&& rend : json["rendition"].GetObject())
+			{
+				if (rend.value["width"].IsNumber() && rend.value["height"].IsNumber())
+					m_renditions.insert_or_assign(
+						std::string{rend.name.GetString(), rend.name.GetStringLength()},
+						Size2D{rend.value["width"].GetInt(), rend.value["height"].GetInt()}
+					);
+			}
+		}
 		m_session_length = std::chrono::seconds{
 			GetValueByPointerWithDefault(json, "/session_length_in_sec", 3600L).GetInt64(),
 		};
@@ -129,6 +136,13 @@ void Configuration::load_config(const boost::filesystem::path& path)
 	{
 		throw boost::enable_error_info(e) << Path{path};
 	}
+}
+
+Size2D Configuration::image_dimension(std::string_view rend) const
+{
+	auto it = m_renditions.find(std::string{rend});
+	assert(!rend.empty() || it != m_renditions.end());
+	return it != m_renditions.end() ? it->second : image_dimension("");
 }
 
 } // end of namespace

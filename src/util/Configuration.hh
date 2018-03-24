@@ -51,7 +51,7 @@ public:
 	boost::filesystem::path blob_path() const {return m_blob_path;}
 	std::size_t thread_count() const {return m_thread_count;}
 	std::size_t upload_limit() const {return m_upload_limit;}
-	Size2D image_dimension() const {return m_img_dim;}
+	Size2D image_dimension(std::string_view rend = {}) const;
 	const std::string& server_name() const {return m_server_name;}
 	std::chrono::seconds session_length() const {return m_session_length;}
 
@@ -94,7 +94,7 @@ private:
 	std::size_t m_thread_count{1};
 	std::size_t m_upload_limit{10 * 1024 * 1024};
 
-	Size2D m_img_dim{2048, 2048};
+	std::unordered_map<std::string, Size2D> m_renditions{{"", {2048, 2048}}};
 
 	std::chrono::seconds m_session_length{3600};
 };
