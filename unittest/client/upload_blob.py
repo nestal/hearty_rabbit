@@ -121,6 +121,25 @@ class NormalTestCase(unittest.TestCase):
 		self.assertEqual(jpeg.width, 2048)
 		self.assertEqual(jpeg.height, 1024)
 
+		# read back some renditions of the upload image
+		self.assertEqual(self.user1.get("https://localhost:4433" + r1.headers["Location"] + "?2048x2048").status_code, 200)
+
+		# the master rendition should have the same width and height
+		r3 = self.user1.get("https://localhost:4433" + r1.headers["Location"] + "?master")
+		self.assertEqual(r3.status_code, 200)
+
+		master = Image.open(BytesIO(r3.content))
+		self.assertEqual(master.width, 4096)
+		self.assertEqual(master.height, 2048)
+
+		# generated thumbnail should be less than 200x200
+		r4 = self.user1.get("https://localhost:4433" + r1.headers["Location"] + "?thumbnail")
+		self.assertEqual(r4.status_code, 200)
+
+		thumb = Image.open(BytesIO(r4.content))
+		self.assertLessEqual(thumb.width, 4096/8)
+		self.assertLessEqual(thumb.height, 2048/8)
+
 	def test_lib(self):
 		# resource not exist
 		self.assertEqual(self.user1.get("https://localhost:4433/lib/logo.svg").status_code, 200)
@@ -248,6 +267,19 @@ class NormalTestCase(unittest.TestCase):
 		self.user1.cookies["id"] = old_session
 		r1 = self.user1.get("https://localhost:4433/blob/sumsum/0000000000000000000000000000000000000000")
 		self.assertEqual(r1.status_code, 403)
+
+	def test_login_incorrect(self):
+		session = requests.Session()
+		session.verify = "../../etc/hearty_rabbit/certificate.pem"
+
+		login_response = session.post(
+			"https://localhost:4433/login",
+			data="username=invalid&password=invalid",
+			headers={"Content-type": "application/x-www-form-urlencoded"}
+		)
+		self.assertEqual(login_response.status_code, 200)
+		self.assertEqual(session.cookies.get("id"), None)
+		session.close()
 
 if __name__ == '__main__':
 	unittest.main()

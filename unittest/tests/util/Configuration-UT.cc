@@ -105,3 +105,12 @@ TEST_CASE( "Set upload limit to 1.5MB", "[normal]" )
 	Configuration subject{sizeof(argv)/sizeof(argv[1]), argv, nullptr};
 	REQUIRE(subject.upload_limit() == 1.5*1024*1024);
 }
+
+TEST_CASE( "Multiple renditions", "[normal]" )
+{
+	auto file = (current_src / "rendition.json").string();
+
+	const char *argv[] = {"hearty_rabbit", "--cfg", file.c_str()};
+	Configuration subject{sizeof(argv)/sizeof(argv[1]), argv, nullptr};
+	REQUIRE(subject.renditions().dimension(subject.renditions().default_rendition()) == Size2D{1024, 1024});
+}

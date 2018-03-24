@@ -20,19 +20,19 @@
 #include "util/MMap.hh"
 #include "util/Log.hh"
 #include "util/Magic.hh"
+#include "util/Configuration.hh"
 
 namespace hrb {
 
 namespace {
-const std::string default_rendition = "master";
+const std::string master_rendition = "master";
 }
 
 BlobFile BlobFile::upload(
 	UploadFile&& tmp,
 	const Magic& magic,
-	const Size2D& resize_img,
+	const RenditionSetting& cfg,
 	std::string_view filename,
-	int quality,
 	std::error_code& ec
 )
 {
@@ -49,8 +49,14 @@ BlobFile BlobFile::upload(
 
 	if (mime == "image/jpeg")
 	{
-		RotateImage transform;
-		auto rotated = transform.auto_rotate(master.buffer(), ec);
+		// generate default rendition
+		auto rotated = generate_rendition(
+			master.buffer(),
+			cfg.default_rendition(),
+			cfg.dimension(cfg.default_rendition()),
+			cfg.quality(cfg.default_rendition()),
+			ec
+		);
 
 		if (ec)
 		{
@@ -59,28 +65,16 @@ BlobFile BlobFile::upload(
 			ec.clear();
 		}
 
-		else
+		else if (!rotated.empty())
 		{
-			JPEG img{
-				rotated.empty() ? master.buffer().data() : rotated.data(),
-				rotated.empty() ? master.size() : rotated.size(),
-				resize_img
-			};
-
-			if (resize_img != img.size())
-				rotated = img.compress(quality);
-
-			std::ostringstream fn;
-			fn << resize_img.width() << "x" << resize_img.height();
-
-			result.m_rend.emplace(fn.str(), std::move(rotated));
+			result.m_rend.emplace(cfg.default_rendition(), std::move(rotated));
 		}
 	}
 
 	// commit result
 	result.m_id     = tmp.ID();
 	result.m_tmp    = std::move(tmp);
-	result.m_master = std::move(master);
+	result.m_mmap   = std::move(master);
 	result.m_meta   = CollEntry::create(Permission{}, filename, mime);
 
 	return result;
@@ -88,7 +82,7 @@ BlobFile BlobFile::upload(
 
 BufferView BlobFile::blob() const
 {
-	return m_master.buffer();
+	return m_mmap.buffer();
 }
 
 template <typename Blob>
@@ -126,7 +120,7 @@ void BlobFile::save(const fs::path& dir, std::error_code& ec) const
 
 	// Try moving the temp file to our destination first. If failed, use
 	// deep copy instead.
-	m_tmp.move(dir/default_rendition, ec);
+	m_tmp.move(dir/hrb::master_rendition, ec);
 
 	// Save the renditions, if any.
 	for (auto&& [name, rend] : m_rend)
@@ -140,19 +134,54 @@ void BlobFile::save(const fs::path& dir, std::error_code& ec) const
 	}
 }
 
-BlobFile::BlobFile(const fs::path& dir, const ObjectID& id, const Size2D& resize_img, std::error_code& ec) :
+BlobFile::BlobFile(const fs::path& dir, const ObjectID& id, std::string_view rendition, const RenditionSetting& cfg, std::error_code& ec) :
 	m_id{id}
 {
-	std::ostringstream fn;
-	fn << resize_img.width() << "x" << resize_img.height();
+	// check if rendition is allowed by config
+	if (!cfg.valid(rendition) && rendition != hrb::master_rendition)
+		rendition = cfg.default_rendition();
 
-	auto resized = dir/fn.str();
-	m_master = MMap::open(exists(resized) ? resized : dir/default_rendition, ec);
+	if (rendition != hrb::master_rendition && !exists(dir/std::string{rendition}))
+	{
+		auto master = MMap::open(dir/hrb::master_rendition, ec);
+		if (!ec)
+		{
+			auto tb = generate_rendition(master.buffer(), rendition, cfg.dimension(rendition), cfg.quality(rendition), ec);
+			if (!tb.empty())
+			{
+				Log(LOG_INFO, "generated new rendition %1% for %2%", rendition, id);
+				save_blob(tb, dir / std::string{rendition}, ec);
+			}
+		}
+	}
+
+	auto resized = dir/std::string{rendition};
+	m_mmap = MMap::open(exists(resized) ? resized : dir/hrb::master_rendition, ec);
 }
 
 CollEntry BlobFile::entry() const
 {
 	return CollEntry{m_meta};
+}
+
+TurboBuffer BlobFile::generate_rendition(BufferView master, std::string_view rend, Size2D dim, int quality, std::error_code& ec)
+{
+	RotateImage transform;
+	auto rotated = transform.auto_rotate(master, ec);
+
+	if (!ec)
+	{
+		JPEG img{
+			rotated.empty() ? master.data() : rotated.data(),
+			rotated.empty() ? master.size() : rotated.size(),
+			dim
+		};
+
+		if (dim != img.size())
+			rotated = img.compress(quality);
+	}
+
+	return rotated;
 }
 
 } // end of namespace hrb

@@ -73,19 +73,18 @@ void Server::on_request_header(
 		*m_db.alloc(),
 		session_length(),
 		[
-			this,
-			&header,
-			&dest,
-			&src,
+			this, &dest, &src,
+			action=intent.action(),
+			method=header.method(),
 			complete=std::forward<Complete>(complete)
 		](std::error_code ec, const Authentication& auth) mutable
 		{
 			// Use a UploadRequestParse to parser upload requests, only when the session is authenticated.
-			if (!ec && is_upload(header))
+			if (!ec && action == URLIntent::Action::upload && method == http::verb::put)
 				prepare_upload(dest.emplace<UploadRequestParser>(std::move(src)).get().body(), ec);
 
 			// blobs support post request
-			else if (!ec && header.target().starts_with(url::blob) && header.method() == http::verb::post)
+			else if (!ec && action == URLIntent::Action::blob && method == http::verb::post)
 				dest.emplace<StringRequestParser>(std::move(src));
 
 			// Other requests use EmptyRequestParser, because they don't have a body.
@@ -103,17 +102,14 @@ void Server::on_request_header(
 template <class Request, class Send>
 void Server::handle_request(Request&& req, Send&& send, const Authentication& auth)
 {
+	URLIntent intent{req.target()};
 	if constexpr (std::is_same<std::remove_reference_t<Request>, EmptyRequest>::value)
 	{
-		URLIntent intent{req.target()};
-		if (intent.action() == URLIntent::Action::lib && is_static_resource(intent.filename()))
-			return send(static_file_request(req, intent.filename()));
-
-		if (req.target() == url::login_incorrect)
-			return send(on_login_incorrect(req));
+		if (intent.action() == URLIntent::Action::lib)
+			return send(static_file_request(intent, req[http::field::if_none_match], req.version()));
 	}
 
-	if (req.target() == hrb::url::login)
+	if (intent.action() == URLIntent::Action::login)
 	{
 		if constexpr (std::is_same<std::remove_reference_t<Request>, StringRequest>::value)
 		{
@@ -126,32 +122,32 @@ void Server::handle_request(Request&& req, Send&& send, const Authentication& au
 
 	// handle_blob() is a function template on the request type. It can work with all
 	// request types so no need to check before calling.
-	if (req.target().starts_with(url::blob))
+	if (intent.action() == URLIntent::Action::blob)
 		return handle_blob(std::forward<Request>(req), std::forward<Send>(send), auth);
 
 	// The following URL only support EmptyRequests, i.e. requests without body.
 	if constexpr (std::is_same<std::remove_reference_t<Request>, EmptyRequest>::value)
 	{
-		if (req.target() == "/")
+		if (intent.action() == URLIntent::Action::home)
 			return serve_home(std::forward<Request>(req), std::forward<Send>(send), auth);
 
-		if (req.target().starts_with(url::view))
+		if (intent.action() == URLIntent::Action::view)
 			return serve_view(std::forward<Request>(req), std::forward<Send>(send), auth);
 
-		if (req.target().starts_with(url::collection))
+		if (intent.action() == URLIntent::Action::coll)
 			return serve_collection(std::forward<Request>(req), std::forward<Send>(send), auth);
 
-		if (req.target().starts_with(url::list_coll))
+		if (intent.action() == URLIntent::Action::listcolls)
 			return scan_collection(std::forward<Request>(req), std::forward<Send>(send), auth);
 
-		if (req.target() == url::logout)
+		if (intent.action() == URLIntent::Action::logout)
 			return on_logout(std::forward<Request>(req), std::forward<Send>(send), auth);
 	}
 
 	// Upload requests for /upload URL only
 	if constexpr (std::is_same<std::remove_reference_t<Request>, UploadRequest>::value)
 	{
-		if (req.target().starts_with(url::upload))
+		if (intent.action() == URLIntent::Action::upload)
 			return on_upload(std::move(req), std::forward<Send>(send), auth);
 	}
 
@@ -178,7 +174,10 @@ void Server::handle_blob(Request&& req, Send&& send, const Authentication& auth)
 		return update_blob(std::move(breq),std::move(send));
 
 	else
+	{
+		Log(LOG_WARNING, "blob request error: bad method %1%", req.method_string());
 		return send(http::response<http::empty_body>{http::status::bad_request, req.version()});
+	}
 }
 
 template <class Send>
@@ -209,7 +208,7 @@ void Server::get_blob(BlobRequest&& req, Send&& send)
 			if (!req.request_by_owner() && !entry.permission().allow(req.requester()))
 				return send(http::response<http::empty_body>{http::status::forbidden, req.version()});
 
-			return send(m_blob_db.response(*req.blob(), req.version(), entry.mime(), req.etag()));
+			return send(m_blob_db.response(*req.blob(), req.version(), entry.mime(), req.etag(), req.rendition()));
 		}
 	);
 }

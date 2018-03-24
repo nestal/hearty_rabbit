@@ -102,14 +102,24 @@ void Configuration::load_config(const boost::filesystem::path& path)
 		m_blob_path     = weakly_canonical(absolute(string(required(json, "/blob_path")),   path.parent_path()));
 		m_server_name   = string(required(json, "/server_name"));
 		m_thread_count  = GetValueByPointerWithDefault(json, "/thread_count", m_thread_count).GetUint64();
+		m_rendition.default_rendition(
+			GetValueByPointerWithDefault(json, "/default_rendition", m_rendition.default_rendition().c_str()).GetString()
+		);
 		m_upload_limit  = static_cast<std::size_t>(
 			GetValueByPointerWithDefault(json, "/upload_limit_mb", m_upload_limit/1024.0/1024.0).GetDouble() *
 				1024 * 1024
 		);
-		m_img_dim.assign(
-			GetValueByPointerWithDefault(json, "/image_dimension/width", m_img_dim.width()).GetInt(),
-			GetValueByPointerWithDefault(json, "/image_dimension/height", m_img_dim.height()).GetInt()
-		);
+		if (json.HasMember("rendition"))
+		{
+			for (auto&& rend : json["rendition"].GetObject())
+			{
+				if (rend.value["width"].IsNumber() && rend.value["height"].IsNumber())
+					m_rendition.add(
+						{rend.name.GetString(), rend.name.GetStringLength()},
+						{rend.value["width"].GetInt(), rend.value["height"].GetInt()}
+					);
+			}
+		}
 		m_session_length = std::chrono::seconds{
 			GetValueByPointerWithDefault(json, "/session_length_in_sec", 3600L).GetInt64(),
 		};
@@ -129,6 +139,38 @@ void Configuration::load_config(const boost::filesystem::path& path)
 	{
 		throw boost::enable_error_info(e) << Path{path};
 	}
+}
+
+
+const RenditionSetting::Setting& RenditionSetting::find(std::string_view rend) const
+{
+	assert(m_renditions.find(std::string{m_default}) != m_renditions.end());
+
+	if (rend.empty())
+		rend = m_default;
+
+	auto it = m_renditions.find(std::string{rend});
+	return it != m_renditions.end() ? it->second : find(m_default);
+}
+
+Size2D RenditionSetting::dimension(std::string_view rend) const
+{
+	return find(rend).dim;
+}
+
+int RenditionSetting::quality(std::string_view rend) const
+{
+	return find(rend).quality;
+}
+
+bool RenditionSetting::valid(std::string_view rend) const
+{
+	return m_renditions.find(std::string{rend}) != m_renditions.end();
+}
+
+void RenditionSetting::add(std::string_view rend, Size2D dim, int quality)
+{
+	m_renditions.insert_or_assign(std::string{rend}, Setting{dim, quality});
 }
 
 } // end of namespace

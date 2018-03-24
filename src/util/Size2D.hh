@@ -12,6 +12,8 @@
 
 #pragma once
 
+#include <ostream>
+
 namespace hrb {
 
 template <typename T>
@@ -40,5 +42,11 @@ private:
 };
 
 using Size2D = BasicSize2D<int>;
+
+template <typename T>
+std::ostream& operator<<(std::ostream& os, const BasicSize2D<T>& size)
+{
+	return os << R"({"width":)" << size.width() << R"(, "height": )" << size.height() << "}";
+}
 
 } // end of namespace hrb

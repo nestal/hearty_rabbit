@@ -61,7 +61,7 @@ private:
 	// contents of the request, so the interface requires the
 	// caller to pass a generic lambda for receiving the response.
 	template<class Request>
-	bool validate_request(const Request& req, std::string_view user);
+	bool validate_request(const Request& req);
 
 	template <class Response>
 	void send_response(Response&& response);

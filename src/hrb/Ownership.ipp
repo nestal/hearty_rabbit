@@ -63,6 +63,9 @@ public:
 	void unlink(redis::Connection& db, const ObjectID& id);
 
 	template <typename Complete>
+	void set_cover(redis::Connection& db, const ObjectID& cover, Complete&& complete);
+
+	template <typename Complete>
 	void set_permission(redis::Connection& db, const ObjectID& blob, const Permission& perm, Complete&& complete) const;
 
 	template <typename Complete>
@@ -273,6 +276,21 @@ void Ownership::Collection::set_permission(
 		m_user.data(), m_user.size(),
 		m_path.data(), m_path.size(),
 		blob.data(), blob.size()
+	);
+}
+
+template <typename Complete>
+void Ownership::Collection::set_cover(redis::Connection& db, const ObjectID& cover, Complete&& complete)
+{
+	// set the cover of the collection
+	auto json = R"({"cover":)" + to_quoted_hex(cover) + "}";
+	db.command(
+		std::forward<Complete>(complete),
+		R"(HSETNX %b%b %b %b)",
+		m_list_prefix.data(), m_list_prefix.size(),
+		m_user.data(), m_user.size(),
+		m_path.data(), m_path.size(),
+		json.data(), json.size()
 	);
 }
 

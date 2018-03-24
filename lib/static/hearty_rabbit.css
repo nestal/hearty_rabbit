@@ -3,10 +3,6 @@ body {
 	margin: 0;
 }
 
-#username-nav {
-	font-family: 'Itim', cursive;
-}
-
 #login-dialog, #create-album-dialog {
 	display: none;
 }
@@ -46,9 +42,7 @@ div.dialog-container button:hover {
 
 /* Refer to: https://css-tricks.com/seamless-responsive-photo-grid/ */
 #hrb-entry-root {
-	/* Prevent vertical gaps */
 	line-height: 0;
-
 	-webkit-column-count: 5;
 	-webkit-column-gap: 0;
 	-moz-column-count: 5;
@@ -144,8 +138,8 @@ div.dialog-container button:hover {
 }
 
 .topnav {
-	position: sticky;
 	z-index: 1;
+	position: sticky;
 	top: 0;
 	width: 100%;
 	background-color: rgba(5%, 5%, 10%, 0.8);
@@ -172,8 +166,15 @@ div.dialog-container button:hover {
 }
 
 .topnav .nav-level1 .nav-icons {
-	font-size: 1.5em;
+	font-size: 2em;
 	vertical-align: middle;
+}
+
+.topnav #username-nav {
+	font-size: 1.5em;
+	text-overflow: ellipsis;
+	overflow: hidden;
+	white-space: nowrap;
 }
 
 /* hide the ugly file upload form */
@@ -200,15 +201,15 @@ div.dialog-container button:hover {
 
 /* The Modal lightbox (background) */
 .modal {
+	z-index: 1;
 	display: none;
 	position: fixed;
-	z-index: 2;
 	left: 0;
 	top: 0;
 	width: 100%;
 	height: 100%;
 	overflow: hidden;
-	background-color: black;
+	background-color: rgba(0, 0, 0, 0.9);
 }
 
 /* Modal Content */
@@ -220,7 +221,7 @@ div.dialog-container button:hover {
 
 /* The lightbox buttons*/
 .light-box-button.material-icons {
-	font-size: 72px;
+	font-size: 8.0vmin;
 	user-select: none;
 	-webkit-user-select: none;
 	background-color: transparent;
@@ -248,7 +249,6 @@ div.dialog-container button:hover {
 	top: 10px;
 	right: 25px;
 	color: white;
-	z-index: 3;
 	user-select: none;
 	-webkit-user-select: none;
 }
@@ -308,7 +308,6 @@ div.dialog-container button:hover {
 	border-radius: 6px;
 
 	position: absolute;
-	z-index: 3;
 	left: 0;
 	top: 100%;
 

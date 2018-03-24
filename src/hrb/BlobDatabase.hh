@@ -24,12 +24,13 @@
 
 namespace hrb {
 
-class ObjectID;
 class BlobFile;
-class UploadFile;
+class CollEntry;
+class Configuration;
 class MMapResponseBody;
 class Magic;
-class CollEntry;
+class ObjectID;
+class UploadFile;
 
 class BlobDatabase
 {
@@ -37,7 +38,7 @@ public:
 	using BlobResponse = boost::beast::http::response<MMapResponseBody>;
 
 public:
-	explicit BlobDatabase(const fs::path& base, const Size2D& resize_img);
+	explicit BlobDatabase(const Configuration& cfg);
 
 	void prepare_upload(UploadFile& result, std::error_code& ec) const;
 	BlobFile save(UploadFile&& tmp, std::string_view filename, std::error_code& ec);
@@ -56,9 +57,8 @@ private:
 	static void set_cache_control(BlobResponse& res, const ObjectID& id);
 
 private:
-	fs::path    m_base;
-	Magic       m_magic;
-	Size2D        m_resize_img;
+	Magic                   m_magic;
+	const Configuration&    m_cfg;
 };
 
 } // end of namespace hrb

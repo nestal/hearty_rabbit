@@ -18,30 +18,31 @@
 #include "net/MMapResponseBody.hh"
 
 #include "util/Log.hh"
+#include "util/Configuration.hh"
 
 namespace hrb {
 
-BlobDatabase::BlobDatabase(const fs::path& base, const Size2D& img_resize) : m_base{base}, m_resize_img{img_resize}
+BlobDatabase::BlobDatabase(const Configuration& cfg) : m_cfg{cfg}
 {
-	if (exists(base) && !is_directory(base))
+	if (exists(m_cfg.blob_path()) && !is_directory(m_cfg.blob_path()))
 		throw std::system_error(std::make_error_code(std::errc::file_exists));
 
-	if (!exists(base))
-		create_directories(base);
+	if (!exists(m_cfg.blob_path()))
+		create_directories(m_cfg.blob_path());
 }
 
 void BlobDatabase::prepare_upload(UploadFile& result, std::error_code& ec) const
 {
 	boost::system::error_code err;
 
-	result.open(m_base.string().c_str(), err);
+	result.open(m_cfg.blob_path().string().c_str(), err);
 	if (err)
 		ec.assign(err.value(), err.category());
 }
 
 BlobFile BlobDatabase::save(UploadFile&& tmp, std::string_view filename, std::error_code& ec)
 {
-	auto blob_obj = BlobFile::upload(std::move(tmp), m_magic, m_resize_img, filename, 70, ec);
+	auto blob_obj = BlobFile::upload(std::move(tmp), m_magic, m_cfg.renditions(), filename, ec);
 	if (!ec)
 		blob_obj.save(dest(blob_obj.ID()), ec);
 
@@ -53,7 +54,7 @@ fs::path BlobDatabase::dest(const ObjectID& id, std::string_view) const
 	auto hex = to_hex(id);
 	assert(hex.size() > 2);
 
-	return m_base / hex.substr(0, 2) / hex;
+	return m_cfg.blob_path() / hex.substr(0, 2) / hex;
 }
 
 BlobDatabase::BlobResponse BlobDatabase::response(
@@ -64,6 +65,14 @@ BlobDatabase::BlobResponse BlobDatabase::response(
 	std::string_view rendition
 ) const
 {
+	// validate rendition string
+	auto invalid = std::find_if(rendition.begin(), rendition.end(), [](char c)
+	{
+		return !std::isalpha(c) && !std::isdigit(c);
+	});
+	if (invalid != rendition.end())
+		return http::response<MMapResponseBody>{http::status::bad_request, version};
+
 	if (etag == to_quoted_hex(id))
 	{
 		http::response<MMapResponseBody> res{http::status::not_modified, version};
@@ -74,13 +83,13 @@ BlobDatabase::BlobResponse BlobDatabase::response(
 	auto path = dest(id);
 
 	std::error_code ec;
-	BlobFile blob_obj{path, id, m_resize_img, ec};
+	BlobFile blob_obj{path, id, rendition, m_cfg.renditions(), ec};
 
 	if (ec)
 		return BlobResponse{http::status::not_found, version};
 
 	// Advice the kernel that we only read the memory in one pass
-	auto mmap{std::move(blob_obj.master())};
+	auto mmap{std::move(blob_obj.mmap())};
 	mmap.cache();
 
 	BlobResponse res{

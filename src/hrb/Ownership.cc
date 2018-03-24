@@ -89,14 +89,7 @@ void Ownership::Collection::link(redis::Connection& db, const ObjectID& id, cons
 		entry.data(), entry.size()
 	);
 
-	auto cover = R"({"cover":)" + to_quoted_hex(id) + "}";
-	db.command(
-		R"(HSETNX %b%b %b %b)",
-		m_list_prefix.data(), m_list_prefix.size(),
-		m_user.data(), m_user.size(),
-		m_path.data(), m_path.size(),
-		cover.data(), cover.size()
-	);
+	set_cover(db, id, [](auto&&, auto&&){});
 }
 
 void Ownership::Collection::unlink(redis::Connection& db, const ObjectID& id)

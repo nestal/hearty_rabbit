@@ -26,6 +26,33 @@
 
 namespace hrb {
 
+class RenditionSetting
+{
+public:
+	RenditionSetting() = default;
+
+	Size2D dimension(std::string_view rend = {}) const;
+	int quality(std::string_view rend = {}) const;
+
+	bool valid(std::string_view rend) const;
+	const std::string& default_rendition() const {return m_default;}
+	void default_rendition(std::string_view rend) {m_default = rend;}
+
+	void add(std::string_view rend, Size2D dim, int quality=70);
+
+private:
+	struct Setting
+	{
+		Size2D  dim;
+		int     quality;
+	};
+
+	const Setting& find(std::string_view rend) const;
+
+	std::string m_default{"2048x2048"};
+	std::unordered_map<std::string, Setting> m_renditions{{m_default, Setting{{2048, 2048}, 70}}};
+};
+
 /// \brief  Parsing command line options and configuration file
 class Configuration
 {
@@ -39,6 +66,7 @@ public:
 	using ErrorCode = boost::error_info<struct tag_error_code,  std::error_code>;
 
 public:
+	Configuration() = default;
 	Configuration(int argc, const char *const *argv, const char *env);
 
 	boost::asio::ip::tcp::endpoint listen_http() const { return m_listen_http;}
@@ -51,7 +79,7 @@ public:
 	boost::filesystem::path blob_path() const {return m_blob_path;}
 	std::size_t thread_count() const {return m_thread_count;}
 	std::size_t upload_limit() const {return m_upload_limit;}
-	Size2D image_dimension() const {return m_img_dim;}
+	const RenditionSetting& renditions() const {return m_rendition;}
 	const std::string& server_name() const {return m_server_name;}
 	std::chrono::seconds session_length() const {return m_session_length;}
 
@@ -74,6 +102,9 @@ public:
 
 	void usage(std::ostream& out) const;
 
+	// for unit tests
+	void blob_path(boost::filesystem::path path) {m_blob_path = path;}
+
 private:
 	void load_config(const boost::filesystem::path& path);
 
@@ -94,7 +125,7 @@ private:
 	std::size_t m_thread_count{1};
 	std::size_t m_upload_limit{10 * 1024 * 1024};
 
-	Size2D m_img_dim{2048, 2048};
+	RenditionSetting m_rendition;
 
 	std::chrono::seconds m_session_length{3600};
 };
