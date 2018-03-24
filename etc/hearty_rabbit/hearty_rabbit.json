@@ -6,6 +6,10 @@
   "server_name" : "localhost",
   "upload_limit_mb" : 20,
   "thread_count": 8,
+  "rendition" : {
+    "":          {"width":2048, "height" : 2048},
+    "thumbnail": {"width":200,  "height" : 200}
+  },
   "http": {
     "address": "0.0.0.0",
     "port": 8080
