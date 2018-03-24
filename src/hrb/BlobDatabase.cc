@@ -42,7 +42,7 @@ void BlobDatabase::prepare_upload(UploadFile& result, std::error_code& ec) const
 
 BlobFile BlobDatabase::save(UploadFile&& tmp, std::string_view filename, std::error_code& ec)
 {
-	auto blob_obj = BlobFile::upload(std::move(tmp), m_magic, m_cfg.image_dimension(), filename, 70, ec);
+	auto blob_obj = BlobFile::upload(std::move(tmp), m_magic, m_cfg.renditions(), filename, 70, ec);
 	if (!ec)
 		blob_obj.save(dest(blob_obj.ID()), ec);
 
@@ -74,8 +74,8 @@ BlobDatabase::BlobResponse BlobDatabase::response(
 		return http::response<MMapResponseBody>{http::status::bad_request, version};
 
 	// check if rendition is allowed by config
-	if (!m_cfg.is_rendition(rendition) && rendition != BlobFile::master_rendition())
-		rendition = m_cfg.default_rendition();
+	if (!m_cfg.renditions().valid(rendition) && rendition != BlobFile::master_rendition())
+		rendition = m_cfg.renditions().default_rendition();
 
 	if (etag == to_quoted_hex(id))
 	{

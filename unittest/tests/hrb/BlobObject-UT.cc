@@ -17,6 +17,7 @@
 #include "hrb/UploadFile.hh"
 #include "util/MMap.hh"
 #include "util/Magic.hh"
+#include "util/Configuration.hh"
 
 using namespace hrb;
 
@@ -46,10 +47,11 @@ TEST_CASE("upload non-image BlobFile", "[normal]")
 	fs::remove_all("/tmp/BlobFile-UT");
 	fs::create_directories("/tmp/BlobFile-UT");
 
+	RenditionSetting cfg;
 	auto [tmp, src] = upload(__FILE__);
 
 	std::error_code ec;
-	auto subject = BlobFile::upload(std::move(tmp), Magic{}, {2048, 2048}, "unittest.cc", 70, ec);
+	auto subject = BlobFile::upload(std::move(tmp), Magic{}, cfg, "unittest.cc", 70, ec);
 	REQUIRE(!ec);
 	REQUIRE(subject.ID() != ObjectID{});
 
@@ -75,7 +77,7 @@ TEST_CASE("upload small image BlobFile", "[normal]")
 	auto [tmp, src] = upload(image_path()/"black.jpg");
 
 	std::error_code ec;
-	auto subject = BlobFile::upload(std::move(tmp), Magic{}, {2048, 2048}, "black.jpeg", 70, ec);
+	auto subject = BlobFile::upload(std::move(tmp), Magic{}, RenditionSetting{}, "black.jpeg", 70, ec);
 	REQUIRE(!ec);
 	REQUIRE(subject.ID() != ObjectID{});
 
@@ -100,8 +102,12 @@ TEST_CASE("upload big upright image BlobFile", "[normal]")
 
 	auto [tmp, src] = upload(image_path()/"up_f_upright.jpg");
 
+	RenditionSetting cfg;
+	cfg.add("128x128", {128, 128});
+	cfg.default_rendition("128x128");
+
 	std::error_code ec;
-	auto subject = BlobFile::upload(std::move(tmp), Magic{}, {128, 128}, "upright.jpeg", 70, ec);
+	auto subject = BlobFile::upload(std::move(tmp), Magic{}, cfg, "upright.jpeg", 70, ec);
 	REQUIRE(!ec);
 	REQUIRE(subject.ID() != ObjectID{});
 

@@ -29,6 +29,7 @@ class UploadFile;
 class CollEntry;
 class Magic;
 class CollEntry;
+class RenditionSetting;
 
 class BlobFile
 {
@@ -39,7 +40,7 @@ public:
 	static BlobFile upload(
 		UploadFile&& tmp,
 		const Magic& magic,
-		const Size2D& resize_img,
+		const RenditionSetting& cfg,
 		std::string_view filename,
 		int quality,
 		std::error_code& ec
@@ -54,6 +55,9 @@ public:
 	CollEntry entry() const;
 
 	void save(const fs::path& dir, std::error_code& ec) const;
+
+private:
+	static TurboBuffer generate_rendition(BufferView master, std::string_view rend, Size2D dim, int quality, std::error_code& ec);
 
 private:
 	ObjectID    m_id{};

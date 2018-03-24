@@ -112,5 +112,5 @@ TEST_CASE( "Multiple renditions", "[normal]" )
 
 	const char *argv[] = {"hearty_rabbit", "--cfg", file.c_str()};
 	Configuration subject{sizeof(argv)/sizeof(argv[1]), argv, nullptr};
-	REQUIRE(subject.image_dimension("") == Size2D{1024, 1024});
+	REQUIRE(subject.renditions().dimension(subject.renditions().default_rendition()) == Size2D{1024, 1024});
 }

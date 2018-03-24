@@ -20,6 +20,7 @@
 #include "util/MMap.hh"
 #include "util/Log.hh"
 #include "util/Magic.hh"
+#include "util/Configuration.hh"
 
 namespace hrb {
 
@@ -30,7 +31,7 @@ const std::string master_rendition = "master";
 BlobFile BlobFile::upload(
 	UploadFile&& tmp,
 	const Magic& magic,
-	const Size2D& resize_img,
+	const RenditionSetting& cfg,
 	std::string_view filename,
 	int quality,
 	std::error_code& ec
@@ -49,8 +50,9 @@ BlobFile BlobFile::upload(
 
 	if (mime == "image/jpeg")
 	{
-		RotateImage transform;
-		auto rotated = transform.auto_rotate(master.buffer(), ec);
+		// generate default rendition
+		auto dim = cfg.dimension(cfg.default_rendition());
+		auto rotated = generate_rendition(master.buffer(), cfg.default_rendition(), dim, quality, ec);
 
 		if (ec)
 		{
@@ -59,21 +61,9 @@ BlobFile BlobFile::upload(
 			ec.clear();
 		}
 
-		else
+		else if (!rotated.empty())
 		{
-			JPEG img{
-				rotated.empty() ? master.buffer().data() : rotated.data(),
-				rotated.empty() ? master.size() : rotated.size(),
-				resize_img
-			};
-
-			if (resize_img != img.size())
-				rotated = img.compress(quality);
-
-			std::ostringstream fn;
-			fn << resize_img.width() << "x" << resize_img.height();
-
-			result.m_rend.emplace(fn.str(), std::move(rotated));
+			result.m_rend.emplace(cfg.default_rendition(), std::move(rotated));
 		}
 	}
 
@@ -155,6 +145,26 @@ CollEntry BlobFile::entry() const
 std::string_view BlobFile::master_rendition()
 {
 	return hrb::master_rendition;
+}
+
+TurboBuffer BlobFile::generate_rendition(BufferView master, std::string_view rend, Size2D dim, int quality, std::error_code& ec)
+{
+	RotateImage transform;
+	auto rotated = transform.auto_rotate(master, ec);
+
+	if (!ec)
+	{
+		JPEG img{
+			rotated.empty() ? master.data() : rotated.data(),
+			rotated.empty() ? master.size() : rotated.size(),
+			dim
+		};
+
+		if (dim != img.size())
+			rotated = img.compress(quality);
+	}
+
+	return rotated;
 }
 
 } // end of namespace hrb

@@ -26,6 +26,23 @@
 
 namespace hrb {
 
+class RenditionSetting
+{
+public:
+	RenditionSetting() = default;
+
+	Size2D dimension(std::string_view rend = {}) const;
+	bool valid(std::string_view rend) const;
+	const std::string& default_rendition() const {return m_default;}
+	void default_rendition(std::string_view rend) {m_default = rend;}
+
+	void add(std::string_view rend, Size2D dim);
+
+private:
+	std::string m_default{"2048x2048"};
+	std::unordered_map<std::string, Size2D> m_renditions{{m_default, {2048, 2048}}};
+};
+
 /// \brief  Parsing command line options and configuration file
 class Configuration
 {
@@ -52,9 +69,7 @@ public:
 	boost::filesystem::path blob_path() const {return m_blob_path;}
 	std::size_t thread_count() const {return m_thread_count;}
 	std::size_t upload_limit() const {return m_upload_limit;}
-	Size2D image_dimension(std::string_view rend = {}) const;
-	bool is_rendition(std::string_view rend) const;
-	std::string_view default_rendition() const {return m_default_rendition;}
+	const RenditionSetting& renditions() const {return m_rendition;}
 	const std::string& server_name() const {return m_server_name;}
 	std::chrono::seconds session_length() const {return m_session_length;}
 
@@ -100,8 +115,7 @@ private:
 	std::size_t m_thread_count{1};
 	std::size_t m_upload_limit{10 * 1024 * 1024};
 
-	std::string m_default_rendition{"2048x2048"};
-	std::unordered_map<std::string, Size2D> m_renditions{{m_default_rendition, {2048, 2048}}};
+	RenditionSetting m_rendition;
 
 	std::chrono::seconds m_session_length{3600};
 };
