@@ -166,23 +166,26 @@ TEST_CASE("read all images successfully", "[normal]")
 			{
 				REQUIRE(!ec);
 
-				JPEG jpeg{mmap.buffer().data(), mmap.size(), {2048, 2048}};
-				jpeg.compress(70);
-
 				RotateImage rot;
 				auto rotated = rot.auto_rotate(mmap.buffer(), ec);
 				REQUIRE(!ec);
 
-				std::string_view sv_out{
-					rotated.empty() ? mmap.string().data() : reinterpret_cast<const char *>(rotated.data()),
-					rotated.empty() ? mmap.size() : rotated.size()
+				if (!rotated.empty())
+				{
+					std::ofstream rot_out{"rot-" + img.path().filename().string(), std::ios::out | std::ios::binary};
+					rot_out.rdbuf()->sputn(reinterpret_cast<const char *>(rotated.data()), rotated.size());
+				}
+
+				BufferView buf_out{
+					rotated.empty() ? mmap.buffer().data() : rotated.data(),
+					rotated.empty() ? mmap.size()          : rotated.size()
 				};
 
-				if (rotated.empty())
-				{
-					std::ofstream out{img.path().filename().string(), std::ios::out | std::ios::binary};
-					out.rdbuf()->sputn(sv_out.data(), sv_out.size());
-				}
+				JPEG jpeg{buf_out.data(), buf_out.size(), {2048, 2048}};
+				auto out_jpeg = jpeg.compress(70);
+
+				std::ofstream out{img.path().filename().string(), std::ios::out | std::ios::binary};
+				out.rdbuf()->sputn(reinterpret_cast<const char*>(out_jpeg.data()), out_jpeg.size());
 			}
 		}
 	}

@@ -20,7 +20,7 @@
 
 namespace hrb {
 namespace {
-const int yuv_pad = 2;
+const int yuv_pad = 4;
 }
 
 using Handle = std::unique_ptr<void, decltype(&tjDestroy)>;
@@ -114,9 +114,11 @@ JPEG& JPEG::operator=(JPEG&& src) noexcept
 {
 	auto tmp{std::move(src)};
 	m_yuv.swap(tmp.m_yuv);
-	m_size = tmp.m_size;
+	m_size       = tmp.m_size;
 	m_subsample  = tmp.m_subsample;
 	m_colorspace = tmp.m_colorspace;
+	tmp.m_size.assign(0,0);
+
 	return *this;
 }
 
