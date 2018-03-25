@@ -22,10 +22,11 @@ script:
   - ./automation/start_tests
 
 after_success:
+  - docker login -u "$DOCKER_USER" -p "$DOCKER_PASSWORD"
   - if [ "$TRAVIS_BRANCH" == "master" ] || [ "$TRAVIS_BRANCH" == "release_v0.1" ]; then
-    docker login -u "$DOCKER_USER" -p "$DOCKER_PASSWORD";
     docker tag nestal/hearty_rabbit nestal/hearty_rabbit:$TRAVIS_BUILD_NUMBER;
-    docker tag nestal/hearty_rabbit nestal/hearty_rabbit:latest;
-    docker push nestal/hearty_rabbit;
-    echo "Pushed docker image to hub";
-    fi
+    fi;
+  - export TAG=`if [ "$TRAVIS_BRANCH" == "master" ]; then echo "latest"; else echo $TRAVIS_BRANCH ; fi`
+  - docker tag nestal/hearty_rabbit nestal/hearty_rabbit:$TAG
+  - docker push nestal/hearty_rabbit
+  - echo "Pushed docker image to hub"
