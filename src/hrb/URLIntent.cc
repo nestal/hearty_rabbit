@@ -15,6 +15,7 @@
 #include "util/Escape.hh"
 
 #include <sstream>
+#include <cassert>
 
 namespace hrb {
 
@@ -38,7 +39,7 @@ URLIntent::URLIntent(boost::string_view boost_target)
 	if (target.empty())
 		return;
 
-	if (require_user.at(static_cast<std::size_t>(m_action)))
+	if (!forbid_user.at(static_cast<std::size_t>(m_action)))
 	{
 		m_user = target.substr(0, target.find_first_of('/', 1));
 		target.remove_prefix(m_user.size());
@@ -62,19 +63,21 @@ URLIntent::URLIntent(boost::string_view boost_target)
 	if (target.back() == '?')
 		target.remove_suffix(1);
 
-	auto file_start = target.find_last_of('/');
-	if (file_start != target.npos)
+	if (!forbid_filename.at(static_cast<std::size_t>(m_action)))
 	{
-		file_start++;
-		m_filename = target.substr(file_start, target.size());
-		target.remove_suffix(m_filename.size());
+		auto file_start = target.find_last_of('/');
+		if (file_start != target.npos)
+		{
+			file_start++;
+			m_filename = target.substr(file_start, target.size());
+			target.remove_suffix(m_filename.size());
+		}
 	}
 
 	if (target.empty())
 		return;
 
 	m_coll = trim(target);
-	return;
 }
 
 URLIntent::URLIntent(Action act, std::string_view user, std::string_view coll, std::string_view name) :
@@ -141,19 +144,46 @@ URLIntent::Action URLIntent::parse_action(std::string_view str)
 const std::array<bool, static_cast<int>(URLIntent::Action::none)> URLIntent::require_user =
 //   login, logout, blob, view, coll, upload, home,  lib,   listcolls, none
 	{false, false,  true, true, true, true,   false, false, true};
+const std::array<bool, static_cast<int>(URLIntent::Action::none)> URLIntent::forbid_user =
+//   login, logout, blob,  view,  coll,  upload, home, lib,  listcolls, none
+	{true,  true,   false, false, false, false,  true, true, false};
 
 const std::array<bool, static_cast<int>(URLIntent::Action::none)> URLIntent::require_filename =
 //   login, logout, blob, view,  coll,  upload, home,  lib,  listcolls, none
 	{false, false,  true, false, false, true,   false, true, false};
+const std::array<bool, static_cast<int>(URLIntent::Action::none)> URLIntent::forbid_filename =
+//   login, logout, blob,  view,  coll, upload, home, lib,   listcolls, none
+	{true,  true,   false, true, true, false,  true, false, true};
+
+const std::array<bool, static_cast<int>(URLIntent::Action::none)> URLIntent::forbid_coll =
+//   login, logout, blob,  view,  coll,  upload, home, lib,  listcolls, none
+	{true,  true,   false, false, false, false,  true, true, false};
 
 bool URLIntent::valid() const
 {
 	if (m_action != Action::none)
 	{
-		// collection may be empty in any case
-		return
-			!m_user.empty()     == require_user.at(static_cast<std::size_t>(m_action)) &&
-			!m_filename.empty() == require_filename.at(static_cast<std::size_t>(m_action));
+		auto action_index = static_cast<std::size_t>(m_action);
+		assert(!require_user.at(action_index)     || !forbid_user.at(action_index));
+		assert(!require_filename.at(action_index) || !forbid_filename.at(action_index));
+		assert(require_user.at(static_cast<std::size_t>(Action::view)));
+
+		if (require_user.at(action_index) && m_user.empty())
+			return false;
+
+		if (forbid_user.at(action_index) && !m_user.empty())
+			return false;
+
+		if (require_filename.at(action_index) && m_filename.empty())
+			return false;
+
+		if (forbid_filename.at(action_index) && !m_filename.empty())
+			return false;
+
+		if (forbid_coll.at(action_index) && !m_coll.empty())
+			return false;
+
+		return true;
 	}
 	else
 	{
