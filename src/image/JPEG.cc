@@ -21,46 +21,6 @@
 namespace hrb {
 namespace {
 const int yuv_pad = 2;
-
-class ScalingFactor
-{
-public:
-	ScalingFactor(::tjscalingfactor first, ::tjscalingfactor second) : m_first{first}, m_second{second}
-	{
-	}
-
-	int scale(int original) const
-	{
-		return TJSCALED(TJSCALED(original,  m_first), m_second);
-	}
-
-	Size2D after_first(Size2D original) const
-	{
-		return {
-			TJSCALED(original.width(), m_first),
-			TJSCALED(original.height(), m_first)
-		};
-	}
-
-private:
-	::tjscalingfactor m_first, m_second;
-};
-
-const std::vector<ScalingFactor>& get_scaling_factors()
-{
-	static const std::vector<ScalingFactor> factors = []()
-	{
-		std::vector<ScalingFactor> result;
-		int count{};
-		auto factors = tjGetScalingFactors(&count);
-		for (int i = 0; i < count; i++)
-			for (int j = 0; j < count; j++)
-				result.emplace_back(factors[i], factors[j]);
-		return result;
-	}();
-	return factors;
-}
-
 }
 
 using Handle = std::unique_ptr<void, decltype(&tjDestroy)>;
@@ -84,7 +44,7 @@ JPEG::JPEG(const void *jpeg_data, std::size_t jpeg_size, const Size2D& max_dim)
 
 	result = tjDecompressToYUV2(
 		handle.get(), static_cast<const unsigned char*>(jpeg_data), jpeg_size,
-		&yuv[0], selected_size.width(), yuv_pad, selected_size.height(), TJFLAG_FASTDCT
+		&yuv[0], selected_size.width(), yuv_pad, selected_size.height(), 0
 	);
 	if (result != 0)
 		throw Exception(tjGetErrorStr());

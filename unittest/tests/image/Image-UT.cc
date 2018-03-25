@@ -163,7 +163,27 @@ TEST_CASE("read all images successfully", "[normal]")
 			if (eit != expected.end())
 				REQUIRE(ec == eit->second);
 			else
+			{
 				REQUIRE(!ec);
+
+				JPEG jpeg{mmap.buffer().data(), mmap.size(), {2048, 2048}};
+				jpeg.compress(70);
+
+				RotateImage rot;
+				auto rotated = rot.auto_rotate(mmap.buffer(), ec);
+				REQUIRE(!ec);
+
+				std::string_view sv_out{
+					rotated.empty() ? mmap.string().data() : reinterpret_cast<const char *>(rotated.data()),
+					rotated.empty() ? mmap.size() : rotated.size()
+				};
+
+				if (rotated.empty())
+				{
+					std::ofstream out{img.path().filename().string(), std::ios::out | std::ios::binary};
+					out.rdbuf()->sputn(sv_out.data(), sv_out.size());
+				}
+			}
 		}
 	}
 }
