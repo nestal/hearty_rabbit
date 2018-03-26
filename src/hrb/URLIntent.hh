@@ -26,8 +26,8 @@ public:
 	enum class Action {login, logout, blob, view, coll, upload, home, lib, listcolls, none};
 
 private:
-	// Required URL components
 	static const std::array<bool, static_cast<int>(Action::none)> require_user, require_filename;
+	static const std::array<bool, static_cast<int>(Action::none)> forbid_user, forbid_filename, forbid_coll;
 
 public:
 	URLIntent() = default;

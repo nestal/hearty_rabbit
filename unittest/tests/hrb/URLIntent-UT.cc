@@ -11,6 +11,7 @@
 //
 
 #include <catch.hpp>
+#include <iostream>
 
 #include "hrb/URLIntent.hh"
 
@@ -41,6 +42,14 @@ TEST_CASE("path URL")
 	REQUIRE(no_path.str() == "/view/file/");
 	REQUIRE(no_path.valid());
 
+	URLIntent view_filename{"/view/file/fname"};
+	REQUIRE(view_filename.action() == URLIntent::Action::view);
+	REQUIRE(view_filename.user() == "file");
+	REQUIRE(view_filename.collection() == "fname");
+	REQUIRE(view_filename.filename() == "");
+	REQUIRE(view_filename.str() == "/view/file/fname/");
+	REQUIRE(view_filename.valid());
+
 	URLIntent slash_view_slash{"/view/"};
 	REQUIRE(slash_view_slash.action() == URLIntent::Action::view);
 	REQUIRE(slash_view_slash.user() == "");
@@ -55,6 +64,7 @@ TEST_CASE("path URL")
 	REQUIRE(slash_view.collection() == "");
 	REQUIRE(slash_view.filename() == "");
 	REQUIRE(slash_view.str() == "/view/");
+	REQUIRE_FALSE(slash_view.valid());
 
 	URLIntent slash_view_slash_user{"/view/sumyung"};
 	REQUIRE(slash_view_slash_user.action() == URLIntent::Action::view);
@@ -62,6 +72,7 @@ TEST_CASE("path URL")
 	REQUIRE(slash_view_slash_user.collection() == "");
 	REQUIRE(slash_view_slash_user.filename() == "");
 	REQUIRE(slash_view_slash_user.str() == "/view/sumyung/");
+	REQUIRE(slash_view_slash_user.valid());
 
 	URLIntent slash_upload_slash_user_slash{"/upload/not_exists/"};
 	REQUIRE(slash_upload_slash_user_slash.action() == URLIntent::Action::upload);
@@ -69,6 +80,7 @@ TEST_CASE("path URL")
 	REQUIRE(slash_upload_slash_user_slash.collection() == "");
 	REQUIRE(slash_upload_slash_user_slash.filename() == "");
 	REQUIRE(slash_upload_slash_user_slash.str() == "/upload/not_exists/");
+	REQUIRE_FALSE(slash_upload_slash_user_slash.valid());
 
 	URLIntent slash_upload_slash_path_slash{"/upload/some/path/to/"};
 	REQUIRE(slash_upload_slash_path_slash.action() == URLIntent::Action::upload);
@@ -76,6 +88,7 @@ TEST_CASE("path URL")
 	REQUIRE(slash_upload_slash_path_slash.collection() == "path/to");
 	REQUIRE(slash_upload_slash_path_slash.filename() == "");
 	REQUIRE(slash_upload_slash_path_slash.str() == "/upload/some/path/to/");
+	REQUIRE_FALSE(slash_upload_slash_path_slash.valid());
 
 	URLIntent slash_upload_slash_path_slash_filename{"/upload/path/to/upload/myfile.jpeg"};
 	REQUIRE(slash_upload_slash_path_slash_filename.action() == URLIntent::Action::upload);
@@ -83,6 +96,7 @@ TEST_CASE("path URL")
 	REQUIRE(slash_upload_slash_path_slash_filename.collection() == "to/upload");
 	REQUIRE(slash_upload_slash_path_slash_filename.filename() == "myfile.jpeg");
 	REQUIRE(slash_upload_slash_path_slash_filename.str() == "/upload/path/to/upload/myfile.jpeg");
+	REQUIRE(slash_upload_slash_path_slash_filename.valid());
 
 	// slash at the start and end of path will be removed
 	URLIntent slash_upload_slash_path_slash_slash_filename{"/upload/path//myfile.jpeg"};
@@ -91,6 +105,7 @@ TEST_CASE("path URL")
 	REQUIRE(slash_upload_slash_path_slash_slash_filename.collection() == "");
 	REQUIRE(slash_upload_slash_path_slash_slash_filename.filename() == "myfile.jpeg");
 	REQUIRE(slash_upload_slash_path_slash_slash_filename.str() == "/upload/path/myfile.jpeg");
+	REQUIRE(slash_upload_slash_path_slash_slash_filename.valid());
 
 	// slash at the start and end of path will be removed
 	URLIntent slash_upload_slash_path_3slash_filename{"/upload/path///password"};
@@ -138,4 +153,16 @@ TEST_CASE("path URL")
 	URLIntent js{"/lib/hearty_rabbit.js"};
 	REQUIRE(js.action() == URLIntent::Action::lib);
 	REQUIRE(js.filename() == "hearty_rabbit.js");
+
+	URLIntent login{"/login"};
+	REQUIRE(login.action() == URLIntent::Action::login);
+	REQUIRE(login.valid());
+
+	URLIntent login_fn{"/login/haha"};
+	REQUIRE(login_fn.action() == URLIntent::Action::login);
+	REQUIRE_FALSE(login_fn.valid());
+
+	URLIntent upload_default{"/upload/nestal/DSC_1460.JPG"};
+	REQUIRE(upload_default.action() == URLIntent::Action::upload);
+	REQUIRE(upload_default.valid());
 }

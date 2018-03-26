@@ -149,7 +149,7 @@ BlobFile::BlobFile(const fs::path& dir, const ObjectID& id, std::string_view ren
 			auto tb = generate_rendition(master.buffer(), rendition, cfg.dimension(rendition), cfg.quality(rendition), ec);
 			if (!tb.empty())
 			{
-				Log(LOG_INFO, "generated new rendition %1% for %2%", rendition, id);
+				Log(LOG_INFO, "generated new rendition %1% for %2% (%3% q%3%)", rendition, id, cfg.dimension(rendition), cfg.quality(rendition));
 				save_blob(tb, dir / std::string{rendition}, ec);
 			}
 		}

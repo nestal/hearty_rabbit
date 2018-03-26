@@ -21,7 +21,7 @@ pkg_check_modules(TURBOJPEG REQUIRED libturbojpeg)
 pkg_check_modules(EXIV2 exiv2)
 
 set(CMAKE_CXX_STANDARD 17)
-set(VERSION "0.1")
+set(VERSION "0.2")
 set(CONFIG_FILENAME "hearty_rabbit.json")
 
 # Get build number from environment variable. It should be set by travis.

@@ -13,52 +13,14 @@
 #include "JPEG.hh"
 #include "TurboBuffer.hh"
 
+#include "util/Log.hh"
+
 #include <turbojpeg.h>
 #include <memory>
 
 namespace hrb {
 namespace {
-const int yuv_pad = 2;
-
-class ScalingFactor
-{
-public:
-	ScalingFactor(::tjscalingfactor first, ::tjscalingfactor second) : m_first{first}, m_second{second}
-	{
-	}
-
-	int scale(int original) const
-	{
-		return TJSCALED(TJSCALED(original,  m_first), m_second);
-	}
-
-	Size2D after_first(Size2D original) const
-	{
-		return {
-			TJSCALED(original.width(), m_first),
-			TJSCALED(original.height(), m_first)
-		};
-	}
-
-private:
-	::tjscalingfactor m_first, m_second;
-};
-
-const std::vector<ScalingFactor>& get_scaling_factors()
-{
-	static const std::vector<ScalingFactor> factors = []()
-	{
-		std::vector<ScalingFactor> result;
-		int count{};
-		auto factors = tjGetScalingFactors(&count);
-		for (int i = 0; i < count; i++)
-			for (int j = 0; j < count; j++)
-				result.emplace_back(factors[i], factors[j]);
-		return result;
-	}();
-	return factors;
-}
-
+const int yuv_pad = 4;
 }
 
 using Handle = std::unique_ptr<void, decltype(&tjDestroy)>;
@@ -75,13 +37,14 @@ JPEG::JPEG(const void *jpeg_data, std::size_t jpeg_size, const Size2D& max_dim)
 		throw Exception(tjGetErrorStr());
 
 	auto selected_size = select_scaling_factor(max_dim, m_size);
+	Log(LOG_NOTICE, "Resizing JPEG from %1% to %2%", m_size, selected_size);
 
 	// allocate yuv planar buffer
 	std::vector<unsigned char> yuv(tjBufSizeYUV2(selected_size.width(), yuv_pad, selected_size.height(), m_subsample));
 
 	result = tjDecompressToYUV2(
 		handle.get(), static_cast<const unsigned char*>(jpeg_data), jpeg_size,
-		&yuv[0], selected_size.width(), yuv_pad, selected_size.height(), TJFLAG_FASTDCT
+		&yuv[0], selected_size.width(), yuv_pad, selected_size.height(), 0
 	);
 	if (result != 0)
 		throw Exception(tjGetErrorStr());
@@ -151,9 +114,11 @@ JPEG& JPEG::operator=(JPEG&& src) noexcept
 {
 	auto tmp{std::move(src)};
 	m_yuv.swap(tmp.m_yuv);
-	m_size = tmp.m_size;
+	m_size       = tmp.m_size;
 	m_subsample  = tmp.m_subsample;
 	m_colorspace = tmp.m_colorspace;
+	tmp.m_size.assign(0,0);
+
 	return *this;
 }
 

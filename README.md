@@ -5,8 +5,17 @@ Branch  | Status
 [Develop](https://github.com/nestal/hearty_rabbit/tree/develop) | ![status](https://travis-ci.org/nestal/hearty_rabbit.svg?branch=develop)
 [Master](https://github.com/nestal/hearty_rabbit/tree/master)  | ![status](https://travis-ci.org/nestal/hearty_rabbit.svg?branch=master)
 
-It's a web server develop using [boost/beast](https://github.com/boostorg/beast), but it's
-not doing anything useful yet.
+It's a web server develop using [boost/beast](https://github.com/boostorg/beast). It's
+currently an image album that powered [nestal.net](https://www.nestal.net).
+
+# Installation
+
+Use docker:
+
+	docker run nestal/hearty_rabbit
+
+Actually it is much more complicated than that. See the [systemd unit file](systemd/hearty_rabbit.service) for
+a complete command line for `docker run`.
 
 # Build Environment
 
