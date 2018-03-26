@@ -41,6 +41,7 @@ import java.security.cert.CertificateException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.HttpsURLConnection;
@@ -109,6 +110,7 @@ public class HeartyRabbit
 				}
 			});
 			builder.cookieJar(jar);
+			builder.writeTimeout(600, TimeUnit.SECONDS);
 
 			OkHttpClient okHttpClient = builder.build();
 			return okHttpClient;
