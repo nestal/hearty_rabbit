@@ -153,7 +153,7 @@ const std::array<bool, static_cast<int>(URLIntent::Action::none)> URLIntent::req
 	{false, false,  true, false, false, true,   false, true, false};
 const std::array<bool, static_cast<int>(URLIntent::Action::none)> URLIntent::forbid_filename =
 //   login, logout, blob,  view,  coll, upload, home, lib,   listcolls, none
-	{true,  true,   false, true, true, false,  true, false, true};
+	{true,  true,   false, true, true,  false,  true, false, true};
 
 const std::array<bool, static_cast<int>(URLIntent::Action::none)> URLIntent::forbid_coll =
 //   login, logout, blob,  view,  coll,  upload, home, lib,  listcolls, none

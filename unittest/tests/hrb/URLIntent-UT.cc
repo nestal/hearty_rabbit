@@ -161,4 +161,8 @@ TEST_CASE("path URL")
 	URLIntent login_fn{"/login/haha"};
 	REQUIRE(login_fn.action() == URLIntent::Action::login);
 	REQUIRE_FALSE(login_fn.valid());
+
+	URLIntent upload_default{"/upload/nestal/DSC_1460.JPG"};
+	REQUIRE(upload_default.action() == URLIntent::Action::upload);
+	REQUIRE(upload_default.valid());
 }

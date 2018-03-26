@@ -67,6 +67,7 @@ import okhttp3.Response;
 public class HeartyRabbit
 {
 	private String m_site;
+	private String m_user;
 	private ContentResolver m_resolver;
 	private ClearableCookieJar m_cookieJar;
 	private OkHttpClient m_client ;
@@ -108,8 +109,6 @@ public class HeartyRabbit
 				}
 			});
 			builder.cookieJar(jar);
-			builder.followRedirects(false);
-			builder.followSslRedirects(false);
 
 			OkHttpClient okHttpClient = builder.build();
 			return okHttpClient;
@@ -130,20 +129,19 @@ public class HeartyRabbit
 
 	public boolean login(String username, String password) throws Exception
 	{
+		m_user = username;
+
 		RequestBody body = new FormBody.Builder()
 			.add("username", username).add("password", password)
 			.build();
 		Request request = new Request.Builder()
-			.url("https://192.168.1.137:4433/login")
+			.url("https://" + m_site + "/login")
 			.post(body)
 			.build();
 		try (Response response = m_client.newCall(request).execute())
 		{
-			Log.e("login", "cookie:" + response.header("Set-Cookie"));
-			Log.e("login", "body:" + response.body().string());
-
-			List<Cookie> cookies = Cookie.parseAll(request.url(), response.headers());
-			Log.e("login", "cookies count: " + Integer.toString(cookies.size()));
+			// check if the session ID cookie is added to the cookie jar
+			List<Cookie> cookies = m_cookieJar.loadForRequest(request.url());
 			for (Cookie c : cookies)
 			{
 				if (c.name().equals("id") && !c.value().isEmpty())
@@ -159,20 +157,6 @@ public class HeartyRabbit
 
 	private void upload(InputStream src, int size, String filename, String type) throws Exception
 	{
-		URL home_url = new URL("https://" + m_site + "/view/nestal/");
-		HttpsURLConnection home_conn = (HttpsURLConnection)home_url.openConnection();
-		home_conn.setDoInput(true);
-		BufferedReader in = new BufferedReader(
-			new InputStreamReader(home_conn.getInputStream()));
-		String inputLine;
-		StringBuffer response = new StringBuffer();
-
-		while ((inputLine = in.readLine()) != null)
-		{
-			response.append(inputLine);
-		}
-		Log.e("gethome", response.toString());
-
 		ByteArrayOutputStream byte_array = new ByteArrayOutputStream();
 
 		byte[] buffer = new byte[4096*20];
@@ -185,30 +169,17 @@ public class HeartyRabbit
 
 			byte_array.write(buffer, 0, bytes);
 		}
-
 		byte[] buf = byte_array.toByteArray();
 
-		Log.i("upload", "read " + Integer.toString(buf.length));
-
-		URL upload_url = new URL("https://" + m_site + "/upload/" + filename);
-		HttpsURLConnection conn = (HttpsURLConnection)upload_url.openConnection();
-
-		conn.setDoOutput(true);
-		conn.setDoInput(true);
-
-		conn.setRequestMethod("PUT");
-		conn.setRequestProperty("Content-Type", type);
-		conn.setRequestProperty("Content-Length", Integer.toString(size));
-		conn.setInstanceFollowRedirects(false);
-
-		conn.connect();
-		OutputStream os = conn.getOutputStream();
-
-		try( DataOutputStream wr = new DataOutputStream( conn.getOutputStream()))
+		RequestBody body = RequestBody.create(MediaType.parse(type), buf);
+		Request request = new Request.Builder()
+			.url("https://" + m_site + "/upload/" + m_user + "/" + filename)
+			.put(body)
+			.build();
+		try (Response response = m_client.newCall(request).execute())
 		{
-			wr.write(buf);
+			Log.e("upload", "file updated" + Integer.toString(response.code()));
 		}
-		Log.i("upload", "response code: " + conn.getResponseCode());
 	}
 
 	public void upload(ArrayList<Uri> images)

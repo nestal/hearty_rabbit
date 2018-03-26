@@ -63,9 +63,6 @@ Server::Server(const Configuration& cfg) :
 void Server::on_login(const StringRequest& req, EmptyResponseSender&& send)
 {
 	auto&& body = req.body();
-
-	Log(LOG_INFO, "on_login(): %1% %2%", req[http::field::content_type], body);
-
 	if (req[http::field::content_type] == "application/x-www-form-urlencoded")
 	{
 		auto [username, password, login_from] = find_fields(body, "username", "password", "login-from");
@@ -82,7 +79,7 @@ void Server::on_login(const StringRequest& req, EmptyResponseSender&& send)
 				session_length=session_length()
 			](std::error_code ec, auto&& session) mutable
 			{
-				Log(LOG_INFO, "%4% login result: %1% %2% (from %3%) %5%", ec, ec.message(), login_from, session.user(), session.set_cookie(session_length));
+				Log(LOG_INFO, "%4% login result: %1% %2% (from %3%)", ec, ec.message(), login_from, session.user());
 
 				auto login_incorrect = URLIntent{URLIntent::Action::lib, "", "", "login_incorrect.html"}.str();
 
