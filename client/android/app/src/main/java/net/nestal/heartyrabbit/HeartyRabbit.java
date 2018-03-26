@@ -14,6 +14,7 @@ import android.database.Cursor;
 import android.net.Uri;
 import android.provider.MediaStore;
 import android.provider.OpenableColumns;
+import android.text.TextUtils;
 import android.util.Log;
 import android.widget.Toast;
 
@@ -108,6 +109,43 @@ public class HeartyRabbit
 		return false;
 	}
 
+	private void upload(InputStream src, int size, String filename, String type) throws Exception
+	{
+		URL upload_url = new URL("https://" + m_site + "/upload/" + filename);
+		HttpsURLConnection conn = (HttpsURLConnection)upload_url.openConnection();
+		conn.setDoOutput(true);
+
+		if (m_cookies.getCookieStore().getCookies().size() > 0)
+		{
+			// While joining the Cookies, use ',' or ';' as needed. Most of the servers are using ';'
+			conn.setRequestProperty("Cookie",
+				TextUtils.join(";",  m_cookies.getCookieStore().getCookies()));
+		}
+
+		conn.setRequestMethod("PUT");
+		conn.setRequestProperty("Content-Type", type);
+		conn.setInstanceFollowRedirects(false);
+		conn.setRequestProperty("Content-Length", Integer.toString(size));
+
+		try( DataOutputStream wr = new DataOutputStream( conn.getOutputStream()))
+		{
+			byte[] buffer = new byte[4096*20];
+			while (true) {
+				int bytes = src.read(buffer);
+				if (bytes == -1)
+					break;
+
+				Log.i("upload", "sent " + Integer.toString(bytes));
+
+				wr.write(buffer, 0, bytes);
+			}
+
+			wr.close();
+		}
+
+		Log.i("upload", "response code: " + conn.getResponseCode());
+	}
+
 	public void upload(ArrayList<Uri> images)
 	{
 		for (Uri image : images)
@@ -116,52 +154,23 @@ public class HeartyRabbit
 			{
 				Log.w("upload", "uploading " + image.toString());
 
-/*				URL upload_url = new URL("https://" + m_site + "/upload/image.jpg");
-				HttpsURLConnection conn = (HttpsURLConnection)upload_url.openConnection();
-				conn.setDoOutput(true);
+				String[] projection = {OpenableColumns.DISPLAY_NAME, OpenableColumns.SIZE};
 
-				conn.setRequestMethod("PUT");
-				conn.setRequestProperty("Content-Type", "image/jpeg");
-				conn.setInstanceFollowRedirects(false);
-				conn.setRequestProperty("Content-Length", Integer.toString(data.length));
+				String type = m_resolver.getType(image);
+				Cursor c = m_resolver.query(image, projection, null, null, null);
 
-				conn.getDoOutput();
-				try( DataOutputStream wr = new DataOutputStream( conn.getOutputStream()))
+				InputStream is = m_resolver.openInputStream(image);
+
+				while (c.moveToNext())
 				{
-					wr.write(data);
-				}
-*/
-				if ("content".equals(image.getScheme()))
-				{
-					String[] projection = {OpenableColumns.DISPLAY_NAME, OpenableColumns.SIZE};
-
-					String type = m_resolver.getType(image);
-					Cursor c = m_resolver.query(image, projection, null, null, null);
-
-					for (int i = 0 ; i < c.getColumnCount() ; i++)
-					{
-						Log.d("upload", "column # " + Integer.toString(i) + " = " + c.getColumnName(i));
-					}
-
-					Log.d("upload", "column count = " + Integer.toString(c.getColumnCount()));
-
 					int size_column = c.getColumnIndex(OpenableColumns.SIZE);
-					while (c.moveToNext())
-					{
-						Log.d("upload", "size column = " + Integer.toString(size_column));
-						Log.d("upload", "size = " + c.getString(size_column));
-					}
-/*					InputStream is = m_resolver.openInputStream(image);
+					Log.d("upload", "size = " + Integer.toString(c.getInt(size_column)));
 
-					byte[] buffer = new byte[4096*20];
-					while (true) {
-						int bytes = is.read(buffer);
-						if (bytes == -1)
-							break;
-						out.write(buffer, 0, bytesRead);
-					}*/
+					int name_column = c.getColumnIndex(OpenableColumns.DISPLAY_NAME);
+					Log.d("upload", "name = " + c.getString(name_column));
+
+					upload(is, c.getInt(size_column), c.getString(name_column), type);
 				}
-
 			}
 			catch (Exception e)
 			{

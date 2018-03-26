@@ -69,9 +69,17 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
 		String type   = intent.getType();
 		if (Intent.ACTION_SEND.equals(action) && type != null)
 		{
-			if ("image/jpeg".equals(type))
+			if (type.startsWith("image/"))
 			{
 				images.add((Uri) intent.getParcelableExtra(Intent.EXTRA_STREAM));
+			}
+		}
+		else if (Intent.ACTION_SEND_MULTIPLE.equals(action) && type != null)
+		{
+			if (type.startsWith("image/"))
+			{
+				ArrayList<Uri> imgs = intent.getParcelableArrayListExtra(Intent.EXTRA_STREAM);
+				images.addAll(imgs);
 			}
 		}
 
