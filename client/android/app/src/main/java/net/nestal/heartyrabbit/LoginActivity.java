@@ -1,4 +1,4 @@
-package net.nestal.heartyrabbitupload;
+package net.nestal.heartyrabbit;
 
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
@@ -28,10 +28,11 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 
+import net.nestal.heartyrabbitupload.R;
+
 import java.io.DataOutputStream;
 import java.net.CookieManager;
 import java.net.URL;
-import java.net.URLConnection;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
@@ -320,7 +321,7 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
 				conn.setRequestMethod("POST");
 				conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
 
-				byte[] data = new String("username=" + mEmail + "&password=" + mPassword).getBytes(StandardCharsets.UTF_8);
+				byte[] data = ("username=" + mEmail + "&password=" + mPassword).getBytes(StandardCharsets.UTF_8);
 				conn.setRequestProperty("Content-Length", Integer.toString(data.length));
 
 				conn.getDoOutput();
@@ -330,6 +331,8 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
 				}
 
 				conn.connect();
+
+				Log.i("Login", "response code: " + conn.getResponseCode());
 
 			} catch (Exception e)
 			{

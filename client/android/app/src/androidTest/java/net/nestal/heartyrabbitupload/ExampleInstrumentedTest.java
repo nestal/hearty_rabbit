@@ -1,4 +1,4 @@
-package net.nestal.heartyrabbitupload;
+package net.nestal.heartyrabbit;
 
 import android.content.Context;
 import android.support.test.InstrumentationRegistry;

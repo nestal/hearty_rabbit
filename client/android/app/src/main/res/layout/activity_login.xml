@@ -8,7 +8,7 @@
     android:paddingLeft="@dimen/activity_horizontal_margin"
     android:paddingRight="@dimen/activity_horizontal_margin"
     android:paddingTop="@dimen/activity_vertical_margin"
-    tools:context="net.nestal.heartyrabbitupload.LoginActivity">
+    tools:context="net.nestal.heartyrabbit.net.nestal.heartyrabbit.LoginActivity">
 
     <!-- Login progress -->
     <ProgressBar
