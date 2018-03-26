@@ -28,8 +28,15 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 
+import java.io.DataOutputStream;
+import java.net.CookieManager;
+import java.net.URL;
+import java.net.URLConnection;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+
+import javax.net.ssl.HttpsURLConnection;
 
 /**
  * A login screen that offers login via email/password.
@@ -164,7 +171,7 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
 	private boolean isEmailValid(String email)
 	{
 		//TODO: Replace this with your own logic
-		return email.contains("@");
+		return true;
 	}
 
 	private boolean isPasswordValid(String password)
@@ -305,10 +312,28 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
 
 			try
 			{
-				// Simulate network access.
-				Thread.sleep(2000);
-			} catch (InterruptedException e)
+				CookieManager cookie = new CookieManager();
+
+
+				URL login_url = new URL("https://www.nestal.net/login");
+				HttpsURLConnection conn = (HttpsURLConnection)login_url.openConnection();
+				conn.setRequestMethod("POST");
+				conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
+
+				byte[] data = new String("username=" + mEmail + "&password=" + mPassword).getBytes(StandardCharsets.UTF_8);
+				conn.setRequestProperty("Content-Length", Integer.toString(data.length));
+
+				conn.getDoOutput();
+				try( DataOutputStream wr = new DataOutputStream( conn.getOutputStream()))
+				{
+					wr.write(data);
+				}
+
+				conn.connect();
+
+			} catch (Exception e)
 			{
+				Log.e("Login", "Login exception: " + e.toString());
 				return false;
 			}
 
