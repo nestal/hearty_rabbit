@@ -332,7 +332,7 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
 
 			try
 			{
-				HeartyRabbit hrb = new HeartyRabbit("www.nestal.net", getContentResolver());
+				HeartyRabbit hrb = new HeartyRabbit("www.nestal.net", getContentResolver(), getApplicationContext());
 				hrb.login(m_user, m_password);
 				hrb.upload(m_images);
 

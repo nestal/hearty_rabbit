@@ -18,6 +18,11 @@ import android.text.TextUtils;
 import android.util.Log;
 import android.widget.Toast;
 
+import com.franmontiel.persistentcookiejar.ClearableCookieJar;
+import com.franmontiel.persistentcookiejar.PersistentCookieJar;
+import com.franmontiel.persistentcookiejar.cache.SetCookieCache;
+import com.franmontiel.persistentcookiejar.persistence.SharedPrefsCookiePersistor;
+
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
@@ -60,12 +65,11 @@ import okhttp3.Response;
 public class HeartyRabbit
 {
 	private String m_site;
-	private CookieManager m_cookies;
 	private ContentResolver m_resolver;
+	private ClearableCookieJar m_cookieJar;
+	private OkHttpClient m_client ;
 
-	OkHttpClient m_client = getUnsafeOkHttpClient();
-
-	private static OkHttpClient getUnsafeOkHttpClient() {
+	private static OkHttpClient getUnsafeOkHttpClient(ClearableCookieJar jar) {
 		try {
 			// Create a trust manager that does not validate certificate chains
 			final TrustManager[] trustAllCerts = new TrustManager[] {
@@ -101,6 +105,7 @@ public class HeartyRabbit
 					return true;
 				}
 			});
+			builder.cookieJar(jar);
 
 			OkHttpClient okHttpClient = builder.build();
 			return okHttpClient;
@@ -109,16 +114,19 @@ public class HeartyRabbit
 		}
 	}
 
-	public HeartyRabbit(String site, ContentResolver resolver)
+	public HeartyRabbit(String site, ContentResolver resolver, Context ctx)
 	{
 		m_site = site;
 		m_resolver = resolver;
+
+		m_cookieJar = new PersistentCookieJar(new SetCookieCache(), new SharedPrefsCookiePersistor(ctx));
+		m_client = getUnsafeOkHttpClient(m_cookieJar);
 	}
 
 	public boolean login(String username, String password) throws Exception
 	{
 		RequestBody body = new FormBody.Builder()
-			.add("username", "nestal").add("password", "hello")
+			.add("username", username).add("password", password)
 			.build();
 		Request request = new Request.Builder()
 			.url("https://192.168.1.137:4433/login")
