@@ -3,7 +3,9 @@ package net.nestal.heartyrabbit;
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 import android.annotation.TargetApi;
+import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.support.annotation.NonNull;
 import android.support.v7.app.AppCompatActivity;
 import android.app.LoaderManager.LoaderCallbacks;
@@ -86,6 +88,10 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
 		// Set up the login form.
 		m_username = (AutoCompleteTextView) findViewById(R.id.username);
 
+		SharedPreferences preferences = getSharedPreferences("LoginDetails", Context.MODE_PRIVATE);
+		String username = preferences.getString("username", "");
+		m_username.setText(username);
+
 		m_password = (EditText) findViewById(R.id.password);
 		m_password.setOnEditorActionListener(new TextView.OnEditorActionListener()
 		{
@@ -116,12 +122,14 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
 
 		try
 		{
-			if (images.size() > 0)
+			if (images.size() > 0 && !username.isEmpty())
 			{
-				HeartyRabbit hrb = new HeartyRabbit("www.nestal.net", getContentResolver(), this);
+				HeartyRabbit hrb = new HeartyRabbit("www.nestal.net", username, getContentResolver(), this);
 				if (hrb.is_login())
 				{
-
+					showProgress(true);
+					m_auth_task = new UserLoginTask(username, "", images);
+					m_auth_task.execute((Void) null);
 				}
 			}
 		}
@@ -348,8 +356,9 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
 
 			try
 			{
-				HeartyRabbit hrb = new HeartyRabbit("www.nestal.net", getContentResolver(), getApplicationContext());
-				hrb.login(m_user, m_password);
+				HeartyRabbit hrb = new HeartyRabbit("www.nestal.net", m_user, getContentResolver(), getApplicationContext());
+				if (!m_password.isEmpty())
+					hrb.login(m_password);
 				hrb.upload(m_images);
 
 			} catch (Exception e)
@@ -365,6 +374,12 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
 		@Override
 		protected void onPostExecute(final Boolean success)
 		{
+			// Save username to preference
+			SharedPreferences preferences = getSharedPreferences("LoginDetails", Context.MODE_PRIVATE);
+			SharedPreferences.Editor edit = preferences.edit();
+			edit.putString("username", m_user);
+			edit.apply();
+
 			m_auth_task = null;
 			showProgress(false);
 

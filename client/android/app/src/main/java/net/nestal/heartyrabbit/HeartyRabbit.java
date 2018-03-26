@@ -119,10 +119,12 @@ public class HeartyRabbit
 		}
 	}
 
-	public HeartyRabbit(String site, ContentResolver resolver, Context ctx)
+	public HeartyRabbit(String site, String username, ContentResolver resolver, Context ctx)
 	{
 		m_site = site;
 		m_resolver = resolver;
+		m_user = username;
+
 
 		m_cookieJar = new PersistentCookieJar(new SetCookieCache(), new SharedPrefsCookiePersistor(ctx));
 		m_client = getUnsafeOkHttpClient(m_cookieJar);
@@ -142,12 +144,10 @@ public class HeartyRabbit
 		return false;
 	}
 
-	public boolean login(String username, String password) throws Exception
+	public boolean login(String password) throws Exception
 	{
-		m_user = username;
-
 		RequestBody body = new FormBody.Builder()
-			.add("username", username).add("password", password)
+			.add("username", m_user).add("password", password)
 			.build();
 		Request request = new Request.Builder()
 			.url("https://" + m_site + "/login")
