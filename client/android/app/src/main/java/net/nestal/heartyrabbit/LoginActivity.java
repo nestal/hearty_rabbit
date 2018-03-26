@@ -28,29 +28,23 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 
-import net.nestal.heartyrabbitupload.R;
-
-import java.io.DataOutputStream;
 import java.net.CookieManager;
-import java.net.URL;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
-import javax.net.ssl.HttpsURLConnection;
+/*
+	Copyright © 2018 Wan Wai Ho <me@nestal.net>
+
+    This file is subject to the terms and conditions of the GNU General Public
+    License.  See the file COPYING in the main directory of the hearty_rabbit
+    distribution for more details.
+*/
 
 /**
  * A login screen that offers login via email/password.
  */
 public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<Cursor>
 {
-	/**
-	 * A dummy authentication store containing known user names and passwords.
-	 * TODO: remove after connecting to a real authentication system.
-	 */
-	private static final String[] DUMMY_CREDENTIALS = new String[]{
-		"foo@example.com:hello", "bar@example.com:world"
-	};
 	/**
 	 * Keep track of the login task to ensure we can cancel it if requested.
 	 */
@@ -67,6 +61,7 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
 	{
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_login);
+
 		// Set up the login form.
 		m_email = (AutoCompleteTextView) findViewById(R.id.username);
 
@@ -297,13 +292,13 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
 	public class UserLoginTask extends AsyncTask<Void, Void, Boolean>
 	{
 
-		private final String mEmail;
-		private final String mPassword;
+		private final String m_user;
+		private final String m_password;
 
 		UserLoginTask(String email, String password)
 		{
-			mEmail = email;
-			mPassword = password;
+			m_user = email;
+			m_password = password;
 		}
 
 		@Override
@@ -313,41 +308,13 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
 
 			try
 			{
-				CookieManager cookie = new CookieManager();
-
-
-				URL login_url = new URL("https://www.nestal.net/login");
-				HttpsURLConnection conn = (HttpsURLConnection)login_url.openConnection();
-				conn.setRequestMethod("POST");
-				conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
-
-				byte[] data = ("username=" + mEmail + "&password=" + mPassword).getBytes(StandardCharsets.UTF_8);
-				conn.setRequestProperty("Content-Length", Integer.toString(data.length));
-
-				conn.getDoOutput();
-				try( DataOutputStream wr = new DataOutputStream( conn.getOutputStream()))
-				{
-					wr.write(data);
-				}
-
-				conn.connect();
-
-				Log.i("Login", "response code: " + conn.getResponseCode());
+				HeartyRabbit hrb = new HeartyRabbit("www.nestal.net");
+				hrb.login(m_user, m_password);
 
 			} catch (Exception e)
 			{
 				Log.e("Login", "Login exception: " + e.toString());
 				return false;
-			}
-
-			for (String credential : DUMMY_CREDENTIALS)
-			{
-				String[] pieces = credential.split(":");
-				if (pieces[0].equals(mEmail))
-				{
-					// Account exists, return true if the password matches.
-					return pieces[1].equals(mPassword);
-				}
 			}
 
 			// TODO: register the new account here.
@@ -365,8 +332,8 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
 				finish();
 			} else
 			{
-				m_password.setError(getString(R.string.error_incorrect_password));
-				m_password.requestFocus();
+				LoginActivity.this.m_password.setError(getString(R.string.error_incorrect_password));
+				LoginActivity.this.m_password.requestFocus();
 			}
 		}
 
