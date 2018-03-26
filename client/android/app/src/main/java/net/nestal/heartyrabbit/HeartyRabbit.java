@@ -50,7 +50,9 @@ import javax.net.ssl.SSLSocketFactory;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
 
+import okhttp3.Cookie;
 import okhttp3.FormBody;
+import okhttp3.HttpUrl;
 import okhttp3.MediaType;
 import okhttp3.MultipartBody;
 import okhttp3.OkHttpClient;
@@ -106,6 +108,8 @@ public class HeartyRabbit
 				}
 			});
 			builder.cookieJar(jar);
+			builder.followRedirects(false);
+			builder.followSslRedirects(false);
 
 			OkHttpClient okHttpClient = builder.build();
 			return okHttpClient;
@@ -120,6 +124,7 @@ public class HeartyRabbit
 		m_resolver = resolver;
 
 		m_cookieJar = new PersistentCookieJar(new SetCookieCache(), new SharedPrefsCookiePersistor(ctx));
+		m_cookieJar.clear();
 		m_client = getUnsafeOkHttpClient(m_cookieJar);
 	}
 
@@ -136,6 +141,17 @@ public class HeartyRabbit
 		{
 			Log.e("login", "cookie:" + response.header("Set-Cookie"));
 			Log.e("login", "body:" + response.body().string());
+
+			List<Cookie> cookies = Cookie.parseAll(request.url(), response.headers());
+			Log.e("login", "cookies count: " + Integer.toString(cookies.size()));
+			for (Cookie c : cookies)
+			{
+				if (c.name().equals("id") && !c.value().isEmpty())
+				{
+					Log.e("login", "horray!");
+					return true;
+				}
+			}
 		}
 
 		return false;
