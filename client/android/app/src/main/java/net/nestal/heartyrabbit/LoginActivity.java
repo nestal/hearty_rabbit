@@ -3,6 +3,7 @@ package net.nestal.heartyrabbit;
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 import android.annotation.TargetApi;
+import android.content.Intent;
 import android.support.annotation.NonNull;
 import android.support.v7.app.AppCompatActivity;
 import android.app.LoaderManager.LoaderCallbacks;
@@ -28,7 +29,6 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 
-import java.net.CookieManager;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -51,7 +51,7 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
 	private UserLoginTask m_auth_task = null;
 
 	// UI references.
-	private AutoCompleteTextView m_email;
+	private AutoCompleteTextView m_username;
 	private EditText m_password;
 	private View m_progress;
 	private View m_login_form;
@@ -62,8 +62,21 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_login);
 
+		final ArrayList<Uri> images = new ArrayList<>();
+
+		Intent intent = getIntent();
+		String action = intent.getAction();
+		String type   = intent.getType();
+		if (Intent.ACTION_SEND.equals(action) && type != null)
+		{
+			if ("image/jpeg".equals(type))
+			{
+				images.add((Uri) intent.getParcelableExtra(Intent.EXTRA_STREAM));
+			}
+		}
+
 		// Set up the login form.
-		m_email = (AutoCompleteTextView) findViewById(R.id.username);
+		m_username = (AutoCompleteTextView) findViewById(R.id.username);
 
 		m_password = (EditText) findViewById(R.id.password);
 		m_password.setOnEditorActionListener(new TextView.OnEditorActionListener()
@@ -73,7 +86,7 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
 			{
 				if (id == EditorInfo.IME_ACTION_DONE || id == EditorInfo.IME_NULL)
 				{
-					attemptLogin();
+					attemptLogin(images);
 					return true;
 				}
 				return false;
@@ -86,7 +99,7 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
 			@Override
 			public void onClick(View view)
 			{
-				attemptLogin();
+				attemptLogin(images);
 			}
 		});
 
@@ -110,7 +123,7 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
 	 * If there are form errors (invalid email, missing fields, etc.), the
 	 * errors are presented and no actual login attempt is made.
 	 */
-	private void attemptLogin()
+	private void attemptLogin(ArrayList<Uri> images)
 	{
 		if (m_auth_task != null)
 		{
@@ -118,11 +131,11 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
 		}
 
 		// Reset errors.
-		m_email.setError(null);
+		m_username.setError(null);
 		m_password.setError(null);
 
 		// Store values at the time of the login attempt.
-		String email = m_email.getText().toString();
+		String email = m_username.getText().toString();
 		String password = m_password.getText().toString();
 
 		boolean cancel = false;
@@ -139,13 +152,13 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
 		// Check for a valid email address.
 		if (TextUtils.isEmpty(email))
 		{
-			m_email.setError(getString(R.string.error_field_required));
-			focusView = m_email;
+			m_username.setError(getString(R.string.error_field_required));
+			focusView = m_username;
 			cancel = true;
 		} else if (!isEmailValid(email))
 		{
-			m_email.setError(getString(R.string.error_invalid_email));
-			focusView = m_email;
+			m_username.setError(getString(R.string.error_invalid_email));
+			focusView = m_username;
 			cancel = true;
 		}
 
@@ -159,7 +172,7 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
 			// Show a progress spinner, and kick off a background task to
 			// perform the user login attempt.
 			showProgress(true);
-			m_auth_task = new UserLoginTask(email, password);
+			m_auth_task = new UserLoginTask(email, password, images);
 			m_auth_task.execute((Void) null);
 		}
 	}
@@ -173,7 +186,7 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
 	private boolean isPasswordValid(String password)
 	{
 		//TODO: Replace this with your own logic
-		return password.length() > 4;
+		return true;//password.length() > 4;
 	}
 
 	/**
@@ -270,7 +283,7 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
 				android.R.layout.simple_dropdown_item_1line, emailAddressCollection
 			);
 
-		m_email.setAdapter(adapter);
+		m_username.setAdapter(adapter);
 	}
 
 
@@ -294,11 +307,14 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
 
 		private final String m_user;
 		private final String m_password;
+		private final ArrayList<Uri> m_images;
 
-		UserLoginTask(String email, String password)
+		UserLoginTask(String email, String password, ArrayList<Uri> images)
 		{
 			m_user = email;
 			m_password = password;
+			m_images = images;
+
 		}
 
 		@Override
@@ -310,6 +326,7 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
 			{
 				HeartyRabbit hrb = new HeartyRabbit("www.nestal.net");
 				hrb.login(m_user, m_password);
+				hrb.upload(m_images);
 
 			} catch (Exception e)
 			{

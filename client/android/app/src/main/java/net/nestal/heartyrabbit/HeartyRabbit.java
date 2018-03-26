@@ -9,6 +9,7 @@ package net.nestal.heartyrabbit;
 */
 
 import android.content.Context;
+import android.net.Uri;
 import android.util.Log;
 import android.widget.Toast;
 
@@ -20,6 +21,7 @@ import java.net.HttpCookie;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -47,9 +49,6 @@ public class HeartyRabbit
 
 	public boolean login(String username, String password) throws Exception
 	{
-		username = "nestal";
-		password = "Mbs1.3Sucks";
-
 		URL login_url = new URL("https://" + m_site + "/login");
 		HttpsURLConnection conn = (HttpsURLConnection)login_url.openConnection();
 		conn.setDoOutput(true);
@@ -82,26 +81,28 @@ public class HeartyRabbit
 		}
 		Log.i("Login", "response content: " + response.toString());
 
-		for (Map.Entry<String, List<String>> entry : conn.getHeaderFields().entrySet())
-		{
-			Log.w("login",entry.getKey() + "/" + entry.getValue());
-		}
-
+		// Apply the cookie to the manager
 		List<String> cookie_header = conn.getHeaderFields().get("Set-Cookie");
 		if (cookie_header != null)
 		{
-			for (String cookie : cookie_header)
+			for (String cookie_str : cookie_header)
 			{
-				HttpCookie http_cookie = HttpCookie.parse(cookie).get(0);
+				HttpCookie cookie = HttpCookie.parse(cookie_str).get(0);
 
-				Log.w("login", "cookie = " + http_cookie.getName() + ": " + http_cookie.getValue());
-				m_cookies.getCookieStore().add(null, HttpCookie.parse(cookie).get(0));
+				if ("id".equals(cookie.getName()) && !cookie.getValue().isEmpty())
+				{
+					Log.w("login", "cookie = " + cookie.getName() + ": " + cookie.getValue());
+					m_cookies.getCookieStore().add(null, HttpCookie.parse(cookie_str).get(0));
+					return true;
+				}
 			}
 		}
 
-		Log.e("login", "result is : " + conn.getHeaderFields().get("Location") );
-		Log.e("login", "result is : " + conn.getHeaderFields().get("Set-Cookie"));
-//		List<HttpCookie> cookies = HttpCookie.parse(conn.getHeaderFields().get("Set-Cookie"));
-		return true;
+		return false;
+	}
+
+	public void upload(ArrayList<Uri> images)
+	{
+
 	}
 }
