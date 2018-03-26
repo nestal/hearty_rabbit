@@ -113,6 +113,22 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
 
 		m_login_form = findViewById(R.id.login_form);
 		m_progress = findViewById(R.id.login_progress);
+
+		try
+		{
+			if (images.size() > 0)
+			{
+				HeartyRabbit hrb = new HeartyRabbit("www.nestal.net", getContentResolver(), this);
+				if (hrb.is_login())
+				{
+
+				}
+			}
+		}
+		catch (Exception e)
+		{
+
+		}
 	}
 
 	/**

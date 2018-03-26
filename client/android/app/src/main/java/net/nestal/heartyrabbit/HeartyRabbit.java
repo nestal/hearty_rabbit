@@ -125,8 +125,21 @@ public class HeartyRabbit
 		m_resolver = resolver;
 
 		m_cookieJar = new PersistentCookieJar(new SetCookieCache(), new SharedPrefsCookiePersistor(ctx));
-		m_cookieJar.clear();
 		m_client = getUnsafeOkHttpClient(m_cookieJar);
+	}
+
+	public boolean is_login() throws Exception
+	{
+		HttpUrl url = new HttpUrl.Builder().scheme("https").host(m_site).build();
+
+		List<Cookie> cookies = m_cookieJar.loadForRequest(url);
+		for (Cookie c : cookies)
+		if (c.name().equals("id") && !c.value().isEmpty())
+		{
+			Log.e("login", "horray!");
+			return true;
+		}
+		return false;
 	}
 
 	public boolean login(String username, String password) throws Exception
@@ -143,18 +156,8 @@ public class HeartyRabbit
 		try (Response response = m_client.newCall(request).execute())
 		{
 			// check if the session ID cookie is added to the cookie jar
-			List<Cookie> cookies = m_cookieJar.loadForRequest(request.url());
-			for (Cookie c : cookies)
-			{
-				if (c.name().equals("id") && !c.value().isEmpty())
-				{
-					Log.e("login", "horray!");
-					return true;
-				}
-			}
+			return is_login();
 		}
-
-		return false;
 	}
 
 	private void upload(InputStream src, int size, String filename, String type) throws Exception
