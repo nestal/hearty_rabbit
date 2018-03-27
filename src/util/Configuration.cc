@@ -124,6 +124,9 @@ void Configuration::load_config(const boost::filesystem::path& path)
 			GetValueByPointerWithDefault(json, "/session_length_in_sec", 3600L).GetInt64(),
 		};
 
+		m_user_id = GetValueByPointerWithDefault(json, "/uid", m_user_id).GetUint();
+		m_group_id = GetValueByPointerWithDefault(json, "/gid", m_group_id).GetUint();
+
 		m_listen_http   = parse_endpoint(required(json, "/http"));
 		m_listen_https  = parse_endpoint(required(json, "/https"));
 

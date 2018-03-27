@@ -5,6 +5,8 @@
   "server_name" : "example.com",
   "blob_path": "/var/hearty_rabbit",
   "upload_limit_mb" : 1.5,
+  "uid" : 127,
+  "gid" : 955,
   "http": {
     "address": "0.0.0.0",
     "port": 8080
