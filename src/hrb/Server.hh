@@ -56,7 +56,7 @@ public:
 	void handle_request(Request&& req, Send&& send, const Authentication& auth);
 
 	static http::response<http::string_body> bad_request(boost::string_view why, unsigned version);
-	static http::response<http::string_body> not_found(boost::string_view target, unsigned version);
+	http::response<SplitBuffers> not_found(boost::string_view target, unsigned version);
 	static http::response<http::string_body> server_error(boost::string_view what, unsigned version);
 	static http::response<http::empty_body> see_other(boost::beast::string_view where, unsigned version);
 

@@ -238,15 +238,12 @@ http::response<http::string_body> Server::bad_request(boost::beast::string_view 
 }
 
 // Returns a not found response
-http::response<http::string_body> Server::not_found(boost::string_view target, unsigned version)
+http::response<SplitBuffers> Server::not_found(boost::string_view target, unsigned version)
 {
 	using namespace std::literals;
-	http::response<http::string_body> res{
-		std::piecewise_construct,
-		std::make_tuple("The resource '"s + target.to_string() + "' was not found."),
-		std::make_tuple(http::status::not_found, version)
-	};
-	res.set(http::field::content_type, "text/plain");
+	auto res = m_lib.find_dynamic("index.html", version);
+	res.result(http::status::not_found);
+	res.body().extra(hrb::index_needle, R"_(var dir = {error_message: "The request resource was not found."};)_");
 	return res;
 }
 

@@ -320,7 +320,7 @@ div.dialog-container button:hover {
 	visibility: visible;
 }
 
-#headline {
+section.heading {
 	margin-left: 20px;
 	font-family: 'Love Ya Like A Sister', cursive;
 }
