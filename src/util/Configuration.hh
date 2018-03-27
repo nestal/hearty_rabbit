@@ -79,6 +79,8 @@ public:
 	boost::filesystem::path blob_path() const {return m_blob_path;}
 	std::size_t thread_count() const {return m_thread_count;}
 	std::size_t upload_limit() const {return m_upload_limit;}
+	uid_t user_id() const {return m_user_id;}
+	gid_t group_id() const {return m_group_id;}
 	const RenditionSetting& renditions() const {return m_rendition;}
 	const std::string& server_name() const {return m_server_name;}
 	std::chrono::seconds session_length() const {return m_session_length;}
@@ -126,6 +128,8 @@ private:
 	std::size_t m_upload_limit{10 * 1024 * 1024};
 
 	RenditionSetting m_rendition;
+	uid_t m_user_id{65535};
+	gid_t m_group_id{65535};
 
 	std::chrono::seconds m_session_length{3600};
 };

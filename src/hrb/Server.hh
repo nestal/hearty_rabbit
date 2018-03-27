@@ -71,7 +71,7 @@ public:
 
 private:
 	http::response<SplitBuffers> static_file_request(const URLIntent& intent, boost::string_view etag, unsigned version);
-	static void drop_privileges();
+	void drop_privileges() const;
 
 	using EmptyResponseSender  = std::function<void(http::response<http::empty_body>&&)>;
 	using StringResponseSender = std::function<void(http::response<http::string_body>&&)>;

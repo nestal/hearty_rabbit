@@ -15,7 +15,32 @@ Use docker:
 	docker run nestal/hearty_rabbit
 
 Actually it is much more complicated than that. See the [systemd unit file](systemd/hearty_rabbit.service) for
-a complete command line for `docker run`.
+a complete command line for `docker run`. The extra options are mostly for mounting volumes from the host.
+
+There are three directories need to be mounted to the container:
+
+-   The directory that contain the configuration file (and the certificate/private key files specified by the
+    configuration file)
+-   The directory that contain all the uploaded images.
+-   /dev/log for syslog(), which is used for logging.
+
+# Configuration
+
+HeartyRabbit uses a JSON configuration file. By default it is in /etc/hearty_rabbit/hearty_rabbit.json.
+It can be specified by the `HEART_RABBIT_CONFIG` environment variable or using command line options `--cfg`.
+
+The configuration file specifies the location of other files used by HeartyRabbit. If you use relative
+paths for these configuration files, they will be relative to the location of the configuration file,
+not the current directory of the HeartyRabbit process.
+
+-   `web_root`: the directory that contains the HTML, CSS and javascript files served by HeartyRabbit
+    as a web server. This directory is typically provided by the docker image, so there is little
+    reason to change this. By default, it points to `../../lib`. Relative to
+    `/etc/hearty_rabbit/hearty_rabbit.json`, it actually resolves to /lib, which is the actual
+    directory inside the docker image that contains the [lib](lib) directory of the source.
+    This directory must be readable by the user that runs HeartyRabbit (by default UID 65535).
+-   `blob_path`: the directory that store uploaded images, or _blobs_ (Binary Large OBjects).
+    Images or and uploaded files are stored in directories that named by their Blake2 hash.
 
 # Build Environment
 

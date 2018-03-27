@@ -133,6 +133,7 @@ void Server::unlink(BlobRequest&& req, EmptyResponseSender&& send)
 	Log(LOG_INFO, "unlinking object %1% from path(%2%)", *req.blob(), req.collection());
 
 	if (!req.request_by_owner())
+		
 		return send(http::response<http::empty_body>{http::status::forbidden, req.version()});
 
 	// remove from user's container
@@ -361,12 +362,20 @@ void Server::run()
 	m_ioc.run();
 }
 
-void Server::drop_privileges()
+void Server::drop_privileges() const
 {
 	// drop privileges if run as root
 	if (::getuid() == 0)
 	{
-		if (::setuid(65535) != 0)
+		// must set group ID before setting user ID, otherwise we have no
+		// priviledge to set group ID
+		if (::setgid(m_cfg.group_id()) != 0)
+			BOOST_THROW_EXCEPTION(hrb::SystemError()
+				<< ErrorCode(std::error_code(errno, std::system_category()))
+				<< boost::errinfo_api_function("setgid")
+			);
+
+		if (::setuid(m_cfg.user_id()) != 0)
 			BOOST_THROW_EXCEPTION(hrb::SystemError()
 				<< ErrorCode(std::error_code(errno, std::system_category()))
 				<< boost::errinfo_api_function("setuid")
