@@ -11,7 +11,6 @@
 #include "util/Exception.hh"
 #include "util/Log.hh"
 #include "hrb/Server.hh"
-#include "net/Redis.hh"
 
 #include <boost/exception/errinfo_api_function.hpp>
 #include <boost/exception/info.hpp>
@@ -23,34 +22,10 @@
 
 namespace hrb {
 
-void migrate_blob_backlink(const Configuration& cfg)
+int StartServer(const Configuration& cfg)
 {
-	boost::asio::io_context ctx;
-	auto db = redis::connect(ctx, cfg.redis());
-
-	db->command(
-		[db](auto&& reply, auto ec)
-		{
-			assert(!ec);
-			assert(reply.as_array(0).as_int() == 0);
-		},
-		"SCAN 0 MATCH blob-backlink:* COUNT 100000"
-	);
-}
-
-int Main(int argc, const char* const* argv)
-{
-	Configuration cfg{argc, argv, ::getenv("HEART_RABBIT_CONFIG")};
 	Server server{cfg};
-
-	if (cfg.help())
-	{
-		cfg.usage(std::cout);
-		std::cout << "\n";
-		return EXIT_SUCCESS;
-	}
-
-	else if (cfg.add_user([&server](auto&& username)
+	if (cfg.add_user([&server](auto&& username)
 	{
 		std::cout << "Please input password of the new user " << username << ":\n";
 		std::string password;
@@ -62,11 +37,6 @@ int Main(int argc, const char* const* argv)
 			});
 		}
 	})) {return EXIT_SUCCESS;}
-
-	else if (cfg.blob_id([&cfg](auto&&)
-	{
-		migrate_blob_backlink(cfg);
-	})) { return EXIT_SUCCESS;}
 
 	else
 	{
@@ -83,7 +53,18 @@ int main(int argc, char *argv[])
 	using namespace hrb;
 	try
 	{
-		return Main(argc, argv);
+		Configuration cfg{argc, argv, ::getenv("HEART_RABBIT_CONFIG")};
+		if (cfg.help())
+		{
+			cfg.usage(std::cout);
+			std::cout << "\n";
+			return EXIT_SUCCESS;
+		}
+		else if (cfg.blob_id([](auto&&)
+		{
+		})) { return EXIT_SUCCESS;}
+
+		return StartServer(cfg);
 	}
 	catch (Exception& e)
 	{

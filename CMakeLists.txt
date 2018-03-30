@@ -108,7 +108,7 @@ add_custom_command(
 	COMMAND unittest
 )
 
-# Main executable
+# StartServer executable
 add_executable(hearty_rabbit src/main.cc)
 target_link_libraries(
 	hearty_rabbit
