@@ -36,15 +36,21 @@ void migrate_blob_backlink(const Configuration& cfg)
 
 			std::cout << "# of blobs: " << reply.as_array(1).array_size() << std::endl;
 
-			for (auto&& backlink : reply.as_array(1))
+			for (auto&& bl : reply.as_array(1))
 			{
+				std::string backlink{bl.as_string()};
 				db->command(
-					[](auto&& reply, auto ec)
+					[backlink](auto&& reply, auto ec)
 					{
 						assert(!ec);
-						std::cout << reply.as_int() << " links" << std::endl;
+//						std::cout << backlink << " has " << reply.array_size() << " links" << std::endl;
+
+						if (!boost::string_view{backlink}.starts_with("blob-backlink:nestal:"))
+						{
+							std::cout << backlink << " is owned by someone else" << std::endl;
+						}
 					},
-					"SCARD %b", backlink.as_string().data(), backlink.as_string().size()
+					"SMEMBERS %b", backlink.data(), backlink.size()
 				);
 			}
 		},
