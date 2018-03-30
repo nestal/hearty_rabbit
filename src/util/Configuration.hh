@@ -86,14 +86,14 @@ public:
 	bool help() const {return m_args.count("help") > 0;}
 
 	template <typename AddUser>
-	bool add_user(AddUser&& func)
+	bool add_user(AddUser&& func) const
 	{
 		return m_args.count("add-user") > 0 ?
 			(func(m_args["add-user"].as<std::string>()), true) :
 			false;
 	}
 	template <typename Function>
-	bool blob_id(Function&& func)
+	bool blob_id(Function&& func) const
 	{
 		return m_args.count("blob-id") > 0 ?
 			(func(m_args["blob-id"].as<std::string>()), true) :
