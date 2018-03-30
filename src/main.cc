@@ -22,6 +22,21 @@
 
 namespace hrb {
 
+void migrate_blob_backlink(const Configuration& cfg)
+{
+	boost::asio::io_context ctx;
+	auto db = redis::connect(ctx, cfg.redis());
+
+	db->command(
+		[db](auto&& reply, auto ec)
+		{
+			assert(!ec);
+			assert(reply.as_array(0).as_int() == 0);
+		},
+		"SCAN 0 MATCH blob-backlink:* COUNT 100000"
+	);
+}
+
 int StartServer(const Configuration& cfg)
 {
 	Server server{cfg};
@@ -60,8 +75,9 @@ int main(int argc, char *argv[])
 			std::cout << "\n";
 			return EXIT_SUCCESS;
 		}
-		else if (cfg.blob_id([](auto&&)
+		else if (cfg.blob_id([&cfg](auto&&)
 		{
+			migrate_blob_backlink(cfg);
 		})) { return EXIT_SUCCESS;}
 
 		return StartServer(cfg);
