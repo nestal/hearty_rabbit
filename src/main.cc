@@ -11,6 +11,7 @@
 #include "util/Exception.hh"
 #include "util/Log.hh"
 #include "hrb/Server.hh"
+#include "net/Redis.hh"
 
 #include <boost/exception/errinfo_api_function.hpp>
 #include <boost/exception/info.hpp>
@@ -21,6 +22,21 @@
 #include <cstdlib>
 
 namespace hrb {
+
+void migrate_blob_backlink(const Configuration& cfg)
+{
+	boost::asio::io_context ctx;
+	auto db = redis::connect(ctx, cfg.redis());
+
+	db->command(
+		[db](auto&& reply, auto ec)
+		{
+			assert(!ec);
+			assert(reply.as_array(0).as_int() == 0);
+		},
+		"SCAN 0 MATCH blob-backlink:* COUNT 100000"
+	);
+}
 
 int Main(int argc, const char* const* argv)
 {
@@ -47,10 +63,9 @@ int Main(int argc, const char* const* argv)
 		}
 	})) {return EXIT_SUCCESS;}
 
-	else if (cfg.blob_id([&server](auto&& filename)
+	else if (cfg.blob_id([&cfg](auto&&)
 	{
-//		BlobFile blob{boost::filesystem::path{filename}};
-//		std::cout << blob.ID() << std::endl;
+		migrate_blob_backlink(cfg);
 	})) { return EXIT_SUCCESS;}
 
 	else

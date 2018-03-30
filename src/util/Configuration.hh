@@ -105,7 +105,7 @@ public:
 	void usage(std::ostream& out) const;
 
 	// for unit tests
-	void blob_path(boost::filesystem::path path) {m_blob_path = path;}
+	void blob_path(boost::filesystem::path path) {m_blob_path = std::move(path);}
 
 private:
 	void load_config(const boost::filesystem::path& path);
