@@ -22,19 +22,10 @@
 
 namespace hrb {
 
-int Main(int argc, const char* const* argv)
+int StartServer(const Configuration& cfg)
 {
-	Configuration cfg{argc, argv, ::getenv("HEART_RABBIT_CONFIG")};
 	Server server{cfg};
-
-	if (cfg.help())
-	{
-		cfg.usage(std::cout);
-		std::cout << "\n";
-		return EXIT_SUCCESS;
-	}
-
-	else if (cfg.add_user([&server](auto&& username)
+	if (cfg.add_user([&server](auto&& username)
 	{
 		std::cout << "Please input password of the new user " << username << ":\n";
 		std::string password;
@@ -46,12 +37,6 @@ int Main(int argc, const char* const* argv)
 			});
 		}
 	})) {return EXIT_SUCCESS;}
-
-	else if (cfg.blob_id([&server](auto&& filename)
-	{
-//		BlobFile blob{boost::filesystem::path{filename}};
-//		std::cout << blob.ID() << std::endl;
-	})) { return EXIT_SUCCESS;}
 
 	else
 	{
@@ -68,7 +53,18 @@ int main(int argc, char *argv[])
 	using namespace hrb;
 	try
 	{
-		return Main(argc, argv);
+		Configuration cfg{argc, argv, ::getenv("HEART_RABBIT_CONFIG")};
+		if (cfg.help())
+		{
+			cfg.usage(std::cout);
+			std::cout << "\n";
+			return EXIT_SUCCESS;
+		}
+		else if (cfg.blob_id([](auto&&)
+		{
+		})) { return EXIT_SUCCESS;}
+
+		return StartServer(cfg);
 	}
 	catch (Exception& e)
 	{
