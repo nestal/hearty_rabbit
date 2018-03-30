@@ -31,10 +31,27 @@ void migrate_blob_backlink(const Configuration& cfg)
 		[db](auto&& reply, auto ec)
 		{
 			assert(!ec);
+			assert(reply.array_size() == 2);
 			assert(reply.as_array(0).as_int() == 0);
+
+			std::cout << "# of blobs: " << reply.as_array(1).array_size() << std::endl;
+
+			for (auto&& backlink : reply.as_array(1))
+			{
+				db->command(
+					[](auto&& reply, auto ec)
+					{
+						assert(!ec);
+						std::cout << reply.as_int() << " links" << std::endl;
+					},
+					"SCARD %b", backlink.as_string().data(), backlink.as_string().size()
+				);
+			}
 		},
 		"SCAN 0 MATCH blob-backlink:* COUNT 100000"
 	);
+
+	ctx.run();
 }
 
 int StartServer(const Configuration& cfg)
