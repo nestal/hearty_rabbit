@@ -24,65 +24,6 @@
 
 namespace hrb {
 
-void migrate_blob_backlink(const Configuration& cfg)
-{
-	boost::asio::io_context ctx;
-	auto db = redis::connect(ctx, cfg.redis());
-
-	db->command(
-		[db](auto&& reply, auto ec)
-		{
-			assert(!ec);
-			assert(reply.array_size() == 2);
-			assert(reply.as_array(0).as_int() == 0);
-
-			std::cout << "# of blobs: " << reply.as_array(1).array_size() << std::endl;
-
-			for (auto&& bl : reply.as_array(1))
-			{
-				std::string backlink{bl.as_string()};
-				db->command(
-					[db, backlink](auto&& reply, auto ec)
-					{
-						assert(!ec);
-						if (backlink.size() > 20)
-						{
-							auto oid = raw_to_object_id(backlink.substr(backlink.size()-20));
-
-							auto front_str = backlink.substr(0, backlink.size()-20);
-
-							static const std::regex extract_user{"^blob-backlink:(.?*):.*$"};
-							std::smatch mat;
-							if (regex_match(front_str, mat, extract_user))
-							{
-//								std::cout << "user is " << mat[1].str() << " " << *oid << " " << reply.as_array(0).as_string() << std::endl;
-								std::cout << "dir:" << mat[1].str() << ":" << reply.as_array(0).as_string() << std::endl;
-
-								auto user = mat[1].str();
-								auto coll = reply.as_array(0).as_string();
-
-								db->command("SADD blob-ref:%b dir:%b:%b",
-									oid->data(), oid->size(),
-									user.data(), user.size(),
-									coll.data(), coll.size()
-								);
-								db->command("DEL %b", backlink.data(), backlink.size());
-							}
-
-							if (reply.array_size() > 1)
-								std::cout << *oid << " has " << reply.array_size() << " links" << std::endl;
-						}
-					},
-					"SMEMBERS %b", backlink.data(), backlink.size()
-				);
-			}
-		},
-		"SCAN 0 MATCH blob-backlink:* COUNT 100000"
-	);
-
-	ctx.run();
-}
-
 int StartServer(const Configuration& cfg)
 {
 	Server server{cfg};
@@ -123,7 +64,6 @@ int main(int argc, char *argv[])
 		}
 		else if (cfg.blob_id([&cfg](auto&&)
 		{
-			migrate_blob_backlink(cfg);
 		})) { return EXIT_SUCCESS;}
 
 		return StartServer(cfg);
