@@ -16,6 +16,8 @@
 #include <boost/exception/info.hpp>
 #include <boost/exception/diagnostic_information.hpp>
 
+#include <regex>
+
 #include <thread>
 #include <iostream>
 #include <cstdlib>
@@ -43,11 +45,21 @@ void migrate_blob_backlink(const Configuration& cfg)
 					[backlink](auto&& reply, auto ec)
 					{
 						assert(!ec);
-//						std::cout << backlink << " has " << reply.array_size() << " links" << std::endl;
-
-						if (!boost::string_view{backlink}.starts_with("blob-backlink:nestal:"))
+						if (backlink.size() > 20)
 						{
-							std::cout << backlink << " is owned by someone else" << std::endl;
+							auto oid = raw_to_object_id(backlink.substr(backlink.size()-20));
+
+							auto front_str = backlink.substr(0, backlink.size()-20);
+
+							static const std::regex extract_user{"^blob-backlink:(.?*):.*$"};
+							std::smatch mat;
+							if (regex_match(front_str, mat, extract_user))
+							{
+//								std::cout << "user is " << mat[1].str() << " " << *oid << " " << reply.as_array(0).as_string() << std::endl;
+							}
+
+							if (reply.array_size() > 1)
+								std::cout << *oid << " has " << reply.array_size() << " links" << std::endl;
 						}
 					},
 					"SMEMBERS %b", backlink.data(), backlink.size()
