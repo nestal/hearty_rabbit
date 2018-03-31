@@ -22,30 +22,21 @@ Ownership::Ownership(std::string_view name) : m_user{name}
 {
 }
 
-const std::string_view Ownership::BlobBackLink::m_prefix{"blob-backlink:"};
+const std::string_view Ownership::BlobBackLink::m_prefix{"blob-ref:"};
 
 Ownership::BlobBackLink::BlobBackLink(std::string_view user, const ObjectID& blob) :
 	m_user{user}, m_blob{blob}
 {
 }
 
-void Ownership::BlobBackLink::watch(redis::Connection& db) const
-{
-	db.command(
-		"WATCH %b%b:%b",
-		m_prefix.data(), m_prefix.size(),
-		m_user.data(), m_user.size(),
-		m_blob.data(), m_blob.size()
-	);
-}
-
 void Ownership::BlobBackLink::link(redis::Connection& db, std::string_view coll) const
 {
 	db.command(
-		"SADD %b%b:%b %b",
+		"SADD %b:%b %b%b:%b",
 		m_prefix.data(), m_prefix.size(),
-		m_user.data(), m_user.size(),
 		m_blob.data(), m_blob.size(),
+		Collection::m_dir_prefix.data(), Collection::m_dir_prefix.size(),
+		m_user.data(), m_user.size(),
 		coll.data(), coll.size()
 	);
 }
@@ -53,10 +44,11 @@ void Ownership::BlobBackLink::link(redis::Connection& db, std::string_view coll)
 void Ownership::BlobBackLink::unlink(redis::Connection& db, std::string_view coll) const
 {
 	db.command(
-		"SREM %b%b:%b %b",
+		"SREM %b:%b %b%b:%b",
 		m_prefix.data(), m_prefix.size(),
-		m_user.data(), m_user.size(),
 		m_blob.data(), m_blob.size(),
+		Collection::m_dir_prefix.data(), Collection::m_dir_prefix.size(),
+		m_user.data(), m_user.size(),
 		coll.data(), coll.size()
 	);
 }

@@ -42,7 +42,7 @@ void migrate_blob_backlink(const Configuration& cfg)
 			{
 				std::string backlink{bl.as_string()};
 				db->command(
-					[backlink](auto&& reply, auto ec)
+					[db, backlink](auto&& reply, auto ec)
 					{
 						assert(!ec);
 						if (backlink.size() > 20)
@@ -56,6 +56,17 @@ void migrate_blob_backlink(const Configuration& cfg)
 							if (regex_match(front_str, mat, extract_user))
 							{
 //								std::cout << "user is " << mat[1].str() << " " << *oid << " " << reply.as_array(0).as_string() << std::endl;
+								std::cout << "dir:" << mat[1].str() << ":" << reply.as_array(0).as_string() << std::endl;
+
+								auto user = mat[1].str();
+								auto coll = reply.as_array(0).as_string();
+
+								db->command("SADD blob-ref:%b dir:%b:%b",
+									oid->data(), oid->size(),
+									user.data(), user.size(),
+									coll.data(), coll.size()
+								);
+								db->command("DEL %b", backlink.data(), backlink.size());
 							}
 
 							if (reply.array_size() > 1)
