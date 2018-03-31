@@ -53,6 +53,7 @@
 		<i id="make-image-private" class="tooltip light-box-button material-icons">person<span class="tooltiptext">Only you can see this image</span></i>
 		<i id="share-image" class="tooltip light-box-button material-icons">people<span class="tooltiptext">Only valid users can see this image</span></i>
 		<i id="make-image-public" class="tooltip light-box-button material-icons">public<span class="tooltiptext">Everyone can see this image</span></i>
+		<i id="move-image" class="tooltip light-box-button material-icons">move_to_inbox<span class="tooltiptext">Move this image to another album</span></i>
 		<i id="delete-image" class="tooltip light-box-button material-icons">delete<span class="tooltiptext">Delete picture</span></i>
 		<i class="close-overlays tooltip light-box-button material-icons">close<span class="tooltiptext">Close</span></i>
 	</div>
@@ -101,7 +102,7 @@
 	<div class="modal-content dialog-container">
 		<h1>Name of the destination album:</h1>
 		<div><input id="dest-album-name" type="text" placeholder="album name"></div>
-		<button onclick="new_album()">Create</button>
+		<button id="move-blob-btn">Create</button>
 	</div>
 </section>
 

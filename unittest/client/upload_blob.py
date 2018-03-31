@@ -200,6 +200,30 @@ class NormalTestCase(unittest.TestCase):
 		self.assertEqual(r4.status_code, 200)
 		self.assertFalse(blob_id in r4.json()["elements"])
 
+	def test_move_blob(self):
+		r1 = self.user1.put("https://localhost:4433/upload/sumsum/some/collection/random.jpg", data=self.random_image(800, 600))
+		self.assertEqual(r1.status_code, 201)
+		blob_id = r1.headers["Location"][-40:]
+
+		# move to another collection
+		self.assertEqual(self.user1.post(
+			"https://localhost:4433" + r1.headers["Location"],
+			data="move=another/collection",
+			headers={"Content-type": "application/x-www-form-urlencoded"}
+		).status_code, 204)
+
+		# get it from another collection successfully
+		self.assertEqual(
+			self.user1.get("https://localhost:4433/blob/sumsum/another/collection/" + blob_id).status_code,
+			200
+		)
+
+		# can't get it from original collection any more
+		self.assertEqual(
+			self.user1.get("https://localhost:4433/blob/sumsum/some/collection/" + blob_id).status_code,
+			404
+		)
+
 	def test_set_permission(self):
 		# upload to server
 		r1 = self.user1.put("https://localhost:4433/upload/sumsum/some/collection/random.jpg", data=self.random_image(1000, 1200))
