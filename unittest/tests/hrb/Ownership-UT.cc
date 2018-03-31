@@ -92,6 +92,29 @@ TEST_CASE("add blob to Ownership", "[normal]")
 
 	REQUIRE(ioc.run_for(10s) > 0);
 	REQUIRE(tested == 5);
+	ioc.restart();
+
+	// move to another new collection
+	subject.move_blob(*redis, "/", "someother", blobid, [&tested](std::error_code ec)
+	{
+		REQUIRE(!ec);
+		tested++;
+	});
+
+	REQUIRE(ioc.run_for(10s) > 0);
+	REQUIRE(tested == 6);
+	ioc.restart();
+
+	// check if it is in the new collection
+	subject.find(*redis, "someother", blobid, [&tested](auto&& entry, std::error_code ec)
+	{
+		REQUIRE(!ec);
+		REQUIRE(entry.permission().allow(""));
+		tested++;
+	});
+
+	REQUIRE(ioc.run_for(10s) > 0);
+	REQUIRE(tested == 7);
 }
 
 TEST_CASE("Load 3 images in json", "[normal]")

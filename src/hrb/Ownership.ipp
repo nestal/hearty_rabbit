@@ -403,4 +403,36 @@ void Ownership::set_permission(
 	return Collection{m_user, coll}.set_permission(db, blobid, perm, std::forward<Complete>(complete));
 }
 
+template <typename Complete>
+void Ownership::move_blob(
+	redis::Connection& db,
+	std::string_view src_coll,
+	std::string_view dest_coll,
+	const ObjectID& blobid,
+	Complete&& complete
+)
+{
+	find(db, src_coll, blobid,
+		[
+			blobid,
+			db=db.shared_from_this(),
+			dest=Collection{m_user, dest_coll},
+			src=Collection{m_user, src_coll},
+			comp=std::forward<Complete>(complete)
+		](CollEntry&& entry, auto ec) mutable
+		{
+			if (!ec)
+			{
+				db->command("MULTI");
+				dest.link(*db, blobid, entry);
+				src.unlink(*db, blobid);
+				db->command([comp=std::move(comp)](auto&&, auto ec)
+				{
+					comp(ec);
+				}, "EXEC");
+			}
+		}
+	);
+}
+
 } // end of namespace
