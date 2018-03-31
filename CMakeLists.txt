@@ -124,6 +124,7 @@ if (DOXYGEN_FOUND)
 		DEPENDS ${LIB_SRC} doc/Doxyfile.in doc/doxygenextra.css
 	)
 	add_custom_target(doc ALL DEPENDS html)
+	set_target_properties(doc PROPERTIES EXCLUDE_FROM_ALL TRUE)
 else()
 	message(STATUS "No Doxygen found. Documentation won't be built")
 endif()

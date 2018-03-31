@@ -133,6 +133,7 @@ void Server::unlink(BlobRequest&& req, EmptyResponseSender&& send)
 	Log(LOG_INFO, "unlinking object %1% from path(%2%)", *req.blob(), req.collection());
 
 	if (!req.request_by_owner())
+		
 		return send(http::response<http::empty_body>{http::status::forbidden, req.version()});
 
 	// remove from user's container
@@ -237,15 +238,12 @@ http::response<http::string_body> Server::bad_request(boost::beast::string_view 
 }
 
 // Returns a not found response
-http::response<http::string_body> Server::not_found(boost::string_view target, unsigned version)
+http::response<SplitBuffers> Server::not_found(boost::string_view target, unsigned version)
 {
 	using namespace std::literals;
-	http::response<http::string_body> res{
-		std::piecewise_construct,
-		std::make_tuple("The resource '"s + target.to_string() + "' was not found."),
-		std::make_tuple(http::status::not_found, version)
-	};
-	res.set(http::field::content_type, "text/plain");
+	auto res = m_lib.find_dynamic("index.html", version);
+	res.result(http::status::not_found);
+	res.body().extra(hrb::index_needle, R"_(var dir = {error_message: "The request resource was not found."};)_");
 	return res;
 }
 
@@ -361,12 +359,20 @@ void Server::run()
 	m_ioc.run();
 }
 
-void Server::drop_privileges()
+void Server::drop_privileges() const
 {
 	// drop privileges if run as root
 	if (::getuid() == 0)
 	{
-		if (::setuid(65535) != 0)
+		// must set group ID before setting user ID, otherwise we have no
+		// priviledge to set group ID
+		if (::setgid(m_cfg.group_id()) != 0)
+			BOOST_THROW_EXCEPTION(hrb::SystemError()
+				<< ErrorCode(std::error_code(errno, std::system_category()))
+				<< boost::errinfo_api_function("setgid")
+			);
+
+		if (::setuid(m_cfg.user_id()) != 0)
 			BOOST_THROW_EXCEPTION(hrb::SystemError()
 				<< ErrorCode(std::error_code(errno, std::system_category()))
 				<< boost::errinfo_api_function("setuid")

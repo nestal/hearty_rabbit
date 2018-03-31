@@ -33,8 +33,6 @@ private:
 public:
 	BlobBackLink(std::string_view user, const ObjectID& blob);
 
-	void watch(redis::Connection& db) const;
-
 	// expect to be done inside a transaction
 	void link(redis::Connection& db, std::string_view coll) const;
 	void unlink(redis::Connection& db, std::string_view coll) const;
@@ -50,7 +48,7 @@ private:
 /// A set of blob objects represented by a redis set.
 class Ownership::Collection
 {
-private:
+public:
 	static const std::string_view m_dir_prefix;
 	static const std::string_view m_list_prefix;
 

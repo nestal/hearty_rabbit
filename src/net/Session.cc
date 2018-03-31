@@ -165,11 +165,6 @@ bool Session::validate_request(const Request& req)
 		req[http::field::content_length].empty() ? "0" : req[http::field::content_length]
 	);
 
-	for (auto&& h : req)
-	{
-		Log(LOG_INFO, "header name = %1% value = %2%", h.name(), h.value());
-	}
-
 	// Make sure we can handle the method
 	if (req.method() != http::verb::get  &&
 	    req.method() != http::verb::post &&

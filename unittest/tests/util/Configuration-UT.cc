@@ -57,6 +57,8 @@ TEST_CASE( "Load normal.json", "[normal]" )
 	REQUIRE(cfg.redis().port() == 9181);
 	REQUIRE(cfg.upload_limit() == 10*1024*1024);
 	REQUIRE(cfg.session_length() == std::chrono::hours{1});
+	REQUIRE(cfg.user_id() == 65535);
+	REQUIRE(cfg.group_id() == 65535);
 }
 
 TEST_CASE( "Missing server name", "[error]" )
@@ -104,6 +106,8 @@ TEST_CASE( "Set upload limit to 1.5MB", "[normal]" )
 	const char *argv[] = {"hearty_rabbit", "--cfg", upload_1_5mb.c_str()};
 	Configuration subject{sizeof(argv)/sizeof(argv[1]), argv, nullptr};
 	REQUIRE(subject.upload_limit() == 1.5*1024*1024);
+	REQUIRE(subject.user_id() == 127);
+	REQUIRE(subject.group_id() == 955);
 }
 
 TEST_CASE( "Multiple renditions", "[normal]" )
