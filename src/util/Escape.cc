@@ -57,7 +57,7 @@ std::optional<char> from_hex(char msb, char lsb)
 	auto big = hex_digit(msb);
 	auto sml = hex_digit(lsb);
 	if (big && sml)
-		return *big * 16 + *sml;
+		return *big * static_cast<char>(16) + *sml;
 	else
 		return std::nullopt;
 }

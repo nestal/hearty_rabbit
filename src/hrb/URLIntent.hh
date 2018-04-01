@@ -52,13 +52,13 @@ private:
 private:
 	Action  m_action{Action::none};
 
-	std::string_view m_user;
+	std::string m_user;
 
 	// container name
-	std::string_view m_coll;
+	std::string m_coll;
 
 	// filename
-	std::string_view m_filename;
+	std::string m_filename;
 
 	// option
 	std::string_view m_option;

@@ -165,4 +165,18 @@ TEST_CASE("path URL")
 	URLIntent upload_default{"/upload/nestal/DSC_1460.JPG"};
 	REQUIRE(upload_default.action() == URLIntent::Action::upload);
 	REQUIRE(upload_default.valid());
+
+	URLIntent percent_user{"/blob/%E4%B8%AD%E6%96%87%E5%AD%97/filename"};
+	REQUIRE(percent_user.user() == u8"中文字");
+	REQUIRE(percent_user.filename() == "filename");
+
+	URLIntent percent_coll{"/blob/zelda/%E3%82%BC%E3%83%AB%E3%83%80%E3%81%AE%E4%BC%9D%E8%AA%AC/master_sword"};
+	REQUIRE(percent_coll.user() == "zelda");
+	REQUIRE(percent_coll.collection() == u8"ゼルダの伝説");
+	REQUIRE(percent_coll.filename() == "master_sword");
+
+	URLIntent percent_fn{"/upload/link/hyrule_field/%E3%83%9E%E3%82%B9%E3%82%BF%E3%83%BC%E3%82%BD%E3%83%BC%E3%83%89"};
+	REQUIRE(percent_fn.user() == "link");
+	REQUIRE(percent_fn.collection() == "hyrule_field");
+	REQUIRE(percent_fn.filename() == "マスターソード");
 }
