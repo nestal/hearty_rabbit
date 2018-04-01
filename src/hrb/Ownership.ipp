@@ -128,8 +128,9 @@ void Ownership::Collection::scan(
 						if (sv.empty())
 							return;
 
-						// although we can modify the string inside value, rapidjson does not
-						// support insitu parsing with non-null-terminated string, so we must
+						// although we can modify the string inside the redis::Reply "value",
+						// it is not a null-terminated string and rapidjson does not support
+						// insitu parsing with non-null-terminated strings, so we must
 						// use the slower Parse() instead of ParseInsitu()
 						rapidjson::Document mdoc;
 						mdoc.Parse(sv.data(), sv.size());

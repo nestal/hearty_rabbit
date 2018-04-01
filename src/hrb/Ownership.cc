@@ -86,10 +86,12 @@ void Ownership::Collection::link(redis::Connection& db, const ObjectID& id, cons
 
 void Ownership::Collection::unlink(redis::Connection& db, const ObjectID& id)
 {
+	// LUA script: delete the blob from the dir:<user>:<coll> hash table, and if
+	// the hash table is empty, remove the entry in dirs:<user> hash table
 	static const char cmd[] =
 		"redis.call('HDEL', KEYS[1], ARGV[1]) "
-	    "if redis.call('HLEN', KEYS[1]) == 0 then redis.call('HDEL', KEYS[2], ARGV[2]) end "
-	    "return redis.call('HLEN', KEYS[1])";
+		"if redis.call('EXISTS', KEYS[1]) == 0 then redis.call('HDEL', KEYS[2], ARGV[2]) end "
+	;
 
 	db.command(
 		"EVAL %s 2 %b%b:%b %b%b %b %b",
@@ -115,8 +117,10 @@ void Ownership::Collection::unlink(redis::Connection& db, const ObjectID& id)
 
 std::string Ownership::Collection::serialize(redis::Reply& reply, std::string_view requester) const
 {
+	// TODO: get the cover here... where to find a redis::Connection?
+
 	std::ostringstream ss;
-	ss  << R"__({"owner":")__"          << m_user
+	ss  << R"__({"owner":")__"         << m_user
 		<< R"__(", "collection":")__"  << m_path
 		<< R"__(", "username":")__"    << requester
 		<< R"__(", "elements":)__"     << "{";
