@@ -27,6 +27,80 @@
 using namespace hrb;
 using namespace std::chrono_literals;
 
+TEST_CASE("list of collection owned by user", "[normal]")
+{
+	auto blobid = insecure_random<ObjectID>();
+
+	boost::asio::io_context ioc;
+	auto redis = redis::connect(ioc);
+
+	Ownership subject{"owner"};
+
+	int tested = 0;
+	subject.link(*redis, "/", blobid, CollEntry{}, [&tested](std::error_code ec)
+	{
+		REQUIRE(!ec);
+		tested++;
+	});
+
+	// assert that the collection is added
+	subject.scan_all_collections(*redis, "owner", [&tested](auto&& json, auto ec)
+	{
+		REQUIRE(!ec);
+		REQUIRE(json.FindMember("colls") != json.MemberEnd());
+
+		std::vector<std::string> colls;
+		for (auto&& coll : json["colls"].GetObject())
+			colls.emplace_back(coll.name.GetString());
+
+		REQUIRE(std::find(colls.begin(), colls.end(), "/") != colls.end());
+
+		tested++;
+	});
+
+	REQUIRE(ioc.run_for(10s) > 0);
+	REQUIRE(tested == 2);
+	ioc.restart();
+
+	// remove all blobs in the collection
+	subject.serialize(*redis, "owner", "/", [&tested, redis](auto&& json, auto ec)
+	{
+		INFO("serialize() return " << json);
+		rapidjson::Document jdoc;
+		jdoc.Parse(json);
+		REQUIRE(!jdoc.HasParseError());
+
+		for (auto&& blob : jdoc["elements"].GetObject())
+		{
+			INFO("blob = " << blob.name.GetString());
+			Ownership{"owner"}.unlink(*redis, "/", *hex_to_object_id(blob.name.GetString()), [](auto&& ec)
+			{
+				REQUIRE(!ec);
+			});
+		}
+
+		tested++;
+	});
+
+	REQUIRE(ioc.run_for(10s) > 0);
+	REQUIRE(tested == 3);
+	ioc.restart();
+
+	// assert that the collection "/" does not exist anymore, because all its blobs are removed
+	subject.scan_all_collections(*redis, "owner", [&tested](auto&& json, auto ec)
+	{
+		REQUIRE(!ec);
+		REQUIRE(json.FindMember("colls") != json.MemberEnd());
+
+		std::vector<std::string> colls;
+		for (auto&& coll : json["colls"].GetObject())
+			REQUIRE(coll.name.GetString() != std::string{"/"});
+		tested++;
+	});
+	REQUIRE(ioc.run_for(10s) > 0);
+	REQUIRE(tested == 4);
+}
+
 TEST_CASE("add blob to Ownership", "[normal]")
 {
 	auto blobid = insecure_random<ObjectID>();

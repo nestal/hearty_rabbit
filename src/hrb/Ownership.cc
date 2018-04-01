@@ -86,11 +86,30 @@ void Ownership::Collection::link(redis::Connection& db, const ObjectID& id, cons
 
 void Ownership::Collection::unlink(redis::Connection& db, const ObjectID& id)
 {
-	db.command("HDEL %b%b:%b %b",
+	static const char cmd[] =
+		"redis.call('HDEL', KEYS[1], ARGV[1]) "
+	    "if redis.call('HLEN', KEYS[1]) == 0 then redis.call('HDEL', KEYS[2], ARGV[2]) end "
+	    "return redis.call('HLEN', KEYS[1])";
+
+	db.command(
+		"EVAL %s 2 %b%b:%b %b%b %b %b",
+
+		cmd,
+
+		// KEYS[1] (hash table that stores the blob in a collection)
 		m_dir_prefix.data(), m_dir_prefix.size(),
 		m_user.data(), m_user.size(),
 		m_path.data(), m_path.size(),
-		id.data(), id.size()
+
+		// KEYS[2] (hash table that stores all collections owned by a user)
+		m_list_prefix.data(), m_list_prefix.size(),
+		m_user.data(), m_user.size(),
+
+		// ARGV[1] (name of the blob to unlink)
+		id.data(), id.size(),
+
+		// ARGV[2] (collection name)
+		m_path.data(), m_path.size()
 	);
 }
 
@@ -114,7 +133,7 @@ std::string Ownership::Collection::serialize(redis::Reply& reply, std::string_vi
 			// entry string must be json. skip the { in the front and } in the back
 			// and prepend the "perm"="public"
 			auto json = entry.json();
-			if (json.size() > 2 && json.front() == '{' && json.back() == '}')
+			if (json.size() >= 2 && json.front() == '{' && json.back() == '}')
 			{
 				if (first)
 					first = false;
@@ -124,8 +143,10 @@ std::string Ownership::Collection::serialize(redis::Reply& reply, std::string_vi
 				json.remove_prefix(1);
 				json.remove_suffix(1);
 				ss  << to_quoted_hex(*blob_id)
-					<< ":{ \"perm\":\"" << entry.permission().description() << "\","
-					<< json << "}";
+					<< ":{ \"perm\":\"" << entry.permission().description() << "\"";
+				if (!json.empty())
+					ss << "," << json;
+				ss << "}";
 			}
 		}
 	});

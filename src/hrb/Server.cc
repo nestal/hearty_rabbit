@@ -470,12 +470,12 @@ void Server::scan_collection(const EmptyRequest& req, Server::StringResponseSend
 	Ownership{path_url.user()}.scan_all_collections(
 		*m_db.alloc(),
 		auth.user(),
-		[send=std::move(send), ver=req.version()](auto&& colls, auto ec)
+		[send=std::move(send), ver=req.version()](auto&& colls_json, auto ec)
 		{
 			std::ostringstream ss;
 			rapidjson::OStreamWrapper osw{ss};
 			rapidjson::Writer<rapidjson::OStreamWrapper> writer{osw};
-			colls.Accept(writer);
+			colls_json.Accept(writer);
 
 			http::response<http::string_body> res{
 				std::piecewise_construct,

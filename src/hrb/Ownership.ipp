@@ -317,30 +317,41 @@ void Ownership::Collection::serialize(
 template <typename Complete>
 void Ownership::link(
 	redis::Connection& db,
-	std::string_view path,
+	std::string_view coll_name,
 	const ObjectID& blobid,
 	const CollEntry& entry,
-	bool add,
 	Complete&& complete
 )
 {
 	BlobBackLink  blob{m_user, blobid};
-	Collection coll{m_user, path};
+	Collection coll{m_user, coll_name};
 
 	db.command("MULTI");
-	if (add)
-	{
-		blob.link(db, coll.path());
-		coll.link(db, blob.blob(), entry);
-	}
-	else
-	{
-		blob.unlink(db, coll.path());
-		coll.unlink(db, blob.blob());
-	}
-
+	blob.link(db, coll.path());
+	coll.link(db, blob.blob(), entry);
 	db.command([comp=std::forward<Complete>(complete)](auto&&, std::error_code ec)
 	{
+		comp(ec);
+	}, "EXEC");
+}
+
+template <typename Complete>
+void Ownership::unlink(
+	redis::Connection& db,
+	std::string_view coll_name,
+	const ObjectID& blobid,
+	Complete&& complete
+)
+{
+	BlobBackLink  blob{m_user, blobid};
+	Collection coll{m_user, coll_name};
+
+	db.command("MULTI");
+	blob.unlink(db, coll.path());
+	coll.unlink(db, blob.blob());
+	db.command([comp=std::forward<Complete>(complete)](auto&& reply, std::error_code ec)
+	{
+		assert(reply.array_size() == 2);
 		comp(ec);
 	}, "EXEC");
 }
