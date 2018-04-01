@@ -93,7 +93,7 @@ private:
 	void handle_blob(Request&& req, Send&& send, const Authentication& auth);
 
 	template <class Send>
-	void get_blob(BlobRequest&& req, Send&& send);
+	void get_blob(const BlobRequest& req, Send&& send);
 
 private:
 	const Configuration&    m_cfg;

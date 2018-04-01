@@ -347,11 +347,13 @@ TEST_CASE("General server tests", "[normal]")
 			REQUIRE(checker.tested());
 			REQUIRE(checker[http::field::location] != "");
 
-			INFO("Upload request returned location: " << checker[http::field::location]);
+			std::string location{checker[http::field::location]};
+
+			INFO("Upload request returned location: " << location);
 
 			EmptyRequest get_blob;
 			get_blob.method(http::verb::get);
-			get_blob.target(checker[http::field::location]);
+			get_blob.target(location);
 
 			subject.get_io_context().restart();
 
@@ -360,7 +362,7 @@ TEST_CASE("General server tests", "[normal]")
 				get_blob.set(boost::beast::http::field::cookie, session.set_cookie());
 				FileResponseChecker blob{http::status::ok, __FILE__};
 				subject.handle_request(std::move(get_blob), std::ref(blob), session);
-				REQUIRE(subject.get_io_context().run_for(10s) > 0);
+				REQUIRE(subject.get_io_context().run_for(3610s) > 0);
 				REQUIRE(blob.tested());
 			}
 			SECTION("get 403 without valid session and delay")

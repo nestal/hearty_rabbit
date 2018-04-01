@@ -25,7 +25,7 @@ class BlobRequest
 public:
 	template <typename Request>
 	BlobRequest(Request&& req, std::string_view requester) :
-		m_requester{requester}, m_target{req.target()}, m_url{m_target}, m_version{req.version()},
+		m_requester{requester}, m_url{req.target()}, m_version{req.version()},
 		m_etag{req[http::field::if_none_match]}
 	{
 		if constexpr (std::is_same<std::remove_reference_t<Request>, StringRequest>::value)
@@ -34,12 +34,10 @@ public:
 				m_body = std::move(req.body());
 		}
 	}
-	BlobRequest(BlobRequest&& other) noexcept ;
-	BlobRequest(const BlobRequest& other);
-	BlobRequest& operator=(BlobRequest&& other) noexcept ;
-	BlobRequest& operator=(const BlobRequest& other);
-
-	void swap(BlobRequest& tmp) noexcept ;
+	BlobRequest(BlobRequest&& other) = default;
+	BlobRequest(const BlobRequest& other) = default;
+	BlobRequest& operator=(BlobRequest&& other) = default;
+	BlobRequest& operator=(const BlobRequest& other) = default;
 
 	std::optional<ObjectID> blob() const    {return hex_to_object_id(m_url.filename());}
 	std::string_view requester() const      {return m_requester;}
@@ -55,7 +53,6 @@ public:
 
 private:
 	std::string m_requester;
-	std::string m_target;
 	URLIntent   m_url;
 	unsigned    m_version;
 
