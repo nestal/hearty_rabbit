@@ -14,15 +14,11 @@ RUN yum install -y deltarpm epel-release \
 	&& yum clean all -y \
 	&& mkdir /build
 
-ADD https://github.com/libjpeg-turbo/libjpeg-turbo/archive/1.5.3.tar.gz /build
-ADD https://dl.bintray.com/boostorg/release/1.66.0/source/boost_1_66_0.tar.gz /build
-ADD https://cmake.org/files/v3.10/cmake-3.10.2.tar.gz /build
+ADD https://github.com/libjpeg-turbo/libjpeg-turbo/archive/1.5.3.tar.gz \
+	https://dl.bintray.com/boostorg/release/1.66.0/source/boost_1_66_0.tar.gz \
+	https://cmake.org/files/v3.11/cmake-3.11.0.tar.gz /build/
 
 WORKDIR /build
-
-# Set PATH, because "scl enable" does not have any effects to "docker build"
-# https://github.com/bit3/jsass/blob/master/src/main/docker/build-linux-x64/Dockerfile
-#ENV PATH $PATH:/opt/rh/devtoolset-7/root/usr/bin:/build/cmake-3.10.2/bin
 
 # libjpeg-turbo
 # The libjpeg-turbo package provided by CentOS 7 uses a different API version than
@@ -42,10 +38,10 @@ RUN tar zxf boost_1_66_0.tar.gz \
 	&& (./b2 -j8 install; exit 0) \
 	&& rm -rf /build/boost_1_66_0
 
-# build cmake 3.10.2 (>= 3.8 to support C++17)
-RUN tar zxf cmake-3.10.2.tar.gz \
-	&& cd cmake-3.10.2 \
-	&& ./configure --prefix=/opt/cmake-3.10.2 \
+# build cmake 3.11.0 (>= 3.8 to support C++17)
+RUN tar zxf cmake-3.11.0.tar.gz \
+	&& cd cmake-3.11.0 \
+	&& ./configure --prefix=/opt/cmake-3.11.0 \
 	&& make -j8 install
 
 # build libb2
@@ -53,6 +49,7 @@ RUN tar zxf cmake-3.10.2.tar.gz \
 # the current one.
 RUN git clone https://github.com/BLAKE2/libb2.git
 RUN cd libb2 \
+	&& git checkout v0.98 \
 	&& ./autogen.sh \
 	&& ./configure --prefix=/opt/libb2 --enable-native=no \
 	&& make install

@@ -3,3 +3,5 @@ build
 docker-build-*
 cmake-build-*
 Dockerfile
+venv
+client

@@ -2,7 +2,7 @@ FROM nestal/hearty_rabbit_dev as builder
 MAINTAINER [Nestal Wan <me@nestal.net>]
 ENV container docker
 
-ENV PATH=$PATH:/opt/rh/devtoolset-7/root/usr/bin:/build/cmake-3.10.2/bin \
+ENV PATH=$PATH:/opt/rh/devtoolset-7/root/usr/bin:/opt/cmake-3.11.0/bin \
 	PKG_CONFIG_PATH=/opt/libjpeg-turbo/lib64/pkgconfig/ \
 	LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/libjpeg-turbo/lib64
 
