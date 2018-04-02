@@ -14,6 +14,8 @@
 #include "Ownership.ipp"
 #include "BlobDatabase.hh"
 
+#include "util/Log.hh"
+
 #include <sstream>
 
 namespace hrb {
@@ -90,11 +92,24 @@ void Ownership::Collection::unlink(redis::Connection& db, const ObjectID& id)
 	// the hash table is empty, remove the entry in dirs:<user> hash table
 	static const char cmd[] =
 		"redis.call('HDEL', KEYS[1], ARGV[1]) "
-		"if redis.call('EXISTS', KEYS[1]) == 0 then redis.call('HDEL', KEYS[2], ARGV[2]) end "
+		"if redis.call('EXISTS', KEYS[1]) == 0 then redis.call('HDEL', KEYS[2], ARGV[2]) else "
+			"local album = cjson.decode(redis.call('HGET', KEYS[2], ARGV[2])) "
+			"if album['cover'] == ARGV[3] then "
+				"album['cover'] = nil "
+				"redis.call('HSET', KEYS[2], ARGV[2], cjson.encode(album)) "
+			"end "
+		"end"
 	;
 
+	auto hex_id = to_hex(id);
+
 	db.command(
-		"EVAL %s 2 %b%b:%b %b%b %b %b",
+		[](auto&& reply, auto ec)
+		{
+			if (!reply || ec)
+				Log(LOG_WARNING, "unlink lua script failure: %1% (%2%)", reply.as_error(), ec);
+		},
+		"EVAL %s 2 %b%b:%b %b%b %b %b %b",
 
 		cmd,
 
@@ -111,7 +126,10 @@ void Ownership::Collection::unlink(redis::Connection& db, const ObjectID& id)
 		id.data(), id.size(),
 
 		// ARGV[2] (collection name)
-		m_path.data(), m_path.size()
+		m_path.data(), m_path.size(),
+
+		// ARGV[3] (hex of blob ID)
+		hex_id.data(), hex_id.size()
 	);
 }
 
