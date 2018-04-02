@@ -160,20 +160,39 @@ void Server::update_blob(BlobRequest&& req, EmptyResponseSender&& send)
 	Log(LOG_NOTICE, "receving form string for updating blob %1%: %2%", *req.blob(), req.body());
 
 	assert(req.blob());
-	auto [perm_str] = find_fields(req.body(), "perm");
+	auto [perm_str, move_destination] = find_fields(req.body(), "perm", "move");
 	Log(LOG_NOTICE, "updating blob %1% to %2%", *req.blob(), perm_str);
 
-	auto perm = Permission::from_description(perm_str);
-
-	Ownership{req.owner()}.set_permission(
-		*m_db.alloc(), req.collection(), *req.blob(), perm, [send=std::move(send), version=req.version()](auto&& ec)
-		{
-			send(http::response<http::empty_body>{
+	auto on_complete = [send = std::move(send), version = req.version()](auto&& ec)
+	{
+		send(
+			http::response<http::empty_body>{
 				ec ? http::status::internal_server_error : http::status::no_content,
 				version
-			});
-		}
-	);
+			}
+		);
+	};
+
+	if (!perm_str.empty())
+	{
+		Ownership{req.owner()}.set_permission(
+			*m_db.alloc(),
+			req.collection(),
+			*req.blob(),
+			Permission::from_description(perm_str),
+			std::move(on_complete)
+		);
+	}
+	else if (!move_destination.empty())
+	{
+		Ownership{req.owner()}.move_blob(
+			*m_db.alloc(),
+			req.collection(),
+			move_destination,
+			*req.blob(),
+			std::move(on_complete)
+		);
+	}
 }
 
 void Server::on_upload(UploadRequest&& req, EmptyResponseSender&& send, const Authentication& auth)
@@ -451,12 +470,12 @@ void Server::scan_collection(const EmptyRequest& req, Server::StringResponseSend
 	Ownership{path_url.user()}.scan_all_collections(
 		*m_db.alloc(),
 		auth.user(),
-		[send=std::move(send), ver=req.version()](auto&& colls, auto ec)
+		[send=std::move(send), ver=req.version()](auto&& colls_json, auto ec)
 		{
 			std::ostringstream ss;
 			rapidjson::OStreamWrapper osw{ss};
 			rapidjson::Writer<rapidjson::OStreamWrapper> writer{osw};
-			colls.Accept(writer);
+			colls_json.Accept(writer);
 
 			http::response<http::string_body> res{
 				std::piecewise_construct,

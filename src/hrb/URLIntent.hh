@@ -31,6 +31,11 @@ private:
 
 public:
 	URLIntent() = default;
+	URLIntent(URLIntent&&) = default;
+	URLIntent(const URLIntent&) = default;
+	URLIntent& operator=(URLIntent&&) = default;
+	URLIntent& operator=(const URLIntent&) = default;
+
 	explicit URLIntent(boost::string_view target);
 	URLIntent(Action act, std::string_view user, std::string_view coll, std::string_view name);
 
@@ -52,16 +57,16 @@ private:
 private:
 	Action  m_action{Action::none};
 
-	std::string_view m_user;
+	std::string m_user;
 
 	// container name
-	std::string_view m_coll;
+	std::string m_coll;
 
 	// filename
-	std::string_view m_filename;
+	std::string m_filename;
 
 	// option
-	std::string_view m_option;
+	std::string m_option;
 };
 
 } // end of namespace hrb

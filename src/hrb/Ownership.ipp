@@ -128,8 +128,9 @@ void Ownership::Collection::scan(
 						if (sv.empty())
 							return;
 
-						// although we can modify the string inside value, rapidjson does not
-						// support insitu parsing with non-null-terminated string, so we must
+						// although we can modify the string inside the redis::Reply "value",
+						// it is not a null-terminated string and rapidjson does not support
+						// insitu parsing with non-null-terminated strings, so we must
 						// use the slower Parse() instead of ParseInsitu()
 						rapidjson::Document mdoc;
 						mdoc.Parse(sv.data(), sv.size());
@@ -226,54 +227,29 @@ void Ownership::Collection::set_permission(
 	Complete&& complete
 ) const
 {
-	// we can't lock a field in the hash table, so lock a dummy key instead
+	static const char lua[] =
+		"local perm = redis.call('HGET', KEYS[1], ARGV[1]) "
+		"local perm2 = ARGV[2] .. string.sub(perm, 2, -1) "
+		"redis.call('HSET', KEYS[1], ARGV[1], perm2)"
+	;
 	db.command(
-		"WATCH lock:%b%b:%b:%b",
-		m_dir_prefix.data(), m_dir_prefix.size(),
-		m_user.data(), m_user.size(),
-		m_path.data(), m_path.size(),
-		blob.data(), blob.size()
-	);
-	db.command(
-		[
-			comp=std::forward<Complete>(complete),
-			db=db.shared_from_this(), *this, blob, perm
-		](auto&& reply, std::error_code&& ec) mutable
+		[comp=std::forward<Complete>(complete)](auto&& reply, auto&& ec) mutable
 		{
-			CollEntry entry{reply.as_string()};
-			auto s = CollEntry::create(Permission{perm}, entry.filename(), entry.mime());
-
-			db->command("MULTI");
-			db->command(
-				"SETEX lock:%b%b:%b:%b 3600 %b",
-				m_dir_prefix.data(), m_dir_prefix.size(),
-				m_user.data(), m_user.size(),
-				m_path.data(), m_path.size(),
-				blob.data(), blob.size(),
-				s.data(), s.size()
-			);
-			db->command(
-				"HSET %b%b:%b %b %b",
-				m_dir_prefix.data(), m_dir_prefix.size(),
-				m_user.data(), m_user.size(),
-				m_path.data(), m_path.size(),
-				blob.data(), blob.size(),
-				s.data(), s.size()
-			);
-			db->command(
-				[comp=std::forward<Complete>(comp)](auto&& reply, auto&& ec) mutable
-				{
-					comp(std::move(ec));
-				},
-				"EXEC"
-			);
+			comp(std::move(ec));
 		},
+		"EVAL %s 1 %b%b:%b %b %b",
+		lua,
 
-		"HGET %b%b:%b %b",
+		// KEYS[1]
 		m_dir_prefix.data(), m_dir_prefix.size(),
 		m_user.data(), m_user.size(),
 		m_path.data(), m_path.size(),
-		blob.data(), blob.size()
+
+		// ARGV[1]
+		blob.data(), blob.size(),
+
+		// ARGV2[]
+		perm.data(), perm.size()
 	);
 }
 
@@ -317,30 +293,41 @@ void Ownership::Collection::serialize(
 template <typename Complete>
 void Ownership::link(
 	redis::Connection& db,
-	std::string_view path,
+	std::string_view coll_name,
 	const ObjectID& blobid,
 	const CollEntry& entry,
-	bool add,
 	Complete&& complete
 )
 {
 	BlobBackLink  blob{m_user, blobid};
-	Collection coll{m_user, path};
+	Collection coll{m_user, coll_name};
 
 	db.command("MULTI");
-	if (add)
-	{
-		blob.link(db, coll.path());
-		coll.link(db, blob.blob(), entry);
-	}
-	else
-	{
-		blob.unlink(db, coll.path());
-		coll.unlink(db, blob.blob());
-	}
-
+	blob.link(db, coll.path());
+	coll.link(db, blob.blob(), entry);
 	db.command([comp=std::forward<Complete>(complete)](auto&&, std::error_code ec)
 	{
+		comp(ec);
+	}, "EXEC");
+}
+
+template <typename Complete>
+void Ownership::unlink(
+	redis::Connection& db,
+	std::string_view coll_name,
+	const ObjectID& blobid,
+	Complete&& complete
+)
+{
+	BlobBackLink  blob{m_user, blobid};
+	Collection coll{m_user, coll_name};
+
+	db.command("MULTI");
+	blob.unlink(db, coll.path());
+	coll.unlink(db, blob.blob());
+	db.command([comp=std::forward<Complete>(complete)](auto&& reply, std::error_code ec)
+	{
+		assert(reply.array_size() == 2);
 		comp(ec);
 	}, "EXEC");
 }
@@ -401,6 +388,38 @@ void Ownership::set_permission(
 )
 {
 	return Collection{m_user, coll}.set_permission(db, blobid, perm, std::forward<Complete>(complete));
+}
+
+template <typename Complete>
+void Ownership::move_blob(
+	redis::Connection& db,
+	std::string_view src_coll,
+	std::string_view dest_coll,
+	const ObjectID& blobid,
+	Complete&& complete
+)
+{
+	find(db, src_coll, blobid,
+		[
+			blobid,
+			db=db.shared_from_this(),
+			dest=Collection{m_user, dest_coll},
+			src=Collection{m_user, src_coll},
+			comp=std::forward<Complete>(complete)
+		](CollEntry&& entry, auto ec) mutable
+		{
+			if (!ec)
+			{
+				db->command("MULTI");
+				dest.link(*db, blobid, entry);
+				src.unlink(*db, blobid);
+				db->command([comp=std::move(comp)](auto&&, auto ec)
+				{
+					comp(ec);
+				}, "EXEC");
+			}
+		}
+	);
 }
 
 } // end of namespace

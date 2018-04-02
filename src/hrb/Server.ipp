@@ -181,17 +181,18 @@ void Server::handle_blob(Request&& req, Send&& send, const Authentication& auth)
 }
 
 template <class Send>
-void Server::get_blob(BlobRequest&& req, Send&& send)
+void Server::get_blob(const BlobRequest& req, Send&& send)
 {
 	assert(req.blob());
 
 	// Check if the user owns the blob
+	// Note: the arguments of find() uses req, so we can't move req into the lambda.
+	// Otherwise, req will become dangled.
 	Ownership{req.owner()}.find(
 		*m_db.alloc(), req.collection(), *req.blob(),
 		[
-			req=std::move(req),
-			send=std::move(send),
-			this
+			req, this,
+			send=std::move(send)
 		](CollEntry entry, auto ec) mutable
 		{
 			// Only allow the owner to know whether an object exists or not.

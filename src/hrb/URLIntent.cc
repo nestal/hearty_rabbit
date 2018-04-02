@@ -41,9 +41,11 @@ URLIntent::URLIntent(boost::string_view boost_target)
 
 	if (!forbid_user.at(static_cast<std::size_t>(m_action)))
 	{
-		m_user = target.substr(0, target.find_first_of('/', 1));
-		target.remove_prefix(m_user.size());
-		m_user.remove_prefix(1);
+		auto user = target.substr(0, target.find_first_of('/', 1));
+		target.remove_prefix(user.size());
+		user.remove_prefix(1);
+
+		m_user = url_decode(user);
 	}
 
 	if (target.empty())
@@ -69,15 +71,17 @@ URLIntent::URLIntent(boost::string_view boost_target)
 		if (file_start != target.npos)
 		{
 			file_start++;
-			m_filename = target.substr(file_start, target.size());
-			target.remove_suffix(m_filename.size());
+			auto filename = target.substr(file_start, target.size());
+			target.remove_suffix(filename.size());
+
+			m_filename = url_decode(filename);
 		}
 	}
 
 	if (target.empty())
 		return;
 
-	m_coll = trim(target);
+	m_coll = url_decode(trim(target));
 }
 
 URLIntent::URLIntent(Action act, std::string_view user, std::string_view coll, std::string_view name) :

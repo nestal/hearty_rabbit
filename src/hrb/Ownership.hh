@@ -44,10 +44,7 @@ public:
 		const ObjectID& blobid,
 		const CollEntry& entry,
 		Complete&& complete
-	)
-	{
-		link(db, coll, blobid, entry, true, std::forward<Complete>(complete));
-	}
+	);
 
 	template <typename Complete>
 	void unlink(
@@ -55,10 +52,7 @@ public:
 		std::string_view coll,
 		const ObjectID& blobid,
 		Complete&& complete
-	)
-	{
-		link(db, coll, blobid, CollEntry{}, false, std::forward<Complete>(complete));
-	}
+	);
 
 	template <typename Complete>
 	void set_permission(
@@ -76,6 +70,15 @@ public:
 		std::string_view coll,
 		Complete&& complete
 	) const;
+
+	template <typename Complete>
+	void move_blob(
+		redis::Connection& db,
+		std::string_view src_coll,
+		std::string_view dest_coll,
+		const ObjectID& blobid,
+		Complete&& complete
+	);
 
 	template <typename Complete>
 	void find(
@@ -101,17 +104,6 @@ public:
 	) const;
 
 	const std::string& user() const {return m_user;}
-
-private:
-	template <typename Complete>
-	void link(
-		redis::Connection& db,
-		std::string_view path,
-		const ObjectID& blobid,
-		const CollEntry& entry,
-		bool add,
-		Complete&& complete
-	);
 
 private:
 	std::string m_user;

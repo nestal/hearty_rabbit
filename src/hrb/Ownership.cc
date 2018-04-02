@@ -14,6 +14,8 @@
 #include "Ownership.ipp"
 #include "BlobDatabase.hh"
 
+#include "util/Log.hh"
+
 #include <sstream>
 
 namespace hrb {
@@ -86,18 +88,57 @@ void Ownership::Collection::link(redis::Connection& db, const ObjectID& id, cons
 
 void Ownership::Collection::unlink(redis::Connection& db, const ObjectID& id)
 {
-	db.command("HDEL %b%b:%b %b",
+	// LUA script: delete the blob from the dir:<user>:<coll> hash table, and if
+	// the hash table is empty, remove the entry in dirs:<user> hash table
+	static const char cmd[] =
+		"redis.call('HDEL', KEYS[1], ARGV[1]) "
+		"if redis.call('EXISTS', KEYS[1]) == 0 then redis.call('HDEL', KEYS[2], ARGV[2]) else "
+			"local album = cjson.decode(redis.call('HGET', KEYS[2], ARGV[2])) "
+			"if album['cover'] == ARGV[3] then "
+				"album['cover'] = nil "
+				"redis.call('HSET', KEYS[2], ARGV[2], cjson.encode(album)) "
+			"end "
+		"end"
+	;
+
+	auto hex_id = to_hex(id);
+
+	db.command(
+		[](auto&& reply, auto ec)
+		{
+			if (!reply || ec)
+				Log(LOG_WARNING, "unlink lua script failure: %1% (%2%)", reply.as_error(), ec);
+		},
+		"EVAL %s 2 %b%b:%b %b%b %b %b %b",
+
+		cmd,
+
+		// KEYS[1] (hash table that stores the blob in a collection)
 		m_dir_prefix.data(), m_dir_prefix.size(),
 		m_user.data(), m_user.size(),
 		m_path.data(), m_path.size(),
-		id.data(), id.size()
+
+		// KEYS[2] (hash table that stores all collections owned by a user)
+		m_list_prefix.data(), m_list_prefix.size(),
+		m_user.data(), m_user.size(),
+
+		// ARGV[1] (name of the blob to unlink)
+		id.data(), id.size(),
+
+		// ARGV[2] (collection name)
+		m_path.data(), m_path.size(),
+
+		// ARGV[3] (hex of blob ID)
+		hex_id.data(), hex_id.size()
 	);
 }
 
 std::string Ownership::Collection::serialize(redis::Reply& reply, std::string_view requester) const
 {
+	// TODO: get the cover here... where to find a redis::Connection?
+
 	std::ostringstream ss;
-	ss  << R"__({"owner":")__"          << m_user
+	ss  << R"__({"owner":")__"         << m_user
 		<< R"__(", "collection":")__"  << m_path
 		<< R"__(", "username":")__"    << requester
 		<< R"__(", "elements":)__"     << "{";
@@ -114,7 +155,7 @@ std::string Ownership::Collection::serialize(redis::Reply& reply, std::string_vi
 			// entry string must be json. skip the { in the front and } in the back
 			// and prepend the "perm"="public"
 			auto json = entry.json();
-			if (json.size() > 2 && json.front() == '{' && json.back() == '}')
+			if (json.size() >= 2 && json.front() == '{' && json.back() == '}')
 			{
 				if (first)
 					first = false;
@@ -124,8 +165,10 @@ std::string Ownership::Collection::serialize(redis::Reply& reply, std::string_vi
 				json.remove_prefix(1);
 				json.remove_suffix(1);
 				ss  << to_quoted_hex(*blob_id)
-					<< ":{ \"perm\":\"" << entry.permission().description() << "\","
-					<< json << "}";
+					<< ":{ \"perm\":\"" << entry.permission().description() << "\"";
+				if (!json.empty())
+					ss << "," << json;
+				ss << "}";
 			}
 		}
 	});
