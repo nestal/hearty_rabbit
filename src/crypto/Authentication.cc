@@ -145,6 +145,8 @@ void Authentication::verify_session(
 	std::function<void(std::error_code, Authentication&&)>&& completion
 )
 {
+	static const char lua[] = "return {redis.call('GET', KEYS[1]), redis.call('TTL', KEYS[1])}";
+
 	db.command([
 			db=db.shared_from_this(),
 			comp=std::move(completion),
@@ -153,15 +155,16 @@ void Authentication::verify_session(
 		{
 			if (!ec)
 			{
-				if (reply.is_nil())
+				auto [user, ttl] = reply.as_tuple<2>(ec);
+				if (ec || user.is_nil())
 					comp(std::move(ec), Authentication{});
 				else
-					Authentication{cookie, reply.as_string()}.renew_session(*db, session_length, std::move(comp));
+					Authentication{cookie, user.as_string()}.renew_session(*db, session_length, std::move(comp));
 			}
 			else
 				comp(std::move(ec), Authentication{});
 		},
-		"GET session:%b", cookie.data(), cookie.size()
+		"EVAL %s 1 session:%b", lua, cookie.data(), cookie.size()
 	);
 }
 
