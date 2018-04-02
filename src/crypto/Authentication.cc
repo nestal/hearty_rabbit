@@ -156,13 +156,26 @@ void Authentication::verify_session(
 			if (!ec)
 			{
 				auto [user, ttl] = reply.as_tuple<2>(ec);
-				if (ec || user.is_nil())
-					comp(std::move(ec), Authentication{});
-				else
+				if (ec || user.is_nil() || ttl.as_int() < 0)
+				{
+					comp(ec, Authentication{});
+				}
+
+				// Note that if TTL <= 30, we assume the session has already been renewed so we won't renew again.
+				else if (ttl.as_int() > 30 && ttl.as_int() < session_length.count()/2)
+				{
+					Log(LOG_NOTICE, "%1% seconds before session timeout. Renewing session", ttl.as_int());
 					Authentication{cookie, user.as_string()}.renew_session(*db, session_length, std::move(comp));
+				}
+				else
+				{
+					comp(ec, Authentication{cookie, user.as_string()});
+				}
 			}
 			else
-				comp(std::move(ec), Authentication{});
+			{
+				comp(ec, Authentication{});
+			}
 		},
 		"EVAL %s 1 session:%b", lua, cookie.data(), cookie.size()
 	);
@@ -268,33 +281,12 @@ void Authentication::renew_session(
 	std::function<void(std::error_code, Authentication&&)>&& completion
 ) const
 {
-	// try to get the TTL of the session
-	db.command([
-			db=db.shared_from_this(), *this,
-			comp=std::move(completion), session_length
-		](auto&& reply, auto&& ec)
-		{
-			// The old session is more than half-way expired. Renew the session by
-			// creating a new one and deleting the old one.
-			if (reply.as_int() < session_length.count()/2)
-			{
-				Log(LOG_NOTICE, "%1% seconds before session timeout. Renewing session", reply.as_int());
-				create_session(std::move(comp), m_user, *db, session_length);
+	create_session(std::move(completion), m_user, db, session_length);
 
-				// Expire the old session cookie in 30 seconds.
-				// This is to avoid session error for the pending requests in the
-				// pipeline. These requests should still be using the old session.
-				db->command("EXPIRE session:%b 30", m_cookie.data(), m_cookie.size());
-			}
-
-			// No need to renew, can keep using the old one
-			else
-			{
-				comp(std::move(ec), Authentication{*this});
-			}
-		},
-		"TTL session:%b", m_cookie.data(), m_cookie.size()
-	);
+	// Expire the old session cookie in 30 seconds.
+	// This is to avoid session error for the pending requests in the
+	// pipeline. These requests should still be using the old session.
+	db.command("EXPIRE session:%b 30", m_cookie.data(), m_cookie.size());
 }
 
 } // end of namespace hrb
