@@ -227,54 +227,29 @@ void Ownership::Collection::set_permission(
 	Complete&& complete
 ) const
 {
-	// we can't lock a field in the hash table, so lock a dummy key instead
+	static const char lua[] =
+		"local perm = redis.call('HGET', KEYS[1], ARGV[1]) "
+		"local perm2 = ARGV[2] .. string.sub(perm, 2, -1) "
+		"redis.call('HSET', KEYS[1], ARGV[1], perm2)"
+	;
 	db.command(
-		"WATCH lock:%b%b:%b:%b",
-		m_dir_prefix.data(), m_dir_prefix.size(),
-		m_user.data(), m_user.size(),
-		m_path.data(), m_path.size(),
-		blob.data(), blob.size()
-	);
-	db.command(
-		[
-			comp=std::forward<Complete>(complete),
-			db=db.shared_from_this(), *this, blob, perm
-		](auto&& reply, std::error_code&& ec) mutable
+		[comp=std::forward<Complete>(complete)](auto&& reply, auto&& ec) mutable
 		{
-			CollEntry entry{reply.as_string()};
-			auto s = CollEntry::create(Permission{perm}, entry.filename(), entry.mime());
-
-			db->command("MULTI");
-			db->command(
-				"SETEX lock:%b%b:%b:%b 3600 %b",
-				m_dir_prefix.data(), m_dir_prefix.size(),
-				m_user.data(), m_user.size(),
-				m_path.data(), m_path.size(),
-				blob.data(), blob.size(),
-				s.data(), s.size()
-			);
-			db->command(
-				"HSET %b%b:%b %b %b",
-				m_dir_prefix.data(), m_dir_prefix.size(),
-				m_user.data(), m_user.size(),
-				m_path.data(), m_path.size(),
-				blob.data(), blob.size(),
-				s.data(), s.size()
-			);
-			db->command(
-				[comp=std::forward<Complete>(comp)](auto&& reply, auto&& ec) mutable
-				{
-					comp(std::move(ec));
-				},
-				"EXEC"
-			);
+			comp(std::move(ec));
 		},
+		"EVAL %s 1 %b%b:%b %b %b",
+		lua,
 
-		"HGET %b%b:%b %b",
+		// KEYS[1]
 		m_dir_prefix.data(), m_dir_prefix.size(),
 		m_user.data(), m_user.size(),
 		m_path.data(), m_path.size(),
-		blob.data(), blob.size()
+
+		// ARGV[1]
+		blob.data(), blob.size(),
+
+		// ARGV2[]
+		perm.data(), perm.size()
 	);
 }
 
