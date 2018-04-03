@@ -227,11 +227,11 @@ void Ownership::Collection::set_permission(
 	Complete&& complete
 ) const
 {
-	static const char lua[] =
-		"local perm = redis.call('HGET', KEYS[1], ARGV[1]) "
-		"local perm2 = ARGV[2] .. string.sub(perm, 2, -1) "
-		"redis.call('HSET', KEYS[1], ARGV[1], perm2)"
-	;
+	static const char lua[] = R"__(
+		local original = redis.call('HGET', KEYS[1], ARGV[1])
+		local updated  = ARGV[2] .. string.sub(original, 2, -1)
+		redis.call('HSET', KEYS[1], ARGV[1], updated)
+	)__";
 	db.command(
 		[comp=std::forward<Complete>(complete)](auto&& reply, auto&& ec) mutable
 		{

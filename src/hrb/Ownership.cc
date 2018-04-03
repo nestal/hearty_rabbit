@@ -90,16 +90,16 @@ void Ownership::Collection::unlink(redis::Connection& db, const ObjectID& id)
 {
 	// LUA script: delete the blob from the dir:<user>:<coll> hash table, and if
 	// the hash table is empty, remove the entry in dirs:<user> hash table
-	static const char cmd[] =
-		"redis.call('HDEL', KEYS[1], ARGV[1]) "
-		"if redis.call('EXISTS', KEYS[1]) == 0 then redis.call('HDEL', KEYS[2], ARGV[2]) else "
-			"local album = cjson.decode(redis.call('HGET', KEYS[2], ARGV[2])) "
-			"if album['cover'] == ARGV[3] then "
-				"album['cover'] = nil "
-				"redis.call('HSET', KEYS[2], ARGV[2], cjson.encode(album)) "
-			"end "
-		"end"
-	;
+	static const char cmd[] = R"__(
+		redis.call('HDEL', KEYS[1], ARGV[1])
+		if redis.call('EXISTS', KEYS[1]) == 0 then redis.call('HDEL', KEYS[2], ARGV[2]) else
+			local album = cjson.decode(redis.call('HGET', KEYS[2], ARGV[2]))
+			if album['cover'] == ARGV[3] then
+				album['cover'] = nil
+				redis.call('HSET', KEYS[2], ARGV[2], cjson.encode(album))
+			end
+		end
+	)__";
 
 	auto hex_id = to_hex(id);
 
