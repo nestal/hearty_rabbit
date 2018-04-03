@@ -33,7 +33,6 @@ public:
 
 public:
 	BlobBackLink(std::string_view user, std::string_view coll, const ObjectID& blob);
-	BlobBackLink(std::string_view db_str, const ObjectID& blob);
 
 	// expect to be done inside a transaction
 	void link(redis::Connection& db) const;
@@ -58,7 +57,8 @@ public:
 	static const std::string_view m_public_blobs;
 
 public:
-	explicit Collection(std::string_view user, std::string_view path);
+	Collection(std::string_view user, std::string_view path);
+	explicit Collection(std::string_view redis_key);
 
 	void watch(redis::Connection& db);
 
@@ -452,9 +452,9 @@ void Ownership::find_reference(redis::Connection& db, const ObjectID& blob, Comp
 		{
 			for (auto&& entry : reply)
 			{
-				BlobBackLink ref{entry.as_string(), blob};
+				Collection ref{entry.as_string()};
 				if (user == ref.user())
-					comp(ref.collection());
+					comp(ref.path());
 			}
 		},
 		"SMEMBERS %b:%b",
@@ -509,7 +509,8 @@ void Ownership::query_blob(redis::Connection& db, const ObjectID& blob, Complete
 
 			reply.foreach_kv_pair([&comp](auto&& key, auto&& val)
 			{
-				comp(key, CollEntry{val.as_string()});
+				Collection coll{key};
+				comp(coll.user(), coll.path(), CollEntry{val.as_string()});
 			});
 		},
 		"EVAL %s 1 %b:%b %b",

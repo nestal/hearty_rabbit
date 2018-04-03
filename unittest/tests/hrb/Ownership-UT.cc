@@ -327,10 +327,11 @@ TEST_CASE("Query blob of testuser")
 	REQUIRE(tested == 1);
 	ioc.restart();
 
-	subject.query_blob(*redis, blobid, [&tested](auto&& coll, auto&& entry)
+	subject.query_blob(*redis, blobid, [&tested](auto&& user, auto&& coll, auto&& entry)
 	{
 		// There should be only one collection that owns the blob
-		REQUIRE(coll == "dir:testuser:somecoll");
+		REQUIRE(user == "testuser");
+		REQUIRE(coll == "somecoll");
 		REQUIRE(entry.permission() == Permission::public_());
 		REQUIRE(entry.filename() == "haha.jpeg");
 		REQUIRE(entry.mime() == "image/jpeg");
@@ -399,23 +400,17 @@ TEST_CASE("collection entry", "[normal]")
 	REQUIRE(same.raw() == subject.raw());
 }
 
-TEST_CASE("Backlink ctor", "[normal]")
+TEST_CASE("Collection ctor", "[normal]")
 {
-	auto oid = hex_to_object_id("0123456789012345678901234567890123456789");
-	REQUIRE(oid);
-
-	Ownership::BlobBackLink subject{"dir:user:path", *oid};
+	Ownership::Collection subject{"dir:user:path"};
 	REQUIRE(subject.user() == "user");
-	REQUIRE(subject.collection() == "path");
-	REQUIRE(subject.blob() == *oid);
+	REQUIRE(subject.path() == "path");
 
-	Ownership::BlobBackLink path_with_colon{"dir:sumsum::path::", *oid};
+	Ownership::Collection path_with_colon{"dir:sumsum::path::"};
 	REQUIRE(path_with_colon.user() == "sumsum");
-	REQUIRE(path_with_colon.collection() == ":path::");
-	REQUIRE(path_with_colon.blob() == *oid);
+	REQUIRE(path_with_colon.path() == ":path::");
 
-	Ownership::BlobBackLink path_with_slash{"dir:siuyung:/some/collection:path", *oid};
+	Ownership::Collection path_with_slash{"dir:siuyung:/some/collection:path"};
 	REQUIRE(path_with_slash.user() == "siuyung");
-	REQUIRE(path_with_slash.collection() == "/some/collection:path");
-	REQUIRE(path_with_slash.blob() == *oid);
+	REQUIRE(path_with_slash.path() == "/some/collection:path");
 }

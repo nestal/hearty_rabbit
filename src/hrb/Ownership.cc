@@ -25,21 +25,6 @@ Ownership::Ownership(std::string_view name) : m_user{name}
 {
 }
 
-// Parse the string that was put in the redis set, i.e. "%b%b:%b"
-Ownership::BlobBackLink::BlobBackLink(std::string_view db_str, const ObjectID& blob) : m_blob{blob}
-{
-	auto [prefix, colon] = split_front(db_str, ":");
-	if (colon != ':' || prefix != Collection::m_dir_prefix.substr(0, Collection::m_dir_prefix.size()-1))
-		return;
-
-	auto [user, colon2] = split_front(db_str, ":");
-	if (colon2 != ':')
-		return;
-
-	m_user = user;
-	m_coll = db_str;
-}
-
 const std::string_view Ownership::BlobBackLink::m_prefix{"blob-ref:"};
 
 Ownership::BlobBackLink::BlobBackLink(std::string_view user, std::string_view coll, const ObjectID& blob) :
@@ -79,6 +64,20 @@ Ownership::Collection::Collection(std::string_view user, std::string_view path) 
 	m_user{user},
 	m_path{path}
 {
+}
+
+Ownership::Collection::Collection(std::string_view redis_reply)
+{
+	auto [prefix, colon] = split_front(redis_reply, ":");
+	if (colon != ':' || prefix != Collection::m_dir_prefix.substr(0, Collection::m_dir_prefix.size()-1))
+		return;
+
+	auto [user, colon2] = split_front(redis_reply, ":");
+	if (colon2 != ':')
+		return;
+
+	m_user = user;
+	m_path = redis_reply;
 }
 
 void Ownership::Collection::watch(redis::Connection& db)
