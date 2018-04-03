@@ -237,17 +237,18 @@ void Ownership::Collection::set_permission(
 		local updated  = ARGV[2] .. string.sub(original, 2, -1)
 		redis.call('HSET', KEYS[1], ARGV[1], updated)
 		if ARGV[2] == '*' then
-			if redis.call('LPUSH', KEYS[2], ARGV[1] .. KEYS[1]) > 100 then
+			if redis.call('LPUSH', KEYS[2], ARGV[1]) > 100 then
 				redis.call('LPOP', KEYS[2])
 			end
 		else
-			redis.call('LREM', KEYS[2], ARGV[1] .. KEYS[1])
+			redis.call('LREM', KEYS[2], ARGV[1])
 		end
 	)__";
 	db.command(
 		[comp=std::forward<Complete>(complete)](auto&& reply, auto&& ec) mutable
 		{
-			Log(LOG_INFO, "script reply: %1%", reply.as_error());
+			if (!reply)
+				Log(LOG_WARNING, "Collection::set_permission(): script error: %1%", reply.as_error());
 			comp(std::move(ec));
 		},
 		"EVAL %s 2 %b%b:%b %b %b %b",
@@ -341,9 +342,14 @@ void Ownership::unlink(
 	db.command("MULTI");
 	blob.unlink(db);
 	coll.unlink(db, blob.blob());
+	db.command(
+		"LREM %b 1 %b",
+		Collection::m_public_blobs.data(), Collection::m_public_blobs.size(),
+		blobid.data(), blobid.size()
+	);
 	db.command([comp=std::forward<Complete>(complete)](auto&& reply, std::error_code ec)
 	{
-		assert(reply.array_size() == 2);
+		assert(reply.array_size() == 3);
 		comp(ec);
 	}, "EXEC");
 }
@@ -469,19 +475,48 @@ void Ownership::list_public_blobs(
 			for (auto&& en : reply)
 			{
 				auto s = en.as_string();
-				if (s.size() > ObjectID{}.size())
+				if (s.size() >= ObjectID{}.size())
 				{
 					// the first 20 bytes are the blob ID
 					auto blob = raw_to_object_id(s.substr(0, ObjectID{}.size()));
 					s.remove_prefix(ObjectID{}.size());
 
-					BlobBackLink ref{s, *blob};
-					comp(ref.user(), ref.collection(), ref.blob());
+					comp(*blob);
 				}
 			}
 		},
 		"LRANGE %b 0 -1",
 		Collection::m_public_blobs.data(), Collection::m_public_blobs.size()
+	);
+}
+
+template <typename Complete>
+void Ownership::query_blob(redis::Connection& db, const ObjectID& blob, Complete&& complete)
+{
+	static const char lua[] = R"__(
+		local dirs = {}
+		for k, coll in pairs(redis.call('SMEMBERS', KEYS[1])) do
+			table.insert(dirs, coll)
+			table.insert(dirs, redis.call('HGET', coll, ARGV[1]))
+		end
+		return dirs;
+	)__";
+
+	db.command(
+		[comp=std::forward<Complete>(complete)](auto&& reply, auto ec)
+		{
+			Log(LOG_INFO, "script reply: %1%", reply.as_error());
+
+			reply.foreach_kv_pair([&comp](auto&& key, auto&& val)
+			{
+				comp(key, CollEntry{val.as_string()});
+			});
+		},
+		"EVAL %s 1 %b:%b %b",
+		lua,
+		BlobBackLink::m_prefix.data(), BlobBackLink::m_prefix.size(),
+		blob.data(), blob.size(),
+		blob.data(), blob.size()
 	);
 }
 

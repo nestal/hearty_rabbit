@@ -70,4 +70,14 @@ Permission Permission::from_description(std::string_view description)
 		return Permission{};
 }
 
+bool Permission::operator==(const Permission& other) const
+{
+	return m_perm == other.m_perm;
+}
+
+bool Permission::operator!=(const Permission& other) const
+{
+	return m_perm != other.m_perm;
+}
+
 } // end of namespace hrb

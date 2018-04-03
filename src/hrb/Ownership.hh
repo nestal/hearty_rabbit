@@ -116,6 +116,13 @@ public:
 		Complete&& complete
 	);
 
+	template <typename Complete>
+	void query_blob(
+		redis::Connection& db,
+		const ObjectID& blob,
+		Complete&& complete
+	);
+
 	const std::string& user() const {return m_user;}
 
 private:

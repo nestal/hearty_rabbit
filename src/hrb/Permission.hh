@@ -37,6 +37,9 @@ public:
 	constexpr std::size_t size() const {return 1;}
 	constexpr char perm() const {return m_perm;}
 
+	bool operator==(const Permission& other) const;
+	bool operator!=(const Permission& other) const;
+
 private:
 	char m_perm{' '};
 };

@@ -166,9 +166,9 @@ TEST_CASE("add blob to Ownership", "[normal]")
 
 	// verify that the newly added blob is in the public list
 	bool found = false;
-	Ownership::list_public_blobs(*redis, [&found, blobid](auto user, auto coll, auto blob)
+	Ownership::list_public_blobs(*redis, [&found, blobid](auto blob)
 	{
-		if (user == "owner" && coll == "/" && blob == blobid)
+		if (blob == blobid)
 			found = true;
 	});
 
@@ -302,6 +302,43 @@ TEST_CASE("Load 3 images in json", "[normal]")
 
 	REQUIRE(ioc.run_for(10s) > 0);
 	REQUIRE(added == 0);
+}
+
+TEST_CASE("Query blob of testuser")
+{
+	boost::asio::io_context ioc;
+	auto redis = redis::connect(ioc);
+
+	Ownership subject{"testuser"};
+
+	auto blobid = insecure_random<ObjectID>();
+
+	auto ce_str = CollEntry::create(Permission::public_(), "haha.jpeg", "image/jpeg");
+
+	int tested = 0;
+	subject.link(
+		*redis, "somecoll", blobid, CollEntry{ce_str}, [&tested](auto ec)
+		{
+			REQUIRE(!ec);
+			tested++;
+		}
+	);
+	REQUIRE(ioc.run_for(10s) > 0);
+	REQUIRE(tested == 1);
+	ioc.restart();
+
+	subject.query_blob(*redis, blobid, [&tested](auto&& coll, auto&& entry)
+	{
+		// There should be only one collection that owns the blob
+		REQUIRE(coll == "dir:testuser:somecoll");
+		REQUIRE(entry.permission() == Permission::public_());
+		REQUIRE(entry.filename() == "haha.jpeg");
+		REQUIRE(entry.mime() == "image/jpeg");
+		tested++;
+	});
+
+	REQUIRE(ioc.run_for(10s) > 0);
+	REQUIRE(tested == 2);
 }
 
 TEST_CASE("Scan for all containers from testuser")
