@@ -88,6 +88,13 @@ public:
 		Complete&& complete
 	) const;
 
+	template <typename Complete>
+	void find_reference(
+		redis::Connection& db,
+		const ObjectID& blob,
+		Complete&& complete
+	) const;
+
 	template <typename CollectionCallback, typename Complete>
 	void scan_collections(
 		redis::Connection& db,

@@ -15,6 +15,7 @@
 #include "BlobDatabase.hh"
 
 #include "util/Log.hh"
+#include "util/Escape.hh"
 
 #include <sstream>
 
@@ -24,14 +25,24 @@ Ownership::Ownership(std::string_view name) : m_user{name}
 {
 }
 
+// Parse the string that was put in the redis set, i.e. "%b%b:%b"
+Ownership::BlobBackLink::BlobBackLink(std::string_view db_str)
+{
+	auto [prefix, colon] = split_front(db_str, ":");
+	if (prefix == Collection::m_dir_prefix.substr(0, Collection::m_dir_prefix.size()-1) && colon == ':')
+	{
+//		auto [user, colon2] = split
+	}
+}
+
 const std::string_view Ownership::BlobBackLink::m_prefix{"blob-ref:"};
 
-Ownership::BlobBackLink::BlobBackLink(std::string_view user, const ObjectID& blob) :
-	m_user{user}, m_blob{blob}
+Ownership::BlobBackLink::BlobBackLink(std::string_view user, std::string_view coll, const ObjectID& blob) :
+	m_user{user}, m_coll{coll}, m_blob{blob}
 {
 }
 
-void Ownership::BlobBackLink::link(redis::Connection& db, std::string_view coll) const
+void Ownership::BlobBackLink::link(redis::Connection& db) const
 {
 	db.command(
 		"SADD %b:%b %b%b:%b",
@@ -39,11 +50,11 @@ void Ownership::BlobBackLink::link(redis::Connection& db, std::string_view coll)
 		m_blob.data(), m_blob.size(),
 		Collection::m_dir_prefix.data(), Collection::m_dir_prefix.size(),
 		m_user.data(), m_user.size(),
-		coll.data(), coll.size()
+		m_coll.data(), m_coll.size()
 	);
 }
 
-void Ownership::BlobBackLink::unlink(redis::Connection& db, std::string_view coll) const
+void Ownership::BlobBackLink::unlink(redis::Connection& db) const
 {
 	db.command(
 		"SREM %b:%b %b%b:%b",
@@ -51,7 +62,7 @@ void Ownership::BlobBackLink::unlink(redis::Connection& db, std::string_view col
 		m_blob.data(), m_blob.size(),
 		Collection::m_dir_prefix.data(), Collection::m_dir_prefix.size(),
 		m_user.data(), m_user.size(),
-		coll.data(), coll.size()
+		m_coll.data(), m_coll.size()
 	);
 }
 

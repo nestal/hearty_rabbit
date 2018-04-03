@@ -31,17 +31,19 @@ private:
 	static const std::string_view m_prefix;
 
 public:
-	BlobBackLink(std::string_view user, const ObjectID& blob);
+	BlobBackLink(std::string_view user, std::string_view coll, const ObjectID& blob);
+	BlobBackLink(std::string_view db_str);
 
 	// expect to be done inside a transaction
-	void link(redis::Connection& db, std::string_view coll) const;
-	void unlink(redis::Connection& db, std::string_view coll) const;
+	void link(redis::Connection& db) const;
+	void unlink(redis::Connection& db) const;
 
 	const std::string& user() const {return m_user;}
 	const ObjectID& blob() const {return m_blob;}
 
 private:
 	std::string m_user;
+	std::string m_coll;
 	ObjectID    m_blob;
 };
 
@@ -299,11 +301,11 @@ void Ownership::link(
 	Complete&& complete
 )
 {
-	BlobBackLink  blob{m_user, blobid};
-	Collection coll{m_user, coll_name};
+	BlobBackLink blob{m_user, coll_name, blobid};
+	Collection   coll{m_user, coll_name};
 
 	db.command("MULTI");
-	blob.link(db, coll.path());
+	blob.link(db);
 	coll.link(db, blob.blob(), entry);
 	db.command([comp=std::forward<Complete>(complete)](auto&&, std::error_code ec)
 	{
@@ -319,11 +321,11 @@ void Ownership::unlink(
 	Complete&& complete
 )
 {
-	BlobBackLink  blob{m_user, blobid};
+	BlobBackLink  blob{m_user, coll_name, blobid};
 	Collection coll{m_user, coll_name};
 
 	db.command("MULTI");
-	blob.unlink(db, coll.path());
+	blob.unlink(db);
 	coll.unlink(db, blob.blob());
 	db.command([comp=std::forward<Complete>(complete)](auto&& reply, std::error_code ec)
 	{

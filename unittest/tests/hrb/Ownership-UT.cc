@@ -341,3 +341,9 @@ TEST_CASE("collection entry", "[normal]")
 	REQUIRE(same.permission().allow("yungyung") == false);
 	REQUIRE(same.raw() == subject.raw());
 }
+
+TEST_CASE("Backlink ctor", "[normal]")
+{
+//	Ownership::BlobBackLink subject{"dir:user:path"};
+//	REQUIRE(subject.user() == "user");
+}
