@@ -90,13 +90,9 @@ void Session::on_read_header(boost::system::error_code ec, std::size_t bytes_tra
 		if (!validate_request(header))
 			return;
 
-		URLIntent intent{header.target()};
-		if (!intent.valid())
-			return send_response(m_server.not_found("not found", header.version()));
-
 		m_server.on_request_header(
-			header, intent, *m_parser, m_body,
-			[self=shared_from_this(), this](std::optional<Authentication> auth)
+			header, *m_parser, m_body,
+			[self=shared_from_this(), this](const std::optional<Authentication>& auth)
 			{
 				// Call async_read() using the chosen parser to read and parse the request body.
 				std::visit([&self, this, auth](auto&& parser)

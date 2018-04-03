@@ -257,12 +257,24 @@ http::response<http::string_body> Server::bad_request(boost::beast::string_view 
 }
 
 // Returns a not found response
-http::response<SplitBuffers> Server::not_found(boost::string_view target, unsigned version)
+http::response<SplitBuffers> Server::not_found(boost::string_view target, const std::optional<Authentication>& auth, unsigned version)
 {
+	rapidjson::Document dir{rapidjson::kObjectType};
+	dir.AddMember("error_message", "The request resource was not found.", dir.GetAllocator());
+	if (auth)
+		dir.AddMember("username", rapidjson::StringRef(auth->user()), dir.GetAllocator());
+
+	std::ostringstream json;
+	json << "var dir = ";
+	rapidjson::OStreamWrapper osw{json};
+	rapidjson::Writer<rapidjson::OStreamWrapper> writer{osw};
+	dir.Accept(writer);
+	json << ";";
+
 	using namespace std::literals;
 	auto res = m_lib.find_dynamic("index.html", version);
 	res.result(http::status::not_found);
-	res.body().extra(hrb::index_needle, R"_(var dir = {error_message: "The request resource was not found."};)_");
+	res.body().extra(hrb::index_needle, json.str());
 	return res;
 }
 

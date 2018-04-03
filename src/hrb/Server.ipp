@@ -38,25 +38,20 @@ namespace hrb {
 template <class Complete>
 void Server::on_request_header(
 	const RequestHeader& header,
-	const URLIntent& intent,
 	EmptyRequestParser& src,
 	RequestBodyParsers& dest,
 	Complete&& complete
 )
 {
+	URLIntent intent{header.target()};
+
 	// Use StringRequestParser to parser login requests.
 	// The username/password will be stored in the string body.
 	// No need to verify session.
 	if (intent.action() == URLIntent::Action::login)
 	{
 		dest.emplace<StringRequestParser>(std::move(src));
-		return complete(std::nullopt);
-	}
-
-	if (intent.action() == URLIntent::Action::lib)
-	{
-		dest.emplace<EmptyRequestParser>(std::move(src));
-		return complete(std::nullopt);
+		return complete(Authentication{});
 	}
 
 	// Everything else require a valid session.
@@ -151,7 +146,7 @@ void Server::handle_request(Request&& req, Send&& send, const Authentication& au
 			return on_upload(std::move(req), std::forward<Send>(send), auth);
 	}
 
-	return send(not_found(req.target(), req.version()));
+	return send(not_found(req.target(), auth, req.version()));
 }
 
 template <class Request, class Send>
