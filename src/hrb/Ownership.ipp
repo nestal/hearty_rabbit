@@ -19,6 +19,7 @@
 #include "util/Log.hh"
 
 #include <rapidjson/document.h>
+#include <json.hpp>
 
 #include <vector>
 
@@ -175,14 +176,20 @@ void Ownership::Collection::scan_all(
 	jdoc->AddMember("username", std::string{requester}, jdoc->GetAllocator());
 	jdoc->AddMember("colls",    rapidjson::Value{}.SetObject(), jdoc->GetAllocator());
 
+	auto nl = std::make_shared<nlohmann::json>();
+	nl->emplace("owner",    std::string{owner});
+	nl->emplace("username", std::string{requester});
+	nl->emplace("colls",    nlohmann::json::object());
+
 	scan(db, owner, 0,
-		[&colls=(*jdoc)["colls"], jdoc](auto coll, auto&& json)
+		[&colls=(*jdoc)["colls"], jdoc, &nl_colls=(*nl)["colls"]](auto coll, auto&& json)
 		{
 			colls.AddMember(
 				json::string_ref(coll),
 				rapidjson::Value{}.CopyFrom(json, jdoc->GetAllocator()),
 				jdoc->GetAllocator()
 			);
+//			nl_colls.emplace(std::string{coll}, )
 		},
 		[jdoc, comp=std::forward<Complete>(complete)](long cursor, auto ec)
 		{

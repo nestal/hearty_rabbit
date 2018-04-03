@@ -169,10 +169,10 @@ std::string Ownership::Collection::serialize(redis::Reply& reply, std::string_vi
 		{
 			auto entry_jdoc = nlohmann::json::parse(entry.json());
 			entry_jdoc.emplace("perm", std::string{entry.permission().description()});
-			elements.emplace(to_hex(*blob_id), entry_jdoc);
+			elements.emplace(to_hex(*blob_id), std::move(entry_jdoc));
 		}
 	});
-	jdoc.emplace("elements", elements);
+	jdoc.emplace("elements", std::move(elements));
 
 	return jdoc.dump();
 }
