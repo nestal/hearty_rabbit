@@ -73,6 +73,7 @@ void Ownership::BlobBackLink::unlink(redis::Connection& db) const
 
 const std::string_view Ownership::Collection::m_dir_prefix = "dir:";
 const std::string_view Ownership::Collection::m_list_prefix = "dirs:";
+const std::string_view Ownership::Collection::m_public_blobs = "public-blobs";
 
 Ownership::Collection::Collection(std::string_view user, std::string_view path) :
 	m_user{user},

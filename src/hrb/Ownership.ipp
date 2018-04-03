@@ -16,6 +16,7 @@
 
 #include "util/Error.hh"
 #include "util/JsonHelper.hh"
+#include "util/Log.hh"
 
 #include <rapidjson/document.h>
 
@@ -54,6 +55,7 @@ class Ownership::Collection
 public:
 	static const std::string_view m_dir_prefix;
 	static const std::string_view m_list_prefix;
+	static const std::string_view m_public_blobs;
 
 public:
 	explicit Collection(std::string_view user, std::string_view path);
@@ -234,24 +236,35 @@ void Ownership::Collection::set_permission(
 		local original = redis.call('HGET', KEYS[1], ARGV[1])
 		local updated  = ARGV[2] .. string.sub(original, 2, -1)
 		redis.call('HSET', KEYS[1], ARGV[1], updated)
+		if ARGV[2] == '*' then
+			if redis.call('LPUSH', KEYS[2], ARGV[1] .. KEYS[1]) > 100 then
+				redis.call('LPOP', KEYS[2])
+			end
+		else
+			redis.call('LREM', KEYS[2], ARGV[1] .. KEYS[1])
+		end
 	)__";
 	db.command(
 		[comp=std::forward<Complete>(complete)](auto&& reply, auto&& ec) mutable
 		{
+			Log(LOG_INFO, "script reply: %1%", reply.as_error());
 			comp(std::move(ec));
 		},
-		"EVAL %s 1 %b%b:%b %b %b",
+		"EVAL %s 2 %b%b:%b %b %b %b",
 		lua,
 
-		// KEYS[1]
+		// KEYS[1]: dir:<user>:<collection>
 		m_dir_prefix.data(), m_dir_prefix.size(),
 		m_user.data(), m_user.size(),
 		m_path.data(), m_path.size(),
 
-		// ARGV[1]
+		// KEYS[2]: public list of blob references
+		m_public_blobs.data(), m_public_blobs.size(),
+
+		// ARGV[1]: blob ID
 		blob.data(), blob.size(),
 
-		// ARGV2[]
+		// ARGV[2]: permission string
 		perm.data(), perm.size()
 	);
 }
@@ -441,6 +454,34 @@ void Ownership::find_reference(redis::Connection& db, const ObjectID& blob, Comp
 		"SMEMBERS %b:%b",
 		BlobBackLink::m_prefix.data(), BlobBackLink::m_prefix.size(),
 		blob.data(), blob.size()
+	);
+}
+
+template <typename Complete>
+void Ownership::list_public_blobs(
+	redis::Connection& db,
+	Complete&& complete
+)
+{
+	db.command(
+		[comp=std::forward<Complete>(complete)](auto&& reply, auto ec)
+		{
+			for (auto&& en : reply)
+			{
+				auto s = en.as_string();
+				if (s.size() > ObjectID{}.size())
+				{
+					// the first 20 bytes are the blob ID
+					auto blob = raw_to_object_id(s.substr(0, ObjectID{}.size()));
+					s.remove_prefix(ObjectID{}.size());
+
+					BlobBackLink ref{s, *blob};
+					comp(ref.user(), ref.collection(), ref.blob());
+				}
+			}
+		},
+		"LRANGE %b 0 -1",
+		Collection::m_public_blobs.data(), Collection::m_public_blobs.size()
 	);
 }
 

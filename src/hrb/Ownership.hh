@@ -110,6 +110,12 @@ public:
 		Complete&& complete
 	) const;
 
+	template <typename Complete>
+	static void list_public_blobs(
+		redis::Connection& db,
+		Complete&& complete
+	);
+
 	const std::string& user() const {return m_user;}
 
 private:

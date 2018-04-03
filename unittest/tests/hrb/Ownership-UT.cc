@@ -164,6 +164,18 @@ TEST_CASE("add blob to Ownership", "[normal]")
 	REQUIRE(tested == 4);
 	ioc.restart();
 
+	// verify that the newly added blob is in the public list
+	bool found = false;
+	Ownership::list_public_blobs(*redis, [&found, blobid](auto user, auto coll, auto blob)
+	{
+		if (user == "owner" && coll == "/" && blob == blobid)
+			found = true;
+	});
+
+	REQUIRE(ioc.run_for(10s) > 0);
+	REQUIRE(found);
+	ioc.restart();
+
 	// anonymous access is now allowed
 	subject.find(*redis, "/", blobid, [&tested](auto&& entry, std::error_code ec)
 	{
