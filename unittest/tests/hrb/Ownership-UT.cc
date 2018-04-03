@@ -58,8 +58,16 @@ TEST_CASE("list of collection owned by user", "[normal]")
 		tested++;
 	});
 
+	// assert the blob backlink points back to the collection
+	std::vector<std::string> refs;
+	subject.find_reference(*redis, blobid, [&refs](auto coll)
+	{
+		refs.emplace_back(coll);
+	});
+
 	REQUIRE(ioc.run_for(10s) > 0);
 	REQUIRE(tested == 2);
+	REQUIRE(std::find(refs.begin(), refs.end(), "/") != refs.end());
 	ioc.restart();
 
 	// remove all blobs in the collection

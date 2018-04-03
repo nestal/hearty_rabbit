@@ -27,7 +27,7 @@ namespace hrb {
 
 class Ownership::BlobBackLink
 {
-private:
+public:
 	static const std::string_view m_prefix;
 
 public:
@@ -422,6 +422,25 @@ void Ownership::move_blob(
 				}, "EXEC");
 			}
 		}
+	);
+}
+
+template <typename Complete>
+void Ownership::find_reference(redis::Connection& db, const ObjectID& blob, Complete&& complete) const
+{
+	db.command(
+		[comp=std::forward<Complete>(complete), blob, user=m_user](auto&& reply, auto ec)
+		{
+			for (auto&& entry : reply)
+			{
+				BlobBackLink ref{entry.as_string(), blob};
+				if (user == ref.user())
+					comp(ref.collection());
+			}
+		},
+		"SMEMBERS %b:%b",
+		BlobBackLink::m_prefix.data(), BlobBackLink::m_prefix.size(),
+		blob.data(), blob.size()
 	);
 }
 
