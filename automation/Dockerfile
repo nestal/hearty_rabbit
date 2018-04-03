@@ -53,3 +53,5 @@ RUN cd libb2 \
 	&& ./autogen.sh \
 	&& ./configure --prefix=/opt/libb2 --enable-native=no \
 	&& make install
+
+ADD https://github.com/nlohmann/json/releases/download/v3.1.2/json.hpp /opt/json/include/

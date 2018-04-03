@@ -11,6 +11,7 @@ ENV PATH=$PATH:/opt/rh/devtoolset-7/root/usr/bin:/opt/cmake-3.11.0/bin \
 COPY . /build/hearty_rabbit
 RUN mkdir /build/docker-build \
 	&& cd docker-build \
+	&& wget https://github.com/nlohmann/json/releases/download/v3.1.2/json.hpp \
 	&& cmake \
 		-DBOOST_ROOT=/opt/boost_1_66_0 \
 		-DCMAKE_PREFIX_PATH=/opt/libb2 \

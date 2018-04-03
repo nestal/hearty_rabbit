@@ -17,6 +17,9 @@
 #include "util/Log.hh"
 #include "util/Escape.hh"
 
+#include "json.hpp"
+#include <rapidjson/writer.h>
+
 #include <sstream>
 
 namespace hrb {
@@ -149,15 +152,14 @@ void Ownership::Collection::unlink(redis::Connection& db, const ObjectID& id)
 std::string Ownership::Collection::serialize(redis::Reply& reply, std::string_view requester) const
 {
 	// TODO: get the cover here... where to find a redis::Connection?
+	auto jdoc = nlohmann::json::object();
 
-	std::ostringstream ss;
-	ss  << R"__({"owner":")__"         << m_user
-		<< R"__(", "collection":")__"  << m_path
-		<< R"__(", "username":")__"    << requester
-		<< R"__(", "elements":)__"     << "{";
+	jdoc.emplace("owner", m_user);
+	jdoc.emplace("collection", m_path);
+	jdoc.emplace("username", std::string{requester});
 
-	bool first = true;
-	reply.foreach_kv_pair([&ss, &first, requester, this](auto&& blob, auto&& perm)
+	auto elements = nlohmann::json::object();
+	reply.foreach_kv_pair([&elements, &jdoc, requester, this](auto&& blob, auto&& perm)
 	{
 		auto blob_id = raw_to_object_id(blob);
 		CollEntry entry{perm.as_string()};
@@ -165,28 +167,14 @@ std::string Ownership::Collection::serialize(redis::Reply& reply, std::string_vi
 		// check permission: allow allow owner (i.e. m_user)
 		if (blob_id && (m_user == requester || entry.permission().allow(requester)))
 		{
-			// entry string must be json. skip the { in the front and } in the back
-			// and prepend the "perm"="public"
-			auto json = entry.json();
-			if (json.size() >= 2 && json.front() == '{' && json.back() == '}')
-			{
-				if (first)
-					first = false;
-				else
-					ss << ",\n";
-
-				json.remove_prefix(1);
-				json.remove_suffix(1);
-				ss  << to_quoted_hex(*blob_id)
-					<< ":{ \"perm\":\"" << entry.permission().description() << "\"";
-				if (!json.empty())
-					ss << "," << json;
-				ss << "}";
-			}
+			auto entry_jdoc = nlohmann::json::parse(entry.json());
+			entry_jdoc.emplace("perm", std::string{entry.permission().description()});
+			elements.emplace(to_hex(*blob_id), entry_jdoc);
 		}
 	});
-	ss << "}}";
-	return ss.str();
+	jdoc.emplace("elements", elements);
+
+	return jdoc.dump();
 }
 
 } // end of namespace hrb
