@@ -54,4 +54,4 @@ RUN cd libb2 \
 	&& ./configure --prefix=/opt/libb2 --enable-native=no \
 	&& make install
 
-ADD https://github.com/nlohmann/json/releases/download/v3.1.2/json.hpp /opt/json/include/
+ADD https://github.com/nlohmann/json/releases/download/v3.1.2/json.hpp /opt/nlohmann/include/

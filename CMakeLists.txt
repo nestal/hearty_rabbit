@@ -14,6 +14,10 @@ find_library(LIBB2_LIBRARY libb2.a b2 PATHS lib)
 find_path(LIBB2_INCLUDE blake2.h PATHS include)
 message(STATUS "found libb2 at ${LIBB2_LIBRARY} ${LIBB2_INCLUDE}")
 
+# Find nlohmann/json
+find_path(NLOHMANN_INCLUDE json.hpp PATHS include)
+message(STATUS "found nlohmann/json at ${NLOHMANN_INCLUDE}")
+
 pkg_check_modules(RapidJSON REQUIRED RapidJSON)
 pkg_check_modules(HIREDIS REQUIRED hiredis)
 pkg_check_modules(LIBUNWIND libunwind)
@@ -42,6 +46,7 @@ include_directories(
 	${TURBOJPEG_INCLUDE_DIRS}
 	${EXIV2_INCLUDE_DIRS}
 	${LIBB2_INCLUDE}
+	${NLOHMANN_INCLUDE}
 	${CMAKE_BINARY_DIR}
 	${PROJECT_SOURCE_DIR}/src
 )
