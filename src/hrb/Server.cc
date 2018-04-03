@@ -264,17 +264,18 @@ http::response<SplitBuffers> Server::not_found(boost::string_view target, const 
 	if (auth)
 		dir.AddMember("username", rapidjson::StringRef(auth->user()), dir.GetAllocator());
 
-	std::ostringstream json;
-	json << "var dir = ";
-	rapidjson::OStreamWrapper osw{json};
-	rapidjson::Writer<rapidjson::OStreamWrapper> writer{osw};
+	rapidjson::StringBuffer sb;
+	rapidjson::Writer<rapidjson::StringBuffer> writer(sb);
 	dir.Accept(writer);
-	json << ";";
+
+	std::string json{"var dir = "};
+	json.append(sb.GetString());
+	json.append(";");
 
 	using namespace std::literals;
 	auto res = m_lib.find_dynamic("index.html", version);
 	res.result(http::status::not_found);
-	res.body().extra(hrb::index_needle, json.str());
+	res.body().extra(hrb::index_needle, std::move(json));
 	return res;
 }
 
@@ -320,17 +321,16 @@ void Server::serve_home(const EmptyRequest& req, FileResponseSender&& send, cons
 		auth.user(),
 		[send=std::move(send), ver=req.version(), this](auto&& colls, auto ec)
 		{
-			std::ostringstream ss;
-			ss << "var dir = ";
-
-			rapidjson::OStreamWrapper osw{ss};
-			rapidjson::Writer<rapidjson::OStreamWrapper> writer{osw};
+			rapidjson::StringBuffer sb;
+			rapidjson::Writer<rapidjson::StringBuffer> writer(sb);
 			colls.Accept(writer);
 
-			ss << ";";
+			std::string json{"var dir = "};
+			json.append(sb.GetString());
+			json.append(";");
 
 			auto res = m_lib.find_dynamic("index.html", ver);
-			res.body().extra(index_needle, ss.str());
+			res.body().extra(index_needle, std::move(json));
 			return send(std::move(res));
 		}
 	);
@@ -484,14 +484,13 @@ void Server::scan_collection(const EmptyRequest& req, Server::StringResponseSend
 		auth.user(),
 		[send=std::move(send), ver=req.version()](auto&& colls_json, auto ec)
 		{
-			std::ostringstream ss;
-			rapidjson::OStreamWrapper osw{ss};
-			rapidjson::Writer<rapidjson::OStreamWrapper> writer{osw};
+			rapidjson::StringBuffer sb;
+			rapidjson::Writer<rapidjson::StringBuffer> writer(sb);
 			colls_json.Accept(writer);
 
 			http::response<http::string_body> res{
 				std::piecewise_construct,
-				std::make_tuple(ss.str()),
+				std::make_tuple(sb.GetString(), sb.GetSize()),
 				std::make_tuple(http::status::ok, ver)
 			};
 			res.set(http::field::content_type, "application/json");
