@@ -91,10 +91,10 @@ void create_session(
 			completion(ec, std::move(auth));
 		},
 
-		"SETEX session:%b %d _%b",
+		"SET session:%b _%b EX %d",
 		auth.cookie().data(), auth.cookie().size(),
-		session_length.count(),
-		username.data(), username.size()
+		username.data(), username.size(),
+		session_length.count()
 	);
 }
 
@@ -161,9 +161,7 @@ void Authentication::verify_session(
 				return comp(ec, Authentication{});
 
 			Authentication auth{cookie, user.as_string().substr(1)};
-
-			// Note that if TTL <= 30, we assume the session has already been renewed so we won't renew again.
-			if (ttl.as_int() > 30 && ttl.as_int() < session_length.count()/2)
+			if (ttl.as_int() < session_length.count()/2)
 			{
 				Log(LOG_NOTICE, "%1% seconds before session timeout. Renewing session", ttl.as_int());
 				auth.renew_session(*db, session_length, std::move(comp));
@@ -277,12 +275,48 @@ void Authentication::renew_session(
 	std::function<void(std::error_code, Authentication&&)>&& completion
 ) const
 {
-	create_session(std::move(completion), m_user, db, session_length);
+	auto new_cookie = secure_random<Authentication::Cookie>();
 
-	// Expire the old session cookie in 30 seconds.
+	// Check if the old session is already renewed and renew it atomically.
+
+	// If the value of the old session key start with an underscore
+	// that means it has not been renewed.
+
+	// When renewing, expire the old session cookie in 30 seconds.
 	// This is to avoid session error for the pending requests in the
 	// pipeline. These requests should still be using the old session.
-	db.command("EXPIRE session:%b 30", m_cookie.data(), m_cookie.size());
+	static const char lua[] = R"__(
+		if string.sub(redis.call('GET', KEYS[1]), 1, 1) == '_'
+		then
+			redis.call('SET', KEYS[1], '#' .. ARGV[1], 'EX', 30)
+			redis.call('SET', KEYS[2], '_' .. ARGV[1], 'EX', ARGV[2])
+			return 1
+		else
+			return 0
+		end
+	)__";
+	db.command(
+		[comp=std::move(completion), *this, new_cookie](auto&& reply, auto ec)
+		{
+			// if error occurs or session already renewed, use the old session
+			if (ec || reply.as_int() != 1)
+			{
+				Log(LOG_NOTICE, "user %1% session already renewed: %2%", m_user, ec);
+				comp(ec, Authentication{*this});
+			}
+			else
+			{
+				Log(LOG_NOTICE, "user %1% session renewed successfully", m_user);
+				comp(ec, Authentication{new_cookie, m_user});
+			}
+		},
+		"EVAL %s 2 session:%b session:%b %b %d",
+		lua,
+		m_cookie.data(), m_cookie.size(),           // KEYS[1]: old session cookie
+		new_cookie.data(), new_cookie.size(),       // KEYS[2]: new session cookie
+		m_user.data(), m_user.size(),               // ARGV[1]: username
+		session_length                              // ARGV[2]: session length
+	);
 }
 
 } // end of namespace hrb

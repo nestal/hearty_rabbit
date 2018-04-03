@@ -49,6 +49,7 @@ TEST_CASE("Default Authenication ctor construct invalid authenication", "[normal
 
 TEST_CASE("Test normal user login", "[normal]")
 {
+	using namespace std::chrono_literals;
 	boost::asio::io_context ioc;
 	auto redis = redis::connect(ioc);
 
@@ -64,7 +65,6 @@ TEST_CASE("Test normal user login", "[normal]")
 
 		SECTION("correct user")
 		{
-			using namespace std::chrono_literals;
 			// Verify user with a username in a different case.
 			// Since username is case-insensitive, it should still work.
 			Authentication::verify_user(
@@ -74,14 +74,17 @@ TEST_CASE("Test normal user login", "[normal]")
 					REQUIRE(!ec);
 					REQUIRE(session.valid());
 
-					Authentication::verify_session(session.cookie(), *redis, 60s, [&tested](std::error_code ec, auto&& auth)
-					{
-						// Username returned is always lower case.
-						REQUIRE(!ec);
-						REQUIRE(auth.valid());
-						REQUIRE(auth.user() == "sumsum");
-						tested = true;
-					});
+					Authentication::verify_session(
+						session.cookie(), *redis, 60s,
+						[&tested](std::error_code ec, auto&& auth)
+						{
+							// Username returned is always lower case.
+							REQUIRE(!ec);
+							REQUIRE(auth.valid());
+							REQUIRE(auth.user() == "sumsum");
+							tested = true;
+						}
+					);
 				}
 			);
 		}
@@ -102,7 +105,6 @@ TEST_CASE("Test normal user login", "[normal]")
 		{
 			auto cookie = insecure_random<Authentication::Cookie>();
 
-			using namespace std::chrono_literals;
 			Authentication::verify_session(cookie, *redis, 60s, [&tested](std::error_code ec, auto&& session)
 				{
 					INFO("verify_session(incorrect) result = " << ec.message());
@@ -114,9 +116,49 @@ TEST_CASE("Test normal user login", "[normal]")
 		}
 	});
 
-	using namespace std::chrono_literals;
 	REQUIRE(ioc.run_for(10s) > 0);
 	REQUIRE(tested);
+	ioc.restart();
+
+	auto tested_count = 0;
+
+	// It is easier to simulate session expiry in UT by changing session length
+	Authentication::verify_user(
+		"sumsum", Password{"bearbear"}, *redis, 60s, [redis, &tested_count](std::error_code ec, auto&& session)
+		{
+			// Force session renew by setting the session length (180s) required to be more than
+			// twice of the value specified when created (60s)
+			Authentication::verify_session(
+				session.cookie(), *redis, 180s,
+				[&tested_count, old_cookie = session.cookie()](std::error_code ec, auto&& auth)
+				{
+					REQUIRE(!ec);
+					REQUIRE(auth.valid());
+					REQUIRE(auth.user() == "sumsum");
+
+					// Verify cookie changed
+					REQUIRE(auth.cookie() != old_cookie);
+					tested_count++;
+				}
+			);
+
+			// Session will not be renewed when verified again, but verification will still
+			// succeed.
+			Authentication::verify_session(
+				session.cookie(), *redis, 180s,
+				[&tested_count, old_cookie = session.cookie()](std::error_code ec, auto&& auth)
+				{
+					REQUIRE(!ec);
+					REQUIRE(auth.valid());
+					REQUIRE(auth.user() == "sumsum");
+					REQUIRE(auth.cookie() == old_cookie);
+					tested_count++;
+				}
+			);
+		}
+	);
+	REQUIRE(ioc.run_for(10s) > 0);
+	REQUIRE(tested_count == 2);
 }
 
 TEST_CASE("Parsing cookie", "[normal]")
