@@ -76,3 +76,5 @@ cmake-build-debug/
 cmake-build-release/
 docker-build-debug/
 docker-build-release/
+
+venv
