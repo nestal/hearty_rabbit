@@ -60,10 +60,9 @@ public:
 	Collection(std::string_view user, std::string_view path);
 	explicit Collection(std::string_view redis_key);
 
-	void watch(redis::Connection& db);
-
 	void link(redis::Connection& db, const ObjectID& id, const CollEntry& entry);
 	void unlink(redis::Connection& db, const ObjectID& id);
+	std::string redis_key() const;
 
 	template <typename Complete>
 	void set_cover(redis::Connection& db, const ObjectID& cover, Complete&& complete);

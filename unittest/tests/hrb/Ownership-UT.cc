@@ -405,12 +405,15 @@ TEST_CASE("Collection ctor", "[normal]")
 	Ownership::Collection subject{"dir:user:path"};
 	REQUIRE(subject.user() == "user");
 	REQUIRE(subject.path() == "path");
+	REQUIRE(subject.redis_key() == "dir:user:path");
 
 	Ownership::Collection path_with_colon{"dir:sumsum::path::"};
 	REQUIRE(path_with_colon.user() == "sumsum");
 	REQUIRE(path_with_colon.path() == ":path::");
+	REQUIRE(path_with_colon.redis_key() == "dir:sumsum::path::");
 
 	Ownership::Collection path_with_slash{"dir:siuyung:/some/collection:path"};
 	REQUIRE(path_with_slash.user() == "siuyung");
 	REQUIRE(path_with_slash.path() == "/some/collection:path");
+	REQUIRE(path_with_slash.redis_key() == "dir:siuyung:/some/collection:path");
 }

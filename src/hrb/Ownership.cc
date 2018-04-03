@@ -80,12 +80,9 @@ Ownership::Collection::Collection(std::string_view redis_reply)
 	m_path = redis_reply;
 }
 
-void Ownership::Collection::watch(redis::Connection& db)
+std::string Ownership::Collection::redis_key() const
 {
-	db.command("WATCH %b%b:%b",
-		m_dir_prefix.data(), m_dir_prefix.size(),
-		m_user.data(), m_user.size(), m_path.data(), m_path.size()
-	);
+	return std::string{m_dir_prefix} + m_user + ':' + m_path;
 }
 
 void Ownership::Collection::link(redis::Connection& db, const ObjectID& id, const CollEntry& entry)
