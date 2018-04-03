@@ -91,7 +91,7 @@ void create_session(
 			completion(ec, std::move(auth));
 		},
 
-		"SETEX session:%b %d %b",
+		"SETEX session:%b %d _%b",
 		auth.cookie().data(), auth.cookie().size(),
 		session_length.count(),
 		username.data(), username.size()
@@ -153,28 +153,24 @@ void Authentication::verify_session(
 			cookie, session_length
 		](redis::Reply reply, auto&& ec) mutable
 		{
-			if (!ec)
-			{
-				auto [user, ttl] = reply.as_tuple<2>(ec);
-				if (ec || user.is_nil() || ttl.as_int() < 0)
-				{
-					comp(ec, Authentication{});
-				}
+			if (ec)
+				return comp(ec, Authentication{});
 
-				// Note that if TTL <= 30, we assume the session has already been renewed so we won't renew again.
-				else if (ttl.as_int() > 30 && ttl.as_int() < session_length.count()/2)
-				{
-					Log(LOG_NOTICE, "%1% seconds before session timeout. Renewing session", ttl.as_int());
-					Authentication{cookie, user.as_string()}.renew_session(*db, session_length, std::move(comp));
-				}
-				else
-				{
-					comp(ec, Authentication{cookie, user.as_string()});
-				}
+			auto [user, ttl] = reply.as_tuple<2>(ec);
+			if (ec || user.is_nil() || user.as_string().size() <= 1 || ttl.as_int() < 0)
+				return comp(ec, Authentication{});
+
+			Authentication auth{cookie, user.as_string().substr(1)};
+
+			// Note that if TTL <= 30, we assume the session has already been renewed so we won't renew again.
+			if (ttl.as_int() > 30 && ttl.as_int() < session_length.count()/2)
+			{
+				Log(LOG_NOTICE, "%1% seconds before session timeout. Renewing session", ttl.as_int());
+				auth.renew_session(*db, session_length, std::move(comp));
 			}
 			else
 			{
-				comp(ec, Authentication{});
+				comp(ec, std::move(auth));
 			}
 		},
 		"EVAL %s 1 session:%b", lua, cookie.data(), cookie.size()
