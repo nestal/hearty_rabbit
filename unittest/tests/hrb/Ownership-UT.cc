@@ -344,6 +344,21 @@ TEST_CASE("collection entry", "[normal]")
 
 TEST_CASE("Backlink ctor", "[normal]")
 {
-//	Ownership::BlobBackLink subject{"dir:user:path"};
-//	REQUIRE(subject.user() == "user");
+	auto oid = hex_to_object_id("0123456789012345678901234567890123456789");
+	REQUIRE(oid);
+
+	Ownership::BlobBackLink subject{"dir:user:path", *oid};
+	REQUIRE(subject.user() == "user");
+	REQUIRE(subject.collection() == "path");
+	REQUIRE(subject.blob() == *oid);
+
+	Ownership::BlobBackLink path_with_colon{"dir:sumsum::path::", *oid};
+	REQUIRE(path_with_colon.user() == "sumsum");
+	REQUIRE(path_with_colon.collection() == ":path::");
+	REQUIRE(path_with_colon.blob() == *oid);
+
+	Ownership::BlobBackLink path_with_slash{"dir:siuyung:/some/collection:path", *oid};
+	REQUIRE(path_with_slash.user() == "siuyung");
+	REQUIRE(path_with_slash.collection() == "/some/collection:path");
+	REQUIRE(path_with_slash.blob() == *oid);
 }

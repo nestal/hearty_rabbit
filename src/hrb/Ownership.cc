@@ -26,13 +26,18 @@ Ownership::Ownership(std::string_view name) : m_user{name}
 }
 
 // Parse the string that was put in the redis set, i.e. "%b%b:%b"
-Ownership::BlobBackLink::BlobBackLink(std::string_view db_str)
+Ownership::BlobBackLink::BlobBackLink(std::string_view db_str, const ObjectID& blob) : m_blob{blob}
 {
 	auto [prefix, colon] = split_front(db_str, ":");
-	if (prefix == Collection::m_dir_prefix.substr(0, Collection::m_dir_prefix.size()-1) && colon == ':')
-	{
-//		auto [user, colon2] = split
-	}
+	if (colon != ':' || prefix != Collection::m_dir_prefix.substr(0, Collection::m_dir_prefix.size()-1))
+		return;
+
+	auto [user, colon2] = split_front(db_str, ":");
+	if (colon2 != ':')
+		return;
+
+	m_user = user;
+	m_coll = db_str;
 }
 
 const std::string_view Ownership::BlobBackLink::m_prefix{"blob-ref:"};

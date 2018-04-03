@@ -28,7 +28,7 @@ class CollEntry;
 /// A set of blob objects represented by a redis set.
 class Ownership
 {
-private:
+public:
 	class BlobBackLink;
 
 	/// A set of blob objects represented by a redis set.

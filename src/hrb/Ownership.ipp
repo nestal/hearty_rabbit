@@ -32,14 +32,15 @@ private:
 
 public:
 	BlobBackLink(std::string_view user, std::string_view coll, const ObjectID& blob);
-	BlobBackLink(std::string_view db_str);
+	BlobBackLink(std::string_view db_str, const ObjectID& blob);
 
 	// expect to be done inside a transaction
 	void link(redis::Connection& db) const;
 	void unlink(redis::Connection& db) const;
 
-	const std::string& user() const {return m_user;}
+	std::string_view user() const {return m_user;}
 	const ObjectID& blob() const {return m_blob;}
+	std::string_view collection() const {return m_coll;}
 
 private:
 	std::string m_user;
