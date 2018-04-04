@@ -18,7 +18,6 @@
 #include "util/Size2D.hh"
 
 #include <boost/beast/http/message.hpp>
-#include <rapidjson/document.h>
 
 #include <optional>
 

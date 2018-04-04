@@ -11,19 +11,15 @@
 //
 
 #include "Configuration.hh"
-#include "JsonHelper.hh"
 
 #include "config.hh"
+
+#include <json.hpp>
 
 #include <boost/program_options.hpp>
 #include <boost/exception/info.hpp>
 #include <boost/exception/diagnostic_information.hpp>
 #include <boost/filesystem.hpp>
-
-#include <rapidjson/document.h>
-#include <rapidjson/pointer.h>
-#include <rapidjson/istreamwrapper.h>
-#include <rapidjson/error/en.h>
 
 #include <fstream>
 
@@ -33,11 +29,11 @@ namespace ip = boost::asio::ip;
 namespace hrb {
 namespace {
 
-ip::tcp::endpoint parse_endpoint(const rapidjson::Value& json)
+ip::tcp::endpoint parse_endpoint(const nlohmann::json& json)
 {
 	return {
-		ip::make_address(json::string(json["address"])),
-		static_cast<unsigned short>(json["port"].GetUint())
+		ip::make_address(json["address"].get<std::string>()),
+		json["port"].get<unsigned short>()
 	};
 }
 
@@ -72,7 +68,6 @@ void Configuration::load_config(const boost::filesystem::path& path)
 {
 	try
 	{
-		using namespace rapidjson;
 		std::ifstream config_file;
 		config_file.open(path.string(), std::ios::in);
 		if (!config_file)
@@ -82,56 +77,46 @@ void Configuration::load_config(const boost::filesystem::path& path)
 			);
 		}
 
-		IStreamWrapper wrapper{config_file};
-
-		Document json;
-		if (json.ParseStream(wrapper).HasParseError())
-		{
-			BOOST_THROW_EXCEPTION(Error()
-				<< Offset{json.GetErrorOffset()}
-				<< Message{GetParseError_En(json.GetParseError())}
-			);
-		}
-
-		using namespace json;
+		auto json = nlohmann::json::parse(config_file);
+		using jptr = nlohmann::json::json_pointer;
 
 		// Paths are relative to the configuration file
-		m_cert_chain    = weakly_canonical(absolute(string(required(json, "/cert_chain")),  path.parent_path()));
-		m_private_key   = weakly_canonical(absolute(string(required(json, "/private_key")), path.parent_path()));
-		m_root          = weakly_canonical(absolute(string(required(json, "/web_root")),    path.parent_path()));
-		m_blob_path     = weakly_canonical(absolute(string(required(json, "/blob_path")),   path.parent_path()));
-		m_server_name   = string(required(json, "/server_name"));
-		m_thread_count  = GetValueByPointerWithDefault(json, "/thread_count", m_thread_count).GetUint64();
+		m_cert_chain    = weakly_canonical(absolute(json.at(jptr{"/cert_chain"}).get<std::string>(),  path.parent_path()));
+		m_private_key   = weakly_canonical(absolute(json.at(jptr{"/private_key"}).get<std::string>(), path.parent_path()));
+		m_root          = weakly_canonical(absolute(json.at(jptr{"/web_root"}).get<std::string>(),    path.parent_path()));
+		m_blob_path     = weakly_canonical(absolute(json.at(jptr{"/blob_path"}).get<std::string>(),   path.parent_path()));
+		m_server_name   = json.at(jptr{"/server_name"});
+		m_thread_count  = json.value(jptr{"/thread_count"}, m_thread_count);
 		m_rendition.default_rendition(
-			GetValueByPointerWithDefault(json, "/default_rendition", m_rendition.default_rendition().c_str()).GetString()
+			json.value(jptr{"/default_rendition"}, m_rendition.default_rendition())
 		);
 		m_upload_limit  = static_cast<std::size_t>(
-			GetValueByPointerWithDefault(json, "/upload_limit_mb", m_upload_limit/1024.0/1024.0).GetDouble() *
-				1024 * 1024
+			json.value(jptr{"/upload_limit_mb"}, m_upload_limit/1024.0/1024.0) * 1024 * 1024
 		);
-		if (json.HasMember("rendition"))
+		if (json.find("rendition") != json.end())
 		{
-			for (auto&& rend : json["rendition"].GetObject())
+			for (auto&& rend : json["rendition"].items())
 			{
-				if (rend.value["width"].IsNumber() && rend.value["height"].IsNumber())
-					m_rendition.add(
-						{rend.name.GetString(), rend.name.GetStringLength()},
-						{rend.value["width"].GetInt(), rend.value["height"].GetInt()}
-					);
+				auto width  = rend.value().value("width", 0);
+				auto height = rend.value().value("height", 0);
+				if (width > 0 && height > 0)
+					m_rendition.add(rend.key(), {width, height});
 			}
 		}
-		m_session_length = std::chrono::seconds{
-			GetValueByPointerWithDefault(json, "/session_length_in_sec", 3600L).GetInt64(),
-		};
+		m_session_length = std::chrono::seconds{json.value(jptr{"/session_length_in_sec"}, 3600L)};
 
-		m_user_id = GetValueByPointerWithDefault(json, "/uid", m_user_id).GetUint();
-		m_group_id = GetValueByPointerWithDefault(json, "/gid", m_group_id).GetUint();
+		m_user_id  = json.value(jptr{"/uid"}, m_user_id);
+		m_group_id = json.value(jptr{"/gid"}, m_group_id);
 
-		m_listen_http   = parse_endpoint(required(json, "/http"));
-		m_listen_https  = parse_endpoint(required(json, "/https"));
+		m_listen_http   = parse_endpoint(json.at(jptr{"/http"}));
+		m_listen_https  = parse_endpoint(json.at(jptr{"/https"}));
 
-		if (auto redis = Pointer{"/redis"}.Get(json))
-			m_redis = parse_endpoint(*redis);
+		if (auto redis = json.value(jptr{"/redis"}, nlohmann::json::object_t{}); !redis.empty())
+			m_redis = parse_endpoint(redis);
+	}
+	catch (nlohmann::json::exception& e)
+	{
+		throw;
 	}
 	catch (Exception& e)
 	{

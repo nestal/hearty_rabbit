@@ -26,7 +26,7 @@ WORKDIR /build
 RUN tar zxf 1.5.3.tar.gz \
 	&& cd libjpeg-turbo-1.5.3 \
 	&& autoreconf -fiv \
-	&& ./configure --prefix=/opt/libjpeg-turbo \
+	&& ./configure --prefix=/opt \
 	&& make -j8 install
 
 # build boost (>1.65 to support boost beast)
@@ -34,14 +34,14 @@ RUN tar zxf boost_1_66_0.tar.gz \
 	&& cd boost_1_66_0 \
 	&& ./bootstrap.sh \
 		--with-libraries=program_options,filesystem,system \
-		--prefix=/opt/boost_1_66_0 \
+		--prefix=/opt \
 	&& (./b2 -j8 install; exit 0) \
 	&& rm -rf /build/boost_1_66_0
 
 # build cmake 3.11.0 (>= 3.8 to support C++17)
 RUN tar zxf cmake-3.11.0.tar.gz \
 	&& cd cmake-3.11.0 \
-	&& ./configure --prefix=/opt/cmake-3.11.0 \
+	&& ./configure --prefix=/opt \
 	&& make -j8 install
 
 # build libb2
@@ -51,5 +51,8 @@ RUN git clone https://github.com/BLAKE2/libb2.git
 RUN cd libb2 \
 	&& git checkout v0.98 \
 	&& ./autogen.sh \
-	&& ./configure --prefix=/opt/libb2 --enable-native=no \
+	&& ./configure --prefix=/opt --enable-native=no \
 	&& make install
+
+# TODO: remove rapidjson after completely migrated to nlohmann
+ADD https://github.com/nlohmann/json/releases/download/v3.1.2/json.hpp /opt/include/

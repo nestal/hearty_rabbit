@@ -125,24 +125,24 @@ TEST_CASE("path URL")
 	REQUIRE(path_with_2slashes.str() == "/upload/path/something/////wrong/image.jpeg");
 	REQUIRE(path_with_2slashes.valid());
 
-	URLIntent path_with_option{"/blob/user/path/id?rendition"};
-	REQUIRE(path_with_option.action() == URLIntent::Action::blob);
+	URLIntent path_with_option{"/view/user/path/id?rendition"};
+	REQUIRE(path_with_option.action() == URLIntent::Action::view);
 	REQUIRE(path_with_option.user() == "user");
-	REQUIRE(path_with_option.collection() == "path");
-	REQUIRE(path_with_option.filename() == "id");
+	REQUIRE(path_with_option.collection() == "path/id");
+	REQUIRE(path_with_option.filename() == "");
 	REQUIRE(path_with_option.option() == "rendition");
 	REQUIRE(path_with_2slashes.valid());
 
-	URLIntent path_with_question{"/blob/user/path/big_id?"};
-	REQUIRE(path_with_question.action() == URLIntent::Action::blob);
+	URLIntent path_with_question{"/view/user/path/big_id?"};
+	REQUIRE(path_with_question.action() == URLIntent::Action::view);
 	REQUIRE(path_with_question.user() == "user");
-	REQUIRE(path_with_question.collection() == "path");
-	REQUIRE(path_with_question.filename() == "big_id");
+	REQUIRE(path_with_question.collection() == "path/big_id");
+	REQUIRE(path_with_question.filename() == "");
 	REQUIRE(path_with_question.option() == "");
 	REQUIRE(path_with_question.valid());
 
-	URLIntent trim_action{URLIntent::Action::blob, "user", "", ""};
-	REQUIRE(trim_action.str() == "/blob/user/");
+	URLIntent trim_action{URLIntent::Action::view, "user", "", ""};
+	REQUIRE(trim_action.str() == "/view/user/");
 
 	URLIntent trim_action_fn{URLIntent::Action::upload, "user", "", "read.me"};
 	REQUIRE(trim_action_fn.str() == "/upload/user/read.me");
@@ -166,18 +166,22 @@ TEST_CASE("path URL")
 	REQUIRE(upload_default.action() == URLIntent::Action::upload);
 	REQUIRE(upload_default.valid());
 
-	URLIntent percent_user{"/blob/%E4%B8%AD%E6%96%87%E5%AD%97/filename"};
+	URLIntent percent_user{"/view/%E4%B8%AD%E6%96%87%E5%AD%97/filename"};
+	REQUIRE(percent_user.action() == URLIntent::Action::view);
 	REQUIRE(percent_user.user() == u8"中文字");
-	REQUIRE(percent_user.filename() == "filename");
+	REQUIRE(percent_user.collection() == "filename");
+	REQUIRE(percent_user.filename() == "");
 	REQUIRE(percent_user.valid());
 
-	URLIntent percent_coll{"/blob/zelda/%E3%82%BC%E3%83%AB%E3%83%80%E3%81%AE%E4%BC%9D%E8%AA%AC/master_sword"};
+	URLIntent percent_coll{"/view/zelda/%E3%82%BC%E3%83%AB%E3%83%80%E3%81%AE%E4%BC%9D%E8%AA%AC/master_sword"};
+	REQUIRE(percent_coll.action() == URLIntent::Action::view);
 	REQUIRE(percent_coll.user() == "zelda");
-	REQUIRE(percent_coll.collection() == u8"ゼルダの伝説");
-	REQUIRE(percent_coll.filename() == "master_sword");
+	REQUIRE(percent_coll.collection() == u8"ゼルダの伝説/master_sword");
+	REQUIRE(percent_coll.filename() == "");
 	REQUIRE(percent_coll.valid());
 
 	URLIntent percent_fn{"/upload/link/hyrule_field/%E3%83%9E%E3%82%B9%E3%82%BF%E3%83%BC%E3%82%BD%E3%83%BC%E3%83%89"};
+	REQUIRE(percent_fn.action() == URLIntent::Action::upload);
 	REQUIRE(percent_fn.user() == "link");
 	REQUIRE(percent_fn.collection() == "hyrule_field");
 	REQUIRE(percent_fn.filename() == "マスターソード");
@@ -190,4 +194,36 @@ TEST_CASE("path URL")
 	REQUIRE(moved.collection() == "hyrule_field");
 	REQUIRE(moved.filename() == "マスターソード");
 	REQUIRE(moved.valid());
+
+	URLIntent query{"/query/latest"};
+	REQUIRE(query.action() == URLIntent::Action::query);
+	REQUIRE(query.user() == "");
+	REQUIRE(query.collection() == "");
+	REQUIRE(query.filename() == "latest");
+	REQUIRE(query.valid());
+
+	URLIntent query2{"/query/coll/oldest"};
+	REQUIRE(query2.action() == URLIntent::Action::query);
+	REQUIRE(query2.user() == "");
+	REQUIRE(query2.collection() == "coll");
+	REQUIRE(query2.filename() == "oldest");
+	REQUIRE(query2.valid());
+
+	URLIntent query3{"/query"};
+	REQUIRE(query3.action() == URLIntent::Action::query);
+	REQUIRE_FALSE(query3.valid());
+
+	URLIntent view_blob{"/view/sumsum/collection1/6d0ef85c5798fd4d3151302dbb6fdadeb095a65c"};
+	REQUIRE(view_blob.action() == URLIntent::Action::view);
+	REQUIRE(view_blob.user() == "sumsum");
+	REQUIRE(view_blob.filename() == "6d0ef85c5798fd4d3151302dbb6fdadeb095a65c");
+	REQUIRE(view_blob.collection() == "collection1");
+	REQUIRE(view_blob.valid());
+
+	URLIntent view_emoji{"/view/%F0%9F%99%87/%F0%9F%99%80%F0%9F%99%80/6d0ef85c5798004d3151302dbb6fdadeb095a65c"};
+	REQUIRE(view_emoji.user() == "🙇");
+	REQUIRE(view_emoji.collection() == "🙀🙀");
+	REQUIRE(view_emoji.filename() == "6d0ef85c5798004d3151302dbb6fdadeb095a65c");
+	REQUIRE(view_emoji.valid());
+	REQUIRE(view_emoji.str() == "/view/%F0%9F%99%87/%F0%9F%99%80%F0%9F%99%80/6d0ef85c5798004d3151302dbb6fdadeb095a65c");
 }

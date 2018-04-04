@@ -28,7 +28,7 @@ class CollEntry;
 /// A set of blob objects represented by a redis set.
 class Ownership
 {
-private:
+public:
 	class BlobBackLink;
 
 	/// A set of blob objects represented by a redis set.
@@ -88,6 +88,13 @@ public:
 		Complete&& complete
 	) const;
 
+	template <typename Complete>
+	void find_reference(
+		redis::Connection& db,
+		const ObjectID& blob,
+		Complete&& complete
+	) const;
+
 	template <typename CollectionCallback, typename Complete>
 	void scan_collections(
 		redis::Connection& db,
@@ -102,6 +109,19 @@ public:
 		std::string_view requester,
 		Complete&& complete
 	) const;
+
+	template <typename Complete>
+	static void list_public_blobs(
+		redis::Connection& db,
+		Complete&& complete
+	);
+
+	template <typename Complete>
+	void query_blob(
+		redis::Connection& db,
+		const ObjectID& blob,
+		Complete&& complete
+	);
 
 	const std::string& user() const {return m_user;}
 

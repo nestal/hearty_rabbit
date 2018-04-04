@@ -51,6 +51,8 @@ public:
 
 	std::string_view body() const           {return m_body;}
 
+	const URLIntent& intent() const         {return m_url;}
+
 private:
 	std::string m_requester;
 	URLIntent   m_url;

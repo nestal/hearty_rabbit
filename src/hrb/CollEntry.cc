@@ -11,12 +11,8 @@
 //
 
 #include "CollEntry.hh"
-#include "util/JsonHelper.hh"
 
-#include <rapidjson/document.h>
-#include <rapidjson/ostreamwrapper.h>
-#include <rapidjson/pointer.h>
-#include <rapidjson/writer.h>
+#include <json.hpp>
 
 #include <cassert>
 #include <sstream>
@@ -29,20 +25,13 @@ CollEntry::CollEntry(std::string_view redis_reply) : m_raw{redis_reply}
 
 std::string CollEntry::create(Permission perm, std::string_view filename, std::string_view mime)
 {
-	rapidjson::Document json;
-	json.SetObject();
-	json.AddMember("mime", json::string_ref(mime), json.GetAllocator());
+	auto json = nlohmann::json::object();
+	json.emplace("mime", std::string{mime});
 
 	if (!filename.empty())
-		json.AddMember("filename", json::string_ref(filename), json.GetAllocator());
+		json.emplace("filename", std::string{filename});
 
-	std::ostringstream ss;
-	ss << perm.perm();
-
-	rapidjson::OStreamWrapper osw{ss};
-	rapidjson::Writer<rapidjson::OStreamWrapper> writer{osw};
-	json.Accept(writer);
-	return ss.str();
+	return perm.perm() + json.dump();
 }
 
 std::string_view CollEntry::json() const
@@ -55,28 +44,14 @@ std::string_view CollEntry::json() const
 
 std::string CollEntry::filename() const
 {
-	auto json = CollEntry::json();
-
-	rapidjson::Document doc;
-	doc.Parse(json.data(), json.size());
-	if (doc.HasParseError())
-		return {};
-
-	auto&& val = GetValueByPointerWithDefault(doc, "/filename", "");
-	return std::string{val.GetString(), val.GetStringLength()};
+	auto doc = nlohmann::json::parse(CollEntry::json());
+	return doc.value(nlohmann::json::json_pointer{"/filename"}, "");
 }
 
 std::string CollEntry::mime() const
 {
-	auto json = CollEntry::json();
-
-	rapidjson::Document doc;
-	doc.Parse(json.data(), json.size());
-	if (doc.HasParseError())
-		return {};
-
-	auto&& val = GetValueByPointerWithDefault(doc, "/mime", "");
-	return std::string{val.GetString(), val.GetStringLength()};
+	auto doc = nlohmann::json::parse(CollEntry::json());
+	return doc.value(nlohmann::json::json_pointer{"/mime"}, "");
 }
 
 Permission CollEntry::permission() const

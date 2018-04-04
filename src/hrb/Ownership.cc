@@ -15,7 +15,9 @@
 #include "BlobDatabase.hh"
 
 #include "util/Log.hh"
+#include "util/Escape.hh"
 
+#include <json.hpp>
 #include <sstream>
 
 namespace hrb {
@@ -26,12 +28,12 @@ Ownership::Ownership(std::string_view name) : m_user{name}
 
 const std::string_view Ownership::BlobBackLink::m_prefix{"blob-ref:"};
 
-Ownership::BlobBackLink::BlobBackLink(std::string_view user, const ObjectID& blob) :
-	m_user{user}, m_blob{blob}
+Ownership::BlobBackLink::BlobBackLink(std::string_view user, std::string_view coll, const ObjectID& blob) :
+	m_user{user}, m_coll{coll}, m_blob{blob}
 {
 }
 
-void Ownership::BlobBackLink::link(redis::Connection& db, std::string_view coll) const
+void Ownership::BlobBackLink::link(redis::Connection& db) const
 {
 	db.command(
 		"SADD %b:%b %b%b:%b",
@@ -39,11 +41,11 @@ void Ownership::BlobBackLink::link(redis::Connection& db, std::string_view coll)
 		m_blob.data(), m_blob.size(),
 		Collection::m_dir_prefix.data(), Collection::m_dir_prefix.size(),
 		m_user.data(), m_user.size(),
-		coll.data(), coll.size()
+		m_coll.data(), m_coll.size()
 	);
 }
 
-void Ownership::BlobBackLink::unlink(redis::Connection& db, std::string_view coll) const
+void Ownership::BlobBackLink::unlink(redis::Connection& db) const
 {
 	db.command(
 		"SREM %b:%b %b%b:%b",
@@ -51,12 +53,13 @@ void Ownership::BlobBackLink::unlink(redis::Connection& db, std::string_view col
 		m_blob.data(), m_blob.size(),
 		Collection::m_dir_prefix.data(), Collection::m_dir_prefix.size(),
 		m_user.data(), m_user.size(),
-		coll.data(), coll.size()
+		m_coll.data(), m_coll.size()
 	);
 }
 
 const std::string_view Ownership::Collection::m_dir_prefix = "dir:";
 const std::string_view Ownership::Collection::m_list_prefix = "dirs:";
+const std::string_view Ownership::Collection::m_public_blobs = "public-blobs";
 
 Ownership::Collection::Collection(std::string_view user, std::string_view path) :
 	m_user{user},
@@ -64,12 +67,23 @@ Ownership::Collection::Collection(std::string_view user, std::string_view path) 
 {
 }
 
-void Ownership::Collection::watch(redis::Connection& db)
+Ownership::Collection::Collection(std::string_view redis_reply)
 {
-	db.command("WATCH %b%b:%b",
-		m_dir_prefix.data(), m_dir_prefix.size(),
-		m_user.data(), m_user.size(), m_path.data(), m_path.size()
-	);
+	auto [prefix, colon] = split_front(redis_reply, ":");
+	if (colon != ':' || prefix != Collection::m_dir_prefix.substr(0, Collection::m_dir_prefix.size()-1))
+		return;
+
+	auto [user, colon2] = split_front(redis_reply, ":");
+	if (colon2 != ':')
+		return;
+
+	m_user = user;
+	m_path = redis_reply;
+}
+
+std::string Ownership::Collection::redis_key() const
+{
+	return std::string{m_dir_prefix} + m_user + ':' + m_path;
 }
 
 void Ownership::Collection::link(redis::Connection& db, const ObjectID& id, const CollEntry& entry)
@@ -89,17 +103,19 @@ void Ownership::Collection::link(redis::Connection& db, const ObjectID& id, cons
 void Ownership::Collection::unlink(redis::Connection& db, const ObjectID& id)
 {
 	// LUA script: delete the blob from the dir:<user>:<coll> hash table, and if
-	// the hash table is empty, remove the entry in dirs:<user> hash table
-	static const char cmd[] =
-		"redis.call('HDEL', KEYS[1], ARGV[1]) "
-		"if redis.call('EXISTS', KEYS[1]) == 0 then redis.call('HDEL', KEYS[2], ARGV[2]) else "
-			"local album = cjson.decode(redis.call('HGET', KEYS[2], ARGV[2])) "
-			"if album['cover'] == ARGV[3] then "
-				"album['cover'] = nil "
-				"redis.call('HSET', KEYS[2], ARGV[2], cjson.encode(album)) "
-			"end "
-		"end"
-	;
+	// the hash table is empty, remove the entry in dirs:<user> hash table.
+	// Also, remove the 'cover' field in the dirs:<user> hash table if the cover
+	// image is the one being removed.
+	static const char cmd[] = R"__(
+		redis.call('HDEL', KEYS[1], ARGV[1])
+		if redis.call('EXISTS', KEYS[1]) == 0 then redis.call('HDEL', KEYS[2], ARGV[2]) else
+			local album = cjson.decode(redis.call('HGET', KEYS[2], ARGV[2]))
+			if album['cover'] == ARGV[3] then
+				album['cover'] = nil
+				redis.call('HSET', KEYS[2], ARGV[2], cjson.encode(album))
+			end
+		end
+	)__";
 
 	auto hex_id = to_hex(id);
 
@@ -136,15 +152,14 @@ void Ownership::Collection::unlink(redis::Connection& db, const ObjectID& id)
 std::string Ownership::Collection::serialize(redis::Reply& reply, std::string_view requester) const
 {
 	// TODO: get the cover here... where to find a redis::Connection?
+	auto jdoc = nlohmann::json::object();
 
-	std::ostringstream ss;
-	ss  << R"__({"owner":")__"         << m_user
-		<< R"__(", "collection":")__"  << m_path
-		<< R"__(", "username":")__"    << requester
-		<< R"__(", "elements":)__"     << "{";
+	jdoc.emplace("owner", m_user);
+	jdoc.emplace("collection", m_path);
+	jdoc.emplace("username", std::string{requester});
 
-	bool first = true;
-	reply.foreach_kv_pair([&ss, &first, requester, this](auto&& blob, auto&& perm)
+	auto elements = nlohmann::json::object();
+	reply.foreach_kv_pair([&elements, &jdoc, requester, this](auto&& blob, auto&& perm)
 	{
 		auto blob_id = raw_to_object_id(blob);
 		CollEntry entry{perm.as_string()};
@@ -152,28 +167,21 @@ std::string Ownership::Collection::serialize(redis::Reply& reply, std::string_vi
 		// check permission: allow allow owner (i.e. m_user)
 		if (blob_id && (m_user == requester || entry.permission().allow(requester)))
 		{
-			// entry string must be json. skip the { in the front and } in the back
-			// and prepend the "perm"="public"
-			auto json = entry.json();
-			if (json.size() >= 2 && json.front() == '{' && json.back() == '}')
+			try
 			{
-				if (first)
-					first = false;
-				else
-					ss << ",\n";
-
-				json.remove_prefix(1);
-				json.remove_suffix(1);
-				ss  << to_quoted_hex(*blob_id)
-					<< ":{ \"perm\":\"" << entry.permission().description() << "\"";
-				if (!json.empty())
-					ss << "," << json;
-				ss << "}";
+				auto entry_jdoc = nlohmann::json::parse(entry.json());
+				entry_jdoc.emplace("perm", std::string{entry.permission().description()});
+				elements.emplace(to_hex(*blob_id), std::move(entry_jdoc));
+			}
+			catch (std::exception& e)
+			{
+				Log(LOG_WARNING, "exception thrown when parsing CollEntry::json(): %1% %2%", e.what(), entry.json());
 			}
 		}
 	});
-	ss << "}}";
-	return ss.str();
+	jdoc.emplace("elements", std::move(elements));
+
+	return jdoc.dump();
 }
 
 } // end of namespace hrb

@@ -15,9 +15,9 @@
 #include "CollEntry.hh"
 
 #include "util/Error.hh"
-#include "util/JsonHelper.hh"
+#include "util/Log.hh"
 
-#include <rapidjson/document.h>
+#include <json.hpp>
 
 #include <vector>
 
@@ -27,21 +27,23 @@ namespace hrb {
 
 class Ownership::BlobBackLink
 {
-private:
+public:
 	static const std::string_view m_prefix;
 
 public:
-	BlobBackLink(std::string_view user, const ObjectID& blob);
+	BlobBackLink(std::string_view user, std::string_view coll, const ObjectID& blob);
 
 	// expect to be done inside a transaction
-	void link(redis::Connection& db, std::string_view coll) const;
-	void unlink(redis::Connection& db, std::string_view coll) const;
+	void link(redis::Connection& db) const;
+	void unlink(redis::Connection& db) const;
 
-	const std::string& user() const {return m_user;}
+	std::string_view user() const {return m_user;}
 	const ObjectID& blob() const {return m_blob;}
+	std::string_view collection() const {return m_coll;}
 
 private:
 	std::string m_user;
+	std::string m_coll;
 	ObjectID    m_blob;
 };
 
@@ -51,14 +53,15 @@ class Ownership::Collection
 public:
 	static const std::string_view m_dir_prefix;
 	static const std::string_view m_list_prefix;
+	static const std::string_view m_public_blobs;
 
 public:
-	explicit Collection(std::string_view user, std::string_view path);
-
-	void watch(redis::Connection& db);
+	Collection(std::string_view user, std::string_view path);
+	explicit Collection(std::string_view redis_key);
 
 	void link(redis::Connection& db, const ObjectID& id, const CollEntry& entry);
 	void unlink(redis::Connection& db, const ObjectID& id);
+	std::string redis_key() const;
 
 	template <typename Complete>
 	void set_cover(redis::Connection& db, const ObjectID& cover, Complete&& complete);
@@ -128,15 +131,7 @@ void Ownership::Collection::scan(
 						if (sv.empty())
 							return;
 
-						// although we can modify the string inside the redis::Reply "value",
-						// it is not a null-terminated string and rapidjson does not support
-						// insitu parsing with non-null-terminated strings, so we must
-						// use the slower Parse() instead of ParseInsitu()
-						rapidjson::Document mdoc;
-						mdoc.Parse(sv.data(), sv.size());
-
-						if (!mdoc.HasParseError())
-							cb(key, std::move(mdoc));
+						cb(key, nlohmann::json::parse(sv));
 					});
 
 					// if comp return true, keep scanning with the same callback and
@@ -164,21 +159,15 @@ void Ownership::Collection::scan_all(
 	Complete&& complete
 )
 {
-	auto jdoc = std::make_shared<rapidjson::Document>();
-	jdoc->SetObject();
-
-	jdoc->AddMember("owner",    std::string{owner},     jdoc->GetAllocator());
-	jdoc->AddMember("username", std::string{requester}, jdoc->GetAllocator());
-	jdoc->AddMember("colls",    rapidjson::Value{}.SetObject(), jdoc->GetAllocator());
+	auto jdoc = std::make_shared<nlohmann::json>();
+	jdoc->emplace("owner",    std::string{owner});
+	jdoc->emplace("username", std::string{requester});
+	jdoc->emplace("colls",    nlohmann::json::object());
 
 	scan(db, owner, 0,
-		[&colls=(*jdoc)["colls"], jdoc](auto coll, auto&& json)
+		[&colls=(*jdoc)["colls"]](auto coll, auto&& json)
 		{
-			colls.AddMember(
-				json::string_ref(coll),
-				rapidjson::Value{}.CopyFrom(json, jdoc->GetAllocator()),
-				jdoc->GetAllocator()
-			);
+			colls.emplace(coll, std::move(json));
 		},
 		[jdoc, comp=std::forward<Complete>(complete)](long cursor, auto ec)
 		{
@@ -227,28 +216,40 @@ void Ownership::Collection::set_permission(
 	Complete&& complete
 ) const
 {
-	static const char lua[] =
-		"local perm = redis.call('HGET', KEYS[1], ARGV[1]) "
-		"local perm2 = ARGV[2] .. string.sub(perm, 2, -1) "
-		"redis.call('HSET', KEYS[1], ARGV[1], perm2)"
-	;
+	static const char lua[] = R"__(
+		local original = redis.call('HGET', KEYS[1], ARGV[1])
+		local updated  = ARGV[2] .. string.sub(original, 2, -1)
+		redis.call('HSET', KEYS[1], ARGV[1], updated)
+		if ARGV[2] == '*' then
+			if redis.call('LPUSH', KEYS[2], ARGV[1]) > 100 then
+				redis.call('LPOP', KEYS[2])
+			end
+		else
+			redis.call('LREM', KEYS[2], ARGV[1])
+		end
+	)__";
 	db.command(
 		[comp=std::forward<Complete>(complete)](auto&& reply, auto&& ec) mutable
 		{
+			if (!reply)
+				Log(LOG_WARNING, "Collection::set_permission(): script error: %1%", reply.as_error());
 			comp(std::move(ec));
 		},
-		"EVAL %s 1 %b%b:%b %b %b",
+		"EVAL %s 2 %b%b:%b %b %b %b",
 		lua,
 
-		// KEYS[1]
+		// KEYS[1]: dir:<user>:<collection>
 		m_dir_prefix.data(), m_dir_prefix.size(),
 		m_user.data(), m_user.size(),
 		m_path.data(), m_path.size(),
 
-		// ARGV[1]
+		// KEYS[2]: public list of blob references
+		m_public_blobs.data(), m_public_blobs.size(),
+
+		// ARGV[1]: blob ID
 		blob.data(), blob.size(),
 
-		// ARGV2[]
+		// ARGV[2]: permission string
 		perm.data(), perm.size()
 	);
 }
@@ -299,11 +300,11 @@ void Ownership::link(
 	Complete&& complete
 )
 {
-	BlobBackLink  blob{m_user, blobid};
-	Collection coll{m_user, coll_name};
+	BlobBackLink blob{m_user, coll_name, blobid};
+	Collection   coll{m_user, coll_name};
 
 	db.command("MULTI");
-	blob.link(db, coll.path());
+	blob.link(db);
 	coll.link(db, blob.blob(), entry);
 	db.command([comp=std::forward<Complete>(complete)](auto&&, std::error_code ec)
 	{
@@ -319,15 +320,20 @@ void Ownership::unlink(
 	Complete&& complete
 )
 {
-	BlobBackLink  blob{m_user, blobid};
+	BlobBackLink  blob{m_user, coll_name, blobid};
 	Collection coll{m_user, coll_name};
 
 	db.command("MULTI");
-	blob.unlink(db, coll.path());
+	blob.unlink(db);
 	coll.unlink(db, blob.blob());
+	db.command(
+		"LREM %b 1 %b",
+		Collection::m_public_blobs.data(), Collection::m_public_blobs.size(),
+		blobid.data(), blobid.size()
+	);
 	db.command([comp=std::forward<Complete>(complete)](auto&& reply, std::error_code ec)
 	{
-		assert(reply.array_size() == 2);
+		assert(reply.array_size() == 3);
 		comp(ec);
 	}, "EXEC");
 }
@@ -419,6 +425,83 @@ void Ownership::move_blob(
 				}, "EXEC");
 			}
 		}
+	);
+}
+
+template <typename Complete>
+void Ownership::find_reference(redis::Connection& db, const ObjectID& blob, Complete&& complete) const
+{
+	db.command(
+		[comp=std::forward<Complete>(complete), blob, user=m_user](auto&& reply, auto ec)
+		{
+			for (auto&& entry : reply)
+			{
+				Collection ref{entry.as_string()};
+				if (user == ref.user())
+					comp(ref.path());
+			}
+		},
+		"SMEMBERS %b:%b",
+		BlobBackLink::m_prefix.data(), BlobBackLink::m_prefix.size(),
+		blob.data(), blob.size()
+	);
+}
+
+template <typename Complete>
+void Ownership::list_public_blobs(
+	redis::Connection& db,
+	Complete&& complete
+)
+{
+	db.command(
+		[comp=std::forward<Complete>(complete)](auto&& reply, auto ec)
+		{
+			for (auto&& en : reply)
+			{
+				auto s = en.as_string();
+				if (s.size() >= ObjectID{}.size())
+				{
+					// the first 20 bytes are the blob ID
+					auto blob = raw_to_object_id(s.substr(0, ObjectID{}.size()));
+					s.remove_prefix(ObjectID{}.size());
+
+					comp(*blob);
+				}
+			}
+		},
+		"LRANGE %b 0 -1",
+		Collection::m_public_blobs.data(), Collection::m_public_blobs.size()
+	);
+}
+
+template <typename Complete>
+void Ownership::query_blob(redis::Connection& db, const ObjectID& blob, Complete&& complete)
+{
+	static const char lua[] = R"__(
+		local dirs = {}
+		for k, coll in pairs(redis.call('SMEMBERS', KEYS[1])) do
+			table.insert(dirs, coll)
+			table.insert(dirs, redis.call('HGET', coll, ARGV[1]))
+		end
+		return dirs;
+	)__";
+
+	db.command(
+		[comp=std::forward<Complete>(complete)](auto&& reply, auto ec)
+		{
+			Log(LOG_INFO, "script reply: %1%", reply.as_error());
+
+			reply.foreach_kv_pair([&comp](auto&& key, auto&& val)
+			{
+				Collection coll{key};
+				comp(coll.user(), coll.path(), CollEntry{val.as_string()});
+			});
+		},
+		"EVAL %s 1 %b:%b %b",
+		lua,
+		BlobBackLink::m_prefix.data(), BlobBackLink::m_prefix.size(),
+		blob.data(), blob.size(),
+		blob.data(), blob.size()
 	);
 }
 

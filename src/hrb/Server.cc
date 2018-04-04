@@ -32,7 +32,6 @@
 #include "util/Log.hh"
 #include "util/FS.hh"
 #include "util/Escape.hh"
-#include "util/JsonHelper.hh"
 
 #include <boost/exception/errinfo_api_function.hpp>
 #include <boost/exception/info.hpp>
@@ -40,14 +39,10 @@
 #include <boost/beast/http/message.hpp>
 #include <boost/beast/http/empty_body.hpp>
 
-#include <rapidjson/document.h>
-#include <rapidjson/ostreamwrapper.h>
-#include <rapidjson/writer.h>
-
 namespace hrb {
 
 namespace {
-const std::string_view index_needle{"<meta charset=\"utf-8\"><script>"};
+const std::string_view index_needle{"<script>var dir = {"};
 }
 
 Server::Server(const Configuration& cfg) :
@@ -228,7 +223,7 @@ void Server::on_upload(UploadRequest&& req, EmptyResponseSender&& send, const Au
 	// It will be used for authorizing the user's request on these blob later.
 	Ownership{auth.user()}.link(
 		*m_db.alloc(), path_url.collection(), blob.ID(), blob.entry(), [
-			location = URLIntent{URLIntent::Action::blob, auth.user(), path_url.collection(), to_hex(blob.ID())}.str(),
+			location = URLIntent{URLIntent::Action::view, auth.user(), path_url.collection(), to_hex(blob.ID())}.str(),
 			send = std::move(send),
 			version = req.version()
 		](auto ec)
@@ -257,12 +252,16 @@ http::response<http::string_body> Server::bad_request(boost::beast::string_view 
 }
 
 // Returns a not found response
-http::response<SplitBuffers> Server::not_found(boost::string_view target, unsigned version)
+http::response<SplitBuffers> Server::not_found(boost::string_view target, const std::optional<Authentication>& auth, unsigned version)
 {
-	using namespace std::literals;
+	nlohmann::json dir;
+	dir.emplace("error_message", "The request resource was not found.");
+	if (auth)
+		dir.emplace("username", std::string{auth->user()});
+
 	auto res = m_lib.find_dynamic("index.html", version);
 	res.result(http::status::not_found);
-	res.body().extra(hrb::index_needle, R"_(var dir = {error_message: "The request resource was not found."};)_");
+	res.body().extra(hrb::index_needle, dir.dump(), 1, 1);
 	return res;
 }
 
@@ -277,23 +276,19 @@ http::response<http::string_body> Server::server_error(boost::beast::string_view
 	return res;
 }
 
-void Server::serve_view(const EmptyRequest& req, Server::FileResponseSender&& send, const Authentication& auth)
+void Server::serve_view(const URLIntent& url, unsigned version, Server::FileResponseSender&& send, const Authentication& auth)
 {
-	if (req.method() != http::verb::get)
-		return send(http::response<SplitBuffers>{http::status::bad_request, req.version()});
+//	if (req.method() != http::verb::get)
+//		return send(http::response<SplitBuffers>{http::status::bad_request, req.version()});
 
-	URLIntent path_url{req.target()};
-	Ownership{path_url.user()}.serialize(
+	Ownership{url.user()}.serialize(
 		*m_db.alloc(),
 		auth.user(),
-		path_url.collection(),
-		[send=std::move(send), version=req.version(), auth, this](auto&& json, auto ec)
+		url.collection(),
+		[send=std::move(send), version, auth, this](auto&& json, auto ec)
 	{
-		std::ostringstream ss;
-		ss  << "var dir = " << json << ";";
-
 		auto res = m_lib.find_dynamic("index.html", version);
-		res.body().extra(index_needle, ss.str());
+		res.body().extra(index_needle, std::move(json), 1, 1);
 		return send(std::move(res));
 	});
 }
@@ -306,19 +301,10 @@ void Server::serve_home(const EmptyRequest& req, FileResponseSender&& send, cons
 	Ownership{auth.user()}.scan_all_collections(
 		*m_db.alloc(),
 		auth.user(),
-		[send=std::move(send), ver=req.version(), this](auto&& colls, auto ec)
+		[send=std::move(send), ver=req.version(), this](auto&& json, auto ec)
 		{
-			std::ostringstream ss;
-			ss << "var dir = ";
-
-			rapidjson::OStreamWrapper osw{ss};
-			rapidjson::Writer<rapidjson::OStreamWrapper> writer{osw};
-			colls.Accept(writer);
-
-			ss << ";";
-
 			auto res = m_lib.find_dynamic("index.html", ver);
-			res.body().extra(index_needle, ss.str());
+			res.body().extra(index_needle, json.dump(), 1, 1);
 			return send(std::move(res));
 		}
 	);
@@ -332,7 +318,8 @@ http::response<SplitBuffers> Server::static_file_request(const URLIntent& intent
 		auto res = m_lib.find_dynamic("index.html", version);
 		res.body().extra(
 			index_needle,
-			R"_(var dir = {login_message: "Login incorrect... Try again?"};)_"
+			R"_({login_message: "Login incorrect... Try again?"})_",
+			1, 1
 		);
 		return res;
 	}
@@ -470,16 +457,11 @@ void Server::scan_collection(const EmptyRequest& req, Server::StringResponseSend
 	Ownership{path_url.user()}.scan_all_collections(
 		*m_db.alloc(),
 		auth.user(),
-		[send=std::move(send), ver=req.version()](auto&& colls_json, auto ec)
+		[send=std::move(send), ver=req.version()](auto&& json, auto ec)
 		{
-			std::ostringstream ss;
-			rapidjson::OStreamWrapper osw{ss};
-			rapidjson::Writer<rapidjson::OStreamWrapper> writer{osw};
-			colls_json.Accept(writer);
-
 			http::response<http::string_body> res{
 				std::piecewise_construct,
-				std::make_tuple(ss.str()),
+				std::make_tuple(json.dump()),
 				std::make_tuple(http::status::ok, ver)
 			};
 			res.set(http::field::content_type, "application/json");

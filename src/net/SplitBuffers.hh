@@ -52,8 +52,11 @@ public:
 			extra(needle, std::string{xtra});
 		}
 
-		void extra(std::string_view needle, std::string&& extra)
+		void extra(std::string_view needle, std::string&& extra, std::size_t left = 0, std::size_t right = 0)
 		{
+			m_left  = left;
+			m_right = right;
+
 			m_extra = std::move(extra);
 			m_offset = needle.empty() ? m_file.npos : m_file.find(needle);
 			if (m_offset != m_file.npos)
@@ -65,15 +68,18 @@ public:
 		const_buffers_type data() const
 		{
 			return {
-				boost::asio::const_buffer{m_file.data(), m_offset},
+				boost::asio::const_buffer{m_file.data(),  m_offset - m_left},
 				boost::asio::const_buffer{m_extra.data(), m_extra.size()},
-				boost::asio::const_buffer{m_file.data() + m_offset, m_file.size() - m_offset}
+				boost::asio::const_buffer{
+					m_file.data() + m_offset + m_right,
+					m_file.size() - m_offset - m_right
+				}
 			};
 		}
 
 	private:
 		std::string_view    m_file;
-		std::size_t         m_offset{};
+		std::size_t         m_offset{}, m_left{}, m_right{};
 		std::string         m_extra;
 	};
 

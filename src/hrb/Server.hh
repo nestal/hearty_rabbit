@@ -42,7 +42,6 @@ public:
 	template <class Complete>
 	void on_request_header(
 		const RequestHeader& header,
-		const URLIntent& intent,
 		EmptyRequestParser& src,
 		RequestBodyParsers& dest,
 		Complete&& complete
@@ -56,7 +55,7 @@ public:
 	void handle_request(Request&& req, Send&& send, const Authentication& auth);
 
 	static http::response<http::string_body> bad_request(boost::string_view why, unsigned version);
-	http::response<SplitBuffers> not_found(boost::string_view target, unsigned version);
+	http::response<SplitBuffers> not_found(boost::string_view target, const std::optional<Authentication>& auth, unsigned version);
 	static http::response<http::string_body> server_error(boost::string_view what, unsigned version);
 	static http::response<http::empty_body> see_other(boost::beast::string_view where, unsigned version);
 
@@ -83,7 +82,7 @@ private:
 	void on_upload(UploadRequest&& req, EmptyResponseSender&& send, const Authentication& auth);
 	void unlink(BlobRequest&& req, EmptyResponseSender&& send);
 	void update_blob(BlobRequest&& req, EmptyResponseSender&& send);
-	void serve_view(const EmptyRequest& req, FileResponseSender&& send, const Authentication& auth);
+	void serve_view(const URLIntent& url, unsigned version, FileResponseSender&& send, const Authentication& auth);
 	void serve_home(const EmptyRequest& req, FileResponseSender&& send, const Authentication& auth);
 	void serve_collection(const EmptyRequest& req, StringResponseSender&& send, const Authentication& auth);
 	void scan_collection(const EmptyRequest& req, StringResponseSender&& send, const Authentication& auth);

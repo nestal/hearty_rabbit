@@ -11,10 +11,11 @@
 //
 
 #include <catch.hpp>
-#include <fstream>
-#include <util/JsonHelper.hh>
 
 #include "util/Configuration.hh"
+
+#include <json.hpp>
+#include <fstream>
 
 using namespace hrb;
 
@@ -66,7 +67,7 @@ TEST_CASE( "Missing server name", "[error]" )
 	auto error_json = (current_src / "missing_server_name.json").string();
 
 	const char *argv[] = {"hearty_rabbit", "--cfg", error_json.c_str()};
-	REQUIRE_THROWS_AS(Configuration(sizeof(argv)/sizeof(argv[1]), argv, nullptr), json::Error);
+	REQUIRE_THROWS_AS(Configuration(sizeof(argv)/sizeof(argv[1]), argv, nullptr), nlohmann::json::out_of_range);
 }
 
 TEST_CASE( "Bad web root", "[error]" )
@@ -74,7 +75,7 @@ TEST_CASE( "Bad web root", "[error]" )
 	auto error_json = (current_src / "bad_web_root.json").string();
 
 	const char *argv[] = {"hearty_rabbit", "--cfg", error_json.c_str()};
-	REQUIRE_THROWS_AS(Configuration(sizeof(argv)/sizeof(argv[1]), argv, nullptr), json::NotString);
+	REQUIRE_THROWS_AS(Configuration(sizeof(argv)/sizeof(argv[1]), argv, nullptr), nlohmann::json::type_error);
 }
 
 TEST_CASE( "Web root is .", "[normal]" )

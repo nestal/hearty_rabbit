@@ -16,7 +16,7 @@ namespace {
 
 // Copied from libcurl
 // See https://tools.ietf.org/html/rfc3986#section-2.3
-bool is_unreserved(unsigned char in)
+bool is_unreserved(char in)
 {
 	switch (in)
 	{
@@ -38,6 +38,21 @@ bool is_unreserved(unsigned char in)
 			break;
 	}
 	return false;
+}
+
+bool need_escape(char in)
+{
+	if (is_unreserved(in))
+		return false;
+	switch (in)
+	{
+		case '!': case '$': case '&': case '(': case ')': case '\'':
+		case '*': case '+': case ',': case ';': case '=':
+		case ':': case '@': case '/':
+			return false;
+		default:
+			return true;
+	}
 }
 
 } // end of local namespace
@@ -64,7 +79,20 @@ std::optional<char> from_hex(char msb, char lsb)
 
 std::string url_encode(std::string_view in)
 {
-	return {};
+	static const char hex[] = "0123456789ABCDEF";
+	std::string result;
+	for (char c : in)
+	{
+		if (need_escape(c))
+		{
+			result.push_back('%');
+			result.push_back(hex[(c >> 4) & 0xf]);
+			result.push_back(hex[c & 0xf]);
+		}
+		else
+			result.push_back(c);
+	}
+	return result;
 }
 
 std::string url_decode(std::string_view in)

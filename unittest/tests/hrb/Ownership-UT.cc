@@ -19,9 +19,6 @@
 #include "hrb/Permission.hh"
 #include "crypto/Random.hh"
 
-#include <rapidjson/document.h>
-#include <rapidjson/pointer.h>
-
 #include <iostream>
 
 using namespace hrb;
@@ -47,33 +44,38 @@ TEST_CASE("list of collection owned by user", "[normal]")
 	subject.scan_all_collections(*redis, "owner", [&tested](auto&& json, auto ec)
 	{
 		REQUIRE(!ec);
-		REQUIRE(json.FindMember("colls") != json.MemberEnd());
+		REQUIRE(json.find("colls") != json.end());
 
 		std::vector<std::string> colls;
-		for (auto&& coll : json["colls"].GetObject())
-			colls.emplace_back(coll.name.GetString());
+		for (auto&& it : json["colls"].items())
+			colls.emplace_back(it.key());
 
 		REQUIRE(std::find(colls.begin(), colls.end(), "/") != colls.end());
-
 		tested++;
+	});
+
+	// assert the blob backlink points back to the collection
+	std::vector<std::string> refs;
+	subject.find_reference(*redis, blobid, [&refs](auto coll)
+	{
+		refs.emplace_back(coll);
 	});
 
 	REQUIRE(ioc.run_for(10s) > 0);
 	REQUIRE(tested == 2);
+	REQUIRE(std::find(refs.begin(), refs.end(), "/") != refs.end());
 	ioc.restart();
 
 	// remove all blobs in the collection
 	subject.serialize(*redis, "owner", "/", [&tested, redis](auto&& json, auto ec)
 	{
 		INFO("serialize() return " << json);
-		rapidjson::Document jdoc;
-		jdoc.Parse(json);
-		REQUIRE(!jdoc.HasParseError());
+		auto jdoc = nlohmann::json::parse(json);
 
-		for (auto&& blob : jdoc["elements"].GetObject())
+		for (auto&& blob : jdoc["elements"].items())
 		{
-			INFO("blob = " << blob.name.GetString());
-			Ownership{"owner"}.unlink(*redis, "/", *hex_to_object_id(blob.name.GetString()), [](auto&& ec)
+			INFO("blob = " << blob.key());
+			Ownership{"owner"}.unlink(*redis, "/", *hex_to_object_id(blob.key()), [](auto&& ec)
 			{
 				REQUIRE(!ec);
 			});
@@ -90,11 +92,11 @@ TEST_CASE("list of collection owned by user", "[normal]")
 	subject.scan_all_collections(*redis, "owner", [&tested](auto&& json, auto ec)
 	{
 		REQUIRE(!ec);
-		REQUIRE(json.FindMember("colls") != json.MemberEnd());
+		REQUIRE(json.find("colls") != json.end());
 
 		std::vector<std::string> colls;
-		for (auto&& coll : json["colls"].GetObject())
-			REQUIRE(coll.name.GetString() != std::string{"/"});
+		for (auto&& it : json["colls"].items())
+			REQUIRE(it.key() != std::string{"/"});
 		tested++;
 	});
 	REQUIRE(ioc.run_for(10s) > 0);
@@ -154,6 +156,18 @@ TEST_CASE("add blob to Ownership", "[normal]")
 
 	REQUIRE(ioc.run_for(10s) > 0);
 	REQUIRE(tested == 4);
+	ioc.restart();
+
+	// verify that the newly added blob is in the public list
+	bool found = false;
+	Ownership::list_public_blobs(*redis, [&found, blobid](auto blob)
+	{
+		if (blob == blobid)
+			found = true;
+	});
+
+	REQUIRE(ioc.run_for(10s) > 0);
+	REQUIRE(found);
 	ioc.restart();
 
 	// anonymous access is now allowed
@@ -220,49 +234,40 @@ TEST_CASE("Load 3 images in json", "[normal]")
 	ioc.restart();
 
 	bool tested = false;
-	subject.serialize(*redis, "testuser", "some/collection", [&tested, &blobids](auto&& json, auto ec)
+	subject.serialize(*redis, "testuser", "some/collection", [&tested, &blobids](auto&& jstr, auto ec)
 	{
 		INFO("serialize() error_code: " << ec << " " << ec.message());
+		INFO("serialize result = " << jstr);
+
 		REQUIRE(!ec);
-		INFO("serialize result = " << json);
 
 		// try parse the JSON
-		rapidjson::Document doc;
-		doc.Parse(json.data(), json.size());
+		using json = nlohmann::json;
+		std::cout << "jstr = " << jstr << std::endl;
+		auto doc = json::parse(jstr);
+		std::cout << "after jstr = " << jstr << std::endl;
 
-		REQUIRE(!doc.HasParseError());
+		REQUIRE(!doc.empty());
 		REQUIRE(
-			GetValueByPointerWithDefault(doc, "/owner", "").GetString() == std::string{"testuser"}
+			doc.value(json::json_pointer{"/owner"}, "") == "testuser"
 		);
 		REQUIRE(
-			GetValueByPointerWithDefault(doc, "/username", "").GetString() == std::string{"testuser"}
+			doc.value(json::json_pointer{"/username"}, "") == "testuser"
 		);
 		REQUIRE(
-			GetValueByPointerWithDefault(doc, "/collection", "").GetString() == std::string{"some/collection"}
+			doc.value(json::json_pointer{"/collection"}, "") == "some/collection"
 		);
 
 		for (auto&& blobid : blobids)
 		{
 			REQUIRE(
-				GetValueByPointerWithDefault(
-					doc,
-					rapidjson::Pointer{"/elements/" + to_hex(blobid) + "/perm"},
-					""
-				).GetString() == std::string{"private"}
+				doc.value(json::json_pointer{"/elements/" + to_hex(blobid) + "/perm"}, "") == "private"
 			);
 			REQUIRE(
-				GetValueByPointerWithDefault(
-					doc,
-					rapidjson::Pointer{"/elements/" + to_hex(blobid) + "/filename"},
-					""
-				).GetString() == std::string{"file.jpg"}
+				doc.value(json::json_pointer{"/elements/" + to_hex(blobid) + "/filename"}, "") == "file.jpg"
 			);
 			REQUIRE(
-				GetValueByPointerWithDefault(
-					doc,
-					rapidjson::Pointer{"/elements/" + to_hex(blobid) + "/mime"},
-					""
-				).GetString() == std::string{"image/jpeg"}
+				doc.value(json::json_pointer{"/elements/" + to_hex(blobid) + "/mime"}, "") == "image/jpeg"
 			);
 		}
 
@@ -282,6 +287,44 @@ TEST_CASE("Load 3 images in json", "[normal]")
 
 	REQUIRE(ioc.run_for(10s) > 0);
 	REQUIRE(added == 0);
+}
+
+TEST_CASE("Query blob of testuser")
+{
+	boost::asio::io_context ioc;
+	auto redis = redis::connect(ioc);
+
+	Ownership subject{"testuser"};
+
+	auto blobid = insecure_random<ObjectID>();
+
+	auto ce_str = CollEntry::create(Permission::public_(), "haha.jpeg", "image/jpeg");
+
+	int tested = 0;
+	subject.link(
+		*redis, "somecoll", blobid, CollEntry{ce_str}, [&tested](auto ec)
+		{
+			REQUIRE(!ec);
+			tested++;
+		}
+	);
+	REQUIRE(ioc.run_for(10s) > 0);
+	REQUIRE(tested == 1);
+	ioc.restart();
+
+	subject.query_blob(*redis, blobid, [&tested](auto&& user, auto&& coll, auto&& entry)
+	{
+		// There should be only one collection that owns the blob
+		REQUIRE(user == "testuser");
+		REQUIRE(coll == "somecoll");
+		REQUIRE(entry.permission() == Permission::public_());
+		REQUIRE(entry.filename() == "haha.jpeg");
+		REQUIRE(entry.mime() == "image/jpeg");
+		tested++;
+	});
+
+	REQUIRE(ioc.run_for(10s) > 0);
+	REQUIRE(tested == 2);
 }
 
 TEST_CASE("Scan for all containers from testuser")
@@ -311,8 +354,8 @@ TEST_CASE("Scan for all containers from testuser")
 			REQUIRE(jdoc["username"] == "");
 			REQUIRE(jdoc["owner"]    == "testuser");
 
-			for (auto&& coll : jdoc["colls"].GetObject())
-				dirs.push_back(coll.name.GetString());
+			for (auto&& it : jdoc["colls"].items())
+				dirs.push_back(it.key());
 		}
 	);
 
@@ -340,4 +383,22 @@ TEST_CASE("collection entry", "[normal]")
 	REQUIRE(same.mime() == "image/jpeg");
 	REQUIRE(same.permission().allow("yungyung") == false);
 	REQUIRE(same.raw() == subject.raw());
+}
+
+TEST_CASE("Collection ctor", "[normal]")
+{
+	Ownership::Collection subject{"dir:user:path"};
+	REQUIRE(subject.user() == "user");
+	REQUIRE(subject.path() == "path");
+	REQUIRE(subject.redis_key() == "dir:user:path");
+
+	Ownership::Collection path_with_colon{"dir:sumsum::path::"};
+	REQUIRE(path_with_colon.user() == "sumsum");
+	REQUIRE(path_with_colon.path() == ":path::");
+	REQUIRE(path_with_colon.redis_key() == "dir:sumsum::path::");
+
+	Ownership::Collection path_with_slash{"dir:siuyung:/some/collection:path"};
+	REQUIRE(path_with_slash.user() == "siuyung");
+	REQUIRE(path_with_slash.path() == "/some/collection:path");
+	REQUIRE(path_with_slash.redis_key() == "dir:siuyung:/some/collection:path");
 }

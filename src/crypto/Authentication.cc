@@ -91,10 +91,10 @@ void create_session(
 			completion(ec, std::move(auth));
 		},
 
-		"SETEX session:%b %d %b",
+		"SET session:%b _%b EX %d",
 		auth.cookie().data(), auth.cookie().size(),
-		session_length.count(),
-		username.data(), username.size()
+		username.data(), username.size(),
+		session_length.count()
 	);
 }
 
@@ -145,23 +145,33 @@ void Authentication::verify_session(
 	std::function<void(std::error_code, Authentication&&)>&& completion
 )
 {
+	static const char lua[] = "return {redis.call('GET', KEYS[1]), redis.call('TTL', KEYS[1])}";
+
 	db.command([
 			db=db.shared_from_this(),
 			comp=std::move(completion),
 			cookie, session_length
 		](redis::Reply reply, auto&& ec) mutable
 		{
-			if (!ec)
+			if (ec)
+				return comp(ec, Authentication{});
+
+			auto [user, ttl] = reply.as_tuple<2>(ec);
+			if (ec || user.is_nil() || user.as_string().size() <= 1 || ttl.as_int() < 0)
+				return comp(ec, Authentication{});
+
+			Authentication auth{cookie, user.as_string().substr(1)};
+			if (ttl.as_int() < session_length.count()/2)
 			{
-				if (reply.is_nil())
-					comp(std::move(ec), Authentication{});
-				else
-					Authentication{cookie, reply.as_string()}.renew_session(*db, session_length, std::move(comp));
+				Log(LOG_NOTICE, "%1% seconds before session timeout. Renewing session", ttl.as_int());
+				auth.renew_session(*db, session_length, std::move(comp));
 			}
 			else
-				comp(std::move(ec), Authentication{});
+			{
+				comp(ec, std::move(auth));
+			}
 		},
-		"GET session:%b", cookie.data(), cookie.size()
+		"EVAL %s 1 session:%b", lua, cookie.data(), cookie.size()
 	);
 }
 
@@ -265,32 +275,47 @@ void Authentication::renew_session(
 	std::function<void(std::error_code, Authentication&&)>&& completion
 ) const
 {
-	// try to get the TTL of the session
-	db.command([
-			db=db.shared_from_this(), *this,
-			comp=std::move(completion), session_length
-		](auto&& reply, auto&& ec)
+	auto new_cookie = secure_random<Authentication::Cookie>();
+
+	// Check if the old session is already renewed and renew it atomically.
+
+	// If the value of the old session key start with an underscore
+	// that means it has not been renewed.
+
+	// When renewing, expire the old session cookie in 30 seconds.
+	// This is to avoid session error for the pending requests in the
+	// pipeline. These requests should still be using the old session.
+	static const char lua[] = R"__(
+		if string.sub(redis.call('GET', KEYS[1]), 1, 1) == '_'
+		then
+			redis.call('SET', KEYS[1], '#' .. ARGV[1], 'EX', 30)
+			redis.call('SET', KEYS[2], '_' .. ARGV[1], 'EX', ARGV[2])
+			return 1
+		else
+			return 0
+		end
+	)__";
+	db.command(
+		[comp=std::move(completion), *this, new_cookie](auto&& reply, auto ec)
 		{
-			// The old session is more than half-way expired. Renew the session by
-			// creating a new one and deleting the old one.
-			if (reply.as_int() < session_length.count()/2)
+			// if error occurs or session already renewed, use the old session
+			if (ec || reply.as_int() != 1)
 			{
-				Log(LOG_NOTICE, "%1% seconds before session timeout. Renewing session", reply.as_int());
-				create_session(std::move(comp), m_user, *db, session_length);
-
-				// Expire the old session cookie in 30 seconds.
-				// This is to avoid session error for the pending requests in the
-				// pipeline. These requests should still be using the old session.
-				db->command("EXPIRE session:%b 30", m_cookie.data(), m_cookie.size());
+				Log(LOG_NOTICE, "user %1% session already renewed: %2%", m_user, ec);
+				comp(ec, Authentication{*this});
 			}
-
-			// No need to renew, can keep using the old one
 			else
 			{
-				comp(std::move(ec), Authentication{*this});
+				Log(LOG_NOTICE, "user %1% session renewed successfully", m_user);
+				comp(ec, Authentication{new_cookie, m_user});
 			}
 		},
-		"TTL session:%b", m_cookie.data(), m_cookie.size()
+		"EVAL %s 2 session:%b session:%b %b %d",
+		lua,
+		m_cookie.data(), m_cookie.size(),           // KEYS[1]: old session cookie
+		new_cookie.data(), new_cookie.size(),       // KEYS[2]: new session cookie
+		m_user.data(), m_user.size(),               // ARGV[1]: username
+		session_length                              // ARGV[2]: session length
 	);
 }
 
