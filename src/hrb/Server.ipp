@@ -127,7 +127,7 @@ void Server::handle_request(Request&& req, Send&& send, const Authentication& au
 			return serve_home(std::forward<Request>(req), std::forward<Send>(send), auth);
 
 		if (intent.action() == URLIntent::Action::view)
-			return serve_view(std::forward<Request>(req), std::forward<Send>(send), auth);
+			return serve_view(intent, req.version(), std::forward<Send>(send), auth);
 
 		if (intent.action() == URLIntent::Action::coll)
 			return serve_collection(std::forward<Request>(req), std::forward<Send>(send), auth);

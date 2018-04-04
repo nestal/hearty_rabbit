@@ -276,17 +276,16 @@ http::response<http::string_body> Server::server_error(boost::beast::string_view
 	return res;
 }
 
-void Server::serve_view(const EmptyRequest& req, Server::FileResponseSender&& send, const Authentication& auth)
+void Server::serve_view(const URLIntent& url, unsigned version, Server::FileResponseSender&& send, const Authentication& auth)
 {
-	if (req.method() != http::verb::get)
-		return send(http::response<SplitBuffers>{http::status::bad_request, req.version()});
+//	if (req.method() != http::verb::get)
+//		return send(http::response<SplitBuffers>{http::status::bad_request, req.version()});
 
-	URLIntent path_url{req.target()};
-	Ownership{path_url.user()}.serialize(
+	Ownership{url.user()}.serialize(
 		*m_db.alloc(),
 		auth.user(),
-		path_url.collection(),
-		[send=std::move(send), version=req.version(), auth, this](auto&& json, auto ec)
+		url.collection(),
+		[send=std::move(send), version, auth, this](auto&& json, auto ec)
 	{
 		auto res = m_lib.find_dynamic("index.html", version);
 		res.body().extra(index_needle, std::move(json), 1, 1);

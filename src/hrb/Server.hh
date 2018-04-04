@@ -82,7 +82,7 @@ private:
 	void on_upload(UploadRequest&& req, EmptyResponseSender&& send, const Authentication& auth);
 	void unlink(BlobRequest&& req, EmptyResponseSender&& send);
 	void update_blob(BlobRequest&& req, EmptyResponseSender&& send);
-	void serve_view(const EmptyRequest& req, FileResponseSender&& send, const Authentication& auth);
+	void serve_view(const URLIntent& url, unsigned version, FileResponseSender&& send, const Authentication& auth);
 	void serve_home(const EmptyRequest& req, FileResponseSender&& send, const Authentication& auth);
 	void serve_collection(const EmptyRequest& req, StringResponseSender&& send, const Authentication& auth);
 	void scan_collection(const EmptyRequest& req, StringResponseSender&& send, const Authentication& auth);
