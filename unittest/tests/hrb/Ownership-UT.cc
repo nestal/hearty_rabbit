@@ -70,14 +70,12 @@ TEST_CASE("list of collection owned by user", "[normal]")
 	subject.serialize(*redis, "owner", "/", [&tested, redis](auto&& json, auto ec)
 	{
 		INFO("serialize() return " << json);
-		rapidjson::Document jdoc;
-		jdoc.Parse(json);
-		REQUIRE(!jdoc.HasParseError());
+		auto jdoc = nlohmann::json::parse(json);
 
-		for (auto&& blob : jdoc["elements"].GetObject())
+		for (auto&& blob : jdoc["elements"].items())
 		{
-			INFO("blob = " << blob.name.GetString());
-			Ownership{"owner"}.unlink(*redis, "/", *hex_to_object_id(blob.name.GetString()), [](auto&& ec)
+			INFO("blob = " << blob.key());
+			Ownership{"owner"}.unlink(*redis, "/", *hex_to_object_id(blob.key()), [](auto&& ec)
 			{
 				REQUIRE(!ec);
 			});
