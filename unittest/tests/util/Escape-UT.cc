@@ -135,4 +135,6 @@ TEST_CASE("decode URI", "[normal]")
 	REQUIRE(url_decode("%2Fview%2Fsumsum%2F") == "/view/sumsum/");
 	REQUIRE(url_decode("%2Fview%2Fsumsum%2") == "/view/sumsum");
 	REQUIRE(url_decode("%2Fview%OOsumsum%2F") == "/view");
+
+	REQUIRE(url_encode("\xF0\x11") == "%F0%11");
 }

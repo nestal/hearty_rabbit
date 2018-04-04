@@ -220,5 +220,10 @@ TEST_CASE("path URL")
 	REQUIRE(view_blob.collection() == "collection1");
 	REQUIRE(view_blob.valid());
 
-	U
+	URLIntent view_emoji{"/view/%F0%9F%99%87/%F0%9F%99%80%F0%9F%99%80/6d0ef85c5798004d3151302dbb6fdadeb095a65c"};
+	REQUIRE(view_emoji.user() == "🙇");
+	REQUIRE(view_emoji.collection() == "🙀🙀");
+	REQUIRE(view_emoji.filename() == "6d0ef85c5798004d3151302dbb6fdadeb095a65c");
+	REQUIRE(view_emoji.valid());
+	REQUIRE(view_emoji.str() == "/view/%F0%9F%99%87/%F0%9F%99%80%F0%9F%99%80/6d0ef85c5798004d3151302dbb6fdadeb095a65c");
 }
