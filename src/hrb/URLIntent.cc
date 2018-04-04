@@ -13,6 +13,7 @@
 #include "URLIntent.hh"
 
 #include "util/Escape.hh"
+#include "ObjectID.hh"
 
 #include <sstream>
 #include <cassert>
@@ -65,6 +66,8 @@ URLIntent::URLIntent(boost::string_view boost_target)
 	if (target.back() == '?')
 		target.remove_suffix(1);
 
+	// The action allows a filename at the end of the URL -> extract the filename
+	// from the end of string to the last slash.
 	if (!forbid_filename.at(static_cast<std::size_t>(m_action)))
 	{
 		auto file_start = target.find_last_of('/');
@@ -72,9 +75,15 @@ URLIntent::URLIntent(boost::string_view boost_target)
 		{
 			file_start++;
 			auto filename = target.substr(file_start, target.size());
-			target.remove_suffix(filename.size());
 
-			m_filename = url_decode(filename);
+			// Special handling for /view: the filename must be a blob ID.
+			// If the length of the filename is not equal to the length of blob IDs (i.e. 40 byte hex)
+			// then treat it as collection instead.
+			if (m_action != Action::view || is_valid_blob_id(filename))
+			{
+				target.remove_suffix(filename.size());
+				m_filename = url_decode(filename);
+			}
 		}
 	}
 
@@ -158,7 +167,7 @@ const std::array<bool, static_cast<int>(URLIntent::Action::none)> URLIntent::req
 	{false, false,  true, false, false, true,   false, true, false,     true};
 const std::array<bool, static_cast<int>(URLIntent::Action::none)> URLIntent::forbid_filename =
 //   login, logout, blob,  view,  coll, upload, home, lib,   listcolls, query, none
-	{true,  true,   false, true, true,  false,  true, false, true,      false};
+	{true,  true,   false, false, true,  false,  true, false, true,      false};
 
 const std::array<bool, static_cast<int>(URLIntent::Action::none)> URLIntent::forbid_coll =
 //   login, logout, blob,  view,  coll,  upload, home, lib,  listcolls, query, none

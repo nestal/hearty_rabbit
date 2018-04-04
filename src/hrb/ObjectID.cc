@@ -88,4 +88,9 @@ std::ostream& operator<<(std::ostream& os, const ObjectID& id)
 	return os << to_hex(id);
 }
 
+bool is_valid_blob_id(std::string_view hex)
+{
+	return hex.size() == Blake2::size && hex.find_first_not_of("01234567890ABCDEFabcdef") == hex.npos;
+}
+
 } // end of namespace
