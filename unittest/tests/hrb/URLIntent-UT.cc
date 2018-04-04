@@ -190,4 +190,22 @@ TEST_CASE("path URL")
 	REQUIRE(moved.collection() == "hyrule_field");
 	REQUIRE(moved.filename() == "マスターソード");
 	REQUIRE(moved.valid());
+
+	URLIntent query{"/query/latest"};
+	REQUIRE(query.action() == URLIntent::Action::query);
+	REQUIRE(query.user() == "");
+	REQUIRE(query.collection() == "");
+	REQUIRE(query.filename() == "latest");
+	REQUIRE(query.valid());
+
+	URLIntent query2{"/query/coll/oldest"};
+	REQUIRE(query2.action() == URLIntent::Action::query);
+	REQUIRE(query2.user() == "");
+	REQUIRE(query2.collection() == "coll");
+	REQUIRE(query2.filename() == "oldest");
+	REQUIRE(query2.valid());
+
+	URLIntent query3{"/query"};
+	REQUIRE(query3.action() == URLIntent::Action::query);
+	REQUIRE_FALSE(query3.valid());
 }
