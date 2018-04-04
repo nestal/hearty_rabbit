@@ -137,11 +137,7 @@ void Ownership::Collection::scan(
 						// it is not a null-terminated string and rapidjson does not support
 						// insitu parsing with non-null-terminated strings, so we must
 						// use the slower Parse() instead of ParseInsitu()
-						rapidjson::Document mdoc;
-						mdoc.Parse(sv.data(), sv.size());
-
-						if (!mdoc.HasParseError())
-							cb(key, std::move(mdoc));
+						cb(key, nlohmann::json::parse(sv));
 					});
 
 					// if comp return true, keep scanning with the same callback and
@@ -169,27 +165,15 @@ void Ownership::Collection::scan_all(
 	Complete&& complete
 )
 {
-	auto jdoc = std::make_shared<rapidjson::Document>();
-	jdoc->SetObject();
-
-	jdoc->AddMember("owner",    std::string{owner},     jdoc->GetAllocator());
-	jdoc->AddMember("username", std::string{requester}, jdoc->GetAllocator());
-	jdoc->AddMember("colls",    rapidjson::Value{}.SetObject(), jdoc->GetAllocator());
-
-	auto nl = std::make_shared<nlohmann::json>();
-	nl->emplace("owner",    std::string{owner});
-	nl->emplace("username", std::string{requester});
-	nl->emplace("colls",    nlohmann::json::object());
+	auto jdoc = std::make_shared<nlohmann::json>();
+	jdoc->emplace("owner",    std::string{owner});
+	jdoc->emplace("username", std::string{requester});
+	jdoc->emplace("colls",    nlohmann::json::object());
 
 	scan(db, owner, 0,
-		[&colls=(*jdoc)["colls"], jdoc, &nl_colls=(*nl)["colls"]](auto coll, auto&& json)
+		[&colls=(*jdoc)["colls"]](auto coll, auto&& json)
 		{
-			colls.AddMember(
-				json::string_ref(coll),
-				rapidjson::Value{}.CopyFrom(json, jdoc->GetAllocator()),
-				jdoc->GetAllocator()
-			);
-//			nl_colls.emplace(std::string{coll}, )
+			colls.emplace(coll, std::move(json));
 		},
 		[jdoc, comp=std::forward<Complete>(complete)](long cursor, auto ec)
 		{

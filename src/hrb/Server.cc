@@ -319,18 +319,10 @@ void Server::serve_home(const EmptyRequest& req, FileResponseSender&& send, cons
 	Ownership{auth.user()}.scan_all_collections(
 		*m_db.alloc(),
 		auth.user(),
-		[send=std::move(send), ver=req.version(), this](auto&& colls, auto ec)
+		[send=std::move(send), ver=req.version(), this](auto&& json, auto ec)
 		{
-			rapidjson::StringBuffer sb;
-			rapidjson::Writer<rapidjson::StringBuffer> writer(sb);
-			colls.Accept(writer);
-
-			std::string json{"var dir = "};
-			json.append(sb.GetString());
-			json.append(";");
-
 			auto res = m_lib.find_dynamic("index.html", ver);
-			res.body().extra(index_needle, std::move(json));
+			res.body().extra(index_needle, "var dir = " + json.dump() + ";");
 			return send(std::move(res));
 		}
 	);
@@ -482,15 +474,11 @@ void Server::scan_collection(const EmptyRequest& req, Server::StringResponseSend
 	Ownership{path_url.user()}.scan_all_collections(
 		*m_db.alloc(),
 		auth.user(),
-		[send=std::move(send), ver=req.version()](auto&& colls_json, auto ec)
+		[send=std::move(send), ver=req.version()](auto&& json, auto ec)
 		{
-			rapidjson::StringBuffer sb;
-			rapidjson::Writer<rapidjson::StringBuffer> writer(sb);
-			colls_json.Accept(writer);
-
 			http::response<http::string_body> res{
 				std::piecewise_construct,
-				std::make_tuple(sb.GetString(), sb.GetSize()),
+				std::make_tuple(json.dump()),
 				std::make_tuple(http::status::ok, ver)
 			};
 			res.set(http::field::content_type, "application/json");

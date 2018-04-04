@@ -47,14 +47,13 @@ TEST_CASE("list of collection owned by user", "[normal]")
 	subject.scan_all_collections(*redis, "owner", [&tested](auto&& json, auto ec)
 	{
 		REQUIRE(!ec);
-		REQUIRE(json.FindMember("colls") != json.MemberEnd());
+		REQUIRE(json.find("colls") != json.end());
 
 		std::vector<std::string> colls;
-		for (auto&& coll : json["colls"].GetObject())
-			colls.emplace_back(coll.name.GetString());
+		for (auto&& it : json["colls"].items())
+			colls.emplace_back(it.key());
 
 		REQUIRE(std::find(colls.begin(), colls.end(), "/") != colls.end());
-
 		tested++;
 	});
 
@@ -98,11 +97,11 @@ TEST_CASE("list of collection owned by user", "[normal]")
 	subject.scan_all_collections(*redis, "owner", [&tested](auto&& json, auto ec)
 	{
 		REQUIRE(!ec);
-		REQUIRE(json.FindMember("colls") != json.MemberEnd());
+		REQUIRE(json.find("colls") != json.end());
 
 		std::vector<std::string> colls;
-		for (auto&& coll : json["colls"].GetObject())
-			REQUIRE(coll.name.GetString() != std::string{"/"});
+		for (auto&& it : json["colls"].items())
+			REQUIRE(it.key() != std::string{"/"});
 		tested++;
 	});
 	REQUIRE(ioc.run_for(10s) > 0);
@@ -369,8 +368,8 @@ TEST_CASE("Scan for all containers from testuser")
 			REQUIRE(jdoc["username"] == "");
 			REQUIRE(jdoc["owner"]    == "testuser");
 
-			for (auto&& coll : jdoc["colls"].GetObject())
-				dirs.push_back(coll.name.GetString());
+			for (auto&& it : jdoc["colls"].items())
+				dirs.push_back(it.key());
 		}
 	);
 
