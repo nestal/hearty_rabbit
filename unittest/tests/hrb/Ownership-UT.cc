@@ -245,7 +245,9 @@ TEST_CASE("Load 3 images in json", "[normal]")
 
 		// try parse the JSON
 		using json = nlohmann::json;
+		std::cout << "jstr = " << jstr << std::endl;
 		auto doc = json::parse(jstr);
+		std::cout << "after jstr = " << jstr << std::endl;
 
 		REQUIRE(!doc.empty());
 		REQUIRE(

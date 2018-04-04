@@ -17,9 +17,7 @@
 #include "util/Log.hh"
 #include "util/Escape.hh"
 
-#include "json.hpp"
-#include <rapidjson/writer.h>
-
+#include <json.hpp>
 #include <sstream>
 
 namespace hrb {
@@ -167,9 +165,16 @@ std::string Ownership::Collection::serialize(redis::Reply& reply, std::string_vi
 		// check permission: allow allow owner (i.e. m_user)
 		if (blob_id && (m_user == requester || entry.permission().allow(requester)))
 		{
-			auto entry_jdoc = nlohmann::json::parse(entry.json());
-			entry_jdoc.emplace("perm", std::string{entry.permission().description()});
-			elements.emplace(to_hex(*blob_id), std::move(entry_jdoc));
+			try
+			{
+				auto entry_jdoc = nlohmann::json::parse(entry.json());
+				entry_jdoc.emplace("perm", std::string{entry.permission().description()});
+				elements.emplace(to_hex(*blob_id), std::move(entry_jdoc));
+			}
+			catch (std::exception& e)
+			{
+				Log(LOG_WARNING, "exception thrown when parsing CollEntry::json(): %1% %2%", e.what(), entry.json());
+			}
 		}
 	});
 	jdoc.emplace("elements", std::move(elements));
