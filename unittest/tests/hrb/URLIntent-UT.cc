@@ -208,4 +208,11 @@ TEST_CASE("path URL")
 	URLIntent query3{"/query"};
 	REQUIRE(query3.action() == URLIntent::Action::query);
 	REQUIRE_FALSE(query3.valid());
+
+	URLIntent view_blob{"/view/sumsum/collection1/6d0ef85c5798fd4d3151302dbb6fdadeb095a65c"};
+	REQUIRE(view_blob.action() == URLIntent::Action::view);
+	REQUIRE(view_blob.user() == "sumsum");
+	REQUIRE(view_blob.filename() == "6d0ef85c5798fd4d3151302dbb6fdadeb095a65c");
+	REQUIRE(view_blob.collection() == "collection1");
+	REQUIRE(view_blob.valid());
 }

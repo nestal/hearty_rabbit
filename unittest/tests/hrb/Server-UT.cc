@@ -245,41 +245,6 @@ TEST_CASE("General server tests", "[normal]")
 			REQUIRE(expected != nullptr);
 			REQUIRE(expected->tested());
 		}
-
-		SECTION("requesting invalid blob")
-		{
-			GenericStatusChecker bad_request{http::status::bad_request};
-
-			SECTION("blob ID too short")
-			{
-				req.target("/blob/user/abc");
-				SECTION("with valid session")
-				{
-					req.set(boost::beast::http::field::cookie, session.set_cookie());
-					subject.handle_request(std::move(req), std::ref(bad_request), session);
-				}
-				SECTION("with invalid session")
-				{
-					subject.handle_request(std::move(req), std::ref(bad_request), {});
-				}
-			}
-			SECTION("empty blob ID")
-			{
-				req.target("/blob/user/");
-				SECTION("with valid session")
-				{
-					req.set(boost::beast::http::field::cookie, session.set_cookie());
-					subject.handle_request(std::move(req), std::ref(bad_request), session);
-				}
-				SECTION("with invalid session")
-				{
-					subject.handle_request(std::move(req), std::ref(bad_request), {});
-				}
-			}
-
-			INFO("Request target: " << req.target() << " session user: " << session.user());
-			REQUIRE(bad_request.tested());
-		}
 	}
 	SECTION("Request with string body")
 	{

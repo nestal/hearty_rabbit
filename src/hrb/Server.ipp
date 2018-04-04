@@ -98,12 +98,6 @@ template <class Request, class Send>
 void Server::handle_request(Request&& req, Send&& send, const Authentication& auth)
 {
 	URLIntent intent{req.target()};
-	if constexpr (std::is_same<std::remove_reference_t<Request>, EmptyRequest>::value)
-	{
-		if (intent.action() == URLIntent::Action::lib)
-			return send(static_file_request(intent, req[http::field::if_none_match], req.version()));
-	}
-
 	if (intent.action() == URLIntent::Action::login)
 	{
 		if constexpr (std::is_same<std::remove_reference_t<Request>, StringRequest>::value)
@@ -117,17 +111,17 @@ void Server::handle_request(Request&& req, Send&& send, const Authentication& au
 
 	// handle_blob() is a function template on the request type. It can work with all
 	// request types so no need to check before calling.
-	if (intent.action() == URLIntent::Action::blob)
+	if (intent.action() == URLIntent::Action::blob || intent.action() == URLIntent::Action::view)
 		return handle_blob(std::forward<Request>(req), std::forward<Send>(send), auth);
 
 	// The following URL only support EmptyRequests, i.e. requests without body.
 	if constexpr (std::is_same<std::remove_reference_t<Request>, EmptyRequest>::value)
 	{
+		if (intent.action() == URLIntent::Action::lib)
+			return send(static_file_request(intent, req[http::field::if_none_match], req.version()));
+
 		if (intent.action() == URLIntent::Action::home)
 			return serve_home(std::forward<Request>(req), std::forward<Send>(send), auth);
-
-		if (intent.action() == URLIntent::Action::view)
-			return serve_view(intent, req.version(), std::forward<Send>(send), auth);
 
 		if (intent.action() == URLIntent::Action::coll)
 			return serve_collection(std::forward<Request>(req), std::forward<Send>(send), auth);
@@ -154,16 +148,13 @@ void Server::handle_blob(Request&& req, Send&& send, const Authentication& auth)
 {
 	BlobRequest breq{req, auth.user()};
 
-	// Return 400 bad request if the blob ID is invalid
-	auto object_id = breq.blob();
-	if (!object_id)
-		return send(http::response<http::empty_body>{http::status::bad_request, req.version()});
-
 	if (req.method() == http::verb::delete_)
 		return unlink(std::move(breq), std::move(send));
 
 	else if (req.method() == http::verb::get)
-		return get_blob(std::move(breq), std::move(send));
+		return breq.blob() ?
+			get_blob(std::move(breq), std::move(send)) :
+			serve_view(breq.intent(), req.version(), std::forward<Send>(send), auth);
 
 	else if (req.method() == http::verb::post)
 		return update_blob(std::move(breq),std::move(send));
