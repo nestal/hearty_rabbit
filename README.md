@@ -22,11 +22,11 @@ There are three directories need to be mounted to the container:
 -   The directory that contain the configuration file (and the certificate/private key files specified by the
     configuration file)
 -   The directory that contain all the uploaded images.
--   /dev/log for syslog(), which is used for logging.
+-   `/dev/log` for `syslog()`, which is used for logging.
 
 # Configuration
 
-HeartyRabbit uses a JSON configuration file. By default it is in /etc/hearty_rabbit/hearty_rabbit.json.
+HeartyRabbit uses a JSON configuration file. By default it is in `/etc/hearty_rabbit/hearty_rabbit.json`.
 It can be specified by the `HEART_RABBIT_CONFIG` environment variable or using command line options `--cfg`.
 
 The configuration file specifies the location of other files used by HeartyRabbit. If you use relative
@@ -36,7 +36,7 @@ not the current directory of the HeartyRabbit process.
 -   `web_root`: the directory that contains the HTML, CSS and javascript files served by HeartyRabbit
     as a web server. This directory is typically provided by the docker image, so there is little
     reason to change this. By default, it points to `../../lib`. Relative to
-    `/etc/hearty_rabbit/hearty_rabbit.json`, it actually resolves to /lib, which is the actual
+    `/etc/hearty_rabbit/hearty_rabbit.json`, it actually resolves to `/lib,` which is the actual
     directory inside the docker image that contains the [lib](lib) directory of the source.
     This directory must be readable by the user that runs HeartyRabbit (by default UID 65535).
 -   `blob_path`: the directory that store uploaded images, or _blobs_ (Binary Large OBjects).
@@ -72,7 +72,6 @@ which contains [GCC 7.2.1](https://gcc.gnu.org/gcc-7/), provides the whole tool
 chain that builds HeartyRabbit. In addition, the following libraries are included
 from official CentOS repository to build HeartyRabbit:
 
-- RapidJSON
 - openssl-devel
 - hiredis
 - libunwind
@@ -82,7 +81,7 @@ from official CentOS repository to build HeartyRabbit:
 - nasm (for building turbe-jpeg)
 
 In addition, HeartyRabbit also requires [Boost libraries](http://boost.org),
-[CMake](https://cmake.org) [turbo-jpeg](https://libjpeg-turbo.org/Documentation/Documentation )
+[CMake](https://cmake.org), [turbo-jpeg](https://libjpeg-turbo.org/Documentation/Documentation )
 and [libb2](https://github.com/BLAKE2/libb2) to
 build. However, the official packages of Boost, turbe-jpeg and CMake from CentOS 7.4 is
 too old to build HeartyRabbit, and there's no official packages for libb2.
