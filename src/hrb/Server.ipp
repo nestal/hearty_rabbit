@@ -79,7 +79,7 @@ void Server::on_request_header(
 				prepare_upload(dest.emplace<UploadRequestParser>(std::move(src)).get().body(), ec);
 
 			// blobs support post request
-			else if (!ec && action == URLIntent::Action::blob && method == http::verb::post)
+			else if (!ec && action == URLIntent::Action::view && method == http::verb::post)
 				dest.emplace<StringRequestParser>(std::move(src));
 
 			// Other requests use EmptyRequestParser, because they don't have a body.
@@ -111,7 +111,7 @@ void Server::handle_request(Request&& req, Send&& send, const Authentication& au
 
 	// handle_blob() is a function template on the request type. It can work with all
 	// request types so no need to check before calling.
-	if (intent.action() == URLIntent::Action::blob || intent.action() == URLIntent::Action::view)
+	if (intent.action() == URLIntent::Action::view)
 		return handle_blob(std::forward<Request>(req), std::forward<Send>(send), auth);
 
 	// The following URL only support EmptyRequests, i.e. requests without body.

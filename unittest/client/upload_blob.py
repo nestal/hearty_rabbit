@@ -155,20 +155,20 @@ class NormalTestCase(unittest.TestCase):
 
 		# Is all-zero blob ID really invalid? <- Yes, it's valid.
 		# Requesting with a valid object ID on an object that doesn't exists will return "Not Found"
-		r2 = self.user1.get("https://localhost:4433/blob/sumsum/0000000000000000000000000000000000000000")
+		r2 = self.user1.get("https://localhost:4433/view/sumsum/0000000000000000000000000000000000000000")
 		self.assertEqual(r2.status_code, 404)
 
 		# other user's blob: no matter the target exists or not will give you "forbidden"
-		r3 = self.user1.get("https://localhost:4433/blob/nestal/0100000000000000000000000000000000000003")
+		r3 = self.user1.get("https://localhost:4433/view/nestal/0100000000000000000000000000000000000003")
 		self.assertEqual(r3.status_code, 403)
 
-		# 10-digit blob ID is really invalid: Bad Request
-		r4 = self.user1.get("https://localhost:4433/blob/sumsum/FF0000000000000000FF")
-		self.assertEqual(r4.status_code, 400)
+		# 10-digit blob ID is really invalid: it will be treated as collection name
+		r4 = self.user1.get("https://localhost:4433/view/sumsum/FF0000000000000000FF")
+		self.assertEqual(r4.status_code, 200)
 
-		# invalid blob ID with funny characters
-		r5 = self.user1.get("https://localhost:4433/blob/nestal/0L00000000000000000PP0000000000000000003")
-		self.assertEqual(r5.status_code, 400)
+		# invalid blob ID with funny characters: it will be treated as collection name
+		r5 = self.user1.get("https://localhost:4433/view/nestal/0L00000000000000000PP0000000000000000003")
+		self.assertEqual(r5.status_code, 200)
 
 	def test_view_collection(self):
 		elements = self.get_collection(self.user1, "sumsum", "")
@@ -216,13 +216,13 @@ class NormalTestCase(unittest.TestCase):
 
 		# get it from another collection successfully
 		self.assertEqual(
-			self.user1.get("https://localhost:4433/blob/sumsum/another/collection/" + blob_id).status_code,
+			self.user1.get("https://localhost:4433/view/sumsum/another/collection/" + blob_id).status_code,
 			200
 		)
 
 		# can't get it from original collection any more
 		self.assertEqual(
-			self.user1.get("https://localhost:4433/blob/sumsum/some/collection/" + blob_id).status_code,
+			self.user1.get("https://localhost:4433/view/sumsum/some/collection/" + blob_id).status_code,
 			404
 		)
 
@@ -285,13 +285,13 @@ class NormalTestCase(unittest.TestCase):
 
 		# should give 404 instead of 403 if still login
 		self.assertEqual(
-			self.user1.get("https://localhost:4433/blob/sumsum/0000000000000000000000000000000000000000").status_code,
+			self.user1.get("https://localhost:4433/view/sumsum/0000000000000000000000000000000000000000").status_code,
 			403
 		)
 
 		# reuse old cookie to simulate session expired
 		self.user1.cookies["id"] = old_session
-		r1 = self.user1.get("https://localhost:4433/blob/sumsum/0000000000000000000000000000000000000000")
+		r1 = self.user1.get("https://localhost:4433/view/sumsum/0000000000000000000000000000000000000000")
 		self.assertEqual(r1.status_code, 403)
 
 	def test_login_incorrect(self):
@@ -339,7 +339,7 @@ class NormalTestCase(unittest.TestCase):
 		r0 = self.user1.get("https://localhost:4433/coll/sumsum/test_cover_album/")
 		self.assertEqual(r0.status_code, 200)
 		for blob in r0.json()["elements"].keys():
-			self.assertEqual(self.user1.delete("https://localhost:4433/blob/sumsum/test_cover_album/" + blob).status_code, 204)
+			self.assertEqual(self.user1.delete("https://localhost:4433/view/sumsum/test_cover_album/" + blob).status_code, 204)
 
 		# upload one image, and it will become the cover of the album
 		r1 = self.user1.put(
@@ -366,7 +366,7 @@ class NormalTestCase(unittest.TestCase):
 		self.assertEqual(cover_id, r4.json()["colls"]["test_cover_album"]["cover"])
 
 		# delete the cover
-		self.assertEqual(self.user1.delete("https://localhost:4433/blob/sumsum/test_cover_album/" + cover_id).status_code, 204)
+		self.assertEqual(self.user1.delete("https://localhost:4433/view/sumsum/test_cover_album/" + cover_id).status_code, 204)
 
 		# the cover will be missing
 		r5 = self.user1.get("https://localhost:4433/listcolls/sumsum/")
