@@ -40,10 +40,6 @@
 #include <boost/beast/http/message.hpp>
 #include <boost/beast/http/empty_body.hpp>
 
-#include <rapidjson/document.h>
-#include <rapidjson/ostreamwrapper.h>
-#include <rapidjson/writer.h>
-
 namespace hrb {
 
 namespace {
@@ -259,19 +255,14 @@ http::response<http::string_body> Server::bad_request(boost::beast::string_view 
 // Returns a not found response
 http::response<SplitBuffers> Server::not_found(boost::string_view target, const std::optional<Authentication>& auth, unsigned version)
 {
-	rapidjson::Document dir{rapidjson::kObjectType};
-	dir.AddMember("error_message", "The request resource was not found.", dir.GetAllocator());
+	nlohmann::json dir;
+	dir.emplace("error_message", "The request resource was not found.");
 	if (auth)
-		dir.AddMember("username", rapidjson::StringRef(auth->user()), dir.GetAllocator());
+		dir.emplace("username", std::string{auth->user()});
 
-	rapidjson::StringBuffer sb;
-	rapidjson::Writer<rapidjson::StringBuffer> writer(sb);
-	dir.Accept(writer);
-
-	using namespace std::literals;
 	auto res = m_lib.find_dynamic("index.html", version);
 	res.result(http::status::not_found);
-	res.body().extra(hrb::index_needle, sb.GetString(), 1, 1);
+	res.body().extra(hrb::index_needle, dir.dump(), 1, 1);
 	return res;
 }
 
