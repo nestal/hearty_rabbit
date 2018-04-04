@@ -15,10 +15,8 @@
 #include "CollEntry.hh"
 
 #include "util/Error.hh"
-#include "util/JsonHelper.hh"
 #include "util/Log.hh"
 
-#include <rapidjson/document.h>
 #include <json.hpp>
 
 #include <vector>

@@ -19,9 +19,6 @@
 #include "hrb/Permission.hh"
 #include "crypto/Random.hh"
 
-#include <rapidjson/document.h>
-#include <rapidjson/pointer.h>
-
 #include <iostream>
 
 using namespace hrb;
@@ -239,49 +236,38 @@ TEST_CASE("Load 3 images in json", "[normal]")
 	ioc.restart();
 
 	bool tested = false;
-	subject.serialize(*redis, "testuser", "some/collection", [&tested, &blobids](auto&& json, auto ec)
+	subject.serialize(*redis, "testuser", "some/collection", [&tested, &blobids](auto&& jstr, auto ec)
 	{
 		INFO("serialize() error_code: " << ec << " " << ec.message());
+		INFO("serialize result = " << jstr);
+
 		REQUIRE(!ec);
-		INFO("serialize result = " << json);
 
 		// try parse the JSON
-		rapidjson::Document doc;
-		doc.Parse(json.data(), json.size());
+		using json = nlohmann::json;
+		auto doc = json::parse(jstr);
 
-		REQUIRE(!doc.HasParseError());
+		REQUIRE(!doc.empty());
 		REQUIRE(
-			GetValueByPointerWithDefault(doc, "/owner", "").GetString() == std::string{"testuser"}
+			doc.value(json::json_pointer{"/owner"}, "") == "testuser"
 		);
 		REQUIRE(
-			GetValueByPointerWithDefault(doc, "/username", "").GetString() == std::string{"testuser"}
+			doc.value(json::json_pointer{"/username"}, "") == "testuser"
 		);
 		REQUIRE(
-			GetValueByPointerWithDefault(doc, "/collection", "").GetString() == std::string{"some/collection"}
+			doc.value(json::json_pointer{"/collection"}, "") == "some/collection"
 		);
 
 		for (auto&& blobid : blobids)
 		{
 			REQUIRE(
-				GetValueByPointerWithDefault(
-					doc,
-					rapidjson::Pointer{"/elements/" + to_hex(blobid) + "/perm"},
-					""
-				).GetString() == std::string{"private"}
+				doc.value(json::json_pointer{"/elements/" + to_hex(blobid) + "/perm"}, "") == "private"
 			);
 			REQUIRE(
-				GetValueByPointerWithDefault(
-					doc,
-					rapidjson::Pointer{"/elements/" + to_hex(blobid) + "/filename"},
-					""
-				).GetString() == std::string{"file.jpg"}
+				doc.value(json::json_pointer{"/elements/" + to_hex(blobid) + "/filename"}, "") == "file.jpg"
 			);
 			REQUIRE(
-				GetValueByPointerWithDefault(
-					doc,
-					rapidjson::Pointer{"/elements/" + to_hex(blobid) + "/mime"},
-					""
-				).GetString() == std::string{"image/jpeg"}
+				doc.value(json::json_pointer{"/elements/" + to_hex(blobid) + "/mime"}, "") == "image/jpeg"
 			);
 		}
 

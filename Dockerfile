@@ -2,26 +2,26 @@ FROM nestal/hearty_rabbit_dev as builder
 MAINTAINER [Nestal Wan <me@nestal.net>]
 ENV container docker
 
-ENV PATH=$PATH:/opt/rh/devtoolset-7/root/usr/bin:/opt/cmake-3.11.0/bin \
-	PKG_CONFIG_PATH=/opt/libjpeg-turbo/lib64/pkgconfig/ \
-	LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/libjpeg-turbo/lib64
+ENV PATH=$PATH:/opt/rh/devtoolset-7/root/usr/bin:/opt/bin \
+	PKG_CONFIG_PATH=/opt/lib/pkgconfig/ \
+	LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/lib
 
 # Copy source code. Not using git clone because the code may not be committed
 # yet in development builds
-COPY . /build/hearty_rabbit
+COPY . /build/src
 RUN mkdir /build/docker-build \
 	&& cd docker-build \
 	&& cmake \
-		-DBOOST_ROOT=/opt/boost_1_66_0 \
-		-DCMAKE_PREFIX_PATH=/opt/libb2\;/opt/nlohmann \
+		-DBOOST_ROOT=/opt \
+		-DCMAKE_PREFIX_PATH=/opt \
 		-DCMAKE_BUILD_TYPE=Release \
-		-DCMAKE_INSTALL_PREFIX=/opt/hearty_rabbit \
-			../hearty_rabbit \
+		-DCMAKE_INSTALL_PREFIX=/build/hearty_rabbit \
+			../src \
 	&& make -j8 install
 
 # Copy products to runtime docker image
 FROM scratch
-COPY --from=builder /opt/hearty_rabbit/ /
+COPY --from=builder /build/hearty_rabbit/ /
 
 # Libraries required for running hearty_rabbit
 COPY --from=builder \
@@ -48,7 +48,7 @@ COPY --from=builder \
 	/lib64/libpcre.so.1  \
 	/lib64/libunwind.so.8 \
 	/lib64/libtinfo.so.5  \
-	/opt/libjpeg-turbo/lib64/libturbojpeg.so.0  \
+	/opt/lib/libturbojpeg.so.0  \
 		/lib64/
 
 # Copy the magic cookie file for libmagic
