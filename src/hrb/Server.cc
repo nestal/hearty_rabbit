@@ -47,7 +47,7 @@
 namespace hrb {
 
 namespace {
-const std::string_view index_needle{"<meta charset=\"utf-8\"><script>"};
+const std::string_view index_needle{"<script>var dir = {"};
 }
 
 Server::Server(const Configuration& cfg) :
@@ -268,14 +268,10 @@ http::response<SplitBuffers> Server::not_found(boost::string_view target, const 
 	rapidjson::Writer<rapidjson::StringBuffer> writer(sb);
 	dir.Accept(writer);
 
-	std::string json{"var dir = "};
-	json.append(sb.GetString());
-	json.append(";");
-
 	using namespace std::literals;
 	auto res = m_lib.find_dynamic("index.html", version);
 	res.result(http::status::not_found);
-	res.body().extra(hrb::index_needle, std::move(json));
+	res.body().extra(hrb::index_needle, sb.GetString(), 1, 1);
 	return res;
 }
 
@@ -302,11 +298,8 @@ void Server::serve_view(const EmptyRequest& req, Server::FileResponseSender&& se
 		path_url.collection(),
 		[send=std::move(send), version=req.version(), auth, this](auto&& json, auto ec)
 	{
-		std::ostringstream ss;
-		ss  << "var dir = " << json << ";";
-
 		auto res = m_lib.find_dynamic("index.html", version);
-		res.body().extra(index_needle, ss.str());
+		res.body().extra(index_needle, std::move(json), 1, 1);
 		return send(std::move(res));
 	});
 }
@@ -322,7 +315,7 @@ void Server::serve_home(const EmptyRequest& req, FileResponseSender&& send, cons
 		[send=std::move(send), ver=req.version(), this](auto&& json, auto ec)
 		{
 			auto res = m_lib.find_dynamic("index.html", ver);
-			res.body().extra(index_needle, "var dir = " + json.dump() + ";");
+			res.body().extra(index_needle, json.dump(), 1, 1);
 			return send(std::move(res));
 		}
 	);
@@ -336,7 +329,8 @@ http::response<SplitBuffers> Server::static_file_request(const URLIntent& intent
 		auto res = m_lib.find_dynamic("index.html", version);
 		res.body().extra(
 			index_needle,
-			R"_(var dir = {login_message: "Login incorrect... Try again?"};)_"
+			R"_({login_message: "Login incorrect... Try again?"})_",
+			1, 1
 		);
 		return res;
 	}
