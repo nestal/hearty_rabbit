@@ -21,7 +21,7 @@ TEST_CASE("BlobRequest move ctor")
 {
 	EmptyRequest get_blob;
 	get_blob.method(http::verb::get);
-	get_blob.target("/blob/testuser/d83587387441dbd26616b532fe039fc0e9f4c927");
+	get_blob.target("/view/testuser/d83587387441dbd26616b532fe039fc0e9f4c927");
 
 	BlobRequest subject{get_blob, "sumsum"};
 	auto moved{std::move(subject)};

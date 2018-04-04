@@ -203,7 +203,7 @@ class NormalTestCase(unittest.TestCase):
 		self.assertFalse(blob_id in r4.json()["elements"])
 
 	def test_move_blob(self):
-		r1 = self.user1.put("https://localhost:4433/upload/sumsum/some/collection/random.jpg", data=self.random_image(800, 600))
+		r1 = self.user1.put("https://localhost:4433/upload/sumsum/some/collection/happy%F0%9F%98%86%F0%9F%98%84.jpg", data=self.random_image(800, 600))
 		self.assertEqual(r1.status_code, 201)
 		blob_id = r1.headers["Location"][-40:]
 
@@ -228,7 +228,7 @@ class NormalTestCase(unittest.TestCase):
 
 	def test_set_permission(self):
 		# upload to server
-		r1 = self.user1.put("https://localhost:4433/upload/sumsum/some/collection/random.jpg", data=self.random_image(1000, 1200))
+		r1 = self.user1.put("https://localhost:4433/upload/sumsum/some/collection/random%F0%9F%98%8A.jpg", data=self.random_image(1000, 1200))
 		self.assertEqual(r1.status_code, 201)
 		blob_id = r1.headers["Location"][-40:]
 
@@ -336,14 +336,14 @@ class NormalTestCase(unittest.TestCase):
 
 	def test_remove_cover(self):
 		# delete all images in test_cover_album
-		r0 = self.user1.get("https://localhost:4433/coll/sumsum/test_cover_album/")
+		r0 = self.user1.get("https://localhost:4433/coll/sumsum/%F0%9F%99%87/")
 		self.assertEqual(r0.status_code, 200)
 		for blob in r0.json()["elements"].keys():
-			self.assertEqual(self.user1.delete("https://localhost:4433/view/sumsum/test_cover_album/" + blob).status_code, 204)
+			self.assertEqual(self.user1.delete("https://localhost:4433/view/sumsum/%F0%9F%99%87/" + blob).status_code, 204)
 
 		# upload one image, and it will become the cover of the album
 		r1 = self.user1.put(
-			"https://localhost:4433/upload/sumsum/test_cover_album/cover.jpg",
+			"https://localhost:4433/upload/sumsum/%F0%9F%99%87/cover.jpg",
 			data=self.random_image(300, 200)
 		)
 		self.assertEqual(r1.status_code, 201)
@@ -352,27 +352,27 @@ class NormalTestCase(unittest.TestCase):
 		# verify the first image will become the cover of the album
 		r2 = self.user1.get("https://localhost:4433/listcolls/sumsum/")
 		self.assertEqual(r2.status_code, 200)
-		self.assertTrue("test_cover_album" in r2.json()["colls"])
-		self.assertEqual(cover_id, r2.json()["colls"]["test_cover_album"]["cover"])
+		self.assertTrue("🙇" in r2.json()["colls"])
+		self.assertEqual(cover_id, r2.json()["colls"]["🙇"]["cover"])
 
 		# upload another image, but the cover will stay the same
 		r3 = self.user1.put(
-			"https://localhost:4433/upload/sumsum/test_cover_album/not_cover.jpg",
+			"https://localhost:4433/upload/sumsum/%F0%9F%99%87/not_cover.jpg",
 			data=self.random_image(300, 200)
 		)
 		self.assertEqual(r3.status_code, 201)
 		r4 = self.user1.get("https://localhost:4433/listcolls/sumsum/")
 		self.assertEqual(r4.status_code, 200)
-		self.assertEqual(cover_id, r4.json()["colls"]["test_cover_album"]["cover"])
+		self.assertEqual(cover_id, r4.json()["colls"]["🙇"]["cover"])
 
 		# delete the cover
-		self.assertEqual(self.user1.delete("https://localhost:4433/view/sumsum/test_cover_album/" + cover_id).status_code, 204)
+		self.assertEqual(self.user1.delete("https://localhost:4433/view/sumsum/%F0%9F%99%87/" + cover_id).status_code, 204)
 
 		# the cover will be missing
 		r5 = self.user1.get("https://localhost:4433/listcolls/sumsum/")
 		self.assertEqual(r5.status_code, 200)
-		self.assertTrue("test_cover_album" in r5.json()["colls"])
-		self.assertFalse("cover" in r5.json()["colls"]["test_cover_album"])
+		self.assertTrue("🙇" in r5.json()["colls"])
+		self.assertFalse("cover" in r5.json()["colls"]["🙇"])
 
 		# delete the other image as well
 		self.assertEqual(self.user1.delete("https://localhost:4433" + r3.headers["Location"]).status_code, 204)
@@ -380,7 +380,7 @@ class NormalTestCase(unittest.TestCase):
 		# the album will be removed
 		r6 = self.user1.get("https://localhost:4433/listcolls/sumsum/")
 		self.assertEqual(r6.status_code, 200)
-		self.assertFalse("test_cover_album" in r6.json()["colls"])
+		self.assertFalse("🙇" in r6.json()["colls"])
 
 if __name__ == '__main__':
 	unittest.main()
