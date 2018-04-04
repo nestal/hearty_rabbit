@@ -32,7 +32,6 @@
 #include "util/Log.hh"
 #include "util/FS.hh"
 #include "util/Escape.hh"
-#include "util/JsonHelper.hh"
 
 #include <boost/exception/errinfo_api_function.hpp>
 #include <boost/exception/info.hpp>

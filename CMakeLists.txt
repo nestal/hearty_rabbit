@@ -18,7 +18,6 @@ message(STATUS "found libb2 at ${LIBB2_LIBRARY} ${LIBB2_INCLUDE}")
 find_path(NLOHMANN_INCLUDE json.hpp PATHS include)
 message(STATUS "found nlohmann/json at ${NLOHMANN_INCLUDE}")
 
-pkg_check_modules(RapidJSON REQUIRED RapidJSON)
 pkg_check_modules(HIREDIS REQUIRED hiredis)
 pkg_check_modules(LIBUNWIND libunwind)
 pkg_check_modules(TURBOJPEG REQUIRED libturbojpeg)
@@ -35,12 +34,8 @@ else()
 	string(TIMESTAMP BUILD_NUMBER "%Y%m%d%H%M%S")
 endif()
 
-# Enable std::string support in rapidjson
-add_definitions(-DRAPIDJSON_HAS_STDSTRING=1)
-
 include_directories(
 	${Boost_INCLUDE_DIR}
-	${SYSTEMD_INCLUDE_DIRS}
 	${HIREDIS_INCLUDE_DIRS}
 	${LIBUNWIND_INCLUDE_DIRS}
 	${TURBOJPEG_INCLUDE_DIRS}

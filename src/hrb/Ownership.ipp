@@ -131,10 +131,6 @@ void Ownership::Collection::scan(
 						if (sv.empty())
 							return;
 
-						// although we can modify the string inside the redis::Reply "value",
-						// it is not a null-terminated string and rapidjson does not support
-						// insitu parsing with non-null-terminated strings, so we must
-						// use the slower Parse() instead of ParseInsitu()
 						cb(key, nlohmann::json::parse(sv));
 					});
 
