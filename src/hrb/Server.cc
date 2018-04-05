@@ -22,7 +22,6 @@
 #include "crypto/Password.hh"
 #include "crypto/Authentication.hh"
 
-#include "net/Listener.hh"
 #include "net/SplitBuffers.hh"
 #include "net/MMapResponseBody.hh"
 
@@ -39,6 +38,8 @@
 #include <boost/beast/http/message.hpp>
 #include <boost/beast/http/empty_body.hpp>
 
+#include <utility>
+
 namespace hrb {
 
 namespace {
@@ -52,7 +53,6 @@ Server::Server(const Configuration& cfg) :
 	m_lib{cfg.web_root()},
 	m_blob_db{cfg}
 {
-	OpenSSL_add_all_digests();
 }
 
 void Server::on_login(const StringRequest& req, EmptyResponseSender&& send)
@@ -308,7 +308,7 @@ void Server::serve_home(const EmptyRequest& req, FileResponseSender&& send, cons
 
 }
 
-http::response<SplitBuffers> Server::static_file_request(const URLIntent& intent, boost::string_view etag, unsigned version)
+http::response<SplitBuffers> Server::file_request(const URLIntent& intent, boost::string_view etag, unsigned version)
 {
 	if (intent.filename() == "login_incorrect.html")
 	{
@@ -322,44 +322,6 @@ http::response<SplitBuffers> Server::static_file_request(const URLIntent& intent
 	}
 	else
 		return m_lib.find_static(intent.filename(), etag, version);
-}
-
-void Server::run()
-{
-	auto const threads = std::max(1UL, m_cfg.thread_count());
-
-	boost::asio::ssl::context ctx{boost::asio::ssl::context::sslv23};
-	ctx.set_options(
-		boost::asio::ssl::context::default_workarounds |
-		boost::asio::ssl::context::no_sslv2
-	);
-	ctx.use_certificate_chain_file(m_cfg.cert_chain().string());
-	ctx.use_private_key_file(m_cfg.private_key().string(), boost::asio::ssl::context::pem);
-
-	// Create and launch a listening port for HTTP and HTTPS
-	std::make_shared<Listener>(
-		m_ioc,
-		m_cfg.listen_http(),
-		*this,
-		nullptr
-	)->run();
-	std::make_shared<Listener>(
-		m_ioc,
-		m_cfg.listen_https(),
-		*this,
-		&ctx
-	)->run();
-
-	// make sure we load the certificates and listen before dropping root privileges
-	drop_privileges();
-
-	// Run the I/O service on the requested number of threads
-	std::vector<std::thread> v;
-	v.reserve(threads - 1);
-	for (auto i = threads - 1; i > 0; --i)
-		v.emplace_back([this]{m_ioc.run();});
-
-	m_ioc.run();
 }
 
 void Server::drop_privileges() const

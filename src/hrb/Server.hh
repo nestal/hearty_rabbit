@@ -18,9 +18,9 @@
 #include "net/Request.hh"
 #include "net/Redis.hh"
 
-#include <json.hpp>
-
 #include <boost/asio/io_context.hpp>
+
+#include <json.hpp>
 
 #include <system_error>
 #include <utility>
@@ -62,7 +62,6 @@ public:
 	static http::response<http::string_body> server_error(boost::string_view what, unsigned version);
 	static http::response<http::empty_body> see_other(boost::beast::string_view where, unsigned version);
 
-	void run();
 	boost::asio::io_context& get_io_context();
 
 	// Administrative commands and configurations
@@ -70,10 +69,10 @@ public:
 	std::string https_root() const;
 	std::size_t upload_limit() const;
 	std::chrono::seconds session_length() const;
+	void drop_privileges() const;
 
 private:
-	http::response<SplitBuffers> static_file_request(const URLIntent& intent, boost::string_view etag, unsigned version);
-	void drop_privileges() const;
+	http::response<SplitBuffers> file_request(const URLIntent& intent, boost::string_view etag, unsigned version);
 
 	template <class Send>
 	class SendJSON
@@ -112,7 +111,7 @@ private:
 	void prepare_upload(UploadFile& result, std::error_code& ec);
 
 	template <class Request, class Send>
-	void handle_blob(Request&& req, Send&& send, const Authentication& auth);
+	void on_request_view(Request&& req, Send&& send, const Authentication& auth);
 
 	template <class Send>
 	void get_blob(const BlobRequest& req, Send&& send);

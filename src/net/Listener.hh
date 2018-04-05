@@ -16,20 +16,29 @@
 #include <boost/asio/ssl/context.hpp>
 
 #include <optional>
+#include <memory>
+#include <functional>
 
 namespace hrb {
 
-class Server;
+class Session;
 
 // Accepts incoming connections and launches the sessions
 class Listener : public std::enable_shared_from_this<Listener>
 {
 public:
+	using SessionFactory = std::function<std::shared_ptr<Session>(
+		boost::asio::ip::tcp::socket&&,
+		boost::asio::ssl::context&,
+		std::size_t
+	)>;
+
 	Listener(
 		boost::asio::io_context &ioc,
 		boost::asio::ip::tcp::endpoint endpoint,
-		Server& server,
-		boost::asio::ssl::context *ssl_ctx
+		SessionFactory session_factory,
+		boost::asio::ssl::context *ssl_ctx,
+		std::string&& https_root
 	);
 
 	void run();
@@ -41,8 +50,9 @@ private:
 private:
 	boost::asio::ip::tcp::acceptor  m_acceptor;
 	boost::asio::ip::tcp::socket    m_socket;
-	Server&                         m_server;
+	SessionFactory                  m_session_factory;
 	boost::asio::ssl::context       *m_ssl_ctx{};
+	std::string                     m_https_root;
 
 	// stats
 	std::size_t m_session_count{};

@@ -112,7 +112,7 @@ void Server::handle_request(Request&& req, Send&& send, const Authentication& au
 	// handle_blob() is a function template on the request type. It can work with all
 	// request types so no need to check before calling.
 	if (intent.action() == URLIntent::Action::view)
-		return handle_blob(std::forward<Request>(req), std::forward<Send>(send), auth);
+		return on_request_view(std::forward<Request>(req), std::forward<Send>(send), auth);
 
 	// The following URL only support EmptyRequests, i.e. requests without body.
 	if constexpr (std::is_same<std::remove_reference_t<Request>, EmptyRequest>::value)
@@ -121,7 +121,7 @@ void Server::handle_request(Request&& req, Send&& send, const Authentication& au
 			return send(bad_request("unsupported HTTP method", req.version()));
 
 		if (intent.action() == URLIntent::Action::lib)
-			return send(static_file_request(intent, req[http::field::if_none_match], req.version()));
+			return send(file_request(intent, req[http::field::if_none_match], req.version()));
 
 		if (intent.action() == URLIntent::Action::home)
 			return serve_home(std::forward<Request>(req), std::forward<Send>(send), auth);
@@ -147,7 +147,7 @@ void Server::handle_request(Request&& req, Send&& send, const Authentication& au
 }
 
 template <class Request, class Send>
-void Server::handle_blob(Request&& req, Send&& send, const Authentication& auth)
+void Server::on_request_view(Request&& req, Send&& send, const Authentication& auth)
 {
 	BlobRequest breq{req, auth.user()};
 
