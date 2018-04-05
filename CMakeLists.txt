@@ -28,10 +28,10 @@ set(VERSION "0.2")
 set(CONFIG_FILENAME "hearty_rabbit.json")
 
 # Get build number from environment variable. It should be set by travis.
-if (DEFINED ENV{BUILD_NUMBER})
-	set(BUILD_NUMBER $ENV{BUILD_NUMBER})
-else()
+if ("$ENV{BUILD_NUMBER}" STREQUAL "")
 	string(TIMESTAMP BUILD_NUMBER "%Y%m%d%H%M%S")
+else()
+	set(BUILD_NUMBER $ENV{BUILD_NUMBER})
 endif()
 
 include_directories(
