@@ -2,12 +2,13 @@
 cmake_minimum_required(VERSION 3.8)
 project(hearty_rabbit)
 
+set(VERSION "0.2")
 
 # Get build number from environment variable. It should be set by travis.
 if (NOT BUILD_NUMBER)
 	string(TIMESTAMP BUILD_NUMBER "%Y%m%d%H%M%S")
 endif()
-message(STATUS "HeartyRabbit Build ${BUILD_NUMBER}")
+message(STATUS "Building HeartyRabbit ${VERSION}.${BUILD_NUMBER}")
 
 set(Boost_USE_STATIC_LIBS  ON)
 find_package(Boost REQUIRED COMPONENTS system filesystem program_options)
@@ -31,7 +32,6 @@ pkg_check_modules(TURBOJPEG REQUIRED libturbojpeg)
 pkg_check_modules(EXIV2 exiv2)
 
 set(CMAKE_CXX_STANDARD 17)
-set(VERSION "0.2")
 set(CONFIG_FILENAME "hearty_rabbit.json")
 
 include_directories(

@@ -187,11 +187,14 @@ bool Session::validate_request(const Request& req)
 template <class Response>
 void Session::send_response(Response&& response)
 {
+	static const std::string version =
+		(boost::format{"%1% HeartyRabbit/%2%"} % BOOST_BEAST_VERSION_STRING % hrb::constants::version).str();
+
 	// The lifetime of the message has to extend
 	// for the duration of the async operation so
 	// we use a shared_ptr to manage it.
 	auto sp = std::make_shared<std::remove_reference_t<Response>>(std::forward<Response>(response));
-	sp->set(http::field::server, BOOST_BEAST_VERSION_STRING);
+	sp->set(http::field::server, version);
 	sp->keep_alive(m_keep_alive);
 	sp->prepare_payload();
 
