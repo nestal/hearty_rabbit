@@ -60,6 +60,7 @@ public:
 	struct Error : virtual Exception {};
 	struct FileError : virtual Error {};
 	struct MissingUsername : virtual Error {};
+	struct InvalidUserOrGroup: virtual Error {};
 	using Path      = boost::error_info<struct tag_path,    boost::filesystem::path>;
 	using Message   = boost::error_info<struct tag_message, std::string>;
 	using Offset    = boost::error_info<struct tag_offset,  std::size_t>;

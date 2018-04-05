@@ -12,9 +12,9 @@ currently an image album that powered [nestal.net](https://www.nestal.net).
 
 Use docker:
 
-	docker run nestal/hearty_rabbit
+	docker pull nestal/hearty_rabbit
 
-Actually it is much more complicated than that. See the [systemd unit file](systemd/hearty_rabbit.service) for
+See the [systemd unit file](systemd/hearty_rabbit.service) for
 a complete command line for `docker run`. The extra options are mostly for mounting volumes from the host.
 
 There are three directories need to be mounted to the container:
@@ -23,6 +23,8 @@ There are three directories need to be mounted to the container:
     configuration file)
 -   The directory that contain all the uploaded images.
 -   `/dev/log` for `syslog()`, which is used for logging.
+
+HeartyRabbit also require [Redis](https://redis.io/).
 
 # Configuration
 
@@ -40,10 +42,24 @@ not the current directory of the HeartyRabbit process.
     directory inside the docker image that contains the [lib](lib) directory of the source.
     This directory must be readable by the user that runs HeartyRabbit (by default UID 65535).
 -   `blob_path`: the directory that store uploaded images, or _blobs_ (Binary Large OBjects).
-    Images or and uploaded files are stored in directories that named by their Blake2 hash.
+    Images or and uploaded files are stored in subdirectories that named by their Blake2 hash
+    under `blob_path`.
 -   `cert_chain` and `private_key`: both files are used for SSL/TLS to support HTTPS. Normally
-    they are provided by a certificate authority. For testing purpose the HeartyRabbit source
-    include a self-signed certificate for automated testing.
+    they are provided by a certificate authority. For testing purpose the
+    [HeartyRabbit source](etc/hearty_rabbit) include a self-signed certificate for
+    automated testing. Please do not use them for production.
+-   `redis`: Optional. IP address and port number of the Redis server. The default setting
+	 is `127.0.0.1/6379`. We need to pass `--network=host` to let HeartyRabbit if Redis
+	 is running in the host for this to work. 
+-   `https`: Local IP address and port number HeartyRabbit listens to for HTTPS.
+	 Normally it should be `0.0.0.0/443`. For testing we use port `4433` just in
+	 case that HeartyRabbit is not run by root.
+-   `http`: Local IP address and port number for HTTP. Normally it should be
+	`0.0.0.0/80`. HeartyRabbit will redirect all requests to HTTPS.
+-   `uid`/`gid`: Optional. Effective user ID and group ID of the HeartyRabbit
+	process after it drops privileges. Note that `blob_path` must be readable
+	and writeable by this user. Currently only numerical values are accepted.
+	User names and group names are not. Default value is `65535`. 
 
 # Build Environment
 
