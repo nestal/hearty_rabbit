@@ -20,6 +20,40 @@
 
 namespace hrb {
 
+const std::array<
+    URLIntent::Parameters,
+    static_cast<int>(URLIntent::Action::none)
+> URLIntent::intent_defintions{
+	// login, logout
+	Parameters{}, Parameters{},
+
+	// view
+	Parameters{
+		URLIntent::Parameter::user,
+		URLIntent::Parameter::collection,
+		URLIntent::Parameter::blob,
+		URLIntent::Parameter::option
+	},
+
+	// list
+	Parameters{URLIntent::Parameter::user, URLIntent::Parameter::collection},
+
+	// upload
+	Parameters{URLIntent::Parameter::user, URLIntent::Parameter::collection, URLIntent::Parameter::filename},
+
+	// home
+	Parameters{},
+
+	// lib
+	Parameters{URLIntent::Parameter::filename},
+
+	// listcolls
+	Parameters{URLIntent::Parameter::user},
+
+	// query
+	Parameters{URLIntent::Parameter::command, URLIntent::Parameter::filename}
+};
+
 URLIntent::URLIntent(boost::string_view boost_target)
 {
 	// order is important here

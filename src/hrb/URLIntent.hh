@@ -13,8 +13,10 @@
 #pragma once
 
 #include <boost/utility/string_view.hpp>
-#include <string_view>
+
 #include <array>
+#include <string_view>
+#include <vector>
 
 namespace hrb {
 
@@ -25,9 +27,24 @@ public:
 	// TODO: narrow down the possibility of actions in these enum
 	enum class Action {login, logout, view, list, upload, home, lib, listcolls, query, none};
 
+	//! Possible parameters specified by a URL
+	enum class Parameter {
+		user,           //!< Name of a user whom this request is applied to. Note this may not
+						//!< be the user who send this request. Only occupy one segment in the URL.
+		collection,     //!< Name of the collection which the request is applied to. It may span
+						//!< across multiple segments.
+		filename,       //!< Filename of a resource. Single segment only.
+		blob,           //!< 40-character hex string for blob ID. Obviously single segment.
+		option,         //!< Query string of the URL
+		command         //!< Single segment command that supplement the action.
+	};
+
 private:
+	using Parameters = std::vector<Parameter>;
+
 	static const std::array<bool, static_cast<int>(Action::none)> require_user, require_filename;
 	static const std::array<bool, static_cast<int>(Action::none)> forbid_user, forbid_filename, forbid_coll;
+	static const std::array<Parameters, static_cast<int>(Action::none)> intent_defintions;
 
 public:
 	URLIntent() = default;

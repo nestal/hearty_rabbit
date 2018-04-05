@@ -16,16 +16,25 @@
 
 using namespace hrb;
 
-TEST_CASE( "split-front", "[normal]" )
+TEST_CASE( "split left and right", "[normal]" )
 {
 	std::string_view in{"name=value"};
-	REQUIRE(split_front(in, "=&;") == std::make_tuple("name", '='));
+	REQUIRE(split_left(in, "=&;") == std::make_tuple("name", '='));
 	REQUIRE(in == "value");
-	REQUIRE(split_front(in, "&;")  == std::make_tuple("value", '\0'));
+	REQUIRE(split_left(in, "&;")  == std::make_tuple("value", '\0'));
+	REQUIRE(in.empty());
+	REQUIRE(split_left(in, "=&;") == std::make_tuple("", '\0'));
 	REQUIRE(in.empty());
 
-	REQUIRE(split_front(in, "=&;") == std::make_tuple("", '\0'));
-	REQUIRE(in.empty());
+	std::string_view url{"user/name/file?option"};
+	REQUIRE(split_right(url, "/?") == std::make_tuple("option", '?'));
+	REQUIRE(url == "user/name/file");
+	REQUIRE(split_left(url, "/") == std::make_tuple("user", '/'));
+	REQUIRE(url == "name/file");
+	REQUIRE(split_right(url, "/") == std::make_tuple("file", '/'));
+	REQUIRE(url == "name");
+	REQUIRE(split_right(url, "/") == std::make_tuple("name", '\0'));
+	REQUIRE(url == "");
 }
 
 TEST_CASE("get_fields_from_form_string", "[normal]")

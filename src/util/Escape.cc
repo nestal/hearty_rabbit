@@ -120,7 +120,7 @@ std::string url_decode(std::string_view in)
 	return result;
 }
 
-std::tuple<std::string_view, char> split_front(std::string_view& in, std::string_view value)
+std::tuple<std::string_view, char> split_left(std::string_view& in, std::string_view value)
 {
 	// substr() will not throw even if "in" is empty and location==npos
 	auto location = in.find_first_of(value);
@@ -134,6 +134,25 @@ std::tuple<std::string_view, char> split_front(std::string_view& in, std::string
 	{
 		match = in.front();
 		in.remove_prefix(1);
+	}
+
+	return std::make_tuple(result, match);
+}
+
+std::tuple<std::string_view, char> split_right(std::string_view& in, std::string_view value)
+{
+	// substr() will not throw even if "in" is empty and location==npos
+	auto location = in.find_last_of(value);
+	auto result   = location != in.npos ? in.substr(location) : in;
+
+	in.remove_suffix(result.size());
+
+	// Remove the matching character, if any
+	char match = '\0';
+	if (location != in.npos)
+	{
+		match = result.front();
+		result.remove_prefix(1);
 	}
 
 	return std::make_tuple(result, match);

@@ -69,11 +69,11 @@ Ownership::Collection::Collection(std::string_view user, std::string_view path) 
 
 Ownership::Collection::Collection(std::string_view redis_reply)
 {
-	auto [prefix, colon] = split_front(redis_reply, ":");
+	auto [prefix, colon] = split_left(redis_reply, ":");
 	if (colon != ':' || prefix != Collection::m_dir_prefix.substr(0, Collection::m_dir_prefix.size()-1))
 		return;
 
-	auto [user, colon2] = split_front(redis_reply, ":");
+	auto [user, colon2] = split_left(redis_reply, ":");
 	if (colon2 != ':')
 		return;
 
