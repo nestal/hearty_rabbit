@@ -13,6 +13,7 @@ RUN mkdir /build/docker-build \
 	&& cd docker-build \
 	&& cmake \
 		-DBOOST_ROOT=/opt \
+		-DBUILD_NUMBER=$TRAVIS_BUILD_NUMBER \
 		-DCMAKE_PREFIX_PATH=/opt \
 		-DCMAKE_BUILD_TYPE=Release \
 		-DCMAKE_INSTALL_PREFIX=/build/hearty_rabbit \
