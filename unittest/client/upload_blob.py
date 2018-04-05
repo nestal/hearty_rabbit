@@ -25,7 +25,7 @@ class NormalTestCase(unittest.TestCase):
 		return temp.getvalue()
 
 	def get_collection(self, session, owner, coll):
-		response = session.get("https://localhost:4433/coll/" + owner + "/" + coll + "/")
+		response = session.get("https://localhost:4433/list/" + owner + "/" + coll + "/")
 		self.assertEqual(response.status_code, 200)
 		self.assertEqual(response.headers["Content-type"], "application/json")
 		self.assertEqual(response.json()["collection"], coll)
@@ -186,7 +186,7 @@ class NormalTestCase(unittest.TestCase):
 		blob_id = r1.headers["Location"][-40:]
 
 		# should find it in the new collection
-		r2 = self.user1.get("https://localhost:4433/coll/sumsum/some/collection/")
+		r2 = self.user1.get("https://localhost:4433/list/sumsum/some/collection/")
 		self.assertEqual(r2.status_code, 200)
 		self.assertEqual(r2.json()["elements"][blob_id]["filename"], "abc.jpg")
 		self.assertEqual(r2.json()["elements"][blob_id]["mime"], "image/jpeg")
@@ -198,7 +198,7 @@ class NormalTestCase(unittest.TestCase):
 		self.assertEqual(r3.status_code, 204)
 
 		# not found in collection
-		r4 = self.user1.get("https://localhost:4433/coll/sumsum/some/collection/")
+		r4 = self.user1.get("https://localhost:4433/list/sumsum/some/collection/")
 		self.assertEqual(r4.status_code, 200)
 		self.assertFalse(blob_id in r4.json()["elements"])
 
@@ -329,14 +329,14 @@ class NormalTestCase(unittest.TestCase):
 		blob_id = r1.headers["Location"][-40:]
 
 		# should find it in the new collection
-		r2 = self.user1.get("https://localhost:4433/coll/sumsum/%E3%83%8F%E3%82%A4%E3%83%AA%E3%82%A2%E3%81%AE%E7%9B%BE/")
+		r2 = self.user1.get("https://localhost:4433/list/sumsum/%E3%83%8F%E3%82%A4%E3%83%AA%E3%82%A2%E3%81%AE%E7%9B%BE/")
 		self.assertEqual(r2.status_code, 200)
 		self.assertEqual(r2.json()["elements"][blob_id]["filename"], "食哂啲甘荀_carrot.jpg")
 		self.assertEqual(r2.json()["elements"][blob_id]["mime"], "image/jpeg")
 
 	def test_remove_cover(self):
 		# delete all images in test_cover_album
-		r0 = self.user1.get("https://localhost:4433/coll/sumsum/%F0%9F%99%87/")
+		r0 = self.user1.get("https://localhost:4433/list/sumsum/%F0%9F%99%87/")
 		self.assertEqual(r0.status_code, 200)
 		for blob in r0.json()["elements"].keys():
 			self.assertEqual(self.user1.delete("https://localhost:4433/view/sumsum/%F0%9F%99%87/" + blob).status_code, 204)

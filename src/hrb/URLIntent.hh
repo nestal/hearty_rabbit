@@ -23,7 +23,7 @@ class URLIntent
 {
 public:
 	// TODO: narrow down the possibility of actions in these enum
-	enum class Action {login, logout, view, coll, upload, home, lib, listcolls, query, none};
+	enum class Action {login, logout, view, list, upload, home, lib, listcolls, query, none};
 
 private:
 	static const std::array<bool, static_cast<int>(Action::none)> require_user, require_filename;

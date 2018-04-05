@@ -123,7 +123,7 @@ void Server::handle_request(Request&& req, Send&& send, const Authentication& au
 		if (intent.action() == URLIntent::Action::home)
 			return serve_home(std::forward<Request>(req), std::forward<Send>(send), auth);
 
-		if (intent.action() == URLIntent::Action::coll)
+		if (intent.action() == URLIntent::Action::list)
 			return req.method() == http::verb::get ?
 				serve_collection(intent, req.version(), std::forward<Send>(send), auth) :
 				send(bad_request("invalid method", req.version()));
