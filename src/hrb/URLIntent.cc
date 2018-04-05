@@ -85,9 +85,6 @@ URLIntent::URLIntent(boost::string_view boost_target)
 	if (!forbid_user.at(static_cast<std::size_t>(m_action)))
 		m_user = url_decode(extract_left(target));
 
-	if (target.empty())
-		return;
-
 	{
 		// only truncate "target" when "?" is found
 		// keep "target" unchange if "?" is not found
@@ -99,9 +96,6 @@ URLIntent::URLIntent(boost::string_view boost_target)
 			target   = tmp;
 		}
 	}
-
-	if (target.empty())
-		return;
 
 	// The action allows a filename at the end of the URL -> extract the filename
 	// from the end of string to the last slash.
@@ -123,9 +117,6 @@ URLIntent::URLIntent(boost::string_view boost_target)
 			target     = target_copy;
 		}
 	}
-
-	if (target.empty())
-		return;
 
 	m_coll = url_decode(trim(target));
 }
