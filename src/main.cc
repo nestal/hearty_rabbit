@@ -40,13 +40,17 @@ void run(Server& server, const Configuration& cfg)
 	ctx.use_certificate_chain_file(cfg.cert_chain().string());
 	ctx.use_private_key_file(cfg.private_key().string(), boost::asio::ssl::context::pem);
 
+	using namespace std::literals;
+	auto https_root = "https://" + cfg.server_name()
+		+ (cfg.listen_https().port() == 443 ? ""s : (":"s + std::to_string(cfg.listen_https().port())));
+
 	// Create and launch a listening port for HTTP and HTTPS
 	std::make_shared<Listener>(
 		server.get_io_context(),
 		cfg.listen_http(),
 		Listener::SessionFactory{},
 		nullptr,
-		server.https_root()
+		https_root
 	)->run();
 	std::make_shared<Listener>(
 		server.get_io_context(),
@@ -56,7 +60,7 @@ void run(Server& server, const Configuration& cfg)
 			return std::make_shared<Session>(server, std::move(sock), ssl, nth);
 		},
 		&ctx,
-		server.https_root()
+		https_root
 	)->run();
 
 	// make sure we load the certificates and listen before dropping root privileges

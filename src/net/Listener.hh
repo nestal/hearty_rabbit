@@ -38,7 +38,7 @@ public:
 		boost::asio::ip::tcp::endpoint endpoint,
 		SessionFactory session_factory,
 		boost::asio::ssl::context *ssl_ctx,
-		std::string&& https_root
+		const std::string& https_root
 	);
 
 	void run();

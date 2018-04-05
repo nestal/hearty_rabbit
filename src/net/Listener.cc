@@ -23,13 +23,13 @@ Listener::Listener(
 	boost::asio::ip::tcp::endpoint endpoint,
 	SessionFactory session_factory,
 	boost::asio::ssl::context *ssl_ctx,
-	std::string&& https_root
+	const std::string& https_root
 ) :
 	m_acceptor{ioc},
 	m_socket{ioc},
 	m_session_factory{session_factory},
 	m_ssl_ctx{ssl_ctx},
-	m_https_root{std::move(https_root)}
+	m_https_root{https_root}
 {
 	boost::system::error_code ec;
 

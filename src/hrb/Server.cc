@@ -362,13 +362,6 @@ boost::asio::io_context& Server::get_io_context()
 	return m_ioc;
 }
 
-std::string Server::https_root() const
-{
-	using namespace std::literals;
-	return "https://" + m_cfg.server_name()
-		+ (m_cfg.listen_https().port() == 443 ? ""s : (":"s + std::to_string(m_cfg.listen_https().port())));
-}
-
 std::size_t Server::upload_limit() const
 {
 	return m_cfg.upload_limit();

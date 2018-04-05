@@ -66,7 +66,6 @@ public:
 
 	// Administrative commands and configurations
 	void add_user(std::string_view username, Password&& password, std::function<void(std::error_code)> complete);
-	std::string https_root() const;
 	std::size_t upload_limit() const;
 	std::chrono::seconds session_length() const;
 	void drop_privileges() const;

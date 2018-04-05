@@ -131,7 +131,6 @@ void Configuration::load_config(const boost::filesystem::path& path)
 	}
 }
 
-
 const RenditionSetting::Setting& RenditionSetting::find(std::string_view rend) const
 {
 	assert(m_renditions.find(std::string{m_default}) != m_renditions.end());
