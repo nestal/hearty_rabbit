@@ -420,17 +420,13 @@ std::chrono::seconds Server::session_length() const
 	return m_cfg.session_length();
 }
 
-void Server::serve_collection(const EmptyRequest& req, StringResponseSender&& send, const Authentication& auth)
+void Server::serve_collection(const URLIntent& intent, unsigned version, StringResponseSender&& send, const Authentication& auth)
 {
-	if (req.method() != http::verb::get)
-		return send(http::response<http::string_body>{http::status::bad_request, req.version()});
-
-	URLIntent path_url{req.target()};
-	Ownership{path_url.user()}.serialize(
+	Ownership{intent.user()}.serialize(
 		*m_db.alloc(),
 		auth.user(),
-		path_url.collection(),
-		[send=std::move(send), version=req.version()](auto&& json, auto ec)
+		intent.collection(),
+		[send=std::move(send), version](auto&& json, auto ec)
 		{
 			http::response<http::string_body> res{
 				std::piecewise_construct,

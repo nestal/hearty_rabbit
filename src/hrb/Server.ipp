@@ -124,7 +124,9 @@ void Server::handle_request(Request&& req, Send&& send, const Authentication& au
 			return serve_home(std::forward<Request>(req), std::forward<Send>(send), auth);
 
 		if (intent.action() == URLIntent::Action::coll)
-			return serve_collection(std::forward<Request>(req), std::forward<Send>(send), auth);
+			return req.method() == http::verb::get ?
+				serve_collection(intent, req.version(), std::forward<Send>(send), auth) :
+				send(bad_request("invalid method", req.version()));
 
 		if (intent.action() == URLIntent::Action::listcolls)
 			return scan_collection(std::forward<Request>(req), std::forward<Send>(send), auth);
