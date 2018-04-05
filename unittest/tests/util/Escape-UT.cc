@@ -33,7 +33,9 @@ TEST_CASE( "split left and right", "[normal]" )
 	REQUIRE(url == "name/file");
 	REQUIRE(split_right(url, "/") == std::make_tuple("file", '/'));
 	REQUIRE(url == "name");
-	REQUIRE(split_right(url, "/") == std::make_tuple("name", '\0'));
+	REQUIRE(split_right(url, "/", true)  == std::make_tuple("", '\0'));
+	REQUIRE(url == "name");
+	REQUIRE(split_right(url, "/", false) == std::make_tuple("name", '\0'));
 	REQUIRE(url == "");
 }
 

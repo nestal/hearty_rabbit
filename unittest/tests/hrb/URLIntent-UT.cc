@@ -19,6 +19,11 @@ using namespace hrb;
 
 TEST_CASE("path URL")
 {
+	URLIntent lib_svg{"/lib/svg"};
+	REQUIRE(lib_svg.action() == URLIntent::Action::lib);
+	REQUIRE(lib_svg.filename() == "svg");
+	REQUIRE(lib_svg.valid());
+
 	URLIntent empty{""};
 	REQUIRE(empty.action() == URLIntent::Action::none);
 	REQUIRE(empty.collection() == "");
@@ -128,9 +133,9 @@ TEST_CASE("path URL")
 	URLIntent path_with_option{"/view/user/path/id?rendition"};
 	REQUIRE(path_with_option.action() == URLIntent::Action::view);
 	REQUIRE(path_with_option.user() == "user");
-	REQUIRE(path_with_option.collection() == "path/id");
-	REQUIRE(path_with_option.filename() == "");
 	REQUIRE(path_with_option.option() == "rendition");
+	REQUIRE(path_with_option.filename() == "");
+	REQUIRE(path_with_option.collection() == "path/id");
 	REQUIRE(path_with_2slashes.valid());
 
 	URLIntent path_with_question{"/view/user/path/big_id?"};

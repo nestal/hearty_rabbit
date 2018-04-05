@@ -65,8 +65,7 @@ URLIntent::URLIntent(boost::string_view boost_target)
 	std::string_view target{boost_target.data(), boost_target.size()};
 	target.remove_prefix(1);
 
-	auto action_str = target.substr(0, target.find_first_of('/', 0));
-	target.remove_prefix(action_str.size());
+	auto [action_str, sep] = split_left(target, "/?#");
 	m_action = parse_action(action_str);
 	if (m_action == Action::none)
 		return;
@@ -76,48 +75,36 @@ URLIntent::URLIntent(boost::string_view boost_target)
 
 	if (!forbid_user.at(static_cast<std::size_t>(m_action)))
 	{
-		auto user = target.substr(0, target.find_first_of('/', 1));
-		target.remove_prefix(user.size());
-		user.remove_prefix(1);
-
+		auto [user, sep] = split_left(target, "/?#");
 		m_user = url_decode(user);
 	}
 
 	if (target.empty())
 		return;
 
-	auto option_start = target.find_last_of('?');
-	if (option_start != target.npos)
-	{
-		option_start++;
-		m_option = target.substr(option_start, target.size());
-		target.remove_suffix(m_option.size());
-	}
+	auto [option, sep2] = split_right(target, "?", true);
+	if (sep2 == '?')
+		m_option = option;
 
 	if (target.empty())
 		return;
-
-	if (target.back() == '?')
-		target.remove_suffix(1);
 
 	// The action allows a filename at the end of the URL -> extract the filename
 	// from the end of string to the last slash.
 	if (!forbid_filename.at(static_cast<std::size_t>(m_action)))
 	{
-		auto file_start = target.find_last_of('/');
-		if (file_start != target.npos)
-		{
-			file_start++;
-			auto filename = target.substr(file_start, target.size());
+		// After split_right() remove the matched string from "target", we can't undo it.
+		// Therefore we make a copy of target and match that instead.
+		auto target_copy = target;
+		auto [filename, sep3] = split_right(target_copy, "/");
 
-			// Special handling for /view: the filename must be a blob ID.
-			// If the length of the filename is not equal to the length of blob IDs (i.e. 40 byte hex)
-			// then treat it as collection instead.
-			if (m_action != Action::view || is_valid_blob_id(filename))
-			{
-				target.remove_suffix(filename.size());
-				m_filename = url_decode(filename);
-			}
+		// Special handling for /view: the filename must be a blob ID.
+		// If the length of the filename is not equal to the length of blob IDs (i.e. 40 byte hex)
+		// then treat it as collection instead.
+		if (m_action != Action::view || is_valid_blob_id(filename))
+		{
+			m_filename = url_decode(filename);
+			target = target_copy;
 		}
 	}
 

@@ -22,7 +22,7 @@ std::string url_encode(std::string_view in);
 std::string url_decode(std::string_view in);
 
 std::tuple<std::string_view, char> split_left(std::string_view& in, std::string_view value);
-std::tuple<std::string_view, char> split_right(std::string_view& in, std::string_view value);
+std::tuple<std::string_view, char> split_right(std::string_view& in, std::string_view value, bool optional = false);
 std::string_view split_front_substring(std::string_view& in, std::string_view substring);
 
 template <typename... Fields>

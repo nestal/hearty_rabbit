@@ -139,11 +139,15 @@ std::tuple<std::string_view, char> split_left(std::string_view& in, std::string_
 	return std::make_tuple(result, match);
 }
 
-std::tuple<std::string_view, char> split_right(std::string_view& in, std::string_view value)
+std::tuple<std::string_view, char> split_right(std::string_view& in, std::string_view value, bool optional)
 {
-	// substr() will not throw even if "in" is empty and location==npos
+	// When optional = false (the default): if "value" is not found, the entire "in"
+	// will be matched. That means the result will be the whole "in" and "in" will
+	// become empty.
+	// When optional = true: if "value" is not found, result will be empty and "in"
+	// will be unchanged.
 	auto location = in.find_last_of(value);
-	auto result   = location != in.npos ? in.substr(location) : in;
+	auto result   = location != in.npos ? in.substr(location) : (optional ? "" : in);
 
 	in.remove_suffix(result.size());
 
