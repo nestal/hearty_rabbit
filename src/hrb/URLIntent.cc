@@ -54,6 +54,19 @@ const std::array<
 	Parameters{URLIntent::Parameter::command, URLIntent::Parameter::filename}
 };
 
+namespace {
+std::string_view extract_left(std::string_view& target)
+{
+	auto tmp = target;
+	auto[field, sep] = split_left(tmp, "/?#");
+	if (sep == '/')
+		target = tmp;
+	else
+		target.remove_prefix(field.size());
+	return field;
+}
+} // end of local namespace
+
 URLIntent::URLIntent(boost::string_view boost_target)
 {
 	// order is important here
@@ -65,26 +78,27 @@ URLIntent::URLIntent(boost::string_view boost_target)
 	std::string_view target{boost_target.data(), boost_target.size()};
 	target.remove_prefix(1);
 
-	auto [action_str, sep] = split_left(target, "/?#");
-	m_action = parse_action(action_str);
-	if (m_action == Action::none)
-		return;
-
-	if (target.empty())
+	m_action = parse_action(extract_left(target));
+	if (m_action == Action::none || target.empty())
 		return;
 
 	if (!forbid_user.at(static_cast<std::size_t>(m_action)))
-	{
-		auto [user, sep] = split_left(target, "/?#");
-		m_user = url_decode(user);
-	}
+		m_user = url_decode(extract_left(target));
 
 	if (target.empty())
 		return;
 
-	auto [option, sep2] = split_right(target, "?", true);
-	if (sep2 == '?')
-		m_option = option;
+	{
+		// only truncate "target" when "?" is found
+		// keep "target" unchange if "?" is not found
+		auto tmp = target;
+		auto[option, sep2] = split_right(tmp, "?");
+		if (sep2 == '?')
+		{
+			m_option = option;
+			target   = tmp;
+		}
+	}
 
 	if (target.empty())
 		return;
@@ -103,8 +117,10 @@ URLIntent::URLIntent(boost::string_view boost_target)
 		// then treat it as collection instead.
 		if (m_action != Action::view || is_valid_blob_id(filename))
 		{
+			// Here we want to commit the changes to "target", only when
+			// the "filename" is a valid blob ID.
 			m_filename = url_decode(filename);
-			target = target_copy;
+			target     = target_copy;
 		}
 	}
 

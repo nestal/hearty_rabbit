@@ -19,6 +19,14 @@ using namespace hrb;
 
 TEST_CASE("path URL")
 {
+	URLIntent option_only{"/?option"};
+	REQUIRE(option_only.action() == URLIntent::Action::home);
+	REQUIRE(option_only.user() == "");
+	REQUIRE(option_only.collection() == "");
+	REQUIRE(option_only.filename() == "");
+	REQUIRE(option_only.option() == "option");
+	REQUIRE(option_only.valid());
+
 	URLIntent lib_svg{"/lib/svg"};
 	REQUIRE(lib_svg.action() == URLIntent::Action::lib);
 	REQUIRE(lib_svg.filename() == "svg");
@@ -76,8 +84,18 @@ TEST_CASE("path URL")
 	REQUIRE(slash_view_slash_user.user() == "sumyung");
 	REQUIRE(slash_view_slash_user.collection() == "");
 	REQUIRE(slash_view_slash_user.filename() == "");
+	REQUIRE(slash_view_slash_user.option() == "");
 	REQUIRE(slash_view_slash_user.str() == "/view/sumyung/");
 	REQUIRE(slash_view_slash_user.valid());
+
+	URLIntent slash_view_slash_user_option{"/view/sumyung?really"};
+	REQUIRE(slash_view_slash_user_option.action() == URLIntent::Action::view);
+	REQUIRE(slash_view_slash_user_option.user() == "sumyung");
+	REQUIRE(slash_view_slash_user_option.collection() == "");
+	REQUIRE(slash_view_slash_user_option.filename() == "");
+	REQUIRE(slash_view_slash_user_option.option() == "really");
+	REQUIRE(slash_view_slash_user_option.str() == "/view/sumyung/?really");
+	REQUIRE(slash_view_slash_user_option.valid());
 
 	URLIntent slash_upload_slash_user_slash{"/upload/not_exists/"};
 	REQUIRE(slash_upload_slash_user_slash.action() == URLIntent::Action::upload);
