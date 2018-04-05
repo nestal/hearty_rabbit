@@ -278,9 +278,6 @@ http::response<http::string_body> Server::server_error(boost::beast::string_view
 
 void Server::serve_view(const URLIntent& url, unsigned version, Server::FileResponseSender&& send, const Authentication& auth)
 {
-//	if (req.method() != http::verb::get)
-//		return send(http::response<SplitBuffers>{http::status::bad_request, req.version()});
-
 	Ownership{url.user()}.serialize(
 		*m_db.alloc(),
 		auth.user(),
@@ -288,7 +285,7 @@ void Server::serve_view(const URLIntent& url, unsigned version, Server::FileResp
 		[send=std::move(send), version, auth, this](auto&& json, auto ec)
 	{
 		auto res = m_lib.find_dynamic("index.html", version);
-		res.body().extra(index_needle, std::move(json), 1, 1);
+		res.body().extra(index_needle, json.dump(), 1, 1);
 		return send(std::move(res));
 	});
 }
@@ -301,7 +298,7 @@ void Server::serve_home(const EmptyRequest& req, FileResponseSender&& send, cons
 	Ownership{auth.user()}.scan_all_collections(
 		*m_db.alloc(),
 		auth.user(),
-		[send=std::move(send), ver=req.version(), this](auto&& json, auto ec)
+		[send=std::move(send), ver=req.version(), this](const nlohmann::json& json, auto ec)
 		{
 			auto res = m_lib.find_dynamic("index.html", ver);
 			res.body().extra(index_needle, json.dump(), 1, 1);
@@ -426,43 +423,20 @@ void Server::serve_collection(const URLIntent& intent, unsigned version, StringR
 		*m_db.alloc(),
 		auth.user(),
 		intent.collection(),
-		[send=std::move(send), version](auto&& json, auto ec)
-		{
-			http::response<http::string_body> res{
-				std::piecewise_construct,
-				std::make_tuple(std::move(json)),
-				std::make_tuple(http::status::ok, version)
-			};
-			res.set(http::field::content_type, "application/json");
-			return send(std::move(res));
-		}
+		SendJSON{std::move(send), version}
 	);
 }
 
-void Server::scan_collection(const EmptyRequest& req, Server::StringResponseSender&& send, const Authentication& auth)
+void Server::scan_collection(const URLIntent& intent, unsigned version, Server::StringResponseSender&& send, const Authentication& auth)
 {
-	if (req.method() != http::verb::get)
-		return send(http::response<http::string_body>{http::status::bad_request, req.version()});
-
-	URLIntent path_url{req.target()};
-
 	// TODO: allow other users to query another user's shared collections
-	if (auth.user() != path_url.user())
-		return send(http::response<http::string_body>{http::status::forbidden, req.version()});
+	if (auth.user() != intent.user())
+		return send(http::response<http::string_body>{http::status::forbidden, version});
 
-	Ownership{path_url.user()}.scan_all_collections(
+	Ownership{intent.user()}.scan_all_collections(
 		*m_db.alloc(),
 		auth.user(),
-		[send=std::move(send), ver=req.version()](auto&& json, auto ec)
-		{
-			http::response<http::string_body> res{
-				std::piecewise_construct,
-				std::make_tuple(json.dump()),
-				std::make_tuple(http::status::ok, ver)
-			};
-			res.set(http::field::content_type, "application/json");
-			return send(std::move(res));
-		}
+		SendJSON{std::move(send), version}
 	);
 }
 
@@ -473,5 +447,6 @@ void Server::prepare_upload(UploadFile& result, std::error_code& ec)
 	if (ec)
 		Log(LOG_WARNING, "error opening file %1%: %2% (%3%)", m_cfg.blob_path(), ec, ec.message());
 }
+
 
 } // end of namespace

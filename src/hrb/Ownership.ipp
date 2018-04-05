@@ -77,7 +77,7 @@ public:
 		redis::Connection& db,
 		std::string_view requester,
 		Complete&& complete
-	) const ;
+	) const;
 
 	template <typename CollectionCallback, typename Complete>
 	static void scan(redis::Connection& db, std::string_view user, long cursor,
@@ -92,7 +92,7 @@ public:
 	const std::string& path() const {return m_path;}
 
 private:
-	std::string serialize(redis::Reply& reply, std::string_view requester) const;
+	nlohmann::json serialize(redis::Reply& reply, std::string_view requester) const;
 
 private:
 	std::string m_user;
@@ -172,7 +172,7 @@ void Ownership::Collection::scan_all(
 		[jdoc, comp=std::forward<Complete>(complete)](long cursor, auto ec)
 		{
 			if (cursor == 0)
-				comp(std::move(*jdoc), ec);
+				comp(*jdoc, ec);
 			return true;
 		}
 	);

@@ -67,11 +67,9 @@ TEST_CASE("list of collection owned by user", "[normal]")
 	ioc.restart();
 
 	// remove all blobs in the collection
-	subject.serialize(*redis, "owner", "/", [&tested, redis](auto&& json, auto ec)
+	subject.serialize(*redis, "owner", "/", [&tested, redis](auto&& jdoc, auto ec)
 	{
-		INFO("serialize() return " << json);
-		auto jdoc = nlohmann::json::parse(json);
-
+		INFO("serialize() return " << jdoc);
 		for (auto&& blob : jdoc["elements"].items())
 		{
 			INFO("blob = " << blob.key());
@@ -234,19 +232,13 @@ TEST_CASE("Load 3 images in json", "[normal]")
 	ioc.restart();
 
 	bool tested = false;
-	subject.serialize(*redis, "testuser", "some/collection", [&tested, &blobids](auto&& jstr, auto ec)
+	subject.serialize(*redis, "testuser", "some/collection", [&tested, &blobids](auto&& doc, auto ec)
 	{
+		using json = nlohmann::json;
 		INFO("serialize() error_code: " << ec << " " << ec.message());
-		INFO("serialize result = " << jstr);
+		INFO("serialize result = " << doc);
 
 		REQUIRE(!ec);
-
-		// try parse the JSON
-		using json = nlohmann::json;
-		std::cout << "jstr = " << jstr << std::endl;
-		auto doc = json::parse(jstr);
-		std::cout << "after jstr = " << jstr << std::endl;
-
 		REQUIRE(!doc.empty());
 		REQUIRE(
 			doc.value(json::json_pointer{"/owner"}, "") == "testuser"

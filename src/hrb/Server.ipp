@@ -117,6 +117,9 @@ void Server::handle_request(Request&& req, Send&& send, const Authentication& au
 	// The following URL only support EmptyRequests, i.e. requests without body.
 	if constexpr (std::is_same<std::remove_reference_t<Request>, EmptyRequest>::value)
 	{
+		if (req.method() != http::verb::get)
+			return send(bad_request("unsupported HTTP method", req.version()));
+
 		if (intent.action() == URLIntent::Action::lib)
 			return send(static_file_request(intent, req[http::field::if_none_match], req.version()));
 
@@ -124,12 +127,10 @@ void Server::handle_request(Request&& req, Send&& send, const Authentication& au
 			return serve_home(std::forward<Request>(req), std::forward<Send>(send), auth);
 
 		if (intent.action() == URLIntent::Action::list)
-			return req.method() == http::verb::get ?
-				serve_collection(intent, req.version(), std::forward<Send>(send), auth) :
-				send(bad_request("invalid method", req.version()));
+			return serve_collection(intent, req.version(), std::forward<Send>(send), auth);
 
 		if (intent.action() == URLIntent::Action::listcolls)
-			return scan_collection(std::forward<Request>(req), std::forward<Send>(send), auth);
+			return scan_collection(intent, req.version(), std::forward<Send>(send), auth);
 
 		if (intent.action() == URLIntent::Action::logout)
 			return on_logout(std::forward<Request>(req), std::forward<Send>(send), auth);
@@ -201,5 +202,6 @@ void Server::get_blob(const BlobRequest& req, Send&& send)
 		}
 	);
 }
+
 
 } // end of namespace

@@ -18,9 +18,12 @@
 #include "net/Request.hh"
 #include "net/Redis.hh"
 
+#include <json.hpp>
+
 #include <boost/asio/io_context.hpp>
 
 #include <system_error>
+#include <utility>
 
 namespace hrb {
 
@@ -72,6 +75,26 @@ private:
 	http::response<SplitBuffers> static_file_request(const URLIntent& intent, boost::string_view etag, unsigned version);
 	void drop_privileges() const;
 
+	template <class Send>
+	class SendJSON
+	{
+	public:
+		SendJSON(Send&& send, unsigned version) : m_send{std::move(send)}, m_version{version} {}
+		void operator()(const nlohmann::json& json, std::error_code ec) const
+		{
+			http::response<http::string_body> res{
+				std::piecewise_construct,
+				std::make_tuple(json.dump()),
+				std::make_tuple(ec ? http::status::internal_server_error : http::status::ok, m_version)
+			};
+			res.set(http::field::content_type, "application/json");
+			return m_send(std::move(res));
+		}
+	private:
+		mutable Send m_send;
+		unsigned m_version;
+	};
+
 	using EmptyResponseSender  = std::function<void(http::response<http::empty_body>&&)>;
 	using StringResponseSender = std::function<void(http::response<http::string_body>&&)>;
 	using FileResponseSender   = std::function<void(http::response<SplitBuffers>&&)>;
@@ -85,7 +108,7 @@ private:
 	void serve_view(const URLIntent& url, unsigned version, FileResponseSender&& send, const Authentication& auth);
 	void serve_home(const EmptyRequest& req, FileResponseSender&& send, const Authentication& auth);
 	void serve_collection(const URLIntent& intent, unsigned version, StringResponseSender&& send, const Authentication& auth);
-	void scan_collection(const EmptyRequest& req, StringResponseSender&& send, const Authentication& auth);
+	void scan_collection(const URLIntent& intent, unsigned version, StringResponseSender&& send, const Authentication& auth);
 	void prepare_upload(UploadFile& result, std::error_code& ec);
 
 	template <class Request, class Send>

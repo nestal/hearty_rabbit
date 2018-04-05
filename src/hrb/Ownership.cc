@@ -149,7 +149,7 @@ void Ownership::Collection::unlink(redis::Connection& db, const ObjectID& id)
 	);
 }
 
-std::string Ownership::Collection::serialize(redis::Reply& reply, std::string_view requester) const
+nlohmann::json Ownership::Collection::serialize(redis::Reply& reply, std::string_view requester) const
 {
 	// TODO: get the cover here... where to find a redis::Connection?
 	auto jdoc = nlohmann::json::object();
@@ -181,7 +181,7 @@ std::string Ownership::Collection::serialize(redis::Reply& reply, std::string_vi
 	});
 	jdoc.emplace("elements", std::move(elements));
 
-	return jdoc.dump();
+	return jdoc;
 }
 
 } // end of namespace hrb
