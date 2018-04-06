@@ -13,7 +13,6 @@
 #include "InsecureSession.hh"
 
 #include <boost/asio/bind_executor.hpp>
-#include <iostream>
 
 namespace hrb {
 
@@ -41,7 +40,6 @@ void InsecureSession::do_read()
 
 void InsecureSession::on_read(boost::beast::error_code ec, std::size_t)
 {
-	std::cout << "on request: " << m_request.target() << std::endl;
 	async_write(m_socket, m_response, boost::asio::bind_executor(
 		m_strand,
 		[self=shared_from_this()](auto&& ec, auto)

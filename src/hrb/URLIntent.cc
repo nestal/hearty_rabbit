@@ -85,7 +85,6 @@ URLIntent::URLIntent(boost::string_view boost_target)
 	if (m_action == Action::none)
 		return;
 
-	std::cout << "action = " << (int)m_action << std::endl;
 	auto& intent_definition = intent_defintions[static_cast<std::size_t>(m_action)];
 	auto mid = std::find_first_of(intent_definition.begin(), intent_definition.end(), separator_fields.begin(), separator_fields.end());
 	for (auto i = intent_definition.begin() ; i != mid; i++)
@@ -114,7 +113,6 @@ void URLIntent::parse_field_from_left(std::string_view& target, hrb::URLIntent::
 		case Parameter::command:    m_command  = field; break;
 		default: break;
 	}
-	std::cout << "param = " << (int)p << " " << field << std::endl;
 }
 
 void URLIntent::parse_field_from_right(std::string_view& target, hrb::URLIntent::Parameter p)
@@ -152,8 +150,6 @@ void URLIntent::parse_field_from_right(std::string_view& target, hrb::URLIntent:
 		m_coll = url_decode(trim(target));
 		target = std::string_view{};
 	}
-
-	std::cout << "param = " << (int)p << std::endl;
 }
 
 std::string URLIntent::str() const

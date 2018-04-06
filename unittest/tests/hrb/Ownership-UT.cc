@@ -19,8 +19,6 @@
 #include "hrb/Permission.hh"
 #include "crypto/Random.hh"
 
-#include <iostream>
-
 using namespace hrb;
 using namespace std::chrono_literals;
 

@@ -19,7 +19,6 @@
 
 #include <cassert>
 #include <chrono>
-#include <iostream>
 #include <util/Error.hh>
 
 using namespace hrb::redis;

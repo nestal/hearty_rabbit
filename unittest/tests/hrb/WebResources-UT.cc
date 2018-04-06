@@ -16,7 +16,6 @@
 #include "CheckResource.hh"
 
 #include <boost/filesystem/path.hpp>
-#include <iostream>
 
 using namespace hrb;
 

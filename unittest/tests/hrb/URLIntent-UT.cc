@@ -11,7 +11,6 @@
 //
 
 #include <catch.hpp>
-#include <iostream>
 
 #include "hrb/URLIntent.hh"
 
