@@ -51,7 +51,7 @@ const std::array<
 	Parameters{URLIntent::Parameter::user},
 
 	// query
-	Parameters{URLIntent::Parameter::command, URLIntent::Parameter::filename}
+	Parameters{URLIntent::Parameter::command, URLIntent::Parameter::filename, URLIntent::Parameter::option}
 };
 
 namespace {
@@ -78,9 +78,18 @@ URLIntent::URLIntent(boost::string_view boost_target)
 	std::string_view target{boost_target.data(), boost_target.size()};
 	target.remove_prefix(1);
 
+	// extract the action, and parse the rest according to the action
 	m_action = parse_action(extract_left(target));
 	if (m_action == Action::none || target.empty())
 		return;
+
+	std::cout << "action = " << (int)m_action << std::endl;
+	auto& intent_definition = intent_defintions[static_cast<std::size_t>(m_action)];
+	auto mid = std::find(intent_definition.begin(), intent_definition.end(), Parameter::collection);
+	for (auto i = intent_definition.begin() ; i != mid; i++)
+		parse_field({}, *i);
+	for (auto i = intent_definition.rbegin() ; i != std::reverse_iterator<Parameters::const_iterator>{mid}; i++)
+		parse_field({}, *i);;
 
 	if (!forbid_user.at(static_cast<std::size_t>(m_action)))
 		m_user = url_decode(extract_left(target));
@@ -234,6 +243,11 @@ bool URLIntent::valid() const
 bool URLIntent::need_auth() const
 {
 	return m_action == Action::upload;
+}
+
+void URLIntent::parse_field(std::string_view field, URLIntent::Parameter p)
+{
+	std::cout << "param = " << (int)p << std::endl;
 }
 
 } // end of namespace hrb

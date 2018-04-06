@@ -70,6 +70,8 @@ public:
 private:
 	static std::string_view trim(std::string_view s);
 	static Action parse_action(std::string_view str);
+	void parse_field(std::string_view segment, Parameter p);
+	void parse_backwards(std::string_view& target, Parameters::const_iterator mid, Parameters::const_iterator end);
 
 private:
 	Action  m_action{Action::none};
