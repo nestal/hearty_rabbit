@@ -42,7 +42,7 @@ const std::array<
 	Parameters{URLIntent::Parameter::user, URLIntent::Parameter::collection, URLIntent::Parameter::filename},
 
 	// home
-	Parameters{},
+	Parameters{URLIntent::Parameter::option},
 
 	// lib
 	Parameters{URLIntent::Parameter::filename},
@@ -53,6 +53,8 @@ const std::array<
 	// query
 	Parameters{URLIntent::Parameter::command, URLIntent::Parameter::filename, URLIntent::Parameter::option}
 };
+
+const URLIntent::Parameters URLIntent::separator_fields{URLIntent::Parameter::collection, URLIntent::Parameter::option};
 
 namespace {
 std::string_view extract_left(std::string_view& target)
@@ -80,59 +82,78 @@ URLIntent::URLIntent(boost::string_view boost_target)
 
 	// extract the action, and parse the rest according to the action
 	m_action = parse_action(extract_left(target));
-	if (m_action == Action::none || target.empty())
+	if (m_action == Action::none)
 		return;
 
 	std::cout << "action = " << (int)m_action << std::endl;
 	auto& intent_definition = intent_defintions[static_cast<std::size_t>(m_action)];
-	auto mid = std::find(intent_definition.begin(), intent_definition.end(), Parameter::collection);
+	auto mid = std::find_first_of(intent_definition.begin(), intent_definition.end(), separator_fields.begin(), separator_fields.end());
 	for (auto i = intent_definition.begin() ; i != mid; i++)
-		parse_field({}, *i);
+		parse_field_from_left(target, *i);
 	for (auto i = intent_definition.rbegin() ; i != std::reverse_iterator<Parameters::const_iterator>{mid}; i++)
-		parse_field({}, *i);;
+		parse_field_from_right(target, *i);;
 
-	if (!forbid_user.at(static_cast<std::size_t>(m_action)))
-		m_user = url_decode(extract_left(target));
+	m_valid = target.empty();
+}
 
+URLIntent::URLIntent(Action act, std::string_view user, std::string_view coll, std::string_view name) :
+	m_action{act}, m_user{trim(user)}, m_coll{trim(coll)}, m_filename{trim(name)}, m_valid{true}
+{
+}
+
+
+void URLIntent::parse_field_from_left(std::string_view& target, hrb::URLIntent::Parameter p)
+{
+	assert(p != Parameter::collection && p != Parameter::blob);
+	auto field = extract_left(target);
+
+	switch (p)
+	{
+		case Parameter::user:       m_user     = url_decode(field); break;
+		case Parameter::filename:   m_filename = url_decode(field); break;
+		case Parameter::command:    m_command  = field; break;
+		default: break;
+	}
+	std::cout << "param = " << (int)p << " " << field << std::endl;
+}
+
+void URLIntent::parse_field_from_right(std::string_view& target, hrb::URLIntent::Parameter p)
+{
+	if (p == Parameter::option)
 	{
 		// only truncate "target" when "?" is found
 		// keep "target" unchange if "?" is not found
 		auto tmp = target;
-		auto[option, sep2] = split_right(tmp, "?");
-		if (sep2 == '?')
+		auto[field, sep] = split_right(tmp, "?");
+		if (sep == '?')
 		{
-			m_option = option;
+			m_option = field;
 			target   = tmp;
 		}
 	}
-
-	// The action allows a filename at the end of the URL -> extract the filename
-	// from the end of string to the last slash.
-	if (!forbid_filename.at(static_cast<std::size_t>(m_action)))
+	else if (p == Parameter::filename || p == Parameter::blob)
 	{
 		// After split_right() remove the matched string from "target", we can't undo it.
 		// Therefore we make a copy of target and match that instead.
 		auto target_copy = target;
-		auto [filename, sep3] = split_right(target_copy, "/");
+		auto [field, sep] = split_right(target_copy, "/");
 
-		// Special handling for /view: the filename must be a blob ID.
-		// If the length of the filename is not equal to the length of blob IDs (i.e. 40 byte hex)
-		// then treat it as collection instead.
-		if (m_action != Action::view || is_valid_blob_id(filename))
+		// Special handling for Parameter::blob: the filename must be a blob ID.
+		if (p == Parameter::filename || is_valid_blob_id(field))
 		{
 			// Here we want to commit the changes to "target", only when
 			// the "filename" is a valid blob ID.
-			m_filename = url_decode(filename);
+			m_filename = url_decode(field);
 			target     = target_copy;
 		}
 	}
+	else if (p == Parameter::collection)
+	{
+		m_coll = url_decode(trim(target));
+		target = std::string_view{};
+	}
 
-	m_coll = url_decode(trim(target));
-}
-
-URLIntent::URLIntent(Action act, std::string_view user, std::string_view coll, std::string_view name) :
-	m_action{act}, m_user{trim(user)}, m_coll{trim(coll)}, m_filename{trim(name)}
-{
+	std::cout << "param = " << (int)p << std::endl;
 }
 
 std::string URLIntent::str() const
@@ -199,14 +220,14 @@ const std::array<bool, static_cast<int>(URLIntent::Action::none)> URLIntent::for
 
 const std::array<bool, static_cast<int>(URLIntent::Action::none)> URLIntent::require_filename =
 //   login, logout, view,  coll,  upload, home,  lib,  listcolls, query, none
-	{false, false,  false, false, true,   false, true, false,     true};
+	{false, false,  false, false, true,   false, true, false,     false};
 const std::array<bool, static_cast<int>(URLIntent::Action::none)> URLIntent::forbid_filename =
 //   login, logout, view,  coll, upload, home, lib,   listcolls, query, none
 	{true,  true,   false, true,  false,  true, false, true,      false};
 
 const std::array<bool, static_cast<int>(URLIntent::Action::none)> URLIntent::forbid_coll =
 //   login, logout, view,  coll,  upload, home, lib,  listcolls, query, none
-	{true,  true,   false, false, false,  true, true, false,     false};
+	{true,  true,   false, false, false,  true, true, false,     true};
 
 bool URLIntent::valid() const
 {
@@ -232,7 +253,7 @@ bool URLIntent::valid() const
 		if (forbid_coll.at(action_index) && !m_coll.empty())
 			return false;
 
-		return true;
+		return m_valid;
 	}
 	else
 	{
@@ -243,11 +264,6 @@ bool URLIntent::valid() const
 bool URLIntent::need_auth() const
 {
 	return m_action == Action::upload;
-}
-
-void URLIntent::parse_field(std::string_view field, URLIntent::Parameter p)
-{
-	std::cout << "param = " << (int)p << std::endl;
 }
 
 } // end of namespace hrb

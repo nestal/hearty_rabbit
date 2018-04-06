@@ -45,6 +45,7 @@ private:
 	static const std::array<bool, static_cast<int>(Action::none)> require_user, require_filename;
 	static const std::array<bool, static_cast<int>(Action::none)> forbid_user, forbid_filename, forbid_coll;
 	static const std::array<Parameters, static_cast<int>(Action::none)> intent_defintions;
+	static const Parameters separator_fields;
 
 public:
 	URLIntent() = default;
@@ -61,6 +62,7 @@ public:
 	std::string_view collection() const {return m_coll;}
 	std::string_view filename() const {return m_filename;}
 	std::string_view option() const {return m_option;}
+	std::string_view command() const {return m_command;}
 
 	std::string str() const;
 
@@ -70,8 +72,8 @@ public:
 private:
 	static std::string_view trim(std::string_view s);
 	static Action parse_action(std::string_view str);
-	void parse_field(std::string_view segment, Parameter p);
-	void parse_backwards(std::string_view& target, Parameters::const_iterator mid, Parameters::const_iterator end);
+	void parse_field_from_left(std::string_view& target, Parameter p);
+	void parse_field_from_right(std::string_view& target, Parameter p);
 
 private:
 	Action  m_action{Action::none};
@@ -86,6 +88,10 @@ private:
 
 	// option
 	std::string m_option;
+
+	std::string m_command;
+
+	bool m_valid{false};
 };
 
 } // end of namespace hrb
