@@ -34,6 +34,9 @@ pkg_check_modules(EXIV2 exiv2)
 set(CMAKE_CXX_STANDARD 17)
 set(CONFIG_FILENAME "hearty_rabbit.json")
 
+# use new C++ ABI
+add_definitions(-D_GLIBCXX_USE_CXX11_ABI=1)
+
 include_directories(
 	${Boost_INCLUDE_DIR}
 	${HIREDIS_INCLUDE_DIRS}
