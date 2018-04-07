@@ -5,7 +5,7 @@
   "blob_path": "/tmp",
   "server_name" : "localhost",
   "upload_limit_mb" : 20,
-  "thread_count": 64,
+  "thread_count": 1,
   "rendition" : {
     "2048x2048": {"width":2048, "height" : 2048},
     "thumbnail": {"width":768,  "height" : 768, "quality": 40}
