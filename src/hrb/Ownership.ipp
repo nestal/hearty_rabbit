@@ -19,6 +19,8 @@
 
 #include <json.hpp>
 
+#include <boost/iterator/transform_iterator.hpp>
+
 #include <vector>
 
 #pragma once
@@ -455,15 +457,13 @@ void Ownership::list_public_blobs(
 		{
 			for (auto&& en : reply)
 			{
-				auto s = en.as_string();
-				if (s.size() >= ObjectID{}.size())
+				auto transform = [](const redis::Reply& en)
 				{
-					// the first 20 bytes are the blob ID
-					auto blob = raw_to_object_id(s.substr(0, ObjectID{}.size()));
-					s.remove_prefix(ObjectID{}.size());
+					return raw_to_object_id(en.as_string().substr(0, ObjectID{}.size()));
+				};
 
-					comp(*blob);
-				}
+				using ObjectIDterator = boost::transform_iterator<decltype(transform), redis::Reply::iterator>;
+				comp(ObjectIDterator{reply.begin(), transform}, ObjectIDterator{reply.end(), transform}, ec);
 			}
 		},
 		"LRANGE %b 0 -1",
