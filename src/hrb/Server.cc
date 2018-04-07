@@ -276,13 +276,11 @@ void Server::serve_home(const EmptyRequest& req, FileResponseSender&& send, cons
 
 	Ownership{auth.user()}.scan_all_collections(
 		*m_db.alloc(),
-		auth.user(),
 		[send=std::move(send), ver=req.version(), this](const nlohmann::json& json, auto ec)
 		{
 			send(m_lib.inject_json(http::status::ok, json.dump(), ver));
 		}
 	);
-
 }
 
 http::response<SplitBuffers> Server::file_request(const URLIntent& intent, boost::string_view etag, unsigned version)

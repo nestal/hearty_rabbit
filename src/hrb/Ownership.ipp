@@ -86,7 +86,7 @@ public:
 	);
 
 	template <typename Complete>
-	static void scan_all(redis::Connection& db, std::string_view owner, std::string_view requester, Complete&& complete);
+	static void scan_all(redis::Connection& db, std::string_view owner, Complete&& complete);
 
 	const std::string& user() const {return m_user;}
 	const std::string& path() const {return m_path;}
@@ -155,13 +155,11 @@ template <typename Complete>
 void Ownership::Collection::scan_all(
 	redis::Connection& db,
 	std::string_view owner,
-	std::string_view requester,
 	Complete&& complete
 )
 {
 	auto jdoc = std::make_shared<nlohmann::json>();
 	jdoc->emplace("owner",    std::string{owner});
-	jdoc->emplace("username", std::string{requester});
 	jdoc->emplace("colls",    nlohmann::json::object());
 
 	scan(db, owner, 0,
@@ -172,7 +170,7 @@ void Ownership::Collection::scan_all(
 		[jdoc, comp=std::forward<Complete>(complete)](long cursor, auto ec)
 		{
 			if (cursor == 0)
-				comp(*jdoc, ec);
+				comp(std::move(*jdoc), ec);
 			return true;
 		}
 	);
@@ -377,11 +375,10 @@ void Ownership::scan_collections(
 template <typename Complete>
 void Ownership::scan_all_collections(
 	redis::Connection& db,
-	std::string_view requester,
 	Complete&& complete
 ) const
 {
-	return Collection::scan_all(db, m_user, requester, std::forward<Complete>(complete));
+	return Collection::scan_all(db, m_user, std::forward<Complete>(complete));
 }
 
 template <typename Complete>

@@ -36,10 +36,13 @@ template <class Send>
 class Server::SendJSON
 {
 public:
-	SendJSON(Send&& send, unsigned version, const WebResources *lib = nullptr) :
-		m_send{std::move(send)}, m_version{version}, m_lib{lib} {}
-	auto operator()(const nlohmann::json& json, std::error_code ec) const
+	SendJSON(Send&& send, std::string_view auth_user, unsigned version, const WebResources *lib = nullptr) :
+		m_send{std::move(send)}, m_user{auth_user}, m_version{version}, m_lib{lib} {}
+	auto operator()(nlohmann::json&& json, std::error_code ec) const
 	{
+		if (!m_user.empty())
+			json.emplace("username", m_user);
+
 		auto result = ec ? http::status::internal_server_error : http::status::ok;
 		if (m_lib)
 		{
@@ -57,8 +60,9 @@ public:
 		}
 	}
 private:
-	mutable Send m_send;
-	unsigned m_version;
+	mutable Send    m_send;
+	std::string     m_user;
+	unsigned        m_version;
 	const WebResources *m_lib;
 };
 
@@ -260,8 +264,7 @@ void Server::scan_collection(const URLIntent& intent, unsigned version, Send&& s
 
 	Ownership{user}.scan_all_collections(
 		*m_db.alloc(),
-		auth.user(),
-		SendJSON{std::move(send), version}
+		SendJSON{std::move(send), auth.user(), version}
 	);
 }
 
@@ -272,7 +275,7 @@ void Server::view_collection(const URLIntent& intent, unsigned version, Send&& s
 		*m_db.alloc(),
 		auth.user(),
 		intent.collection(),
-		SendJSON{std::move(send), version, intent.option() == "json" ? nullptr : &m_lib}
+		SendJSON{std::move(send), auth.user(), version, intent.option() == "json" ? nullptr : &m_lib}
 	);
 }
 

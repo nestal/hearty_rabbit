@@ -333,6 +333,8 @@ class NormalTestCase(unittest.TestCase):
 		self.assertEqual(r2.status_code, 200)
 		self.assertEqual(r2.json()["elements"][blob_id]["filename"], "食哂啲甘荀_carrot.jpg")
 		self.assertEqual(r2.json()["elements"][blob_id]["mime"], "image/jpeg")
+		self.assertEqual("sumsum", r2.json()["username"])
+		self.assertEqual("ハイリアの盾", r2.json()["collection"])
 
 	def test_remove_cover(self):
 		# delete all images in test_cover_album
@@ -354,6 +356,7 @@ class NormalTestCase(unittest.TestCase):
 		self.assertEqual(r2.status_code, 200)
 		self.assertTrue("🙇" in r2.json()["colls"])
 		self.assertEqual(cover_id, r2.json()["colls"]["🙇"]["cover"])
+		self.assertEqual("sumsum", r2.json()["username"])
 
 		# upload another image, but the cover will stay the same
 		r3 = self.user1.put(
@@ -364,6 +367,7 @@ class NormalTestCase(unittest.TestCase):
 		r4 = self.user1.get("https://localhost:4433/query/collection?user=sumsum")
 		self.assertEqual(r4.status_code, 200)
 		self.assertEqual(cover_id, r4.json()["colls"]["🙇"]["cover"])
+		self.assertEqual("sumsum", r4.json()["username"])
 
 		# delete the cover
 		self.assertEqual(self.user1.delete("https://localhost:4433/view/sumsum/%F0%9F%99%87/" + cover_id).status_code, 204)

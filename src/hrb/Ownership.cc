@@ -156,7 +156,6 @@ nlohmann::json Ownership::Collection::serialize(redis::Reply& reply, std::string
 
 	jdoc.emplace("owner", m_user);
 	jdoc.emplace("collection", m_path);
-	jdoc.emplace("username", std::string{requester});
 
 	auto elements = nlohmann::json::object();
 	reply.foreach_kv_pair([&elements, &jdoc, requester, this](auto&& blob, auto&& perm)

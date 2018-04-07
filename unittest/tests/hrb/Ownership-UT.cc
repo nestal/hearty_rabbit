@@ -39,7 +39,7 @@ TEST_CASE("list of collection owned by user", "[normal]")
 	});
 
 	// assert that the collection is added
-	subject.scan_all_collections(*redis, "owner", [&tested](auto&& json, auto ec)
+	subject.scan_all_collections(*redis, [&tested](auto&& json, auto ec)
 	{
 		REQUIRE(!ec);
 		REQUIRE(json.find("colls") != json.end());
@@ -85,7 +85,7 @@ TEST_CASE("list of collection owned by user", "[normal]")
 	ioc.restart();
 
 	// assert that the collection "/" does not exist anymore, because all its blobs are removed
-	subject.scan_all_collections(*redis, "owner", [&tested](auto&& json, auto ec)
+	subject.scan_all_collections(*redis, [&tested](auto&& json, auto ec)
 	{
 		REQUIRE(!ec);
 		REQUIRE(json.find("colls") != json.end());
@@ -242,9 +242,6 @@ TEST_CASE("Load 3 images in json", "[normal]")
 			doc.value(json::json_pointer{"/owner"}, "") == "testuser"
 		);
 		REQUIRE(
-			doc.value(json::json_pointer{"/username"}, "") == "testuser"
-		);
-		REQUIRE(
 			doc.value(json::json_pointer{"/collection"}, "") == "some/collection"
 		);
 
@@ -334,16 +331,14 @@ TEST_CASE("Scan for all containers from testuser")
 	std::vector<std::string> dirs;
 
 	bool tested = false;
-	subject.scan_all_collections(*redis, "",
+	subject.scan_all_collections(*redis,
 		[&dirs, &tested](auto&& jdoc, auto ec)
 		{
 			INFO("scan() error: " << ec << " " << ec.message());
 			REQUIRE(!ec);
 			tested = true;
 
-			REQUIRE(jdoc["username"] == "");
 			REQUIRE(jdoc["owner"]    == "testuser");
-
 			for (auto&& it : jdoc["colls"].items())
 				dirs.push_back(it.key());
 		}
