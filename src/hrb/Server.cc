@@ -269,18 +269,6 @@ http::response<http::string_body> Server::server_error(boost::beast::string_view
 	return res;
 }
 
-void Server::serve_view(const URLIntent& url, unsigned version, Server::FileResponseSender&& send, const Authentication& auth)
-{
-	Ownership{url.user()}.serialize(
-		*m_db.alloc(),
-		auth.user(),
-		url.collection(),
-		[send=std::move(send), version, auth, this](auto&& json, auto ec)
-	{
-		send(m_lib.inject_json(http::status::ok, json.dump(), version));
-	});
-}
-
 void Server::serve_home(const EmptyRequest& req, FileResponseSender&& send, const Authentication& auth)
 {
 	if (req.method() != http::verb::get)
@@ -350,16 +338,6 @@ std::size_t Server::upload_limit() const
 std::chrono::seconds Server::session_length() const
 {
 	return m_cfg.session_length();
-}
-
-void Server::serve_collection(const URLIntent& intent, unsigned version, StringResponseSender&& send, const Authentication& auth)
-{
-	Ownership{intent.user()}.serialize(
-		*m_db.alloc(),
-		auth.user(),
-		intent.collection(),
-		SendJSON{std::move(send), version}
-	);
 }
 
 void Server::prepare_upload(UploadFile& result, std::error_code& ec)

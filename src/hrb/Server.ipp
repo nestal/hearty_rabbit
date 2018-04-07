@@ -32,6 +32,36 @@
 
 namespace hrb {
 
+template <class Send>
+class Server::SendJSON
+{
+public:
+	SendJSON(Send&& send, unsigned version, const WebResources *lib = nullptr) :
+		m_send{std::move(send)}, m_version{version}, m_lib{lib} {}
+	auto operator()(const nlohmann::json& json, std::error_code ec) const
+	{
+		auto result = ec ? http::status::internal_server_error : http::status::ok;
+		if (m_lib)
+		{
+			return m_send(m_lib->inject_json(result, json.dump(), m_version));
+		}
+		else
+		{
+			http::response<http::string_body> res{
+				std::piecewise_construct,
+				std::make_tuple(json.dump()),
+				std::make_tuple(result, m_version)
+			};
+			res.set(http::field::content_type, "application/json");
+			return m_send(std::move(res));
+		}
+	}
+private:
+	mutable Send m_send;
+	unsigned m_version;
+	const WebResources *m_lib;
+};
+
 /// \arg    header      The header we just received. This reference must be valid
 ///						until \a complete() is called.
 /// \arg    src         The request_parser that produce \a header. It will be moved
@@ -156,11 +186,9 @@ void Server::on_request_view(Request&& req, Send&& send, const Authentication& a
 	else if (req.method() == http::verb::get)
 	{
 		if (breq.blob())
-			return get_blob(std::move(breq), std::move(send));
-		else if (breq.rendition() == "json")
-			return serve_collection(breq.intent(), req.version(), std::forward<Send>(send), auth);
+			return view_blob(std::move(breq), std::move(send));
 		else
-			return serve_view(breq.intent(), req.version(), std::forward<Send>(send), auth);
+			return view_collection(breq.intent(), req.version(), std::forward<Send>(send), auth);
 	}
 	else if (req.method() == http::verb::post)
 	{
@@ -174,7 +202,7 @@ void Server::on_request_view(Request&& req, Send&& send, const Authentication& a
 }
 
 template <class Send>
-void Server::get_blob(const BlobRequest& req, Send&& send)
+void Server::view_blob(const BlobRequest& req, Send&& send)
 {
 	assert(req.blob());
 
@@ -234,6 +262,17 @@ void Server::scan_collection(const URLIntent& intent, unsigned version, Send&& s
 		*m_db.alloc(),
 		auth.user(),
 		SendJSON{std::move(send), version}
+	);
+}
+
+template <class Send>
+void Server::view_collection(const URLIntent& intent, unsigned version, Send&& send, const Authentication& auth)
+{
+	Ownership{intent.user()}.serialize(
+		*m_db.alloc(),
+		auth.user(),
+		intent.collection(),
+		SendJSON{std::move(send), version, intent.option() == "json" ? nullptr : &m_lib}
 	);
 }
 
