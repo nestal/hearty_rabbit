@@ -23,6 +23,7 @@
 #include "crypto/Authentication.hh"
 #include "net/MMapResponseBody.hh"
 #include "util/Log.hh"
+#include "util/Escape.hh"
 
 #include <boost/beast/http/fields.hpp>
 #include <boost/beast/http/message.hpp>
@@ -126,8 +127,8 @@ void Server::handle_request(Request&& req, Send&& send, const Authentication& au
 		if (intent.action() == URLIntent::Action::home)
 			return serve_home(std::forward<Request>(req), std::forward<Send>(send), auth);
 
-		if (intent.action() == URLIntent::Action::query && intent.query_target() == URLIntent::QueryTarget::collection)
-			return scan_collection(intent, req.version(), std::forward<Send>(send), auth);
+		if (intent.action() == URLIntent::Action::query)
+			return on_query(intent, req.version(), std::forward<Send>(send), auth);
 
 		if (intent.action() == URLIntent::Action::logout)
 			return on_logout(std::forward<Request>(req), std::forward<Send>(send), auth);
@@ -206,5 +207,34 @@ void Server::get_blob(const BlobRequest& req, Send&& send)
 	);
 }
 
+template <class Send>
+void Server::on_query(const URLIntent& intent, unsigned version, Send&& send, const Authentication& auth)
+{
+	switch (intent.query_target())
+	{
+		case URLIntent::QueryTarget::collection:
+			return scan_collection(intent, version, std::forward<Send>(send), auth);
+
+		default:
+			return send(bad_request("unsupported query target", version));
+	}
+
+}
+
+template <class Send>
+void Server::scan_collection(const URLIntent& intent, unsigned version, Send&& send, const Authentication& auth)
+{
+	auto [user] = find_fields(intent.option(), "user");
+
+	// TODO: allow other users to query another user's shared collections
+	if (auth.user() != user)
+		return send(http::response<http::string_body>{http::status::forbidden, version});
+
+	Ownership{user}.scan_all_collections(
+		*m_db.alloc(),
+		auth.user(),
+		SendJSON{std::move(send), version}
+	);
+}
 
 } // end of namespace

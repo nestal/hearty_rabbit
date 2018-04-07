@@ -382,21 +382,6 @@ void Server::serve_collection(const URLIntent& intent, unsigned version, StringR
 	);
 }
 
-void Server::scan_collection(const URLIntent& intent, unsigned version, Server::StringResponseSender&& send, const Authentication& auth)
-{
-	auto [user] = find_fields(intent.option(), "user");
-
-	// TODO: allow other users to query another user's shared collections
-	if (auth.user() != user)
-		return send(http::response<http::string_body>{http::status::forbidden, version});
-
-	Ownership{user}.scan_all_collections(
-		*m_db.alloc(),
-		auth.user(),
-		SendJSON{std::move(send), version}
-	);
-}
-
 void Server::prepare_upload(UploadFile& result, std::error_code& ec)
 {
 	// Need to call prepare_upload() before using UploadRequestBody.

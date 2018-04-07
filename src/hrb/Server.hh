@@ -106,14 +106,19 @@ private:
 	void serve_view(const URLIntent& url, unsigned version, FileResponseSender&& send, const Authentication& auth);
 	void serve_home(const EmptyRequest& req, FileResponseSender&& send, const Authentication& auth);
 	void serve_collection(const URLIntent& intent, unsigned version, StringResponseSender&& send, const Authentication& auth);
-	void scan_collection(const URLIntent& intent, unsigned version, StringResponseSender&& send, const Authentication& auth);
 	void prepare_upload(UploadFile& result, std::error_code& ec);
+
+	template <class Send>
+	void scan_collection(const URLIntent& intent, unsigned version, Send&& send, const Authentication& auth);
 
 	template <class Request, class Send>
 	void on_request_view(Request&& req, Send&& send, const Authentication& auth);
 
 	template <class Send>
 	void get_blob(const BlobRequest& req, Send&& send);
+
+	template <class Send>
+	void on_query(const URLIntent& intent, unsigned version, Send&& send, const Authentication& auth);
 
 private:
 	const Configuration&    m_cfg;
