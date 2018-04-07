@@ -153,6 +153,15 @@ class NormalTestCase(unittest.TestCase):
 		self.assertLessEqual(thumb.width, 768)
 		self.assertLessEqual(thumb.height, 768)
 
+		# query the thumbnail by the blob ID
+		r5 = self.user1.get("https://localhost:4433/query/blob?rendition=thumbnail&id=" + r1.headers["Location"][-40:])
+		self.assertEqual(r5.status_code, 200)
+
+		thumb = Image.open(BytesIO(r5.content))
+		self.assertLessEqual(thumb.width, 768)
+		self.assertLessEqual(thumb.height, 768)
+
+
 	def test_lib(self):
 		# resource not exist
 		self.assertEqual(self.user1.get("https://localhost:4433/lib/logo.svg").status_code, 200)
