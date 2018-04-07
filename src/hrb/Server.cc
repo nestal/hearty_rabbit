@@ -42,10 +42,6 @@
 
 namespace hrb {
 
-namespace {
-const std::string_view index_needle{"<script>var dir = {"};
-}
-
 Server::Server(const Configuration& cfg) :
 	m_cfg{cfg},
 	m_ioc{static_cast<int>(std::max(1UL, cfg.thread_count()))},
@@ -259,10 +255,7 @@ http::response<SplitBuffers> Server::not_found(boost::string_view target, const 
 	if (auth)
 		dir.emplace("username", std::string{auth->user()});
 
-	auto res = m_lib.find_dynamic("index.html", version);
-	res.result(http::status::not_found);
-	res.body().extra(hrb::index_needle, dir.dump(), 1, 1);
-	return res;
+	return m_lib.inject_json(http::status::not_found, dir.dump(), version);
 }
 
 http::response<http::string_body> Server::server_error(boost::beast::string_view what, unsigned version)
@@ -284,9 +277,7 @@ void Server::serve_view(const URLIntent& url, unsigned version, Server::FileResp
 		url.collection(),
 		[send=std::move(send), version, auth, this](auto&& json, auto ec)
 	{
-		auto res = m_lib.find_dynamic("index.html", version);
-		res.body().extra(index_needle, json.dump(), 1, 1);
-		return send(std::move(res));
+		send(m_lib.inject_json(http::status::ok, json.dump(), version));
 	});
 }
 
@@ -300,9 +291,7 @@ void Server::serve_home(const EmptyRequest& req, FileResponseSender&& send, cons
 		auth.user(),
 		[send=std::move(send), ver=req.version(), this](const nlohmann::json& json, auto ec)
 		{
-			auto res = m_lib.find_dynamic("index.html", ver);
-			res.body().extra(index_needle, json.dump(), 1, 1);
-			return send(std::move(res));
+			send(m_lib.inject_json(http::status::ok, json.dump(), ver));
 		}
 	);
 
@@ -310,18 +299,9 @@ void Server::serve_home(const EmptyRequest& req, FileResponseSender&& send, cons
 
 http::response<SplitBuffers> Server::file_request(const URLIntent& intent, boost::string_view etag, unsigned version)
 {
-	if (intent.filename() == "login_incorrect.html")
-	{
-		auto res = m_lib.find_dynamic("index.html", version);
-		res.body().extra(
-			index_needle,
-			R"_({login_message: "Login incorrect... Try again?"})_",
-			1, 1
-		);
-		return res;
-	}
-	else
-		return m_lib.find_static(intent.filename(), etag, version);
+	return intent.filename() == "login_incorrect.html" ?
+		m_lib.inject_json(http::status::ok, R"_({login_message: "Login incorrect... Try again?"})_", version) :
+		m_lib.find_static(intent.filename(), etag, version);
 }
 
 void Server::drop_privileges() const
@@ -389,6 +369,5 @@ void Server::prepare_upload(UploadFile& result, std::error_code& ec)
 	if (ec)
 		Log(LOG_WARNING, "error opening file %1%: %2% (%3%)", m_cfg.blob_path(), ec, ec.message());
 }
-
 
 } // end of namespace

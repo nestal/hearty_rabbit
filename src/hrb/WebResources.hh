@@ -40,6 +40,7 @@ public:
 
 	Response find_static(std::string_view filename, boost::string_view etag, int version) const;
 	Response find_dynamic(std::string_view filename, int version) const;
+	Response inject_json(http::status status, std::string&& json, int version) const;
 
 	bool is_static(std::string_view filename) const;
 

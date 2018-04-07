@@ -77,20 +77,28 @@ private:
 	class SendJSON
 	{
 	public:
-		SendJSON(Send&& send, unsigned version) : m_send{std::move(send)}, m_version{version} {}
+		SendJSON(Send&& send, unsigned version, bool json = true) : m_send{std::move(send)}, m_version{version} {}
 		void operator()(const nlohmann::json& json, std::error_code ec) const
 		{
-			http::response<http::string_body> res{
-				std::piecewise_construct,
-				std::make_tuple(json.dump()),
-				std::make_tuple(ec ? http::status::internal_server_error : http::status::ok, m_version)
-			};
-			res.set(http::field::content_type, "application/json");
-			return m_send(std::move(res));
+//			if (m_json)
+			{
+				http::response<http::string_body> res{
+					std::piecewise_construct,
+					std::make_tuple(json.dump()),
+					std::make_tuple(ec ? http::status::internal_server_error : http::status::ok, m_version)
+				};
+				res.set(http::field::content_type, "application/json");
+				return m_send(std::move(res));
+			}
+//			else
+			{
+//				return inject_json(json.dump(), ec ? http::status::internal_server_error : http::status::ok, m_version)
+			}
 		}
 	private:
 		mutable Send m_send;
 		unsigned m_version;
+		bool m_json;
 	};
 
 	using EmptyResponseSender  = std::function<void(http::response<http::empty_body>&&)>;
