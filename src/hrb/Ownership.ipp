@@ -222,7 +222,7 @@ void Ownership::Collection::set_permission(
 		redis.call('HSET', KEYS[1], ARGV[1], updated)
 		if ARGV[2] == '*' then
 			if redis.call('LPUSH', KEYS[2], ARGV[1]) > 100 then
-				redis.call('LPOP', KEYS[2])
+				redis.call('RPOP', KEYS[2])
 			end
 		else
 			redis.call('LREM', KEYS[2], ARGV[1])
