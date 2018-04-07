@@ -62,6 +62,15 @@ TEST_CASE("path URL")
 	REQUIRE(view_filename.str() == "/view/file/fname/");
 	REQUIRE(view_filename.valid());
 
+	URLIntent view_json{"/view/user_name/a_col/lec/tion/?json"};
+	REQUIRE(view_json.action() == URLIntent::Action::view);
+	REQUIRE(view_json.user() == "user_name");
+	REQUIRE(view_json.collection() == "a_col/lec/tion");
+	REQUIRE(view_json.filename() == "");
+	REQUIRE(view_json.option() == "json");
+	REQUIRE(view_json.str() == "/view/user_name/a_col/lec/tion/?json");
+	REQUIRE(view_json.valid());
+
 	URLIntent slash_view_slash{"/view/"};
 	REQUIRE(slash_view_slash.action() == URLIntent::Action::view);
 	REQUIRE(slash_view_slash.user() == "");

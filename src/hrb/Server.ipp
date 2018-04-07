@@ -155,16 +155,22 @@ void Server::on_request_view(Request&& req, Send&& send, const Authentication& a
 	BlobRequest breq{req, auth.user()};
 
 	if (req.method() == http::verb::delete_)
+	{
 		return unlink(std::move(breq), std::move(send));
-
+	}
 	else if (req.method() == http::verb::get)
-		return breq.blob() ?
-			get_blob(std::move(breq), std::move(send)) :
-			serve_view(breq.intent(), req.version(), std::forward<Send>(send), auth);
-
+	{
+		if (breq.blob())
+			return get_blob(std::move(breq), std::move(send));
+		else if (breq.rendition() == "json")
+			return serve_collection(breq.intent(), req.version(), std::forward<Send>(send), auth);
+		else
+			return serve_view(breq.intent(), req.version(), std::forward<Send>(send), auth);
+	}
 	else if (req.method() == http::verb::post)
-		return update_blob(std::move(breq),std::move(send));
-
+	{
+		return update_blob(std::move(breq), std::move(send));
+	}
 	else
 	{
 		Log(LOG_WARNING, "blob request error: bad method %1%", req.method_string());
