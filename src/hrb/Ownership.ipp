@@ -21,6 +21,10 @@
 
 #include <boost/iterator/transform_iterator.hpp>
 #include <boost/iterator/filter_iterator.hpp>
+#include <boost/iterator/indirect_iterator.hpp>
+#include <boost/range/adaptor/filtered.hpp>
+#include <boost/range/adaptor/transformed.hpp>
+#include <boost/range/adaptor/indirected.hpp>
 
 #include <vector>
 
@@ -458,13 +462,20 @@ void Ownership::list_public_blobs(
 		{
 			for (auto&& en : reply)
 			{
-				auto transform = [](const redis::Reply& en)
+				auto reply_to_oid = [](const redis::Reply& en)
 				{
 					return raw_to_object_id(en.as_string().substr(0, ObjectID{}.size()));
 				};
+				auto valid = [](const std::optional<ObjectID>& opt){return opt.has_value();};
+				auto dereference_optional = [](const std::optional<ObjectID>& opt) {return *opt;};
 
-				using ObjectIDterator = boost::transform_iterator<decltype(transform), redis::Reply::iterator>;
-				comp(ObjectIDterator{reply.begin(), transform}, ObjectIDterator{reply.end(), transform}, ec);
+				using namespace boost::adaptors;
+				comp(
+					boost::iterator_range<redis::Reply::iterator>{
+						reply.begin(), reply.end()
+					} | transformed(reply_to_oid) | filtered(valid) | transformed(dereference_optional),
+					ec
+				);
 			}
 		},
 		"LRANGE %b 0 -1",

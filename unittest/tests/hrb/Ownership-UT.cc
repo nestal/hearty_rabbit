@@ -156,10 +156,9 @@ TEST_CASE("add blob to Ownership", "[normal]")
 
 	// verify that the newly added blob is in the public list
 	bool found = false;
-	Ownership::list_public_blobs(*redis, [&found, blobid](auto first, auto last, auto ec)
+	Ownership::list_public_blobs(*redis, [&found, blobid](auto&& blobs, auto ec)
 	{
-		auto it = std::find_if(first, last, [&blobid](auto opt_blob){return opt_blob && *opt_blob == blobid;});
-		if (it != last)
+		if (std::find(blobs.begin(), blobs.end(), blobid) != blobs.end())
 			found = true;
 	});
 

@@ -261,6 +261,9 @@ void Server::on_query(const BlobRequest& req, Send&& send, const Authentication&
 		case URLIntent::QueryTarget::blob:
 			return query_blob(req, std::forward<Send>(send), auth);
 
+		case URLIntent::QueryTarget::blob_set:
+			return query_blob_set(req.intent(), req.version(), std::forward<Send>(send), auth);
+
 		default:
 			return send(bad_request("unsupported query target", req.version()));
 	}
@@ -321,6 +324,12 @@ void Server::query_blob(const BlobRequest& req, Send&& send, const Authenticatio
 			return send(not_found("blob not found", auth, req.version()));
 		}
 	);
+}
+
+template <class Send>
+void Server::query_blob_set(const URLIntent& intent, unsigned version, Send&& send, const Authentication& auth)
+{
+	auto [pub, json] = find_optional_fields(intent.option(), "public", "json");
 }
 
 } // end of namespace
