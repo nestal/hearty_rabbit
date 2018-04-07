@@ -159,7 +159,10 @@ void Server::handle_request(Request&& req, Send&& send, const Authentication& au
 			return send(file_request(intent, req[http::field::if_none_match], req.version()));
 
 		if (intent.action() == URLIntent::Action::home)
-			return serve_home(std::forward<Request>(req), std::forward<Send>(send), auth);
+			return Ownership{auth.user()}.scan_all_collections(
+				*m_db.alloc(),
+				SendJSON{std::move(send), auth.user(), req.version(), &m_lib}
+			);
 
 		if (intent.action() == URLIntent::Action::query)
 			return on_query(intent, req.version(), std::forward<Send>(send), auth);
@@ -256,15 +259,18 @@ void Server::on_query(const URLIntent& intent, unsigned version, Send&& send, co
 template <class Send>
 void Server::scan_collection(const URLIntent& intent, unsigned version, Send&& send, const Authentication& auth)
 {
-	auto [user] = find_fields(intent.option(), "user");
+	auto [user, json] = find_optional_fields(intent.option(), "user", "json");
+
+	if (!user.has_value())
+		return send(bad_request("invalid user in query", version));
 
 	// TODO: allow other users to query another user's shared collections
-	if (auth.user() != user)
+	if (auth.user() != *user)
 		return send(http::response<http::string_body>{http::status::forbidden, version});
 
-	Ownership{user}.scan_all_collections(
+	Ownership{*user}.scan_all_collections(
 		*m_db.alloc(),
-		SendJSON{std::move(send), auth.user(), version}
+		SendJSON{std::move(send), auth.user(), version, json.has_value() ? nullptr : &m_lib}
 	);
 }
 

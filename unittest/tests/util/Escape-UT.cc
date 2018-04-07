@@ -161,4 +161,11 @@ TEST_CASE("basic find field with optional", "[normal]")
 	REQUIRE(sum.has_value());
 	REQUIRE(*sum == "user");
 
+	auto [shield, sword, armor] = find_optional_fields("shield=hylian&armor", "shield", "sword", "armor");
+	static_assert(std::is_same<decltype(shield), std::optional<std::string_view>>::value);
+	REQUIRE(shield.has_value());
+	REQUIRE(*shield == "hylian");
+	REQUIRE(!sword.has_value());
+	REQUIRE(armor.has_value());
+	REQUIRE(*armor == "");
 }

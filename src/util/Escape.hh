@@ -10,6 +10,7 @@
 
 #include <boost/utility/string_view.hpp>
 
+#include <optional>
 #include <string>
 #include <string_view>
 #include <tuple>
@@ -45,6 +46,12 @@ template <typename... Fields>
 auto find_fields(std::string_view remain, Fields... fields)
 {
 	return basic_find_fields<std::string_view>(remain, std::forward<Fields>(fields)...);
+}
+
+template <typename... Fields>
+auto find_optional_fields(std::string_view remain, Fields... fields)
+{
+	return basic_find_fields<std::optional<std::string_view>>(remain, std::forward<Fields>(fields)...);
 }
 
 template <std::size_t index, typename ResultTuple>

@@ -269,20 +269,6 @@ http::response<http::string_body> Server::server_error(boost::beast::string_view
 	return res;
 }
 
-void Server::serve_home(const EmptyRequest& req, FileResponseSender&& send, const Authentication& auth)
-{
-	if (req.method() != http::verb::get)
-		return send(http::response<SplitBuffers>{http::status::bad_request, req.version()});
-
-	Ownership{auth.user()}.scan_all_collections(
-		*m_db.alloc(),
-		[send=std::move(send), ver=req.version(), this](const nlohmann::json& json, auto ec)
-		{
-			send(m_lib.inject_json(http::status::ok, json.dump(), ver));
-		}
-	);
-}
-
 http::response<SplitBuffers> Server::file_request(const URLIntent& intent, boost::string_view etag, unsigned version)
 {
 	return intent.filename() == "login_incorrect.html" ?

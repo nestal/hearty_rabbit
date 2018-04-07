@@ -86,7 +86,6 @@ private:
 	void on_upload(UploadRequest&& req, EmptyResponseSender&& send, const Authentication& auth);
 	void unlink(BlobRequest&& req, EmptyResponseSender&& send);
 	void update_blob(BlobRequest&& req, EmptyResponseSender&& send);
-	void serve_home(const EmptyRequest& req, FileResponseSender&& send, const Authentication& auth);
 	void prepare_upload(UploadFile& result, std::error_code& ec);
 
 	template <class Send>
