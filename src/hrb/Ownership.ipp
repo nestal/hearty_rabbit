@@ -511,8 +511,10 @@ void Ownership::query_blob(redis::Connection& db, const ObjectID& blob, Complete
 			BlobIterator begin{kv_range.begin(), transform};
 			BlobIterator end{kv_range.end(), transform};
 			comp(
-				OwnedBlobIterator{owned, begin, end},
-				OwnedBlobIterator{owned, end, end},
+				boost::iterator_range<OwnedBlobIterator>{
+					OwnedBlobIterator{owned, begin, end},
+					OwnedBlobIterator{owned, end, end},
+				},
 				ec
 			);
 		},

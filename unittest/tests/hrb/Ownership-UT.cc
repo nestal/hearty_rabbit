@@ -300,9 +300,11 @@ TEST_CASE("Query blob of testuser")
 	REQUIRE(tested == 1);
 	ioc.restart();
 
-	subject.query_blob(*redis, blobid, [&tested](auto first, auto last, auto ec)
+	subject.query_blob(*redis, blobid, [&tested](auto&& range, auto ec)
 	{
 		REQUIRE(!ec);
+		auto first = range.begin();
+		auto last  = range.end();
 		REQUIRE(first != last);
 
 		// There should be only one collection that owns the blob

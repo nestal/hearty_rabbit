@@ -291,7 +291,27 @@ void Server::view_collection(const URLIntent& intent, unsigned version, Send&& s
 template <class Send>
 void Server::query_blob(const URLIntent& intent, unsigned version, Send&& send, const Authentication& auth)
 {
-	Ownership{auth.user()};
+	auto blob = hex_to_object_id(std::get<0>(find_fields(intent.option(), "blob")));
+	if (!blob)
+		return send(bad_request("invalid blob ID", version));
+
+	Ownership{auth.user()}.query_blob(
+		*m_db.alloc(),
+		*blob,
+		[send=std::forward<Send>(send), version, blobid=*blob, auth, this](auto&& range, auto ec)
+		{
+			if (ec)
+				return send(server_error("internal server error", version));
+
+			for (auto&& blob : range)
+				return send(see_other(
+					URLIntent{URLIntent::Action::view, blob.user, blob.coll, to_hex(blobid)}.str(),
+					version
+				));
+
+			return send(not_found("blob not found", auth, version));
+		}
+	);
 }
 
 } // end of namespace
