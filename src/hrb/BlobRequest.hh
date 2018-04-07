@@ -24,8 +24,8 @@ class BlobRequest
 {
 public:
 	template <typename Request>
-	BlobRequest(Request&& req, std::string_view requester) :
-		m_requester{requester}, m_url{req.target()}, m_version{req.version()},
+	BlobRequest(Request&& req, URLIntent&& intent, std::string_view auth_user) :
+		m_requester{auth_user}, m_url{std::move(intent)}, m_version{req.version()},
 		m_etag{req[http::field::if_none_match]}
 	{
 		if constexpr (std::is_same<std::remove_reference_t<Request>, StringRequest>::value)

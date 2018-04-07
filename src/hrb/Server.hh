@@ -92,7 +92,7 @@ private:
 	void scan_collection(const URLIntent& intent, unsigned version, Send&& send, const Authentication& auth);
 
 	template <class Request, class Send>
-	void on_request_view(Request&& req, Send&& send, const Authentication& auth);
+	void on_request_view(Request&& req, URLIntent&& intent, Send&& send, const Authentication& auth);
 
 	template <class Send>
 	void view_collection(const URLIntent& intent, unsigned version, Send&& send, const Authentication& auth);
@@ -101,10 +101,10 @@ private:
 	void view_blob(const BlobRequest& req, Send&& send);
 
 	template <class Send>
-	void on_query(const URLIntent& intent, unsigned version, Send&& send, const Authentication& auth);
+	void on_query(const BlobRequest& req, Send&& send, const Authentication& auth);
 
 	template <class Send>
-	void query_blob(const URLIntent& intent, unsigned version, Send&& send, const Authentication& auth);
+	void query_blob(const BlobRequest& req, Send&& send, const Authentication& auth);
 
 private:
 	const Configuration&    m_cfg;

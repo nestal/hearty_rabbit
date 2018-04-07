@@ -147,7 +147,7 @@ void Server::handle_request(Request&& req, Send&& send, const Authentication& au
 	// handle_blob() is a function template on the request type. It can work with all
 	// request types so no need to check before calling.
 	if (intent.action() == URLIntent::Action::view)
-		return on_request_view(std::forward<Request>(req), std::forward<Send>(send), auth);
+		return on_request_view(std::forward<Request>(req), std::move(intent), std::forward<Send>(send), auth);
 
 	// The following URL only support EmptyRequests, i.e. requests without body.
 	if constexpr (std::is_same<std::remove_reference_t<Request>, EmptyRequest>::value)
@@ -165,7 +165,7 @@ void Server::handle_request(Request&& req, Send&& send, const Authentication& au
 			);
 
 		if (intent.action() == URLIntent::Action::query)
-			return on_query(intent, req.version(), std::forward<Send>(send), auth);
+			return on_query({std::move(req), std::move(intent), auth.user()}, std::forward<Send>(send), auth);
 
 		if (intent.action() == URLIntent::Action::logout)
 			return on_logout(std::forward<Request>(req), std::forward<Send>(send), auth);
@@ -182,9 +182,9 @@ void Server::handle_request(Request&& req, Send&& send, const Authentication& au
 }
 
 template <class Request, class Send>
-void Server::on_request_view(Request&& req, Send&& send, const Authentication& auth)
+void Server::on_request_view(Request&& req, URLIntent&& intent, Send&& send, const Authentication& auth)
 {
-	BlobRequest breq{req, auth.user()};
+	BlobRequest breq{req, std::move(intent), auth.user()};
 
 	if (req.method() == http::verb::delete_)
 	{
@@ -212,6 +212,14 @@ template <class Send>
 void Server::view_blob(const BlobRequest& req, Send&& send)
 {
 	assert(req.blob());
+
+	if (req.etag() == to_quoted_hex(*req.blob()))
+	{
+		http::response<http::empty_body> res{http::status::not_modified, req.version()};
+		res.set(http::field::cache_control, "private, max-age=31536000, immutable");
+		res.set(http::field::etag, to_quoted_hex(*req.blob()));
+		return send(std::move(res));
+	}
 
 	// Check if the user owns the blob
 	// Note: the arguments of find() uses req, so we can't move req into the lambda.
@@ -243,18 +251,18 @@ void Server::view_blob(const BlobRequest& req, Send&& send)
 }
 
 template <class Send>
-void Server::on_query(const URLIntent& intent, unsigned version, Send&& send, const Authentication& auth)
+void Server::on_query(const BlobRequest& req, Send&& send, const Authentication& auth)
 {
-	switch (intent.query_target())
+	switch (req.intent().query_target())
 	{
 		case URLIntent::QueryTarget::collection:
-			return scan_collection(intent, version, std::forward<Send>(send), auth);
+			return scan_collection(req.intent(), req.version(), std::forward<Send>(send), auth);
 
 		case URLIntent::QueryTarget::blob:
-			return query_blob(intent, version, std::forward<Send>(send), auth);
+			return query_blob(req, std::forward<Send>(send), auth);
 
 		default:
-			return send(bad_request("unsupported query target", version));
+			return send(bad_request("unsupported query target", req.version()));
 	}
 
 }
@@ -289,27 +297,28 @@ void Server::view_collection(const URLIntent& intent, unsigned version, Send&& s
 }
 
 template <class Send>
-void Server::query_blob(const URLIntent& intent, unsigned version, Send&& send, const Authentication& auth)
+void Server::query_blob(const BlobRequest& req, Send&& send, const Authentication& auth)
 {
-	auto blob = hex_to_object_id(std::get<0>(find_fields(intent.option(), "id")));
+	auto [blob_arg, rendition] = find_fields(req.rendition(), "id", "rendition");
+	auto blob = hex_to_object_id(blob_arg);
 	if (!blob)
-		return send(bad_request("invalid blob ID", version));
+		return send(bad_request("invalid blob ID", req.version()));
 
 	Ownership{auth.user()}.query_blob(
 		*m_db.alloc(),
 		*blob,
-		[send=std::forward<Send>(send), version, blobid=*blob, auth, this](auto&& range, auto ec)
+		[
+			send=std::forward<Send>(send), auth, req, blobid=*blob,
+			rendition=std::string{rendition}, this
+		](auto&& range, auto ec)
 		{
 			if (ec)
-				return send(server_error("internal server error", version));
+				return send(server_error("internal server error", req.version()));
 
 			for (auto&& en : range)
-				return send(see_other(
-					URLIntent{URLIntent::Action::view, en.user, en.coll, to_hex(blobid)}.str(),
-					version
-				));
+				return send(m_blob_db.response(blobid, req.version(), en.entry.mime(), req.etag(), rendition));
 
-			return send(not_found("blob not found", auth, version));
+			return send(not_found("blob not found", auth, req.version()));
 		}
 	);
 }
