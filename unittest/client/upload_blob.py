@@ -33,6 +33,14 @@ class NormalTestCase(unittest.TestCase):
 		self.assertTrue("elements" in response.json())
 		return response.json()
 
+	def get_public_blobs(self):
+		response = self.user1.get("https://localhost:4433/query/blob_set?public&json")
+		self.assertEqual(response.status_code, 200)
+		self.assertEqual(response.headers["Content-type"], "application/json")
+		self.assertEqual(response.json()["username"], "sumsum")
+		self.assertTrue("blobs" in response.json())
+		return response.json()
+
 	def setUp(self):
 		# set up a session with valid credential
 		self.user1 = requests.Session()
@@ -268,6 +276,9 @@ class NormalTestCase(unittest.TestCase):
 		self.assertEqual(self.user2.get("https://localhost:4433" + r1.headers["Location"]).status_code, 200)
 		self.assertTrue(blob_id in self.get_collection(self.user2, "sumsum", "some/collection")["elements"])
 
+		# new blob can be found in the public list
+#		self.assertTrue(blob_id in self.get_public_blobs()["blobs"])
+
 		# anonymous user can find it in collection
 		self.assertEqual(self.anon.get("https://localhost:4433" + r1.headers["Location"]).status_code, 200)
 		self.assertTrue(blob_id in self.get_collection(self.anon,  "sumsum", "some/collection")["elements"])
@@ -286,6 +297,9 @@ class NormalTestCase(unittest.TestCase):
 		# anonymous user cannot
 		self.assertEqual(self.anon.get("https://localhost:4433" + r1.headers["Location"]).status_code, 403)
 		self.assertFalse(blob_id in self.get_collection(self.anon,  "sumsum", "some/collection")["elements"])
+
+		# new blob can no longer be found in the public list
+#		self.assertFalse(blob_id in self.get_public_blobs()["blobs"])
 
 	def test_scan_collections(self):
 		# upload random image to 10 different collections

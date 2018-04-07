@@ -226,7 +226,7 @@ void Ownership::Collection::set_permission(
 				redis.call('RPOP', KEYS[2])
 			end
 		else
-			redis.call('LREM', KEYS[2], ARGV[1])
+			redis.call('LREM', KEYS[2], 1, ARGV[1])
 		end
 	)__";
 	db.command(
