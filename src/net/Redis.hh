@@ -69,6 +69,7 @@ public:
 	void swap(Reply& other) noexcept ;
 
 	using iterator = std::vector<Reply>::const_iterator;
+	using const_iterator = std::vector<Reply>::const_iterator;
 	iterator begin() const;
 	iterator end() const;
 

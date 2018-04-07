@@ -19,9 +19,6 @@
 
 #include <json.hpp>
 
-#include <boost/iterator/transform_iterator.hpp>
-#include <boost/iterator/filter_iterator.hpp>
-#include <boost/iterator/indirect_iterator.hpp>
 #include <boost/range/adaptor/filtered.hpp>
 #include <boost/range/adaptor/transformed.hpp>
 #include <boost/range/adaptor/indirected.hpp>
@@ -467,13 +464,11 @@ void Ownership::list_public_blobs(
 					return raw_to_object_id(en.as_string().substr(0, ObjectID{}.size()));
 				};
 				auto valid = [](const std::optional<ObjectID>& opt){return opt.has_value();};
-				auto dereference_optional = [](const std::optional<ObjectID>& opt) {return *opt;};
+				auto deref_optional = [](const std::optional<ObjectID>& opt) {return *opt;};
 
 				using namespace boost::adaptors;
 				comp(
-					boost::iterator_range<redis::Reply::iterator>{
-						reply.begin(), reply.end()
-					} | transformed(reply_to_oid) | filtered(valid) | transformed(dereference_optional),
+					reply | transformed(reply_to_oid) | filtered(valid) | transformed(deref_optional),
 					ec
 				);
 			}
@@ -507,27 +502,15 @@ void Ownership::query_blob(redis::Connection& db, const ObjectID& blob, Complete
 				CollEntry   entry;
 			};
 
-			auto transform = [](auto&& kv)
+			auto kv2blob = [](auto&& kv)
 			{
 				Collection coll{kv.key()};
 				return Blob{coll.user(), coll.path(), CollEntry{kv.value().as_string()}};
 			};
-
-			using BlobIterator = boost::transform_iterator<decltype(transform), redis::Reply::kv_iterator>;
-			auto kv_range = reply.kv_pairs();
-
 			auto owned = [&user](const Blob& blob) {return user == blob.user;};
-			using OwnedBlobIterator = boost::filter_iterator<decltype(owned), BlobIterator>;
 
-			BlobIterator begin{kv_range.begin(), transform};
-			BlobIterator end{kv_range.end(), transform};
-			comp(
-				boost::iterator_range<OwnedBlobIterator>{
-					OwnedBlobIterator{owned, begin, end},
-					OwnedBlobIterator{owned, end, end},
-				},
-				ec
-			);
+			using namespace boost::adaptors;
+			comp(reply.kv_pairs() | transformed(kv2blob) | filtered(owned), ec);
 		},
 		"EVAL %s 1 %b:%b %b",
 		lua,
