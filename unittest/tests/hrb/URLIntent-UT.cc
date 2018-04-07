@@ -249,6 +249,13 @@ TEST_CASE("path URL")
 	REQUIRE(query_user.option() == "user=sum");
 	REQUIRE(query_user.valid());
 
+	URLIntent query_question{"/query/collection?user=quest?ion"};
+	REQUIRE(query_question.action() == URLIntent::Action::query);
+	REQUIRE(query_question.user() == "");
+	REQUIRE(query_question.query_target() == URLIntent::QueryTarget::collection);
+	REQUIRE(query_question.option() == "user=quest?ion");
+	REQUIRE(query_question.valid());
+
 	REQUIRE(std::get<0>(find_fields(query_user.option(), "user")) == "sum");
 
 	URLIntent query3{"/query"};
