@@ -330,6 +330,24 @@ template <class Send>
 void Server::query_blob_set(const URLIntent& intent, unsigned version, Send&& send, const Authentication& auth)
 {
 	auto [pub, json] = find_optional_fields(intent.option(), "public", "json");
+
+	if (pub.has_value())
+	{
+		Ownership::list_public_blobs(*m_db.alloc(), [
+			send=SendJSON{std::forward<Send>(send), auth.user(), version, !json.has_value() ? &m_lib : nullptr}
+		](auto&& blobs, auto ec)
+		{
+			auto blob_array = nlohmann::json::array();
+
+			for (auto&& id : blobs)
+				blob_array.push_back(to_hex(id));
+
+			auto jdoc = nlohmann::json::object();
+			jdoc.emplace("blobs", std::move(blob_array));
+
+			send(std::move(jdoc), ec);
+		});
+	}
 }
 
 } // end of namespace

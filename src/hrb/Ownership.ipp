@@ -21,7 +21,6 @@
 
 #include <boost/range/adaptor/filtered.hpp>
 #include <boost/range/adaptor/transformed.hpp>
-#include <boost/range/adaptor/indirected.hpp>
 
 #include <vector>
 
@@ -459,16 +458,28 @@ void Ownership::list_public_blobs(
 		{
 			for (auto&& en : reply)
 			{
+				// redis::Reply can be used as a boost range because it has begin()/end() (i.e.
+				// treated as an array). Each redis::Reply in the "reply" array contains a
+				// 20-byte string that should be ObjectIDs.
+
+				// First, use raw_to_object_id() to convert the byte strings into
+				// optional<ObjectID>. If the conversion failed (maybe the byte string is too
+				// short), the optional will be empty.
 				auto reply_to_oid = [](const redis::Reply& en)
 				{
 					return raw_to_object_id(en.as_string().substr(0, ObjectID{}.size()));
 				};
+
+				// Then we filter out all optionals that doesn't contain a ObjectID.
 				auto valid = [](const std::optional<ObjectID>& opt){return opt.has_value();};
-				auto deref_optional = [](const std::optional<ObjectID>& opt) {return *opt;};
+
+				// Finally, all optionals remained should has_value(), so we extract the
+				// ObjectID they contain.
+				auto extract = [](const std::optional<ObjectID>& opt) {return opt.value();};
 
 				using namespace boost::adaptors;
 				comp(
-					reply | transformed(reply_to_oid) | filtered(valid) | transformed(deref_optional),
+					reply | transformed(reply_to_oid) | filtered(valid) | transformed(extract),
 					ec
 				);
 			}
