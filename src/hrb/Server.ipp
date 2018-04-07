@@ -291,7 +291,7 @@ void Server::view_collection(const URLIntent& intent, unsigned version, Send&& s
 template <class Send>
 void Server::query_blob(const URLIntent& intent, unsigned version, Send&& send, const Authentication& auth)
 {
-	auto blob = hex_to_object_id(std::get<0>(find_fields(intent.option(), "blob")));
+	auto blob = hex_to_object_id(std::get<0>(find_fields(intent.option(), "id")));
 	if (!blob)
 		return send(bad_request("invalid blob ID", version));
 
@@ -303,9 +303,9 @@ void Server::query_blob(const URLIntent& intent, unsigned version, Send&& send, 
 			if (ec)
 				return send(server_error("internal server error", version));
 
-			for (auto&& blob : range)
+			for (auto&& en : range)
 				return send(see_other(
-					URLIntent{URLIntent::Action::view, blob.user, blob.coll, to_hex(blobid)}.str(),
+					URLIntent{URLIntent::Action::view, en.user, en.coll, to_hex(blobid)}.str(),
 					version
 				));
 

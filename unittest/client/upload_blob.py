@@ -88,6 +88,17 @@ class NormalTestCase(unittest.TestCase):
 		r3 = self.anon.get("https://localhost:4433" + r1.headers["Location"])
 		self.assertEqual(r3.status_code, 403)
 
+		# query the blob
+		r4 = self.user1.get("https://localhost:4433/query/blob?id=" + r1.headers["Location"][-40:])
+		self.assertEqual(r4.status_code, 200)
+		self.assertEqual(r4.headers["Content-type"], "image/jpeg")
+		jpeg4 = Image.open(BytesIO(r4.content))
+
+		# the size of the images should be the same
+		self.assertEqual(jpeg4.format, "JPEG")
+		self.assertEqual(jpeg4.width, 1024)
+		self.assertEqual(jpeg4.height, 768)
+
 	def test_upload_png(self):
 		# upload random PNG to server
 		r1 = self.user1.put("https://localhost:4433/upload/sumsum/black.png", data=self.random_image(800, 600, format="png"))
