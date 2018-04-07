@@ -25,7 +25,7 @@ class URLIntent
 {
 public:
 	// TODO: narrow down the possibility of actions in these enum
-	enum class Action {login, logout, view, list, upload, home, lib, listcolls, query, none};
+	enum class Action {login, logout, view, upload, home, lib, listcolls, query, none};
 
 	//! Possible parameters specified by a URL
 	enum class Parameter {

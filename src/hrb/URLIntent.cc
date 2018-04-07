@@ -35,9 +35,6 @@ const std::array<
 		URLIntent::Parameter::option
 	},
 
-	// list
-	Parameters{URLIntent::Parameter::user, URLIntent::Parameter::collection},
-
 	// upload
 	Parameters{URLIntent::Parameter::user, URLIntent::Parameter::collection, URLIntent::Parameter::filename},
 
@@ -161,7 +158,6 @@ std::string URLIntent::str() const
 		case Action::login:     oss << "login";     break;
 		case Action::logout:    oss << "logout";    break;
 		case Action::view:      oss << "view/";     break;
-		case Action::list:      oss << "list/";     break;
 		case Action::upload:    oss << "upload/";   break;
 		case Action::lib:       oss << "lib/";      break;
 		case Action::listcolls: oss << "listcolls/";    break;
@@ -196,7 +192,6 @@ URLIntent::Action URLIntent::parse_action(std::string_view str)
 {
 	// if the order of occurrence frequency
 	     if (str == "view")     return Action::view;
-	else if (str == "list")     return Action::list;
 	else if (str == "upload")   return Action::upload;
 	else if (str == "login")    return Action::login;
 	else if (str == "logout")   return Action::logout;
@@ -208,22 +203,22 @@ URLIntent::Action URLIntent::parse_action(std::string_view str)
 }
 
 const std::array<bool, static_cast<int>(URLIntent::Action::none)> URLIntent::require_user =
-//   login, logout, view, coll, upload, home,  lib,   listcolls, query, none
-	{false, false,  true, true, true,   false, false, true,      false};
+//   login, logout, view, upload, home,  lib,   listcolls, query, none
+	{false, false,  true, true,   false, false, true,      false};
 const std::array<bool, static_cast<int>(URLIntent::Action::none)> URLIntent::forbid_user =
-//   login, logout, view,  coll,  upload, home, lib,  listcolls, query, none
-	{true,  true,   false, false, false,  true, true, false,     true};
+//   login, logout, view,  upload, home, lib,  listcolls, query, none
+	{true,  true,   false, false,  true, true, false,     true};
 
 const std::array<bool, static_cast<int>(URLIntent::Action::none)> URLIntent::require_filename =
-//   login, logout, view,  coll,  upload, home,  lib,  listcolls, query, none
-	{false, false,  false, false, true,   false, true, false,     false};
+//   login, logout, view,  upload, home,  lib,  listcolls, query, none
+	{false, false,  false, true,   false, true, false,     false};
 const std::array<bool, static_cast<int>(URLIntent::Action::none)> URLIntent::forbid_filename =
-//   login, logout, view,  coll, upload, home, lib,   listcolls, query, none
-	{true,  true,   false, true,  false,  true, false, true,      false};
+//   login, logout, view,  upload, home, lib,   listcolls, query, none
+	{true,  true,   false, false,  true, false, true,      false};
 
 const std::array<bool, static_cast<int>(URLIntent::Action::none)> URLIntent::forbid_coll =
-//   login, logout, view,  coll,  upload, home, lib,  listcolls, query, none
-	{true,  true,   false, false, false,  true, true, false,     true};
+//   login, logout, view,  upload, home, lib,  listcolls, query, none
+	{true,  true,   false, false,  true, true, false,     true};
 
 bool URLIntent::valid() const
 {

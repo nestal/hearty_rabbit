@@ -126,9 +126,6 @@ void Server::handle_request(Request&& req, Send&& send, const Authentication& au
 		if (intent.action() == URLIntent::Action::home)
 			return serve_home(std::forward<Request>(req), std::forward<Send>(send), auth);
 
-		if (intent.action() == URLIntent::Action::list)
-			return serve_collection(intent, req.version(), std::forward<Send>(send), auth);
-
 		if (intent.action() == URLIntent::Action::listcolls)
 			return scan_collection(intent, req.version(), std::forward<Send>(send), auth);
 
