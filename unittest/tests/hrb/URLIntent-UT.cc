@@ -233,7 +233,7 @@ TEST_CASE("path URL")
 	REQUIRE(query.collection() == "");
 	REQUIRE(query.query_target() == URLIntent::QueryTarget::none);
 	REQUIRE(query.filename() == "");
-	REQUIRE(query.valid());
+	REQUIRE_FALSE(query.valid());
 
 	URLIntent query2{"/query/collection?oldest"};
 	REQUIRE(query2.action() == URLIntent::Action::query);
@@ -260,7 +260,7 @@ TEST_CASE("path URL")
 
 	URLIntent query3{"/query"};
 	REQUIRE(query3.action() == URLIntent::Action::query);
-//	REQUIRE_FALSE(query3.valid());
+	REQUIRE_FALSE(query3.valid());
 
 	URLIntent view_blob{"/view/sumsum/collection1/6d0ef85c5798fd4d3151302dbb6fdadeb095a65c"};
 	REQUIRE(view_blob.action() == URLIntent::Action::view);

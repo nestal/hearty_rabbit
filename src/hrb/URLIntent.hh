@@ -26,7 +26,7 @@ class URLIntent
 public:
 	enum class Action {login, logout, view, upload, home, lib, query, none};
 
-	enum class QueryTarget {blob, collection, none};
+	enum class QueryTarget {blob, collection, blob_set, none};
 
 	//! Possible parameters specified by a URL
 	enum class Parameter {
@@ -44,7 +44,6 @@ private:
 	using Parameters = std::vector<Parameter>;
 
 	static const std::array<bool, static_cast<int>(Action::none)> require_user, require_filename;
-	static const std::array<bool, static_cast<int>(Action::none)> forbid_user, forbid_filename, forbid_coll;
 	static const std::array<Parameters, static_cast<int>(Action::none)> intent_defintions;
 	static const Parameters separator_fields;
 

@@ -79,6 +79,9 @@ URLIntent::URLIntent(boost::string_view boost_target)
 	if (m_action == Action::none)
 		return;
 
+	// assume valid unless see unwanted fields
+	m_valid = true;
+
 	auto& intent_definition = intent_defintions[static_cast<std::size_t>(m_action)];
 	auto mid = std::find_first_of(intent_definition.begin(), intent_definition.end(), separator_fields.begin(), separator_fields.end());
 	for (auto i = intent_definition.begin() ; i != mid; i++)
@@ -86,7 +89,8 @@ URLIntent::URLIntent(boost::string_view boost_target)
 	for (auto i = intent_definition.rbegin() ; i != std::reverse_iterator<Parameters::const_iterator>{mid}; i++)
 		parse_field_from_right(target, *i);;
 
-	m_valid = target.empty();
+	if (!target.empty())
+		m_valid = false;
 }
 
 URLIntent::URLIntent(Action act, std::string_view user, std::string_view coll, std::string_view name) :
@@ -123,6 +127,9 @@ void URLIntent::parse_field_from_right(std::string_view& target, hrb::URLIntent:
 			m_option = tmp;
 			target   = field;
 		}
+
+		if (m_action == Action::query && m_option.empty())
+			m_valid = false;
 	}
 	else if (p == Parameter::filename || p == Parameter::blob)
 	{
@@ -201,43 +208,22 @@ URLIntent::Action URLIntent::parse_action(std::string_view str)
 const std::array<bool, static_cast<int>(URLIntent::Action::none)> URLIntent::require_user =
 //   login, logout, view, upload, home,  lib,   query, none
 	{false, false,  true, true,   false, false, false};
-const std::array<bool, static_cast<int>(URLIntent::Action::none)> URLIntent::forbid_user =
-//   login, logout, view,  upload, home, lib,  query, none
-	{true,  true,   false, false,  true, true, true};
 
 const std::array<bool, static_cast<int>(URLIntent::Action::none)> URLIntent::require_filename =
 //   login, logout, view,  upload, home,  lib,  query, none
 	{false, false,  false, true,   false, true, false};
-const std::array<bool, static_cast<int>(URLIntent::Action::none)> URLIntent::forbid_filename =
-//   login, logout, view,  upload, home, lib,   query, none
-	{true,  true,   false, false,  true, false, false};
-
-const std::array<bool, static_cast<int>(URLIntent::Action::none)> URLIntent::forbid_coll =
-//   login, logout, view,  upload, home, lib,  query, none
-	{true,  true,   false, false,  true, true, true};
 
 bool URLIntent::valid() const
 {
 	if (m_action != Action::none)
 	{
 		auto action_index = static_cast<std::size_t>(m_action);
-		assert(!require_user.at(action_index)     || !forbid_user.at(action_index));
-		assert(!require_filename.at(action_index) || !forbid_filename.at(action_index));
 		assert(require_user.at(static_cast<std::size_t>(Action::view)));
 
 		if (require_user.at(action_index) && m_user.empty())
 			return false;
 
-		if (forbid_user.at(action_index) && !m_user.empty())
-			return false;
-
 		if (require_filename.at(action_index) && m_filename.empty())
-			return false;
-
-		if (forbid_filename.at(action_index) && !m_filename.empty())
-			return false;
-
-		if (forbid_coll.at(action_index) && !m_coll.empty())
 			return false;
 
 		return m_valid;
@@ -257,6 +243,7 @@ URLIntent::QueryTarget URLIntent::parse_query_target(std::string_view str)
 {
 	     if (str == "blob")       return QueryTarget::blob;
 	else if (str == "collection") return QueryTarget::collection;
+	else if (str == "blob_set")   return QueryTarget::blob_set;
 	else                          return QueryTarget::none;
 }
 
