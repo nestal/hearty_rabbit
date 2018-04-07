@@ -303,7 +303,7 @@ TEST_CASE("Query blob of testuser")
 	subject.query_blob(*redis, blobid, [&tested](auto first, auto last, auto ec)
 	{
 		REQUIRE(!ec);
-		REQUIRE(first + 1 == last);
+		REQUIRE(first != last);
 
 		// There should be only one collection that owns the blob
 		REQUIRE(first->user == "testuser");
@@ -311,6 +311,7 @@ TEST_CASE("Query blob of testuser")
 		REQUIRE(first->entry.permission() == Permission::public_());
 		REQUIRE(first->entry.filename() == "haha.jpeg");
 		REQUIRE(first->entry.mime() == "image/jpeg");
+		REQUIRE(++first == last);
 		tested++;
 	});
 

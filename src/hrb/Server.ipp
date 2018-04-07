@@ -291,7 +291,7 @@ void Server::view_collection(const URLIntent& intent, unsigned version, Send&& s
 template <class Send>
 void Server::query_blob(const URLIntent& intent, unsigned version, Send&& send, const Authentication& auth)
 {
-
+	Ownership{auth.user()};
 }
 
 } // end of namespace

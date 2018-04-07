@@ -20,6 +20,7 @@
 #include <json.hpp>
 
 #include <boost/iterator/transform_iterator.hpp>
+#include <boost/iterator/filter_iterator.hpp>
 
 #include <vector>
 
@@ -484,7 +485,7 @@ void Ownership::query_blob(redis::Connection& db, const ObjectID& blob, Complete
 	)__";
 
 	db.command(
-		[comp=std::forward<Complete>(complete)](auto&& reply, auto ec)
+		[user=m_user, comp=std::forward<Complete>(complete)](auto&& reply, auto ec)
 		{
 			Log(LOG_INFO, "script reply: %1%", reply.as_error());
 
@@ -504,8 +505,16 @@ void Ownership::query_blob(redis::Connection& db, const ObjectID& blob, Complete
 			using BlobIterator = boost::transform_iterator<decltype(transform), redis::Reply::kv_iterator>;
 			auto kv_range = reply.kv_pairs();
 
-			comp(BlobIterator{kv_range.begin(), transform}, BlobIterator{kv_range.end(), transform}, ec);
+			auto owned = [&user](const Blob& blob) {return user == blob.user;};
+			using OwnedBlobIterator = boost::filter_iterator<decltype(owned), BlobIterator>;
 
+			BlobIterator begin{kv_range.begin(), transform};
+			BlobIterator end{kv_range.end(), transform};
+			comp(
+				OwnedBlobIterator{owned, begin, end},
+				OwnedBlobIterator{owned, end, end},
+				ec
+			);
 		},
 		"EVAL %s 1 %b:%b %b",
 		lua,
