@@ -48,7 +48,7 @@ const std::array<
 	Parameters{URLIntent::Parameter::user},
 
 	// query
-	Parameters{URLIntent::Parameter::command, URLIntent::Parameter::filename, URLIntent::Parameter::option}
+	Parameters{URLIntent::Parameter::query_target, URLIntent::Parameter::option}
 };
 
 const URLIntent::Parameters URLIntent::separator_fields{URLIntent::Parameter::collection, URLIntent::Parameter::option};
@@ -105,9 +105,9 @@ void URLIntent::parse_field_from_left(std::string_view& target, hrb::URLIntent::
 
 	switch (p)
 	{
-		case Parameter::user:       m_user     = url_decode(field); break;
-		case Parameter::filename:   m_filename = url_decode(field); break;
-		case Parameter::command:    m_command  = field; break;
+		case Parameter::user:         m_user     = url_decode(field); break;
+		case Parameter::filename:     m_filename = url_decode(field); break;
+		case Parameter::query_target: m_query_target = parse_query_target(field); break;
 		default: break;
 	}
 }
@@ -255,6 +255,13 @@ bool URLIntent::valid() const
 bool URLIntent::need_auth() const
 {
 	return m_action == Action::upload;
+}
+
+URLIntent::QueryTarget URLIntent::parse_query_target(std::string_view str)
+{
+	     if (str == "blob")       return QueryTarget::blob;
+	else if (str == "collection") return QueryTarget::collection;
+	else                          return QueryTarget::none;
 }
 
 } // end of namespace hrb

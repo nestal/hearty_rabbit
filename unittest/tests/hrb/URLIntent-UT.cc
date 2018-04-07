@@ -13,6 +13,7 @@
 #include <catch.hpp>
 
 #include "hrb/URLIntent.hh"
+#include "util/Escape.hh"
 
 using namespace hrb;
 
@@ -230,16 +231,25 @@ TEST_CASE("path URL")
 	REQUIRE(query.action() == URLIntent::Action::query);
 	REQUIRE(query.user() == "");
 	REQUIRE(query.collection() == "");
-	REQUIRE(query.command() == "latest");
+	REQUIRE(query.query_target() == URLIntent::QueryTarget::none);
 	REQUIRE(query.filename() == "");
 	REQUIRE(query.valid());
 
-	URLIntent query2{"/query/coll/oldest"};
+	URLIntent query2{"/query/collection?oldest"};
 	REQUIRE(query2.action() == URLIntent::Action::query);
 	REQUIRE(query2.user() == "");
-	REQUIRE(query2.command() == "coll");
-	REQUIRE(query2.filename() == "oldest");
+	REQUIRE(query2.query_target() == URLIntent::QueryTarget::collection);
+	REQUIRE(query2.option() == "oldest");
 	REQUIRE(query2.valid());
+
+	URLIntent query_user{"/query/collection?user=sum"};
+	REQUIRE(query_user.action() == URLIntent::Action::query);
+	REQUIRE(query_user.user() == "");
+	REQUIRE(query_user.query_target() == URLIntent::QueryTarget::collection);
+	REQUIRE(query_user.option() == "user=sum");
+	REQUIRE(query_user.valid());
+
+	REQUIRE(std::get<0>(find_fields(query_user.option(), "user")) == "sum");
 
 	URLIntent query3{"/query"};
 	REQUIRE(query3.action() == URLIntent::Action::query);

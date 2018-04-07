@@ -24,8 +24,9 @@ namespace hrb {
 class URLIntent
 {
 public:
-	// TODO: narrow down the possibility of actions in these enum
 	enum class Action {login, logout, view, upload, home, lib, listcolls, query, none};
+
+	enum class QueryTarget {blob, collection, none};
 
 	//! Possible parameters specified by a URL
 	enum class Parameter {
@@ -36,7 +37,7 @@ public:
 		filename,       //!< Filename of a resource. Single segment only.
 		blob,           //!< 40-character hex string for blob ID. Obviously single segment.
 		option,         //!< Query string of the URL
-		command         //!< Single segment command that supplement the action.
+		query_target    //!< Target of the query: blob or collection
 	};
 
 private:
@@ -62,7 +63,7 @@ public:
 	std::string_view collection() const {return m_coll;}
 	std::string_view filename() const {return m_filename;}
 	std::string_view option() const {return m_option;}
-	std::string_view command() const {return m_command;}
+	QueryTarget query_target() const {return m_query_target;}
 
 	std::string str() const;
 
@@ -74,6 +75,7 @@ private:
 	static Action parse_action(std::string_view str);
 	void parse_field_from_left(std::string_view& target, Parameter p);
 	void parse_field_from_right(std::string_view& target, Parameter p);
+	static QueryTarget parse_query_target(std::string_view str);
 
 private:
 	Action  m_action{Action::none};
@@ -89,7 +91,7 @@ private:
 	// option
 	std::string m_option;
 
-	std::string m_command;
+	QueryTarget m_query_target{QueryTarget::none};
 
 	bool m_valid{false};
 };

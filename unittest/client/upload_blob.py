@@ -274,7 +274,7 @@ class NormalTestCase(unittest.TestCase):
 			res = self.user1.put(coll, data=self.random_image(480, 320))
 			self.assertEqual(res.status_code, 201)
 
-		r1 = self.user1.get("https://localhost:4433/listcolls/sumsum/")
+		r1 = self.user1.get("https://localhost:4433/query/collection?user=sumsum")
 		self.assertEqual(r1.status_code, 200)
 		self.assertTrue("colls" in r1.json())
 		self.assertTrue("collection1" in r1.json()["colls"])
@@ -315,7 +315,7 @@ class NormalTestCase(unittest.TestCase):
 		)
 		self.assertEqual(r1.status_code, 201)
 
-		r2 = self.user1.get("https://localhost:4433/listcolls/sumsum/")
+		r2 = self.user1.get("https://localhost:4433/query/collection?user=sumsum")
 		self.assertEqual(r2.status_code, 200)
 		self.assertTrue("colls" in r2.json())
 		self.assertTrue("女神ハイリア" in r2.json()["colls"])
@@ -350,7 +350,7 @@ class NormalTestCase(unittest.TestCase):
 		cover_id = r1.headers["Location"][-40:]
 
 		# verify the first image will become the cover of the album
-		r2 = self.user1.get("https://localhost:4433/listcolls/sumsum/")
+		r2 = self.user1.get("https://localhost:4433/query/collection?user=sumsum")
 		self.assertEqual(r2.status_code, 200)
 		self.assertTrue("🙇" in r2.json()["colls"])
 		self.assertEqual(cover_id, r2.json()["colls"]["🙇"]["cover"])
@@ -361,7 +361,7 @@ class NormalTestCase(unittest.TestCase):
 			data=self.random_image(300, 200)
 		)
 		self.assertEqual(r3.status_code, 201)
-		r4 = self.user1.get("https://localhost:4433/listcolls/sumsum/")
+		r4 = self.user1.get("https://localhost:4433/query/collection?user=sumsum")
 		self.assertEqual(r4.status_code, 200)
 		self.assertEqual(cover_id, r4.json()["colls"]["🙇"]["cover"])
 
@@ -369,7 +369,7 @@ class NormalTestCase(unittest.TestCase):
 		self.assertEqual(self.user1.delete("https://localhost:4433/view/sumsum/%F0%9F%99%87/" + cover_id).status_code, 204)
 
 		# the cover will be missing
-		r5 = self.user1.get("https://localhost:4433/listcolls/sumsum/")
+		r5 = self.user1.get("https://localhost:4433/query/collection?user=sumsum")
 		self.assertEqual(r5.status_code, 200)
 		self.assertTrue("🙇" in r5.json()["colls"])
 		self.assertFalse("cover" in r5.json()["colls"]["🙇"])
@@ -378,7 +378,7 @@ class NormalTestCase(unittest.TestCase):
 		self.assertEqual(self.user1.delete("https://localhost:4433" + r3.headers["Location"]).status_code, 204)
 
 		# the album will be removed
-		r6 = self.user1.get("https://localhost:4433/listcolls/sumsum/")
+		r6 = self.user1.get("https://localhost:4433/query/collection?user=sumsum")
 		self.assertEqual(r6.status_code, 200)
 		self.assertFalse("🙇" in r6.json()["colls"])
 
