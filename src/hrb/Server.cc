@@ -124,7 +124,6 @@ void Server::unlink(BlobRequest&& req, EmptyResponseSender&& send)
 	Log(LOG_INFO, "unlinking object %1% from path(%2%)", *req.blob(), req.collection());
 
 	if (!req.request_by_owner())
-		
 		return send(http::response<http::empty_body>{http::status::forbidden, req.version()});
 
 	// remove from user's container

@@ -158,7 +158,7 @@ nlohmann::json Ownership::Collection::serialize(redis::Reply& reply, std::string
 	jdoc.emplace("collection", m_path);
 
 	auto elements = nlohmann::json::object();
-	reply.foreach_kv_pair([&elements, &jdoc, requester, this](auto&& blob, auto&& perm)
+	reply.foreach_kv_pair([&elements, &jdoc, requester, this](auto&& blob, auto&& perm, auto)
 	{
 		auto blob_id = raw_to_object_id(blob);
 		CollEntry entry{perm.as_string()};

@@ -103,6 +103,9 @@ private:
 	template <class Send>
 	void on_query(const URLIntent& intent, unsigned version, Send&& send, const Authentication& auth);
 
+	template <class Send>
+	void query_blob(const URLIntent& intent, unsigned version, Send&& send, const Authentication& auth);
+
 private:
 	const Configuration&    m_cfg;
 	boost::asio::io_context m_ioc;

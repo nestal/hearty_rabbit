@@ -250,6 +250,9 @@ void Server::on_query(const URLIntent& intent, unsigned version, Send&& send, co
 		case URLIntent::QueryTarget::collection:
 			return scan_collection(intent, version, std::forward<Send>(send), auth);
 
+		case URLIntent::QueryTarget::blob:
+			return query_blob(intent, version, std::forward<Send>(send), auth);
+
 		default:
 			return send(bad_request("unsupported query target", version));
 	}
@@ -283,6 +286,12 @@ void Server::view_collection(const URLIntent& intent, unsigned version, Send&& s
 		intent.collection(),
 		SendJSON{std::move(send), auth.user(), version, intent.option() == "json" ? nullptr : &m_lib}
 	);
+}
+
+template <class Send>
+void Server::query_blob(const URLIntent& intent, unsigned version, Send&& send, const Authentication& auth)
+{
+
 }
 
 } // end of namespace

@@ -299,7 +299,7 @@ TEST_CASE("Query blob of testuser")
 	REQUIRE(tested == 1);
 	ioc.restart();
 
-	subject.query_blob(*redis, blobid, [&tested](auto&& user, auto&& coll, auto&& entry)
+	subject.query_blob(*redis, blobid, [&tested](auto&& user, auto&& coll, auto&& entry, auto index, auto total)
 	{
 		// There should be only one collection that owns the blob
 		REQUIRE(user == "testuser");
@@ -307,6 +307,8 @@ TEST_CASE("Query blob of testuser")
 		REQUIRE(entry.permission() == Permission::public_());
 		REQUIRE(entry.filename() == "haha.jpeg");
 		REQUIRE(entry.mime() == "image/jpeg");
+		REQUIRE(index == 0);
+		REQUIRE(total == 1);
 		tested++;
 	});
 

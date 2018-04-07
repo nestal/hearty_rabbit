@@ -125,7 +125,7 @@ void Ownership::Collection::scan(
 					auto cursor = cursor_reply.to_int();
 
 					// call the callback once to handle one collection
-					dirs.foreach_kv_pair([&cb](auto&& key, auto&& value)
+					dirs.foreach_kv_pair([&cb](auto&& key, auto&& value, auto)
 					{
 						auto sv = value.as_string();
 						if (sv.empty())
@@ -488,10 +488,10 @@ void Ownership::query_blob(redis::Connection& db, const ObjectID& blob, Complete
 		{
 			Log(LOG_INFO, "script reply: %1%", reply.as_error());
 
-			reply.foreach_kv_pair([&comp](auto&& key, auto&& val)
+			reply.foreach_kv_pair([&comp, total=reply.array_size()/2](auto&& key, auto&& val, auto index)
 			{
 				Collection coll{key};
-				comp(coll.user(), coll.path(), CollEntry{val.as_string()});
+				comp(coll.user(), coll.path(), CollEntry{val.as_string()}, index, total);
 			});
 		},
 		"EVAL %s 1 %b:%b %b",

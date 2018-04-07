@@ -95,7 +95,7 @@ public:
 	void foreach_kv_pair(Func&& func)
 	{
 		for (auto i = 0U; i+1 < array_size() ; i += 2)
-			func(as_array(i).as_string(), as_array(i+1));
+			func(as_array(i).as_string(), as_array(i+1), i/2);
 	}
 
 	// Return a tuple of replies, one for each field in the parameter list
