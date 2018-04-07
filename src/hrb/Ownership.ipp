@@ -127,14 +127,14 @@ void Ownership::Collection::scan(
 					auto cursor = cursor_reply.to_int();
 
 					// call the callback once to handle one collection
-					dirs.foreach_kv_pair([&cb](auto&& key, auto&& value, auto)
+					for (auto&& p : dirs.kv_pairs())
 					{
-						auto sv = value.as_string();
+						auto sv = p.value().as_string();
 						if (sv.empty())
 							return;
 
-						cb(key, nlohmann::json::parse(sv));
-					});
+						cb(p.key(), nlohmann::json::parse(sv));
+					};
 
 					// if comp return true, keep scanning with the same callback and
 					// comp as completion routine
@@ -488,11 +488,24 @@ void Ownership::query_blob(redis::Connection& db, const ObjectID& blob, Complete
 		{
 			Log(LOG_INFO, "script reply: %1%", reply.as_error());
 
-			reply.foreach_kv_pair([&comp, total=reply.array_size()/2](auto&& key, auto&& val, auto index)
+			struct Blob
 			{
-				Collection coll{key};
-				comp(coll.user(), coll.path(), CollEntry{val.as_string()}, index, total);
-			});
+				std::string user;
+				std::string coll;
+				CollEntry   entry;
+			};
+
+			auto transform = [](auto&& kv)
+			{
+				Collection coll{kv.key()};
+				return Blob{coll.user(), coll.path(), CollEntry{kv.value().as_string()}};
+			};
+
+			using BlobIterator = boost::transform_iterator<decltype(transform), redis::Reply::kv_iterator>;
+			auto kv_range = reply.kv_pairs();
+
+			comp(BlobIterator{kv_range.begin(), transform}, BlobIterator{kv_range.end(), transform}, ec);
+
 		},
 		"EVAL %s 1 %b:%b %b",
 		lua,

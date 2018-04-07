@@ -158,8 +158,11 @@ nlohmann::json Ownership::Collection::serialize(redis::Reply& reply, std::string
 	jdoc.emplace("collection", m_path);
 
 	auto elements = nlohmann::json::object();
-	reply.foreach_kv_pair([&elements, &jdoc, requester, this](auto&& blob, auto&& perm, auto)
+	for (auto&& kv : reply.kv_pairs())
 	{
+		auto&& blob = kv.key();
+		auto&& perm = kv.value();
+
 		auto blob_id = raw_to_object_id(blob);
 		CollEntry entry{perm.as_string()};
 
@@ -177,7 +180,7 @@ nlohmann::json Ownership::Collection::serialize(redis::Reply& reply, std::string
 				Log(LOG_WARNING, "exception thrown when parsing CollEntry::json(): %1% %2%", e.what(), entry.json());
 			}
 		}
-	});
+	};
 	jdoc.emplace("elements", std::move(elements));
 
 	return jdoc;
