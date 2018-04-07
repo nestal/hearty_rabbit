@@ -24,7 +24,7 @@ namespace hrb {
 class URLIntent
 {
 public:
-	enum class Action {login, logout, view, upload, home, lib, listcolls, query, none};
+	enum class Action {login, logout, view, upload, home, lib, query, none};
 
 	enum class QueryTarget {blob, collection, none};
 
