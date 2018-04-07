@@ -13,6 +13,7 @@
 #include "util/Escape.hh"
 
 #include <catch.hpp>
+#include <optional>
 
 using namespace hrb;
 
@@ -148,4 +149,16 @@ TEST_CASE("decode URI", "[normal]")
 	REQUIRE(url_decode("%2Fview%OOsumsum%2F") == "/view");
 
 	REQUIRE(url_encode("\xF0\x11") == "%F0%11");
+}
+
+TEST_CASE("basic find field with optional", "[normal]")
+{
+	auto [user, name, sum] = basic_find_fields<std::optional<std::string>>("user=sum&sum=user", "user", "name", "sum");
+	static_assert(std::is_same<decltype(user), std::optional<std::string>>::value);
+	REQUIRE(user.has_value());
+	REQUIRE(*user == "sum");
+	REQUIRE(!name.has_value());
+	REQUIRE(sum.has_value());
+	REQUIRE(*sum == "user");
+
 }

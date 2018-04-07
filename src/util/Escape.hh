@@ -24,10 +24,10 @@ std::tuple<std::string_view, char> split_left(std::string_view& in, std::string_
 std::tuple<std::string_view, char> split_right(std::string_view& in, std::string_view value);
 std::string_view split_front_substring(std::string_view& in, std::string_view substring);
 
-template <typename... Fields>
-auto find_fields(std::string_view remain, Fields... fields)
+template <typename OutType, typename... Fields>
+auto basic_find_fields(std::string_view remain, Fields... fields)
 {
-	typename RepeatingTuple<std::string_view, sizeof...(fields)>::type result;
+	typename RepeatingTuple<OutType, sizeof...(fields)>::type result;
 	while (!remain.empty())
 	{
 		// Don't remove the temporary variables because the order
@@ -39,6 +39,12 @@ auto find_fields(std::string_view remain, Fields... fields)
 		match_field(result, name, value, fields...);
 	}
 	return result;
+}
+
+template <typename... Fields>
+auto find_fields(std::string_view remain, Fields... fields)
+{
+	return basic_find_fields<std::string_view>(remain, std::forward<Fields>(fields)...);
 }
 
 template <std::size_t index, typename ResultTuple>
