@@ -70,7 +70,7 @@ void Server::on_login(const StringRequest& req, EmptyResponseSender&& send)
 				session_length=session_length()
 			](std::error_code ec, auto&& session) mutable
 			{
-				Log(LOG_INFO, "%4% login result: %1% %2% (from %3%)", ec, ec.message(), login_from, session.user());
+//				Log(LOG_INFO, "%4% login result: %1% %2% (from %3%)", ec, ec.message(), login_from, session.user());
 
 				auto login_incorrect = URLIntent{URLIntent::Action::lib, "", "", "login_incorrect.html"}.str();
 
@@ -121,7 +121,7 @@ http::response<http::empty_body> Server::see_other(boost::beast::string_view whe
 void Server::unlink(BlobRequest&& req, EmptyResponseSender&& send)
 {
 	assert(req.blob());
-	Log(LOG_INFO, "unlinking object %1% from path(%2%)", *req.blob(), req.collection());
+//	Log(LOG_INFO, "unlinking object %1% from path(%2%)", *req.blob(), req.collection());
 
 	if (!req.request_by_owner())
 		return send(http::response<http::empty_body>{http::status::forbidden, req.version()});
@@ -147,11 +147,8 @@ void Server::update_blob(BlobRequest&& req, EmptyResponseSender&& send)
 	if (!req.request_by_owner())
 		return send(http::response<http::empty_body>{http::status::forbidden, req.version()});
 
-	Log(LOG_NOTICE, "receving form string for updating blob %1%: %2%", *req.blob(), req.body());
-
 	assert(req.blob());
 	auto [perm_str, move_destination] = find_fields(req.body(), "perm", "move");
-	Log(LOG_NOTICE, "updating blob %1% to %2%", *req.blob(), perm_str);
 
 	auto on_complete = [send = std::move(send), version = req.version()](auto&& ec)
 	{
@@ -204,11 +201,11 @@ void Server::on_upload(UploadRequest&& req, EmptyResponseSender&& send, const Au
 		});
 	}
 
-	Log(LOG_INFO, "uploading %1% bytes to path(%2%) file(%3%)", req.body().size(bec), path_url.collection(), path_url.filename());
+//	Log(LOG_INFO, "uploading %1% bytes to path(%2%) file(%3%)", req.body().size(bec), path_url.collection(), path_url.filename());
 
 	std::error_code ec;
 	auto blob = m_blob_db.save(std::move(req.body()), path_url.filename(), ec);
-	Log(LOG_INFO, "%5% uploaded %1% to %2% (%3% %4%)", req.target(), blob.ID(), ec, ec.message(), auth.user());
+//	Log(LOG_INFO, "%5% uploaded %1% to %2% (%3% %4%)", req.target(), blob.ID(), ec, ec.message(), auth.user());
 
 	if (ec)
 		return send(http::response<http::empty_body>{http::status::internal_server_error, req.version()});

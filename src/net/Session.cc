@@ -149,7 +149,7 @@ bool Session::validate_request(const Request& req)
 	auto endpoint = m_socket.remote_endpoint(ec);
 	if (ec)
 		Log(LOG_WARNING, "remote_endpoint() error: %1% %2%", ec, ec.message());
-
+/*
 	Log(
 		LOG_INFO,
 		"%1%:%2% %3% request %4% from %5% (%6% bytes)",
@@ -160,7 +160,7 @@ bool Session::validate_request(const Request& req)
 		endpoint,
 		req[http::field::content_length].empty() ? "0" : req[http::field::content_length]
 	);
-
+*/
 	// Make sure we can handle the method
 	if (req.method() != http::verb::get  &&
 	    req.method() != http::verb::post &&

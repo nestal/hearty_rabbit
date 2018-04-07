@@ -504,7 +504,8 @@ void Ownership::query_blob(redis::Connection& db, const ObjectID& blob, Complete
 	db.command(
 		[user=m_user, comp=std::forward<Complete>(complete)](auto&& reply, auto ec)
 		{
-			Log(LOG_INFO, "script reply: %1%", reply.as_error());
+			if (!reply)
+				Log(LOG_WARNING, "script reply: %1%", reply.as_error());
 
 			struct Blob
 			{
