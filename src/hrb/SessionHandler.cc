@@ -38,6 +38,16 @@
 
 namespace hrb {
 
+SessionHandler::SessionHandler(
+	std::shared_ptr<redis::Connection>&& db,
+	WebResources& lib,
+	BlobDatabase& blob_db,
+	const Configuration& cfg
+) :
+	m_db{db}, m_lib{lib}, m_blob_db{blob_db}, m_cfg{cfg}
+{
+}
+
 std::size_t SessionHandler::upload_limit() const
 {
 	return m_cfg.upload_limit();
@@ -98,9 +108,9 @@ void SessionHandler::on_login(const StringRequest& req, EmptyResponseSender&& se
 		send(see_other("/", req.version()));
 }
 
-void SessionHandler::on_logout(const EmptyRequest& req, EmptyResponseSender&& send, const Authentication& auth)
+void SessionHandler::on_logout(const EmptyRequest& req, EmptyResponseSender&& send)
 {
-	auth.destroy_session(*m_db, [this, send=std::move(send), version=req.version()](auto&& ec) mutable
+	m_auth.destroy_session(*m_db, [this, send=std::move(send), version=req.version()](auto&& ec) mutable
 	{
 		auto&& res = see_other("/", version);
 		res.set(http::field::set_cookie, Authentication{}.set_cookie());
@@ -185,12 +195,12 @@ void SessionHandler::update_blob(BlobRequest&& req, EmptyResponseSender&& send)
 	}
 }
 
-void SessionHandler::on_upload(UploadRequest&& req, EmptyResponseSender&& send, const Authentication& auth)
+void SessionHandler::on_upload(UploadRequest&& req, EmptyResponseSender&& send)
 {
 	boost::system::error_code bec;
 
 	URLIntent path_url{req.target()};
-	if (auth.user() != path_url.user())
+	if (m_auth.user() != path_url.user())
 	{
 		// TODO: Introduce a small delay when responsing to requests with invalid session ID.
 		// This is to slow down bruce-force attacks on the session ID.
@@ -206,9 +216,9 @@ void SessionHandler::on_upload(UploadRequest&& req, EmptyResponseSender&& send, 
 	// Add the newly created blob to the user's ownership table.
 	// The user's ownership table contains all the blobs that is owned by the user.
 	// It will be used for authorizing the user's request on these blob later.
-	Ownership{auth.user()}.link(
+	Ownership{m_auth.user()}.link(
 		*m_db, path_url.collection(), blob.ID(), blob.entry(), [
-			location = URLIntent{URLIntent::Action::view, auth.user(), path_url.collection(), to_hex(blob.ID())}.str(),
+			location = URLIntent{URLIntent::Action::view, m_auth.user(), path_url.collection(), to_hex(blob.ID())}.str(),
 			send = std::move(send),
 			version = req.version()
 		](auto ec)
@@ -237,12 +247,11 @@ http::response<http::string_body> SessionHandler::bad_request(boost::beast::stri
 }
 
 // Returns a not found response
-http::response<SplitBuffers> SessionHandler::not_found(boost::string_view target, const std::optional<Authentication>& auth, unsigned version)
+http::response<SplitBuffers> SessionHandler::not_found(boost::string_view target, unsigned version)
 {
 	nlohmann::json dir;
 	dir.emplace("error_message", "The request resource was not found.");
-	if (auth)
-		dir.emplace("username", std::string{auth->user()});
+	dir.emplace("username", std::string{m_auth.user()});
 
 	return m_lib.inject_json(http::status::not_found, dir.dump(), version);
 }

@@ -13,7 +13,6 @@
 #pragma once
 
 #include "Request.hh"
-#include "crypto/Authentication.hh"
 #include "hrb/UploadFile.hh"
 #include "hrb/URLIntent.hh"
 #include "hrb/SessionHandler.hh"
@@ -52,7 +51,7 @@ public:
 	void on_handshake(boost::system::error_code ec);
 	void do_read();
 	void on_read_header(boost::system::error_code ec, std::size_t bytes_transferred);
-	void on_read(boost::system::error_code ec, std::size_t bytes_transferred, std::optional<Authentication> auth);
+	void on_read(boost::system::error_code ec, std::size_t bytes_transferred);
 	void on_write(boost::system::error_code ec, std::size_t bytes_transferred, bool close);
 	void do_close();
 	void on_shutdown(boost::system::error_code ec);
@@ -83,7 +82,8 @@ private:
 	std::optional<EmptyRequestParser> m_parser;
 	std::variant<StringRequestParser, UploadRequestParser, EmptyRequestParser> m_body;
 
-	SessionHandler m_server;
+	std::function<SessionHandler()> m_factory;
+	std::optional<SessionHandler>   m_server;
 
 	// stats
 	std::size_t m_nth_session;

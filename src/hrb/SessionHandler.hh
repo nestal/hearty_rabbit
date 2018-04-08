@@ -12,6 +12,7 @@
 
 #pragma once
 
+#include "crypto/Authentication.hh"
 #include "net/Redis.hh"
 #include "net/Request.hh"
 
@@ -36,10 +37,12 @@ class WebResources;
 class SessionHandler
 {
 public:
-	SessionHandler(std::shared_ptr<redis::Connection>&& db, WebResources& lib, BlobDatabase& blob_db, const Configuration& cfg) :
-		m_db{db}, m_lib{lib}, m_blob_db{blob_db}, m_cfg{cfg}
-	{
-	}
+	SessionHandler(
+		std::shared_ptr<redis::Connection>&& db,
+		WebResources& lib,
+		BlobDatabase& blob_db,
+		const Configuration& cfg
+	);
 
 	template <class Complete>
 	void on_request_header(
@@ -54,15 +57,25 @@ public:
 	// contents of the request, so the interface requires the
 	// caller to pass a generic lambda for receiving the response.
 	template<class Request, class Send>
-	void handle_request(Request&& req, Send&& send, const Authentication& auth);
+	void on_request_body(Request&& req, Send&& send);
+
+	// ugly hack for unit test
+	template <class Request, class Send>
+	void handle_request(Request&& req, Send&& send, const Authentication& auth)
+	{
+		m_auth = auth;
+		on_request_body(std::forward<Request>(req), std::forward<Send>(send));
+	};
 
 	static http::response<http::string_body> bad_request(boost::string_view why, unsigned version);
-	http::response<SplitBuffers> not_found(boost::string_view target, const std::optional<Authentication>& auth, unsigned version);
+	http::response<SplitBuffers> not_found(boost::string_view target, unsigned version);
 	static http::response<http::string_body> server_error(boost::string_view what, unsigned version);
 	static http::response<http::empty_body> see_other(boost::beast::string_view where, unsigned version);
 
 	std::size_t upload_limit() const;
 	std::chrono::seconds session_length() const;
+
+	const Authentication& auth() const {return m_auth;}
 
 private:
 	http::response<SplitBuffers> file_request(const URLIntent& intent, boost::string_view etag, unsigned version);
@@ -76,35 +89,36 @@ private:
 	using BlobResponseSender   = std::function<void(http::response<MMapResponseBody>&&)>;
 
 	void on_login(const StringRequest& req, EmptyResponseSender&& send);
-	void on_logout(const EmptyRequest& req, EmptyResponseSender&& send, const Authentication& auth);
-	void on_upload(UploadRequest&& req, EmptyResponseSender&& send, const Authentication& auth);
+	void on_logout(const EmptyRequest& req, EmptyResponseSender&& send);
+	void on_upload(UploadRequest&& req, EmptyResponseSender&& send);
 	void unlink(BlobRequest&& req, EmptyResponseSender&& send);
 	void update_blob(BlobRequest&& req, EmptyResponseSender&& send);
 	void prepare_upload(UploadFile& result, std::error_code& ec);
 
 	template <class Send>
-	void scan_collection(const URLIntent& intent, unsigned version, Send&& send, const Authentication& auth);
+	void scan_collection(const URLIntent& intent, unsigned version, Send&& send);
 
 	template <class Request, class Send>
-	void on_request_view(Request&& req, URLIntent&& intent, Send&& send, const Authentication& auth);
+	void on_request_view(Request&& req, URLIntent&& intent, Send&& send);
 
 	template <class Send>
-	void view_collection(const URLIntent& intent, unsigned version, Send&& send, const Authentication& auth);
+	void view_collection(const URLIntent& intent, unsigned version, Send&& send);
 
 	template <class Send>
 	void view_blob(const BlobRequest& req, Send&& send);
 
 	template <class Send>
-	void on_query(const BlobRequest& req, Send&& send, const Authentication& auth);
+	void on_query(const BlobRequest& req, Send&& send);
 
 	template <class Send>
-	void query_blob(const BlobRequest& req, Send&& send, const Authentication& auth);
+	void query_blob(const BlobRequest& req, Send&& send);
 
 	template <class Send>
-	void query_blob_set(const URLIntent& intent, unsigned version, Send&& send, const Authentication& auth);
+	void query_blob_set(const URLIntent& intent, unsigned version, Send&& send);
 
 private:
 	std::shared_ptr<redis::Connection>     m_db;
+	Authentication          m_auth;
 	WebResources&           m_lib;
 	BlobDatabase&           m_blob_db;
 	const Configuration&    m_cfg;

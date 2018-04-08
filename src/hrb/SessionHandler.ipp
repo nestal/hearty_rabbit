@@ -87,7 +87,7 @@ void SessionHandler::on_request_header(
 	if (intent.action() == URLIntent::Action::login)
 	{
 		dest.emplace<StringRequestParser>(std::move(src));
-		return complete(Authentication{});
+		return complete();
 	}
 
 	// Everything else require a valid session.
@@ -96,7 +96,7 @@ void SessionHandler::on_request_header(
 	if (!session)
 	{
 		dest.emplace<EmptyRequestParser>(std::move(src));
-		return complete(Authentication{});
+		return complete();
 	}
 
 	Authentication::verify_session(
@@ -110,6 +110,8 @@ void SessionHandler::on_request_header(
 			complete=std::forward<Complete>(complete)
 		](std::error_code ec, const Authentication& auth) mutable
 		{
+			m_auth = auth;
+
 			// Use a UploadRequestParse to parser upload requests, only when the session is authenticated.
 			if (!ec && action == URLIntent::Action::upload && method == http::verb::put)
 				prepare_upload(dest.emplace<UploadRequestParser>(std::move(src)).get().body(), ec);
@@ -125,13 +127,13 @@ void SessionHandler::on_request_header(
 			// If the cookie returned by verify_session() is different from the one we passed to it,
 			// that mean it is going to expired and it's renewed.
 			// In this case we want to tell Session to put it in the "Set-Cookie" header.
-			complete(auth);
+			complete();
 		}
 	);
 }
 
 template <class Request, class Send>
-void SessionHandler::handle_request(Request&& req, Send&& send, const Authentication& auth)
+void SessionHandler::on_request_body(Request&& req, Send&& send)
 {
 	URLIntent intent{req.target()};
 	if (intent.action() == URLIntent::Action::login)
@@ -148,7 +150,7 @@ void SessionHandler::handle_request(Request&& req, Send&& send, const Authentica
 	// handle_blob() is a function template on the request type. It can work with all
 	// request types so no need to check before calling.
 	if (intent.action() == URLIntent::Action::view)
-		return on_request_view(std::forward<Request>(req), std::move(intent), std::forward<Send>(send), auth);
+		return on_request_view(std::forward<Request>(req), std::move(intent), std::forward<Send>(send));
 
 	// The following URL only support EmptyRequests, i.e. requests without body.
 	if constexpr (std::is_same<std::remove_reference_t<Request>, EmptyRequest>::value)
@@ -160,32 +162,32 @@ void SessionHandler::handle_request(Request&& req, Send&& send, const Authentica
 			return send(file_request(intent, req[http::field::if_none_match], req.version()));
 
 		if (intent.action() == URLIntent::Action::home)
-			return Ownership{auth.user()}.scan_all_collections(
+			return Ownership{m_auth.user()}.scan_all_collections(
 				*m_db,
-				SendJSON{std::move(send), auth.user(), req.version(), &m_lib}
+				SendJSON{std::move(send), m_auth.user(), req.version(), &m_lib}
 			);
 
 		if (intent.action() == URLIntent::Action::query)
-			return on_query({std::move(req), std::move(intent), auth.user()}, std::forward<Send>(send), auth);
+			return on_query({std::move(req), std::move(intent), m_auth.user()}, std::forward<Send>(send));
 
 		if (intent.action() == URLIntent::Action::logout)
-			return on_logout(std::forward<Request>(req), std::forward<Send>(send), auth);
+			return on_logout(std::forward<Request>(req), std::forward<Send>(send));
 	}
 
 	// Upload requests for /upload URL only
 	if constexpr (std::is_same<std::remove_reference_t<Request>, UploadRequest>::value)
 	{
 		if (intent.action() == URLIntent::Action::upload)
-			return on_upload(std::move(req), std::forward<Send>(send), auth);
+			return on_upload(std::move(req), std::forward<Send>(send));
 	}
 
-	return send(not_found(req.target(), auth, req.version()));
+	return send(not_found(req.target(), req.version()));
 }
 
 template <class Request, class Send>
-void SessionHandler::on_request_view(Request&& req, URLIntent&& intent, Send&& send, const Authentication& auth)
+void SessionHandler::on_request_view(Request&& req, URLIntent&& intent, Send&& send)
 {
-	BlobRequest breq{req, std::move(intent), auth.user()};
+	BlobRequest breq{req, std::move(intent), m_auth.user()};
 
 	if (req.method() == http::verb::delete_)
 	{
@@ -196,7 +198,7 @@ void SessionHandler::on_request_view(Request&& req, URLIntent&& intent, Send&& s
 		if (breq.blob())
 			return view_blob(std::move(breq), std::move(send));
 		else
-			return view_collection(breq.intent(), req.version(), std::forward<Send>(send), auth);
+			return view_collection(breq.intent(), req.version(), std::forward<Send>(send));
 	}
 	else if (req.method() == http::verb::post)
 	{
@@ -252,18 +254,18 @@ void SessionHandler::view_blob(const BlobRequest& req, Send&& send)
 }
 
 template <class Send>
-void SessionHandler::on_query(const BlobRequest& req, Send&& send, const Authentication& auth)
+void SessionHandler::on_query(const BlobRequest& req, Send&& send)
 {
 	switch (req.intent().query_target())
 	{
 		case URLIntent::QueryTarget::collection:
-			return scan_collection(req.intent(), req.version(), std::forward<Send>(send), auth);
+			return scan_collection(req.intent(), req.version(), std::forward<Send>(send));
 
 		case URLIntent::QueryTarget::blob:
-			return query_blob(req, std::forward<Send>(send), auth);
+			return query_blob(req, std::forward<Send>(send));
 
 		case URLIntent::QueryTarget::blob_set:
-			return query_blob_set(req.intent(), req.version(), std::forward<Send>(send), auth);
+			return query_blob_set(req.intent(), req.version(), std::forward<Send>(send));
 
 		default:
 			return send(bad_request("unsupported query target", req.version()));
@@ -272,7 +274,7 @@ void SessionHandler::on_query(const BlobRequest& req, Send&& send, const Authent
 }
 
 template <class Send>
-void SessionHandler::scan_collection(const URLIntent& intent, unsigned version, Send&& send, const Authentication& auth)
+void SessionHandler::scan_collection(const URLIntent& intent, unsigned version, Send&& send)
 {
 	auto [user, json] = find_optional_fields(intent.option(), "user", "json");
 
@@ -280,39 +282,39 @@ void SessionHandler::scan_collection(const URLIntent& intent, unsigned version, 
 		return send(bad_request("invalid user in query", version));
 
 	// TODO: allow other users to query another user's shared collections
-	if (auth.user() != *user)
+	if (m_auth.user() != *user)
 		return send(http::response<http::string_body>{http::status::forbidden, version});
 
 	Ownership{*user}.scan_all_collections(
 		*m_db,
-		SendJSON{std::move(send), auth.user(), version, json.has_value() ? nullptr : &m_lib}
+		SendJSON{std::move(send), m_auth.user(), version, json.has_value() ? nullptr : &m_lib}
 	);
 }
 
 template <class Send>
-void SessionHandler::view_collection(const URLIntent& intent, unsigned version, Send&& send, const Authentication& auth)
+void SessionHandler::view_collection(const URLIntent& intent, unsigned version, Send&& send)
 {
 	Ownership{intent.user()}.serialize(
 		*m_db,
-		auth.user(),
+		m_auth.user(),
 		intent.collection(),
-		SendJSON{std::move(send), auth.user(), version, intent.option() == "json" ? nullptr : &m_lib}
+		SendJSON{std::move(send), m_auth.user(), version, intent.option() == "json" ? nullptr : &m_lib}
 	);
 }
 
 template <class Send>
-void SessionHandler::query_blob(const BlobRequest& req, Send&& send, const Authentication& auth)
+void SessionHandler::query_blob(const BlobRequest& req, Send&& send)
 {
 	auto [blob_arg, rendition] = find_fields(req.rendition(), "id", "rendition");
 	auto blob = hex_to_object_id(blob_arg);
 	if (!blob)
 		return send(bad_request("invalid blob ID", req.version()));
 
-	Ownership{auth.user()}.query_blob(
+	Ownership{m_auth.user()}.query_blob(
 		*m_db,
 		*blob,
 		[
-			send=std::forward<Send>(send), auth, req, blobid=*blob,
+			send=std::forward<Send>(send), req, blobid=*blob,
 			rendition=std::string{rendition}, this
 		](auto&& range, auto ec)
 		{
@@ -322,20 +324,20 @@ void SessionHandler::query_blob(const BlobRequest& req, Send&& send, const Authe
 			for (auto&& en : range)
 				return send(m_blob_db.response(blobid, req.version(), en.entry.mime(), req.etag(), rendition));
 
-			return send(not_found("blob not found", auth, req.version()));
+			return send(not_found("blob not found", req.version()));
 		}
 	);
 }
 
 template <class Send>
-void SessionHandler::query_blob_set(const URLIntent& intent, unsigned version, Send&& send, const Authentication& auth)
+void SessionHandler::query_blob_set(const URLIntent& intent, unsigned version, Send&& send)
 {
 	auto [pub, json] = find_optional_fields(intent.option(), "public", "json");
 
 	if (pub.has_value())
 	{
 		Ownership::list_public_blobs(*m_db, [
-			send=SendJSON{std::forward<Send>(send), auth.user(), version, !json.has_value() ? &m_lib : nullptr}
+			send=SendJSON{std::forward<Send>(send), m_auth.user(), version, !json.has_value() ? &m_lib : nullptr}
 		](auto&& blobs, auto ec)
 		{
 			auto blob_array = nlohmann::json::array();
