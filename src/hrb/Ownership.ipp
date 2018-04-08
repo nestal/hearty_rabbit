@@ -456,33 +456,30 @@ void Ownership::list_public_blobs(
 	db.command(
 		[comp=std::forward<Complete>(complete)](auto&& reply, auto ec)
 		{
-			for (auto&& en : reply)
+			// redis::Reply can be used as a boost range because it has begin()/end() (i.e.
+			// treated as an array). Each redis::Reply in the "reply" array contains a
+			// 20-byte string that should be ObjectIDs.
+
+			// First, use raw_to_object_id() to convert the byte strings into
+			// optional<ObjectID>. If the conversion failed (maybe the byte string is too
+			// short), the optional will be empty.
+			auto reply_to_oid = [](const redis::Reply& en)
 			{
-				// redis::Reply can be used as a boost range because it has begin()/end() (i.e.
-				// treated as an array). Each redis::Reply in the "reply" array contains a
-				// 20-byte string that should be ObjectIDs.
+				return raw_to_object_id(en.as_string().substr(0, ObjectID{}.size()));
+			};
 
-				// First, use raw_to_object_id() to convert the byte strings into
-				// optional<ObjectID>. If the conversion failed (maybe the byte string is too
-				// short), the optional will be empty.
-				auto reply_to_oid = [](const redis::Reply& en)
-				{
-					return raw_to_object_id(en.as_string().substr(0, ObjectID{}.size()));
-				};
+			// Then we filter out all optionals that doesn't contain a ObjectID.
+			auto valid = [](const std::optional<ObjectID>& opt){return opt.has_value();};
 
-				// Then we filter out all optionals that doesn't contain a ObjectID.
-				auto valid = [](const std::optional<ObjectID>& opt){return opt.has_value();};
+			// Finally, all optionals remained should has_value(), so we extract the
+			// ObjectID they contain.
+			auto extract = [](const std::optional<ObjectID>& opt) {return opt.value();};
 
-				// Finally, all optionals remained should has_value(), so we extract the
-				// ObjectID they contain.
-				auto extract = [](const std::optional<ObjectID>& opt) {return opt.value();};
-
-				using namespace boost::adaptors;
-				comp(
-					reply | transformed(reply_to_oid) | filtered(valid) | transformed(extract),
-					ec
-				);
-			}
+			using namespace boost::adaptors;
+			comp(
+				reply | transformed(reply_to_oid) | filtered(valid) | transformed(extract),
+				ec
+			);
 		},
 		"LRANGE %b 0 -1",
 		Collection::m_public_blobs.data(), Collection::m_public_blobs.size()

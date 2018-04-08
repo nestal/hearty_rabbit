@@ -277,7 +277,7 @@ class NormalTestCase(unittest.TestCase):
 		self.assertTrue(blob_id in self.get_collection(self.user2, "sumsum", "some/collection")["elements"])
 
 		# new blob can be found in the public list
-#		self.assertTrue(blob_id in self.get_public_blobs()["blobs"])
+		self.assertTrue(blob_id in self.get_public_blobs()["blobs"])
 
 		# anonymous user can find it in collection
 		self.assertEqual(self.anon.get("https://localhost:4433" + r1.headers["Location"]).status_code, 200)
@@ -299,7 +299,7 @@ class NormalTestCase(unittest.TestCase):
 		self.assertFalse(blob_id in self.get_collection(self.anon,  "sumsum", "some/collection")["elements"])
 
 		# new blob can no longer be found in the public list
-#		self.assertFalse(blob_id in self.get_public_blobs()["blobs"])
+		self.assertFalse(blob_id in self.get_public_blobs()["blobs"])
 
 	def test_scan_collections(self):
 		# upload random image to 10 different collections
