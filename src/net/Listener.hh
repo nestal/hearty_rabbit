@@ -21,6 +21,7 @@
 
 namespace hrb {
 
+class Configuration;
 class SessionHandler;
 
 // Accepts incoming connections and launches the sessions
@@ -29,10 +30,9 @@ class Listener : public std::enable_shared_from_this<Listener>
 public:
 	Listener(
 		boost::asio::io_context &ioc,
-		boost::asio::ip::tcp::endpoint endpoint,
 		std::function<SessionHandler()> factory,
 		boost::asio::ssl::context *ssl_ctx,
-		const std::string& https_root
+		const Configuration& m_cfg
 	);
 
 	void run();
@@ -44,9 +44,12 @@ private:
 private:
 	boost::asio::ip::tcp::acceptor  m_acceptor;
 	boost::asio::ip::tcp::socket    m_socket;
-	std::function<SessionHandler()> m_session_factory;
 	boost::asio::ssl::context       *m_ssl_ctx{};
-	std::string                     m_https_root;
+
+	std::function<SessionHandler()> m_session_factory;
+
+	// configurations
+	const Configuration&    m_cfg;
 
 	// stats
 	std::size_t m_session_count{};

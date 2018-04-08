@@ -75,7 +75,6 @@ public:
 	static http::response<http::string_body> server_error(boost::string_view what, unsigned version);
 	static http::response<http::empty_body> see_other(boost::beast::string_view where, unsigned version);
 
-	std::size_t upload_limit() const;
 	std::chrono::seconds session_length() const;
 
 	const Authentication& auth() const {return m_auth;}

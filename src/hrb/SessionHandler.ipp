@@ -83,7 +83,7 @@ void SessionHandler::on_request_header(
 	// The username/password will be stored in the string body.
 	// No need to verify session.
 	if (intent.action() == URLIntent::Action::login)
-		return complete(RequestBodyType::empty, std::error_code{});
+		return complete(RequestBodyType::string, std::error_code{});
 
 	// Everything else require a valid session.
 	auto cookie = header[http::field::cookie];

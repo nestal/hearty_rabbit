@@ -48,11 +48,6 @@ SessionHandler::SessionHandler(
 {
 }
 
-std::size_t SessionHandler::upload_limit() const
-{
-	return m_cfg.upload_limit();
-}
-
 std::chrono::seconds SessionHandler::session_length() const
 {
 	return m_cfg.session_length();

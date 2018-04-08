@@ -29,13 +29,17 @@ Session::Session(
 	const std::function<SessionHandler()>& factory,
 	boost::asio::ip::tcp::socket socket,
 	boost::asio::ssl::context&  ssl_ctx,
-	std::size_t nth
+	std::size_t             nth,
+	std::chrono::seconds    login_session,
+	std::size_t             upload_limit
 ) :
 	m_socket{std::move(socket)},
 	m_stream{m_socket, ssl_ctx},
 	m_strand{m_socket.get_executor()},
 	m_factory{factory},
-	m_nth_session{nth}
+	m_nth_session{nth},
+	m_login_session{login_session},
+	m_upload_size_limit{upload_limit}
 {
 }
 
@@ -66,7 +70,7 @@ void Session::do_read()
 	m_parser.emplace();
 
 	m_server.emplace(m_factory());
-	m_parser->body_limit(m_server->upload_limit());
+	m_parser->body_limit(m_upload_size_limit);
 
 	// Read the header of a request
 	async_read_header(m_stream, m_buffer, *m_parser, boost::asio::bind_executor(
@@ -95,7 +99,7 @@ void Session::on_read_header(boost::system::error_code ec, std::size_t bytes_tra
 			[self=shared_from_this(), this](SessionHandler::RequestBodyType body_type, std::error_code ec)
 			{
 				init_request_body(body_type, ec);
-				if (!ec)
+				if (ec)
 				{
 					Log(LOG_WARNING, "cannot initialize request parser: %1% (%2%)", ec.message(), ec);
 					return send_response(m_server->server_error("internal server error", 11));
@@ -138,7 +142,7 @@ void Session::on_read(boost::system::error_code ec, std::size_t)
 			m_server->on_request_body(std::move(req), [this, self, renwed_auth](auto&& response)
 			{
 				if (renwed_auth && response.count(http::field::set_cookie) == 0)
-					response.set(http::field::set_cookie, renwed_auth->set_cookie(m_server->session_length()));
+					response.set(http::field::set_cookie, renwed_auth->set_cookie(m_login_session));
 
 				send_response(std::forward<decltype(response)>(response));
 			});

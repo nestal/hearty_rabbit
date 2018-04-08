@@ -84,6 +84,7 @@ public:
 	gid_t group_id() const {return m_group_id;}
 	const RenditionSetting& renditions() const {return m_rendition;}
 	const std::string& server_name() const {return m_server_name;}
+	std::string https_root() const;
 	std::chrono::seconds session_length() const {return m_session_length;}
 
 	bool help() const {return m_args.count("help") > 0;}

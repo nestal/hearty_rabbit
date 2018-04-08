@@ -131,6 +131,13 @@ void Configuration::load_config(const boost::filesystem::path& path)
 	}
 }
 
+std::string Configuration::https_root() const
+{
+	using namespace std::literals;
+	return "https://" + m_server_name
+		+ (listen_https().port() == 443 ? ""s : (":"s + std::to_string(listen_https().port())));
+}
+
 const RenditionSetting::Setting& RenditionSetting::find(std::string_view rend) const
 {
 	assert(m_renditions.find(std::string{m_default}) != m_renditions.end());

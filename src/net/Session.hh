@@ -39,11 +39,13 @@ class Session : public std::enable_shared_from_this<Session>
 {
 public:
 	// Take ownership of the socket
-	explicit Session(
+	Session(
 		const std::function<SessionHandler()>& factory,
 		boost::asio::ip::tcp::socket socket,
 		boost::asio::ssl::context& ssl_ctx,
-		std::size_t nth
+		std::size_t nth,
+		std::chrono::seconds    login_session,
+		std::size_t upload_limit
 	);
 
 	// Start the asynchronous operation
@@ -85,6 +87,10 @@ private:
 
 	std::function<SessionHandler()> m_factory;
 	std::optional<SessionHandler>   m_server;
+
+	// configurations
+	std::chrono::seconds    m_login_session;
+	std::size_t             m_upload_size_limit;
 
 	// stats
 	std::size_t m_nth_session;
