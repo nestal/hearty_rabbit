@@ -130,19 +130,14 @@ void Session::on_read(boost::system::error_code ec, std::size_t)
 	{
 		std::visit([self=shared_from_this(), this](auto&& parser)
 		{
-			auto req = parser.release();
-			auto cookie = req[http::field::cookie];
-			auto session = parse_cookie({cookie.data(), cookie.size()});
-
-			m_server->on_request_body(std::move(req), [this, self, session](auto&& response)
+			m_server->on_request_body(parser.release(), [this, self](auto&& response)
 			{
-				// check if auth is renewed. if yes, set it to cookie before sending
-				auto renwed_auth = std::optional<Authentication>(m_server->auth());
-				if (session && *session == m_server->auth().cookie())
-					renwed_auth = std::nullopt;
+				// server must not set session cookie
+				assert(response.count(http::field::set_cookie) == 0);
 
-				if (renwed_auth && response.count(http::field::set_cookie) == 0)
-					response.set(http::field::set_cookie, renwed_auth->set_cookie(m_login_session));
+				// check if auth is renewed. if yes, set it to cookie before sending
+				if (m_server->renewed_auth())
+					response.set(http::field::set_cookie, m_server->auth().set_cookie(m_login_session));
 
 				send_response(std::forward<decltype(response)>(response));
 			});

@@ -91,8 +91,10 @@ void SessionHandler::on_request_header(
 	if (!session)
 		return complete(RequestBodyType::empty, std::error_code{});
 
+	m_request_cookie = *session;
+
 	Authentication::verify_session(
-		*session,
+		m_request_cookie,
 		*m_db,
 		session_length(),
 		[

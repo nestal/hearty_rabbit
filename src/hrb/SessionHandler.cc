@@ -269,4 +269,9 @@ http::response<SplitBuffers> SessionHandler::file_request(const URLIntent& inten
 		m_lib.find_static(intent.filename(), etag, version);
 }
 
+bool SessionHandler::renewed_auth() const
+{
+	return m_auth.cookie() != m_request_cookie;
+}
+
 } // end of namespace hrb

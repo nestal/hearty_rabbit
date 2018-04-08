@@ -78,6 +78,7 @@ public:
 	std::chrono::seconds session_length() const;
 
 	const Authentication& auth() const {return m_auth;}
+	bool renewed_auth() const;
 
 private:
 	http::response<SplitBuffers> file_request(const URLIntent& intent, boost::string_view etag, unsigned version);
@@ -119,6 +120,7 @@ private:
 
 private:
 	std::shared_ptr<redis::Connection>     m_db;
+	Authentication::Cookie  m_request_cookie;
 	Authentication          m_auth;
 	WebResources&           m_lib;
 	BlobDatabase&           m_blob_db;
