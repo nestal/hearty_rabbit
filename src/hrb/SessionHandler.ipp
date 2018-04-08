@@ -326,20 +326,10 @@ void SessionHandler::query_blob_set(const URLIntent& intent, unsigned version, S
 
 	if (pub.has_value())
 	{
-		Ownership::list_public_blobs(*m_db, [
-			send=SendJSON{std::forward<Send>(send), m_auth.user(), version, !json.has_value() ? &m_lib : nullptr}
-		](auto&& blobs, auto ec)
-		{
-			auto blob_array = nlohmann::json::array();
-
-			for (auto&& id : blobs)
-				blob_array.push_back(to_hex(id));
-
-			auto jdoc = nlohmann::json::object();
-			jdoc.emplace("blobs", std::move(blob_array));
-
-			send(std::move(jdoc), ec);
-		});
+		Ownership::list_public_blobs(
+			*m_db,
+			SendJSON{std::forward<Send>(send), m_auth.user(), version, !json.has_value() ? &m_lib : nullptr}
+		);
 	}
 }
 

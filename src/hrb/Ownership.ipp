@@ -460,26 +460,21 @@ void Ownership::list_public_blobs(
 			// treated as an array). Each redis::Reply in the "reply" array contains a
 			// 20-byte string that should be ObjectIDs.
 
-			// First, use raw_to_object_id() to convert the byte strings into
-			// optional<ObjectID>. If the conversion failed (maybe the byte string is too
-			// short), the optional will be empty.
-			auto reply_to_oid = [](const redis::Reply& en)
+			auto jdoc = nlohmann::json::object();
+			auto elements = nlohmann::json::object();
+			for (auto&& raw_oid : reply)
 			{
-				return raw_to_object_id(en.as_string().substr(0, ObjectID{}.size()));
-			};
-
-			// Then we filter out all optionals that doesn't contain a ObjectID.
-			auto valid = [](const std::optional<ObjectID>& opt){return opt.has_value();};
-
-			// Finally, all optionals remained should has_value(), so we extract the
-			// ObjectID they contain.
-			auto extract = [](const std::optional<ObjectID>& opt) {return opt.value();};
-
-			using namespace boost::adaptors;
-			comp(
-				reply | transformed(reply_to_oid) | filtered(valid) | transformed(extract),
-				ec
-			);
+				auto opt_oid = raw_to_object_id(raw_oid.as_string().substr(0, ObjectID{}.size()));
+				if (opt_oid.has_value())
+				{
+					auto entry = nlohmann::json::object();
+					entry.emplace("perm", "public");
+					entry.emplace("mime", "image/jpeg");    // WTF??
+					elements.emplace(to_hex(*opt_oid), std::move(entry));
+				}
+			}
+			jdoc.emplace("elements", std::move(elements));
+			comp(std::move(jdoc), ec);
 		},
 		"LRANGE %b 0 -1",
 		Collection::m_public_blobs.data(), Collection::m_public_blobs.size()
