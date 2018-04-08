@@ -91,9 +91,16 @@ void Session::on_read_header(boost::system::error_code ec, std::size_t bytes_tra
 
 		assert(m_server.has_value());
 		m_server->on_request_header(
-			header, *m_parser, m_body,
-			[self=shared_from_this(), this]()
+			header,
+			[self=shared_from_this(), this](SessionHandler::RequestBodyType body_type, std::error_code ec)
 			{
+				init_request_body(body_type, ec);
+				if (!ec)
+				{
+					Log(LOG_WARNING, "cannot initialize request parser: %1% (%2%)", ec.message(), ec);
+					return send_response(m_server->server_error("internal server error", 11));
+				}
+
 				// Call async_read() using the chosen parser to read and parse the request body.
 				std::visit([&self, this](auto&& parser)
 				{
@@ -244,6 +251,19 @@ void Session::do_close()
 void Session::on_shutdown(boost::system::error_code)
 {
 	// At this point the connection is closed gracefully
+}
+
+void Session::init_request_body(SessionHandler::RequestBodyType body_type, std::error_code& ec)
+{
+	switch (body_type)
+	{
+	case SessionHandler::RequestBodyType::empty:  m_body.emplace<EmptyRequestParser>(std::move(*m_parser)); break;
+	case SessionHandler::RequestBodyType::string: m_body.emplace<StringRequestParser>(std::move(*m_parser)); break;
+	case SessionHandler::RequestBodyType::upload:
+		m_server->prepare_upload(m_body.emplace<UploadRequestParser>(std::move(*m_parser)).get().body(), ec);
+		break;
+	}
+
 }
 
 } // end of namespace

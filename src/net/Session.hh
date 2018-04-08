@@ -68,6 +68,7 @@ private:
 	void send_response(Response&& response);
 
 	void handle_read_error(std::string_view where, boost::system::error_code ec);
+	void init_request_body(SessionHandler::RequestBodyType body_type, std::error_code& ec);
 
 private:
 	tcp::socket		                                            m_socket;

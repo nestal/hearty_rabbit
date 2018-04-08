@@ -37,6 +37,9 @@ class WebResources;
 class SessionHandler
 {
 public:
+	enum class RequestBodyType {string, upload, empty};
+
+public:
 	SessionHandler(
 		std::shared_ptr<redis::Connection>&& db,
 		WebResources& lib,
@@ -47,8 +50,6 @@ public:
 	template <class Complete>
 	void on_request_header(
 		const RequestHeader& header,
-		EmptyRequestParser& src,
-		RequestBodyParsers& dest,
 		Complete&& complete
 	);
 
@@ -58,6 +59,8 @@ public:
 	// caller to pass a generic lambda for receiving the response.
 	template<class Request, class Send>
 	void on_request_body(Request&& req, Send&& send);
+
+	void prepare_upload(UploadFile& result, std::error_code& ec);
 
 	// ugly hack for unit test
 	template <class Request, class Send>
@@ -93,7 +96,6 @@ private:
 	void on_upload(UploadRequest&& req, EmptyResponseSender&& send);
 	void unlink(BlobRequest&& req, EmptyResponseSender&& send);
 	void update_blob(BlobRequest&& req, EmptyResponseSender&& send);
-	void prepare_upload(UploadFile& result, std::error_code& ec);
 
 	template <class Send>
 	void scan_collection(const URLIntent& intent, unsigned version, Send&& send);

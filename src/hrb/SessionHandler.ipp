@@ -74,8 +74,6 @@ private:
 template <class Complete>
 void SessionHandler::on_request_header(
 	const RequestHeader& header,
-	EmptyRequestParser& src,
-	RequestBodyParsers& dest,
 	Complete&& complete
 )
 {
@@ -85,26 +83,20 @@ void SessionHandler::on_request_header(
 	// The username/password will be stored in the string body.
 	// No need to verify session.
 	if (intent.action() == URLIntent::Action::login)
-	{
-		dest.emplace<StringRequestParser>(std::move(src));
-		return complete();
-	}
+		return complete(RequestBodyType::empty, std::error_code{});
 
 	// Everything else require a valid session.
 	auto cookie = header[http::field::cookie];
 	auto session = parse_cookie({cookie.data(), cookie.size()});
 	if (!session)
-	{
-		dest.emplace<EmptyRequestParser>(std::move(src));
-		return complete();
-	}
+		return complete(RequestBodyType::empty, std::error_code{});
 
 	Authentication::verify_session(
 		*session,
 		*m_db,
 		session_length(),
 		[
-			this, &dest, &src,
+			this,
 			action=intent.action(),
 			method=header.method(),
 			complete=std::forward<Complete>(complete)
@@ -112,22 +104,26 @@ void SessionHandler::on_request_header(
 		{
 			m_auth = auth;
 
+			auto body_type = RequestBodyType::empty;
+
 			// Use a UploadRequestParse to parser upload requests, only when the session is authenticated.
 			if (!ec && action == URLIntent::Action::upload && method == http::verb::put)
-				prepare_upload(dest.emplace<UploadRequestParser>(std::move(src)).get().body(), ec);
+//				prepare_upload(dest.emplace<UploadRequestParser>(std::move(src)).get().body(), ec);
+				body_type = RequestBodyType::upload;
 
 			// blobs support post request
 			else if (!ec && action == URLIntent::Action::view && method == http::verb::post)
-				dest.emplace<StringRequestParser>(std::move(src));
+//				dest.emplace<StringRequestParser>(std::move(src));
+				body_type = RequestBodyType::string;
 
 			// Other requests use EmptyRequestParser, because they don't have a body.
-			else
-				dest.emplace<EmptyRequestParser>(std::move(src));
+//			else
+//				dest.emplace<EmptyRequestParser>(std::move(src));
 
 			// If the cookie returned by verify_session() is different from the one we passed to it,
 			// that mean it is going to expired and it's renewed.
 			// In this case we want to tell Session to put it in the "Set-Cookie" header.
-			complete();
+			complete(body_type, ec);
 		}
 	);
 }
