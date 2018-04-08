@@ -21,7 +21,7 @@ namespace hrb {
 Listener::Listener(
 	boost::asio::io_context &ioc,
 	boost::asio::ip::tcp::endpoint endpoint,
-	SessionFactory session_factory,
+	std::function<SessionHandler()> session_factory,
 	boost::asio::ssl::context *ssl_ctx,
 	const std::string& https_root
 ) :
@@ -77,7 +77,7 @@ void Listener::on_accept(boost::system::error_code ec)
 	else if (m_ssl_ctx)
 	{
 		// Create the session and run it
-		m_session_factory(std::move(m_socket), *m_ssl_ctx, m_session_count)->run();
+		std::make_shared<Session>(m_session_factory, std::move(m_socket), *m_ssl_ctx, m_session_count)->run();
 		m_session_count++;
 	}
 	else

@@ -26,7 +26,7 @@ using tcp = boost::asio::ip::tcp;       // from <boost/asio/ip/tcp.hpp>
 namespace http = boost::beast::http;    // from <boost/beast/http.hpp>
 
 Session::Session(
-	SessionHandler&& server,
+	const std::function<SessionHandler()>& factory,
 	boost::asio::ip::tcp::socket socket,
 	boost::asio::ssl::context&  ssl_ctx,
 	std::size_t nth
@@ -34,7 +34,7 @@ Session::Session(
 	m_socket{std::move(socket)},
 	m_stream{m_socket, ssl_ctx},
 	m_strand{m_socket.get_executor()},
-	m_server{std::move(server)},
+	m_server{factory()},
 	m_nth_session{nth}
 {
 }

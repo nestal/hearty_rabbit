@@ -41,7 +41,7 @@ class Session : public std::enable_shared_from_this<Session>
 public:
 	// Take ownership of the socket
 	explicit Session(
-		SessionHandler&& server,
+		const std::function<SessionHandler()>& factory,
 		boost::asio::ip::tcp::socket socket,
 		boost::asio::ssl::context& ssl_ctx,
 		std::size_t nth

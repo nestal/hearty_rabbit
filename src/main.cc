@@ -48,17 +48,14 @@ void run(Server& server, const Configuration& cfg)
 	std::make_shared<Listener>(
 		server.get_io_context(),
 		cfg.listen_http(),
-		Listener::SessionFactory{},
+		[&server](){return server.start_session();},
 		nullptr,
 		https_root
 	)->run();
 	std::make_shared<Listener>(
 		server.get_io_context(),
 		cfg.listen_https(),
-		[&server](auto&& sock, auto& ssl, auto nth)
-		{
-			return std::make_shared<Session>(server.start_session(), std::move(sock), ssl, nth);
-		},
+		[&server](){return server.start_session();},
 		&ctx,
 		https_root
 	)->run();
