@@ -492,7 +492,7 @@ void Ownership::query_blob(redis::Connection& db, const ObjectID& blob, Complete
 		[user=m_user, comp=std::forward<Complete>(complete)](auto&& reply, auto ec)
 		{
 			if (!reply)
-				Log(LOG_WARNING, "script reply: %1%", reply.as_error());
+				Log(LOG_WARNING, "query_blob() script reply: %1%", reply.as_error());
 
 			struct Blob
 			{
@@ -506,10 +506,13 @@ void Ownership::query_blob(redis::Connection& db, const ObjectID& blob, Complete
 				Collection coll{kv.key()};
 				return Blob{coll.user(), coll.path(), CollEntry{kv.value().as_string()}};
 			};
-			auto owned = [&user](const Blob& blob) {return user == blob.user;};
+			auto permitted = [&user](const Blob& blob)
+			{
+				return user == blob.user || blob.entry.permission().allow(user);
+			};
 
 			using namespace boost::adaptors;
-			comp(reply.kv_pairs() | transformed(kv2blob) | filtered(owned), ec);
+			comp(reply.kv_pairs() | transformed(kv2blob) | filtered(permitted), ec);
 		},
 		"EVAL %s 1 %b:%b %b",
 		lua,

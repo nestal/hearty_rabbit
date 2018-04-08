@@ -283,6 +283,9 @@ class NormalTestCase(unittest.TestCase):
 		self.assertEqual(self.anon.get("https://localhost:4433" + r1.headers["Location"]).status_code, 200)
 		self.assertTrue(blob_id in self.get_collection(self.anon,  "sumsum", "some/collection")["elements"])
 
+		# anonymous user can query the blob
+		self.assertEqual(self.anon.get("https://localhost:4433/query/blob?id=" + blob_id).status_code, 200)
+
 		# owner set permission to shared
 		self.assertEqual(self.user1.post(
 			"https://localhost:4433" + r1.headers["Location"],
