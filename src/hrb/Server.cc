@@ -51,7 +51,7 @@ Server::Server(const Configuration& cfg) :
 {
 }
 
-void Server::on_login(const StringRequest& req, EmptyResponseSender&& send)
+void SessionHandler::on_login(const StringRequest& req, EmptyResponseSender&& send)
 {
 	auto&& body = req.body();
 	if (req[http::field::content_type] == "application/x-www-form-urlencoded")
@@ -61,7 +61,7 @@ void Server::on_login(const StringRequest& req, EmptyResponseSender&& send)
 		Authentication::verify_user(
 			username,
 			Password{password},
-			*m_db.alloc(),
+			*m_db,
 			m_cfg.session_length(),
 			[
 				version=req.version(),
@@ -95,9 +95,9 @@ void Server::on_login(const StringRequest& req, EmptyResponseSender&& send)
 		send(see_other("/", req.version()));
 }
 
-void Server::on_logout(const EmptyRequest& req, EmptyResponseSender&& send, const Authentication& auth)
+void SessionHandler::on_logout(const EmptyRequest& req, EmptyResponseSender&& send, const Authentication& auth)
 {
-	auth.destroy_session(*m_db.alloc(), [this, send=std::move(send), version=req.version()](auto&& ec) mutable
+	auth.destroy_session(*m_db, [this, send=std::move(send), version=req.version()](auto&& ec) mutable
 	{
 		auto&& res = see_other("/", version);
 		res.set(http::field::set_cookie, Authentication{}.set_cookie());
@@ -111,14 +111,14 @@ void Server::on_logout(const EmptyRequest& req, EmptyResponseSender&& send, cons
 /// See [MDN](https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/303) for details.
 /// It is used to redirect to home page after login, for example, and other cases which
 /// we don't want the browser to cache.
-http::response<http::empty_body> Server::see_other(boost::beast::string_view where, unsigned version)
+http::response<http::empty_body> SessionHandler::see_other(boost::beast::string_view where, unsigned version)
 {
 	http::response<http::empty_body> res{http::status::see_other, version};
 	res.set(http::field::location, where);
 	return res;
 }
 
-void Server::unlink(BlobRequest&& req, EmptyResponseSender&& send)
+void SessionHandler::unlink(BlobRequest&& req, EmptyResponseSender&& send)
 {
 	assert(req.blob());
 //	Log(LOG_INFO, "unlinking object %1% from path(%2%)", *req.blob(), req.collection());
@@ -128,7 +128,7 @@ void Server::unlink(BlobRequest&& req, EmptyResponseSender&& send)
 
 	// remove from user's container
 	Ownership{req.owner()}.unlink(
-		*m_db.alloc(), req.collection(), *req.blob(),
+		*m_db, req.collection(), *req.blob(),
 		[send = std::move(send), version=req.version()](auto ec)
 		{
 			auto status = http::status::no_content;
@@ -142,7 +142,7 @@ void Server::unlink(BlobRequest&& req, EmptyResponseSender&& send)
 	);
 }
 
-void Server::update_blob(BlobRequest&& req, EmptyResponseSender&& send)
+void SessionHandler::update_blob(BlobRequest&& req, EmptyResponseSender&& send)
 {
 	if (!req.request_by_owner())
 		return send(http::response<http::empty_body>{http::status::forbidden, req.version()});
@@ -163,7 +163,7 @@ void Server::update_blob(BlobRequest&& req, EmptyResponseSender&& send)
 	if (!perm_str.empty())
 	{
 		Ownership{req.owner()}.set_permission(
-			*m_db.alloc(),
+			*m_db,
 			req.collection(),
 			*req.blob(),
 			Permission::from_description(perm_str),
@@ -173,7 +173,7 @@ void Server::update_blob(BlobRequest&& req, EmptyResponseSender&& send)
 	else if (!move_destination.empty())
 	{
 		Ownership{req.owner()}.move_blob(
-			*m_db.alloc(),
+			*m_db,
 			req.collection(),
 			move_destination,
 			*req.blob(),
@@ -182,23 +182,16 @@ void Server::update_blob(BlobRequest&& req, EmptyResponseSender&& send)
 	}
 }
 
-void Server::on_upload(UploadRequest&& req, EmptyResponseSender&& send, const Authentication& auth)
+void SessionHandler::on_upload(UploadRequest&& req, EmptyResponseSender&& send, const Authentication& auth)
 {
 	boost::system::error_code bec;
 
 	URLIntent path_url{req.target()};
 	if (auth.user() != path_url.user())
 	{
-		// Introduce a small delay when responsing to requests with invalid session ID.
+		// TODO: Introduce a small delay when responsing to requests with invalid session ID.
 		// This is to slow down bruce-force attacks on the session ID.
-		boost::asio::deadline_timer t{m_ioc, boost::posix_time::milliseconds{500}};
-		return t.async_wait([version=req.version(), send=std::move(send)](auto ec)
-		{
-			if (!ec)
-				Log(LOG_WARNING, "timer error %1% (%2%)", ec, ec.message());
-
-			send(http::response<http::empty_body>{http::status::forbidden, version});
-		});
+		return send(http::response<http::empty_body>{http::status::forbidden, req.version()});
 	}
 
 //	Log(LOG_INFO, "uploading %1% bytes to path(%2%) file(%3%)", req.body().size(bec), path_url.collection(), path_url.filename());
@@ -214,7 +207,7 @@ void Server::on_upload(UploadRequest&& req, EmptyResponseSender&& send, const Au
 	// The user's ownership table contains all the blobs that is owned by the user.
 	// It will be used for authorizing the user's request on these blob later.
 	Ownership{auth.user()}.link(
-		*m_db.alloc(), path_url.collection(), blob.ID(), blob.entry(), [
+		*m_db, path_url.collection(), blob.ID(), blob.entry(), [
 			location = URLIntent{URLIntent::Action::view, auth.user(), path_url.collection(), to_hex(blob.ID())}.str(),
 			send = std::move(send),
 			version = req.version()
@@ -232,7 +225,7 @@ void Server::on_upload(UploadRequest&& req, EmptyResponseSender&& send, const Au
 	);
 }
 
-http::response<http::string_body> Server::bad_request(boost::beast::string_view why, unsigned version)
+http::response<http::string_body> SessionHandler::bad_request(boost::beast::string_view why, unsigned version)
 {
 	http::response<http::string_body> res{
 		std::piecewise_construct,
@@ -244,7 +237,7 @@ http::response<http::string_body> Server::bad_request(boost::beast::string_view 
 }
 
 // Returns a not found response
-http::response<SplitBuffers> Server::not_found(boost::string_view target, const std::optional<Authentication>& auth, unsigned version)
+http::response<SplitBuffers> SessionHandler::not_found(boost::string_view target, const std::optional<Authentication>& auth, unsigned version)
 {
 	nlohmann::json dir;
 	dir.emplace("error_message", "The request resource was not found.");
@@ -254,7 +247,7 @@ http::response<SplitBuffers> Server::not_found(boost::string_view target, const 
 	return m_lib.inject_json(http::status::not_found, dir.dump(), version);
 }
 
-http::response<http::string_body> Server::server_error(boost::beast::string_view what, unsigned version)
+http::response<http::string_body> SessionHandler::server_error(boost::beast::string_view what, unsigned version)
 {
 	http::response<http::string_body> res{
 		std::piecewise_construct,
@@ -265,7 +258,7 @@ http::response<http::string_body> Server::server_error(boost::beast::string_view
 	return res;
 }
 
-http::response<SplitBuffers> Server::file_request(const URLIntent& intent, boost::string_view etag, unsigned version)
+http::response<SplitBuffers> SessionHandler::file_request(const URLIntent& intent, boost::string_view etag, unsigned version)
 {
 	return intent.filename() == "login_incorrect.html" ?
 		m_lib.inject_json(http::status::ok, R"_({login_message: "Login incorrect... Try again?"})_", version) :
@@ -310,17 +303,22 @@ boost::asio::io_context& Server::get_io_context()
 	return m_ioc;
 }
 
-std::size_t Server::upload_limit() const
+std::size_t SessionHandler::upload_limit() const
 {
 	return m_cfg.upload_limit();
 }
 
-std::chrono::seconds Server::session_length() const
+std::chrono::seconds SessionHandler::session_length() const
 {
 	return m_cfg.session_length();
 }
 
-void Server::prepare_upload(UploadFile& result, std::error_code& ec)
+SessionHandler Server::start_session()
+{
+	return {m_db.alloc(), m_lib, m_blob_db, m_cfg};
+}
+
+void SessionHandler::prepare_upload(UploadFile& result, std::error_code& ec)
 {
 	// Need to call prepare_upload() before using UploadRequestBody.
 	m_blob_db.prepare_upload(result, ec);

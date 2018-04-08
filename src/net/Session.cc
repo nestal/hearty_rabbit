@@ -36,7 +36,7 @@ Session::Session(
 	m_socket{std::move(socket)},
 	m_stream{m_socket, ssl_ctx},
 	m_strand{m_socket.get_executor()},
-	m_server{server},
+	m_server{server.start_session()},
 	m_nth_session{nth}
 {
 }

@@ -34,13 +34,13 @@ class BlobFile;
 class BlobRequest;
 class URLIntent;
 
-/// The main application logic of hearty rabbit.
-/// This is the class that handles HTTP requests from and produce response to clients. The unit test
-/// this class calls handle_https().
-class Server
+class SessionHandler
 {
 public:
-	explicit Server(const Configuration& cfg);
+	SessionHandler(std::shared_ptr<redis::Connection>&& db, WebResources& lib, BlobDatabase& blob_db, const Configuration& cfg) :
+		m_db{db}, m_lib{lib}, m_blob_db{blob_db}, m_cfg{cfg}
+	{
+	}
 
 	template <class Complete>
 	void on_request_header(
@@ -62,13 +62,8 @@ public:
 	static http::response<http::string_body> server_error(boost::string_view what, unsigned version);
 	static http::response<http::empty_body> see_other(boost::beast::string_view where, unsigned version);
 
-	boost::asio::io_context& get_io_context();
-
-	// Administrative commands and configurations
-	void add_user(std::string_view username, Password&& password, std::function<void(std::error_code)> complete);
 	std::size_t upload_limit() const;
 	std::chrono::seconds session_length() const;
-	void drop_privileges() const;
 
 private:
 	http::response<SplitBuffers> file_request(const URLIntent& intent, boost::string_view etag, unsigned version);
@@ -108,6 +103,29 @@ private:
 
 	template <class Send>
 	void query_blob_set(const URLIntent& intent, unsigned version, Send&& send, const Authentication& auth);
+
+private:
+	std::shared_ptr<redis::Connection>     m_db;
+	WebResources&           m_lib;
+	BlobDatabase&           m_blob_db;
+	const Configuration&    m_cfg;
+};
+
+/// The main application logic of hearty rabbit.
+/// This is the class that handles HTTP requests from and produce response to clients. The unit test
+/// this class calls handle_https().
+class Server
+{
+public:
+	explicit Server(const Configuration& cfg);
+
+	boost::asio::io_context& get_io_context();
+
+	SessionHandler start_session();
+
+	// Administrative commands and configurations
+	void add_user(std::string_view username, Password&& password, std::function<void(std::error_code)> complete);
+	void drop_privileges() const;
 
 private:
 	const Configuration&    m_cfg;

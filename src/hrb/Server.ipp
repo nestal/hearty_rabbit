@@ -33,7 +33,7 @@
 namespace hrb {
 
 template <class Send>
-class Server::SendJSON
+class SessionHandler::SendJSON
 {
 public:
 	SendJSON(Send&& send, std::string_view auth_user, unsigned version, const WebResources *lib = nullptr) :
@@ -71,7 +71,7 @@ private:
 /// \arg    src         The request_parser that produce \a header. It will be moved
 ///                     to \a dest. Must be valid until \a complete() is called.
 template <class Complete>
-void Server::on_request_header(
+void SessionHandler::on_request_header(
 	const RequestHeader& header,
 	EmptyRequestParser& src,
 	RequestBodyParsers& dest,
@@ -100,7 +100,7 @@ void Server::on_request_header(
 
 	Authentication::verify_session(
 		*session,
-		*m_db.alloc(),
+		*m_db,
 		session_length(),
 		[
 			this, &dest, &src,
@@ -130,7 +130,7 @@ void Server::on_request_header(
 }
 
 template <class Request, class Send>
-void Server::handle_request(Request&& req, Send&& send, const Authentication& auth)
+void SessionHandler::handle_request(Request&& req, Send&& send, const Authentication& auth)
 {
 	URLIntent intent{req.target()};
 	if (intent.action() == URLIntent::Action::login)
@@ -160,7 +160,7 @@ void Server::handle_request(Request&& req, Send&& send, const Authentication& au
 
 		if (intent.action() == URLIntent::Action::home)
 			return Ownership{auth.user()}.scan_all_collections(
-				*m_db.alloc(),
+				*m_db,
 				SendJSON{std::move(send), auth.user(), req.version(), &m_lib}
 			);
 
@@ -182,7 +182,7 @@ void Server::handle_request(Request&& req, Send&& send, const Authentication& au
 }
 
 template <class Request, class Send>
-void Server::on_request_view(Request&& req, URLIntent&& intent, Send&& send, const Authentication& auth)
+void SessionHandler::on_request_view(Request&& req, URLIntent&& intent, Send&& send, const Authentication& auth)
 {
 	BlobRequest breq{req, std::move(intent), auth.user()};
 
@@ -209,7 +209,7 @@ void Server::on_request_view(Request&& req, URLIntent&& intent, Send&& send, con
 }
 
 template <class Send>
-void Server::view_blob(const BlobRequest& req, Send&& send)
+void SessionHandler::view_blob(const BlobRequest& req, Send&& send)
 {
 	assert(req.blob());
 
@@ -225,7 +225,7 @@ void Server::view_blob(const BlobRequest& req, Send&& send)
 	// Note: the arguments of find() uses req, so we can't move req into the lambda.
 	// Otherwise, req will become dangled.
 	Ownership{req.owner()}.find(
-		*m_db.alloc(), req.collection(), *req.blob(),
+		*m_db, req.collection(), *req.blob(),
 		[
 			req, this,
 			send=std::move(send)
@@ -251,7 +251,7 @@ void Server::view_blob(const BlobRequest& req, Send&& send)
 }
 
 template <class Send>
-void Server::on_query(const BlobRequest& req, Send&& send, const Authentication& auth)
+void SessionHandler::on_query(const BlobRequest& req, Send&& send, const Authentication& auth)
 {
 	switch (req.intent().query_target())
 	{
@@ -271,7 +271,7 @@ void Server::on_query(const BlobRequest& req, Send&& send, const Authentication&
 }
 
 template <class Send>
-void Server::scan_collection(const URLIntent& intent, unsigned version, Send&& send, const Authentication& auth)
+void SessionHandler::scan_collection(const URLIntent& intent, unsigned version, Send&& send, const Authentication& auth)
 {
 	auto [user, json] = find_optional_fields(intent.option(), "user", "json");
 
@@ -283,16 +283,16 @@ void Server::scan_collection(const URLIntent& intent, unsigned version, Send&& s
 		return send(http::response<http::string_body>{http::status::forbidden, version});
 
 	Ownership{*user}.scan_all_collections(
-		*m_db.alloc(),
+		*m_db,
 		SendJSON{std::move(send), auth.user(), version, json.has_value() ? nullptr : &m_lib}
 	);
 }
 
 template <class Send>
-void Server::view_collection(const URLIntent& intent, unsigned version, Send&& send, const Authentication& auth)
+void SessionHandler::view_collection(const URLIntent& intent, unsigned version, Send&& send, const Authentication& auth)
 {
 	Ownership{intent.user()}.serialize(
-		*m_db.alloc(),
+		*m_db,
 		auth.user(),
 		intent.collection(),
 		SendJSON{std::move(send), auth.user(), version, intent.option() == "json" ? nullptr : &m_lib}
@@ -300,7 +300,7 @@ void Server::view_collection(const URLIntent& intent, unsigned version, Send&& s
 }
 
 template <class Send>
-void Server::query_blob(const BlobRequest& req, Send&& send, const Authentication& auth)
+void SessionHandler::query_blob(const BlobRequest& req, Send&& send, const Authentication& auth)
 {
 	auto [blob_arg, rendition] = find_fields(req.rendition(), "id", "rendition");
 	auto blob = hex_to_object_id(blob_arg);
@@ -308,7 +308,7 @@ void Server::query_blob(const BlobRequest& req, Send&& send, const Authenticatio
 		return send(bad_request("invalid blob ID", req.version()));
 
 	Ownership{auth.user()}.query_blob(
-		*m_db.alloc(),
+		*m_db,
 		*blob,
 		[
 			send=std::forward<Send>(send), auth, req, blobid=*blob,
@@ -327,13 +327,13 @@ void Server::query_blob(const BlobRequest& req, Send&& send, const Authenticatio
 }
 
 template <class Send>
-void Server::query_blob_set(const URLIntent& intent, unsigned version, Send&& send, const Authentication& auth)
+void SessionHandler::query_blob_set(const URLIntent& intent, unsigned version, Send&& send, const Authentication& auth)
 {
 	auto [pub, json] = find_optional_fields(intent.option(), "public", "json");
 
 	if (pub.has_value())
 	{
-		Ownership::list_public_blobs(*m_db.alloc(), [
+		Ownership::list_public_blobs(*m_db, [
 			send=SendJSON{std::forward<Send>(send), auth.user(), version, !json.has_value() ? &m_lib : nullptr}
 		](auto&& blobs, auto ec)
 		{
