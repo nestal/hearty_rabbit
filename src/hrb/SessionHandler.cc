@@ -74,10 +74,10 @@ void SessionHandler::on_login(const StringRequest& req, EmptyResponseSender&& se
 			*m_db,
 			m_cfg.session_length(),
 			[
+				this,
 				version=req.version(),
 				send=std::move(send),
-				login_from=std::string{login_from},
-				session_length=session_length()
+				login_from=url_decode(login_from)
 			](std::error_code ec, auto&& session) mutable
 			{
 				auto login_incorrect = URLIntent{URLIntent::Action::lib, "", "", "login_incorrect.html"}.str();
@@ -92,7 +92,7 @@ void SessionHandler::on_login(const StringRequest& req, EmptyResponseSender&& se
 
 				auto&& res = see_other(ec ? login_incorrect : (login_from.empty() ? "/" : login_from), version);
 				if (!ec)
-					res.set(http::field::set_cookie, session.set_cookie(session_length));
+					m_auth = std::move(session);
 
 				res.set(http::field::cache_control, "no-cache, no-store, must-revalidate");
 				send(std::move(res));

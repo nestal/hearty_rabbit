@@ -108,17 +108,11 @@ void SessionHandler::on_request_header(
 
 			// Use a UploadRequestParse to parser upload requests, only when the session is authenticated.
 			if (!ec && action == URLIntent::Action::upload && method == http::verb::put)
-//				prepare_upload(dest.emplace<UploadRequestParser>(std::move(src)).get().body(), ec);
 				body_type = RequestBodyType::upload;
 
 			// blobs support post request
 			else if (!ec && action == URLIntent::Action::view && method == http::verb::post)
-//				dest.emplace<StringRequestParser>(std::move(src));
 				body_type = RequestBodyType::string;
-
-			// Other requests use EmptyRequestParser, because they don't have a body.
-//			else
-//				dest.emplace<EmptyRequestParser>(std::move(src));
 
 			// If the cookie returned by verify_session() is different from the one we passed to it,
 			// that mean it is going to expired and it's renewed.
