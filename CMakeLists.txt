@@ -2,6 +2,14 @@
 cmake_minimum_required(VERSION 3.8)
 project(hearty_rabbit)
 
+set(VERSION "0.2")
+
+# Get build number from environment variable. It should be set by travis.
+if (NOT BUILD_NUMBER)
+	string(TIMESTAMP BUILD_NUMBER "%Y%m%d%H%M%S")
+endif()
+message(STATUS "Building HeartyRabbit ${VERSION}.${BUILD_NUMBER}")
+
 set(Boost_USE_STATIC_LIBS  ON)
 find_package(Boost REQUIRED COMPONENTS system filesystem program_options)
 find_package(Threads REQUIRED)
@@ -24,15 +32,10 @@ pkg_check_modules(TURBOJPEG REQUIRED libturbojpeg)
 pkg_check_modules(EXIV2 exiv2)
 
 set(CMAKE_CXX_STANDARD 17)
-set(VERSION "0.2")
 set(CONFIG_FILENAME "hearty_rabbit.json")
 
-# Get build number from environment variable. It should be set by travis.
-if (DEFINED ENV{BUILD_NUMBER})
-	set(BUILD_NUMBER $ENV{BUILD_NUMBER})
-else()
-	string(TIMESTAMP BUILD_NUMBER "%Y%m%d%H%M%S")
-endif()
+# use new C++ ABI
+add_definitions(-D_GLIBCXX_USE_CXX11_ABI=1)
 
 include_directories(
 	${Boost_INCLUDE_DIR}
@@ -143,9 +146,6 @@ set(CPACK_RPM_FILE_NAME RPM-DEFAULT)
 
 # Get build number from environment variable. It should be set by travis.
 set(CPACK_RPM_PACKAGE_RELEASE ${BUILD_NUMBER})
-
-message(STATUS "build = ${BUILD_NUMBER}")
-
 set(CPACK_RPM_PACKAGE_AUTOREQ ON)
 set(CPACK_RPM_PACKAGE_RELEASE_DIST ON)
 include(CPack)

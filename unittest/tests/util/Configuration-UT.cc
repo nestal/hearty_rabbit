@@ -119,3 +119,16 @@ TEST_CASE( "Multiple renditions", "[normal]" )
 	Configuration subject{sizeof(argv)/sizeof(argv[1]), argv, nullptr};
 	REQUIRE(subject.renditions().dimension(subject.renditions().default_rendition()) == Size2D{1024, 1024});
 }
+
+TEST_CASE( "Bad UID/GID", "[error]" )
+{
+	auto bad_gid = (current_src / "bad_gid.json").string();
+
+	const char *argv[] = {"hearty_rabbit", "--cfg", bad_gid.c_str()};
+	REQUIRE_THROWS_AS(Configuration(sizeof(argv)/sizeof(argv[1]), argv, nullptr), Configuration::InvalidUserOrGroup);
+
+	auto bad_uid = (current_src / "bad_uid.json").string();
+
+	const char *argv2[] = {"hearty_rabbit", "--cfg", bad_uid.c_str()};
+	REQUIRE_THROWS_AS(Configuration(sizeof(argv2)/sizeof(argv2[1]), argv2, nullptr), Configuration::InvalidUserOrGroup);
+}

@@ -1,5 +1,6 @@
 FROM nestal/hearty_rabbit_dev as builder
 MAINTAINER [Nestal Wan <me@nestal.net>]
+ARG BUILD_NUMBER
 ENV container docker
 
 ENV PATH=$PATH:/opt/rh/devtoolset-7/root/usr/bin:/opt/bin \
@@ -13,6 +14,7 @@ RUN mkdir /build/docker-build \
 	&& cd docker-build \
 	&& cmake \
 		-DBOOST_ROOT=/opt \
+		-DBUILD_NUMBER=$BUILD_NUMBER \
 		-DCMAKE_PREFIX_PATH=/opt \
 		-DCMAKE_BUILD_TYPE=Release \
 		-DCMAKE_INSTALL_PREFIX=/build/hearty_rabbit \

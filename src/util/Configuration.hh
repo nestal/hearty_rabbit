@@ -60,6 +60,7 @@ public:
 	struct Error : virtual Exception {};
 	struct FileError : virtual Error {};
 	struct MissingUsername : virtual Error {};
+	struct InvalidUserOrGroup: virtual Error {};
 	using Path      = boost::error_info<struct tag_path,    boost::filesystem::path>;
 	using Message   = boost::error_info<struct tag_message, std::string>;
 	using Offset    = boost::error_info<struct tag_offset,  std::size_t>;
@@ -83,6 +84,7 @@ public:
 	gid_t group_id() const {return m_group_id;}
 	const RenditionSetting& renditions() const {return m_rendition;}
 	const std::string& server_name() const {return m_server_name;}
+	std::string https_root() const;
 	std::chrono::seconds session_length() const {return m_session_length;}
 
 	bool help() const {return m_args.count("help") > 0;}

@@ -107,6 +107,8 @@ void Configuration::load_config(const boost::filesystem::path& path)
 
 		m_user_id  = json.value(jptr{"/uid"}, m_user_id);
 		m_group_id = json.value(jptr{"/gid"}, m_group_id);
+		if (m_user_id == 0 || m_group_id == 0)
+			BOOST_THROW_EXCEPTION(InvalidUserOrGroup());
 
 		m_listen_http   = parse_endpoint(json.at(jptr{"/http"}));
 		m_listen_https  = parse_endpoint(json.at(jptr{"/https"}));
@@ -129,6 +131,12 @@ void Configuration::load_config(const boost::filesystem::path& path)
 	}
 }
 
+std::string Configuration::https_root() const
+{
+	using namespace std::literals;
+	return "https://" + m_server_name
+		+ (listen_https().port() == 443 ? ""s : (":"s + std::to_string(listen_https().port())));
+}
 
 const RenditionSetting::Setting& RenditionSetting::find(std::string_view rend) const
 {

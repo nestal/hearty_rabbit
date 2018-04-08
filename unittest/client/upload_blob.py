@@ -25,11 +25,19 @@ class NormalTestCase(unittest.TestCase):
 		return temp.getvalue()
 
 	def get_collection(self, session, owner, coll):
-		response = session.get("https://localhost:4433/coll/" + owner + "/" + coll + "/")
+		response = session.get("https://localhost:4433/view/" + owner + "/" + coll + "/?json")
 		self.assertEqual(response.status_code, 200)
 		self.assertEqual(response.headers["Content-type"], "application/json")
 		self.assertEqual(response.json()["collection"], coll)
 		self.assertEqual(response.json()["owner"], owner)
+		self.assertTrue("elements" in response.json())
+		return response.json()
+
+	def get_public_blobs(self):
+		response = self.user1.get("https://localhost:4433/query/blob_set?public&json")
+		self.assertEqual(response.status_code, 200)
+		self.assertEqual(response.headers["Content-type"], "application/json")
+		self.assertEqual(response.json()["username"], "sumsum")
 		self.assertTrue("elements" in response.json())
 		return response.json()
 
@@ -88,6 +96,17 @@ class NormalTestCase(unittest.TestCase):
 		r3 = self.anon.get("https://localhost:4433" + r1.headers["Location"])
 		self.assertEqual(r3.status_code, 403)
 
+		# query the blob
+		r4 = self.user1.get("https://localhost:4433/query/blob?id=" + r1.headers["Location"][-40:])
+		self.assertEqual(r4.status_code, 200)
+		self.assertEqual(r4.headers["Content-type"], "image/jpeg")
+		jpeg4 = Image.open(BytesIO(r4.content))
+
+		# the size of the images should be the same
+		self.assertEqual(jpeg4.format, "JPEG")
+		self.assertEqual(jpeg4.width, 1024)
+		self.assertEqual(jpeg4.height, 768)
+
 	def test_upload_png(self):
 		# upload random PNG to server
 		r1 = self.user1.put("https://localhost:4433/upload/sumsum/black.png", data=self.random_image(800, 600, format="png"))
@@ -142,6 +161,15 @@ class NormalTestCase(unittest.TestCase):
 		self.assertLessEqual(thumb.width, 768)
 		self.assertLessEqual(thumb.height, 768)
 
+		# query the thumbnail by the blob ID
+		r5 = self.user1.get("https://localhost:4433/query/blob?rendition=thumbnail&id=" + r1.headers["Location"][-40:])
+		self.assertEqual(r5.status_code, 200)
+
+		thumb = Image.open(BytesIO(r5.content))
+		self.assertLessEqual(thumb.width, 768)
+		self.assertLessEqual(thumb.height, 768)
+
+
 	def test_lib(self):
 		# resource not exist
 		self.assertEqual(self.user1.get("https://localhost:4433/lib/logo.svg").status_code, 200)
@@ -186,7 +214,7 @@ class NormalTestCase(unittest.TestCase):
 		blob_id = r1.headers["Location"][-40:]
 
 		# should find it in the new collection
-		r2 = self.user1.get("https://localhost:4433/coll/sumsum/some/collection/")
+		r2 = self.user1.get("https://localhost:4433/view/sumsum/some/collection/?json")
 		self.assertEqual(r2.status_code, 200)
 		self.assertEqual(r2.json()["elements"][blob_id]["filename"], "abc.jpg")
 		self.assertEqual(r2.json()["elements"][blob_id]["mime"], "image/jpeg")
@@ -198,7 +226,7 @@ class NormalTestCase(unittest.TestCase):
 		self.assertEqual(r3.status_code, 204)
 
 		# not found in collection
-		r4 = self.user1.get("https://localhost:4433/coll/sumsum/some/collection/")
+		r4 = self.user1.get("https://localhost:4433/view/sumsum/some/collection/?json")
 		self.assertEqual(r4.status_code, 200)
 		self.assertFalse(blob_id in r4.json()["elements"])
 
@@ -248,9 +276,15 @@ class NormalTestCase(unittest.TestCase):
 		self.assertEqual(self.user2.get("https://localhost:4433" + r1.headers["Location"]).status_code, 200)
 		self.assertTrue(blob_id in self.get_collection(self.user2, "sumsum", "some/collection")["elements"])
 
+		# new blob can be found in the public list
+		self.assertTrue(blob_id in self.get_public_blobs()["elements"].keys())
+
 		# anonymous user can find it in collection
 		self.assertEqual(self.anon.get("https://localhost:4433" + r1.headers["Location"]).status_code, 200)
 		self.assertTrue(blob_id in self.get_collection(self.anon,  "sumsum", "some/collection")["elements"])
+
+		# anonymous user can query the blob
+		self.assertEqual(self.anon.get("https://localhost:4433/query/blob?id=" + blob_id).status_code, 200)
 
 		# owner set permission to shared
 		self.assertEqual(self.user1.post(
@@ -267,6 +301,9 @@ class NormalTestCase(unittest.TestCase):
 		self.assertEqual(self.anon.get("https://localhost:4433" + r1.headers["Location"]).status_code, 403)
 		self.assertFalse(blob_id in self.get_collection(self.anon,  "sumsum", "some/collection")["elements"])
 
+		# new blob can no longer be found in the public list
+		self.assertFalse(blob_id in self.get_public_blobs()["elements"].keys())
+
 	def test_scan_collections(self):
 		# upload random image to 10 different collections
 		for x in range(10):
@@ -274,7 +311,7 @@ class NormalTestCase(unittest.TestCase):
 			res = self.user1.put(coll, data=self.random_image(480, 320))
 			self.assertEqual(res.status_code, 201)
 
-		r1 = self.user1.get("https://localhost:4433/listcolls/sumsum/")
+		r1 = self.user1.get("https://localhost:4433/query/collection?user=sumsum&json")
 		self.assertEqual(r1.status_code, 200)
 		self.assertTrue("colls" in r1.json())
 		self.assertTrue("collection1" in r1.json()["colls"])
@@ -315,7 +352,7 @@ class NormalTestCase(unittest.TestCase):
 		)
 		self.assertEqual(r1.status_code, 201)
 
-		r2 = self.user1.get("https://localhost:4433/listcolls/sumsum/")
+		r2 = self.user1.get("https://localhost:4433/query/collection?user=sumsum&json")
 		self.assertEqual(r2.status_code, 200)
 		self.assertTrue("colls" in r2.json())
 		self.assertTrue("女神ハイリア" in r2.json()["colls"])
@@ -329,14 +366,16 @@ class NormalTestCase(unittest.TestCase):
 		blob_id = r1.headers["Location"][-40:]
 
 		# should find it in the new collection
-		r2 = self.user1.get("https://localhost:4433/coll/sumsum/%E3%83%8F%E3%82%A4%E3%83%AA%E3%82%A2%E3%81%AE%E7%9B%BE/")
+		r2 = self.user1.get("https://localhost:4433/view/sumsum/%E3%83%8F%E3%82%A4%E3%83%AA%E3%82%A2%E3%81%AE%E7%9B%BE/?json")
 		self.assertEqual(r2.status_code, 200)
 		self.assertEqual(r2.json()["elements"][blob_id]["filename"], "食哂啲甘荀_carrot.jpg")
 		self.assertEqual(r2.json()["elements"][blob_id]["mime"], "image/jpeg")
+		self.assertEqual("sumsum", r2.json()["username"])
+		self.assertEqual("ハイリアの盾", r2.json()["collection"])
 
 	def test_remove_cover(self):
 		# delete all images in test_cover_album
-		r0 = self.user1.get("https://localhost:4433/coll/sumsum/%F0%9F%99%87/")
+		r0 = self.user1.get("https://localhost:4433/view/sumsum/%F0%9F%99%87/?json")
 		self.assertEqual(r0.status_code, 200)
 		for blob in r0.json()["elements"].keys():
 			self.assertEqual(self.user1.delete("https://localhost:4433/view/sumsum/%F0%9F%99%87/" + blob).status_code, 204)
@@ -350,10 +389,11 @@ class NormalTestCase(unittest.TestCase):
 		cover_id = r1.headers["Location"][-40:]
 
 		# verify the first image will become the cover of the album
-		r2 = self.user1.get("https://localhost:4433/listcolls/sumsum/")
+		r2 = self.user1.get("https://localhost:4433/query/collection?user=sumsum&json")
 		self.assertEqual(r2.status_code, 200)
 		self.assertTrue("🙇" in r2.json()["colls"])
 		self.assertEqual(cover_id, r2.json()["colls"]["🙇"]["cover"])
+		self.assertEqual("sumsum", r2.json()["username"])
 
 		# upload another image, but the cover will stay the same
 		r3 = self.user1.put(
@@ -361,15 +401,16 @@ class NormalTestCase(unittest.TestCase):
 			data=self.random_image(300, 200)
 		)
 		self.assertEqual(r3.status_code, 201)
-		r4 = self.user1.get("https://localhost:4433/listcolls/sumsum/")
+		r4 = self.user1.get("https://localhost:4433/query/collection?user=sumsum&json")
 		self.assertEqual(r4.status_code, 200)
 		self.assertEqual(cover_id, r4.json()["colls"]["🙇"]["cover"])
+		self.assertEqual("sumsum", r4.json()["username"])
 
 		# delete the cover
 		self.assertEqual(self.user1.delete("https://localhost:4433/view/sumsum/%F0%9F%99%87/" + cover_id).status_code, 204)
 
 		# the cover will be missing
-		r5 = self.user1.get("https://localhost:4433/listcolls/sumsum/")
+		r5 = self.user1.get("https://localhost:4433/query/collection?user=sumsum&json")
 		self.assertEqual(r5.status_code, 200)
 		self.assertTrue("🙇" in r5.json()["colls"])
 		self.assertFalse("cover" in r5.json()["colls"]["🙇"])
@@ -378,7 +419,7 @@ class NormalTestCase(unittest.TestCase):
 		self.assertEqual(self.user1.delete("https://localhost:4433" + r3.headers["Location"]).status_code, 204)
 
 		# the album will be removed
-		r6 = self.user1.get("https://localhost:4433/listcolls/sumsum/")
+		r6 = self.user1.get("https://localhost:4433/query/collection?user=sumsum&json")
 		self.assertEqual(r6.status_code, 200)
 		self.assertFalse("🙇" in r6.json()["colls"])
 

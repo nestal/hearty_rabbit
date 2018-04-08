@@ -19,8 +19,6 @@
 #include "hrb/Permission.hh"
 #include "crypto/Random.hh"
 
-#include <iostream>
-
 using namespace hrb;
 using namespace std::chrono_literals;
 
@@ -41,7 +39,7 @@ TEST_CASE("list of collection owned by user", "[normal]")
 	});
 
 	// assert that the collection is added
-	subject.scan_all_collections(*redis, "owner", [&tested](auto&& json, auto ec)
+	subject.scan_all_collections(*redis, [&tested](auto&& json, auto ec)
 	{
 		REQUIRE(!ec);
 		REQUIRE(json.find("colls") != json.end());
@@ -67,11 +65,9 @@ TEST_CASE("list of collection owned by user", "[normal]")
 	ioc.restart();
 
 	// remove all blobs in the collection
-	subject.serialize(*redis, "owner", "/", [&tested, redis](auto&& json, auto ec)
+	subject.serialize(*redis, "owner", "/", [&tested, redis](auto&& jdoc, auto ec)
 	{
-		INFO("serialize() return " << json);
-		auto jdoc = nlohmann::json::parse(json);
-
+		INFO("serialize() return " << jdoc);
 		for (auto&& blob : jdoc["elements"].items())
 		{
 			INFO("blob = " << blob.key());
@@ -89,7 +85,7 @@ TEST_CASE("list of collection owned by user", "[normal]")
 	ioc.restart();
 
 	// assert that the collection "/" does not exist anymore, because all its blobs are removed
-	subject.scan_all_collections(*redis, "owner", [&tested](auto&& json, auto ec)
+	subject.scan_all_collections(*redis, [&tested](auto&& json, auto ec)
 	{
 		REQUIRE(!ec);
 		REQUIRE(json.find("colls") != json.end());
@@ -160,10 +156,14 @@ TEST_CASE("add blob to Ownership", "[normal]")
 
 	// verify that the newly added blob is in the public list
 	bool found = false;
-	Ownership::list_public_blobs(*redis, [&found, blobid](auto blob)
+	Ownership::list_public_blobs(*redis, [&found, blobid](auto&& json, auto ec)
 	{
-		if (blob == blobid)
-			found = true;
+		REQUIRE(json.find("elements") != json.end());
+		auto&& elements = json["elements"];
+
+		for (auto&& item : elements.items())
+			if (to_hex(blobid) == item.key())
+				found = true;
 	});
 
 	REQUIRE(ioc.run_for(10s) > 0);
@@ -234,25 +234,16 @@ TEST_CASE("Load 3 images in json", "[normal]")
 	ioc.restart();
 
 	bool tested = false;
-	subject.serialize(*redis, "testuser", "some/collection", [&tested, &blobids](auto&& jstr, auto ec)
+	subject.serialize(*redis, "testuser", "some/collection", [&tested, &blobids](auto&& doc, auto ec)
 	{
+		using json = nlohmann::json;
 		INFO("serialize() error_code: " << ec << " " << ec.message());
-		INFO("serialize result = " << jstr);
+		INFO("serialize result = " << doc);
 
 		REQUIRE(!ec);
-
-		// try parse the JSON
-		using json = nlohmann::json;
-		std::cout << "jstr = " << jstr << std::endl;
-		auto doc = json::parse(jstr);
-		std::cout << "after jstr = " << jstr << std::endl;
-
 		REQUIRE(!doc.empty());
 		REQUIRE(
 			doc.value(json::json_pointer{"/owner"}, "") == "testuser"
-		);
-		REQUIRE(
-			doc.value(json::json_pointer{"/username"}, "") == "testuser"
 		);
 		REQUIRE(
 			doc.value(json::json_pointer{"/collection"}, "") == "some/collection"
@@ -312,14 +303,20 @@ TEST_CASE("Query blob of testuser")
 	REQUIRE(tested == 1);
 	ioc.restart();
 
-	subject.query_blob(*redis, blobid, [&tested](auto&& user, auto&& coll, auto&& entry)
+	subject.query_blob(*redis, blobid, [&tested](auto&& range, auto ec)
 	{
+		REQUIRE(!ec);
+		auto first = range.begin();
+		auto last  = range.end();
+		REQUIRE(first != last);
+
 		// There should be only one collection that owns the blob
-		REQUIRE(user == "testuser");
-		REQUIRE(coll == "somecoll");
-		REQUIRE(entry.permission() == Permission::public_());
-		REQUIRE(entry.filename() == "haha.jpeg");
-		REQUIRE(entry.mime() == "image/jpeg");
+		REQUIRE(first->user == "testuser");
+		REQUIRE(first->coll == "somecoll");
+		REQUIRE(first->entry.permission() == Permission::public_());
+		REQUIRE(first->entry.filename() == "haha.jpeg");
+		REQUIRE(first->entry.mime() == "image/jpeg");
+		REQUIRE(++first == last);
 		tested++;
 	});
 
@@ -344,16 +341,14 @@ TEST_CASE("Scan for all containers from testuser")
 	std::vector<std::string> dirs;
 
 	bool tested = false;
-	subject.scan_all_collections(*redis, "",
+	subject.scan_all_collections(*redis,
 		[&dirs, &tested](auto&& jdoc, auto ec)
 		{
 			INFO("scan() error: " << ec << " " << ec.message());
 			REQUIRE(!ec);
 			tested = true;
 
-			REQUIRE(jdoc["username"] == "");
 			REQUIRE(jdoc["owner"]    == "testuser");
-
 			for (auto&& it : jdoc["colls"].items())
 				dirs.push_back(it.key());
 		}

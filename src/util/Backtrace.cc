@@ -19,7 +19,7 @@
 #endif
 
 #include <memory>
-#include <iostream>
+#include <ostream>
 #include <iomanip>
 
 namespace hrb {

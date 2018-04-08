@@ -60,6 +60,7 @@ void Ownership::BlobBackLink::unlink(redis::Connection& db) const
 const std::string_view Ownership::Collection::m_dir_prefix = "dir:";
 const std::string_view Ownership::Collection::m_list_prefix = "dirs:";
 const std::string_view Ownership::Collection::m_public_blobs = "public-blobs";
+const std::string_view Ownership::Collection::m_public_coll_entries = "public-coll-entries";
 
 Ownership::Collection::Collection(std::string_view user, std::string_view path) :
 	m_user{user},
@@ -69,11 +70,11 @@ Ownership::Collection::Collection(std::string_view user, std::string_view path) 
 
 Ownership::Collection::Collection(std::string_view redis_reply)
 {
-	auto [prefix, colon] = split_front(redis_reply, ":");
+	auto [prefix, colon] = split_left(redis_reply, ":");
 	if (colon != ':' || prefix != Collection::m_dir_prefix.substr(0, Collection::m_dir_prefix.size()-1))
 		return;
 
-	auto [user, colon2] = split_front(redis_reply, ":");
+	auto [user, colon2] = split_left(redis_reply, ":");
 	if (colon2 != ':')
 		return;
 
@@ -149,23 +150,22 @@ void Ownership::Collection::unlink(redis::Connection& db, const ObjectID& id)
 	);
 }
 
-std::string Ownership::Collection::serialize(redis::Reply& reply, std::string_view requester) const
+nlohmann::json Ownership::Collection::serialize(const redis::Reply& reply, std::string_view requester, std::string_view owner)
 {
 	// TODO: get the cover here... where to find a redis::Connection?
 	auto jdoc = nlohmann::json::object();
 
-	jdoc.emplace("owner", m_user);
-	jdoc.emplace("collection", m_path);
-	jdoc.emplace("username", std::string{requester});
-
 	auto elements = nlohmann::json::object();
-	reply.foreach_kv_pair([&elements, &jdoc, requester, this](auto&& blob, auto&& perm)
+	for (auto&& kv : reply.kv_pairs())
 	{
+		auto&& blob = kv.key();
+		auto&& perm = kv.value();
+
 		auto blob_id = raw_to_object_id(blob);
 		CollEntry entry{perm.as_string()};
 
 		// check permission: allow allow owner (i.e. m_user)
-		if (blob_id && (m_user == requester || entry.permission().allow(requester)))
+		if (blob_id && (owner == requester || entry.permission().allow(requester)))
 		{
 			try
 			{
@@ -178,10 +178,10 @@ std::string Ownership::Collection::serialize(redis::Reply& reply, std::string_vi
 				Log(LOG_WARNING, "exception thrown when parsing CollEntry::json(): %1% %2%", e.what(), entry.json());
 			}
 		}
-	});
+	};
 	jdoc.emplace("elements", std::move(elements));
 
-	return jdoc.dump();
+	return jdoc;
 }
 
 } // end of namespace hrb

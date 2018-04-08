@@ -13,10 +13,8 @@
 #include "Session.hh"
 
 #include "crypto/Authentication.hh"
-
-#include "hrb/Server.hh"
-#include "hrb/Server.ipp"
-
+#include "hrb/SessionHandler.ipp"
+#include "net/SplitBuffers.hh"
 #include "util/Error.hh"
 #include "util/Log.hh"
 
@@ -28,16 +26,20 @@ using tcp = boost::asio::ip::tcp;       // from <boost/asio/ip/tcp.hpp>
 namespace http = boost::beast::http;    // from <boost/beast/http.hpp>
 
 Session::Session(
-	Server& server,
+	const std::function<SessionHandler()>& factory,
 	boost::asio::ip::tcp::socket socket,
 	boost::asio::ssl::context&  ssl_ctx,
-	std::size_t nth
+	std::size_t             nth,
+	std::chrono::seconds    login_session,
+	std::size_t             upload_limit
 ) :
 	m_socket{std::move(socket)},
 	m_stream{m_socket, ssl_ctx},
 	m_strand{m_socket.get_executor()},
-	m_server{server},
-	m_nth_session{nth}
+	m_factory{factory},
+	m_nth_session{nth},
+	m_login_session{login_session},
+	m_upload_size_limit{upload_limit}
 {
 }
 
@@ -67,7 +69,8 @@ void Session::do_read()
 	// Destroy and re-construct the parser for a new HTTP transaction
 	m_parser.emplace();
 
-	m_parser->body_limit(m_server.upload_limit());
+	m_server.emplace(m_factory());
+	m_parser->body_limit(m_upload_size_limit);
 
 	// Read the header of a request
 	async_read_header(m_stream, m_buffer, *m_parser, boost::asio::bind_executor(
@@ -90,16 +93,24 @@ void Session::on_read_header(boost::system::error_code ec, std::size_t bytes_tra
 		if (!validate_request(header))
 			return;
 
-		m_server.on_request_header(
-			header, *m_parser, m_body,
-			[self=shared_from_this(), this](const std::optional<Authentication>& auth)
+		assert(m_server.has_value());
+		m_server->on_request_header(
+			header,
+			[self=shared_from_this(), this](SessionHandler::RequestBodyType body_type, std::error_code ec)
 			{
+				init_request_body(body_type, ec);
+				if (ec)
+				{
+					Log(LOG_WARNING, "cannot initialize request parser: %1% (%2%)", ec.message(), ec);
+					return send_response(m_server->server_error("internal server error", 11));
+				}
+
 				// Call async_read() using the chosen parser to read and parse the request body.
-				std::visit([&self, this, auth](auto&& parser)
+				std::visit([&self, this](auto&& parser)
 				{
 					async_read(m_stream, m_buffer, parser, boost::asio::bind_executor(
 						m_strand,
-						[self, auth](auto ec, auto bytes){self->on_read(ec, bytes, auth);}
+						[self](auto ec, auto bytes){self->on_read(ec, bytes);}
 					));
 				}, m_body);
 			}
@@ -108,31 +119,28 @@ void Session::on_read_header(boost::system::error_code ec, std::size_t bytes_tra
 }
 
 
-void Session::on_read(boost::system::error_code ec, std::size_t, std::optional<Authentication> auth)
+void Session::on_read(boost::system::error_code ec, std::size_t)
 {
+	assert(m_server.has_value());
+
 	// This means they closed the connection
 	if (ec)
 		return handle_read_error(__PRETTY_FUNCTION__, ec);
 	else
 	{
-		std::visit([self=shared_from_this(), this, auth](auto&& parser)
+		std::visit([self=shared_from_this(), this](auto&& parser)
 		{
-			auto req = parser.release();
-			auto cookie = req[http::field::cookie];
-			auto session = parse_cookie({cookie.data(), cookie.size()});
-
-			// check if auth is renewed. if yes, set it to cookie before sending
-			auto renwed_auth = auth;
-			if (session && auth && *session == auth->cookie())
-				renwed_auth = std::nullopt;
-
-			m_server.handle_request(std::move(req), [this, self, renwed_auth](auto&& response)
+			m_server->on_request_body(parser.release(), [this, self](auto&& response)
 			{
-				if (renwed_auth && response.count(http::field::set_cookie) == 0)
-					response.set(http::field::set_cookie, renwed_auth->set_cookie(m_server.session_length()));
+				// server must not set session cookie
+				assert(response.count(http::field::set_cookie) == 0);
+
+				// check if auth is renewed. if yes, set it to cookie before sending
+				if (m_server->renewed_auth())
+					response.set(http::field::set_cookie, m_server->auth().set_cookie(m_login_session));
 
 				send_response(std::forward<decltype(response)>(response));
-			}, auth ? *auth : Authentication{});
+			});
 		}, m_body);
 	}
 	m_nth_transaction++;
@@ -145,21 +153,12 @@ void Session::on_read(boost::system::error_code ec, std::size_t, std::optional<A
 template<class Request>
 bool Session::validate_request(const Request& req)
 {
+	assert(m_server.has_value());
+
 	boost::system::error_code ec;
 	auto endpoint = m_socket.remote_endpoint(ec);
 	if (ec)
 		Log(LOG_WARNING, "remote_endpoint() error: %1% %2%", ec, ec.message());
-
-	Log(
-		LOG_INFO,
-		"%1%:%2% %3% request %4% from %5% (%6% bytes)",
-		m_nth_session,
-		m_nth_transaction,
-		req.method_string(),
-		req.target(),
-		endpoint,
-		req[http::field::content_length].empty() ? "0" : req[http::field::content_length]
-	);
 
 	// Make sure we can handle the method
 	if (req.method() != http::verb::get  &&
@@ -168,7 +167,7 @@ bool Session::validate_request(const Request& req)
 		req.method() != http::verb::delete_ &&
 		req.method() != http::verb::head)
 	{
-		send_response(m_server.bad_request("Unknown HTTP-method", req.version()));
+		send_response(m_server->bad_request("Unknown HTTP-method", req.version()));
 		return false;
 	}
 
@@ -177,7 +176,7 @@ bool Session::validate_request(const Request& req)
 	    req.target()[0] != '/' ||
 	    req.target().find("..") != boost::beast::string_view::npos)
 	{
-		send_response(m_server.bad_request("Illegal request-target", req.version()));
+		send_response(m_server->bad_request("Illegal request-target", req.version()));
 		return false;
 	}
 	return true;
@@ -187,11 +186,14 @@ bool Session::validate_request(const Request& req)
 template <class Response>
 void Session::send_response(Response&& response)
 {
+	static const std::string version =
+		(boost::format{"%1% HeartyRabbit/%2%"} % BOOST_BEAST_VERSION_STRING % hrb::constants::version).str();
+
 	// The lifetime of the message has to extend
 	// for the duration of the async operation so
 	// we use a shared_ptr to manage it.
 	auto sp = std::make_shared<std::remove_reference_t<Response>>(std::forward<Response>(response));
-	sp->set(http::field::server, BOOST_BEAST_VERSION_STRING);
+	sp->set(http::field::server, version);
 	sp->keep_alive(m_keep_alive);
 	sp->prepare_payload();
 
@@ -202,16 +204,16 @@ void Session::send_response(Response&& response)
 	));
 }
 
-
 void Session::handle_read_error(std::string_view where, boost::system::error_code ec)
 {
+	assert(m_server.has_value());
 	// This means they closed the connection
 	if (ec == boost::beast::http::error::end_of_stream)
 		return do_close();
 
 	else if (ec)
 	{
-		return send_response(m_server.bad_request(ec.message(), 11));
+		return send_response(m_server->bad_request(ec.message(), 11));
 	}
 }
 
@@ -247,6 +249,19 @@ void Session::do_close()
 void Session::on_shutdown(boost::system::error_code)
 {
 	// At this point the connection is closed gracefully
+}
+
+void Session::init_request_body(SessionHandler::RequestBodyType body_type, std::error_code& ec)
+{
+	switch (body_type)
+	{
+	case SessionHandler::RequestBodyType::empty:  m_body.emplace<EmptyRequestParser>(std::move(*m_parser)); break;
+	case SessionHandler::RequestBodyType::string: m_body.emplace<StringRequestParser>(std::move(*m_parser)); break;
+	case SessionHandler::RequestBodyType::upload:
+		m_server->prepare_upload(m_body.emplace<UploadRequestParser>(std::move(*m_parser)).get().body(), ec);
+		break;
+	}
+
 }
 
 } // end of namespace

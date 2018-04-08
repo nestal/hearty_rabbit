@@ -15,6 +15,8 @@
 #include "util/RepeatingTuple.hh"
 
 #include <boost/asio.hpp>
+#include <boost/iterator/iterator_adaptor.hpp>
+#include <boost/range/iterator_range.hpp>
 
 #include <hiredis/hiredis.h>
 
@@ -67,6 +69,7 @@ public:
 	void swap(Reply& other) noexcept ;
 
 	using iterator = std::vector<Reply>::const_iterator;
+	using const_iterator = std::vector<Reply>::const_iterator;
 	iterator begin() const;
 	iterator end() const;
 
@@ -91,11 +94,48 @@ public:
 	Reply operator[](std::size_t i) const noexcept;
 	std::size_t array_size() const noexcept;
 
-	template <typename Func>
-	void foreach_kv_pair(Func&& func)
+	class KeyValue
 	{
-		for (auto i = 0U; i+1 < array_size() ; i += 2)
-			func(as_array(i).as_string(), as_array(i+1));
+	public:
+		KeyValue(iterator current) : m_current{current} {}
+
+		auto key() const {return m_current->as_string();}
+		auto value() const {auto i = m_current; return *++i;}
+
+	private:
+		iterator m_current;
+	};
+	class kv_iterator : public boost::iterator_adaptor<
+	    kv_iterator,
+		iterator,
+		KeyValue,
+		boost::random_access_traversal_tag,
+		KeyValue
+	>
+	{
+	public:
+		kv_iterator() = default;
+		kv_iterator(iterator it) : kv_iterator::iterator_adaptor_{it} {}
+	private:
+		friend class boost::iterator_core_access;
+		void increment() {this->base_reference() += 2;}
+		KeyValue dereference() const {return KeyValue{this->base()};}
+		typename iterator_adaptor::difference_type distance_to(kv_iterator other) const
+		{
+			return (other.base() - base()) / 2;
+		}
+		void advance(typename iterator_adaptor::difference_type n)
+		{
+			this->base_reference() += n*2;
+		}
+	};
+
+	auto kv_pairs() const
+	{
+		return boost::iterator_range<kv_iterator>{
+			kv_iterator{begin()},
+			kv_iterator{end()}
+		};
 	}
 
 	// Return a tuple of replies, one for each field in the parameter list

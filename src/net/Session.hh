@@ -13,9 +13,9 @@
 #pragma once
 
 #include "Request.hh"
-#include "crypto/Authentication.hh"
 #include "hrb/UploadFile.hh"
 #include "hrb/URLIntent.hh"
+#include "hrb/SessionHandler.hh"
 
 #include <boost/beast/core.hpp>
 #include <boost/beast/http.hpp>
@@ -31,6 +31,7 @@
 namespace hrb {
 
 class Server;
+class SessionHandler;
 class Authentication;
 
 // Handles an HTTP server connection
@@ -38,11 +39,13 @@ class Session : public std::enable_shared_from_this<Session>
 {
 public:
 	// Take ownership of the socket
-	explicit Session(
-		Server& server,
+	Session(
+		const std::function<SessionHandler()>& factory,
 		boost::asio::ip::tcp::socket socket,
 		boost::asio::ssl::context& ssl_ctx,
-		std::size_t nth
+		std::size_t nth,
+		std::chrono::seconds    login_session,
+		std::size_t upload_limit
 	);
 
 	// Start the asynchronous operation
@@ -50,7 +53,7 @@ public:
 	void on_handshake(boost::system::error_code ec);
 	void do_read();
 	void on_read_header(boost::system::error_code ec, std::size_t bytes_transferred);
-	void on_read(boost::system::error_code ec, std::size_t bytes_transferred, std::optional<Authentication> auth);
+	void on_read(boost::system::error_code ec, std::size_t bytes_transferred);
 	void on_write(boost::system::error_code ec, std::size_t bytes_transferred, bool close);
 	void do_close();
 	void on_shutdown(boost::system::error_code ec);
@@ -67,6 +70,7 @@ private:
 	void send_response(Response&& response);
 
 	void handle_read_error(std::string_view where, boost::system::error_code ec);
+	void init_request_body(SessionHandler::RequestBodyType body_type, std::error_code& ec);
 
 private:
 	tcp::socket		                                            m_socket;
@@ -81,7 +85,12 @@ private:
 	std::optional<EmptyRequestParser> m_parser;
 	std::variant<StringRequestParser, UploadRequestParser, EmptyRequestParser> m_body;
 
-	Server&     m_server;
+	std::function<SessionHandler()> m_factory;
+	std::optional<SessionHandler>   m_server;
+
+	// configurations
+	std::chrono::seconds    m_login_session;
+	std::size_t             m_upload_size_limit;
 
 	// stats
 	std::size_t m_nth_session;

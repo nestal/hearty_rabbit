@@ -19,7 +19,6 @@
 
 #include <cassert>
 #include <chrono>
-#include <iostream>
 #include <util/Error.hh>
 
 using namespace hrb::redis;
@@ -119,6 +118,26 @@ TEST_CASE("simple redis", "[normal]")
 					REQUIRE(result[1] == "value1");
 					REQUIRE(result[2] == "field2");
 					REQUIRE(result[3] == "value2");
+				}
+				SECTION("verify kv_pairs() iterators")
+				{
+					auto index = 0;
+					for (auto&& kv : reply.kv_pairs())
+					{
+						auto field = (index == 0 ? "field1" : "field2");
+						auto value = (index == 0 ? "value1" : "value2");
+						REQUIRE(kv.key() == field);
+						REQUIRE(kv.value().as_string() == value);
+						index++;
+					}
+					REQUIRE(index == 2);
+
+					auto kvs = boost::copy_range<std::vector<Reply::KeyValue>>(reply.kv_pairs());
+					REQUIRE(kvs.size() == 2);
+					REQUIRE(kvs.front().key() == "field1");
+					REQUIRE(kvs.front().value().as_string() == "value1");
+					REQUIRE(kvs.back().key() == "field2");
+					REQUIRE(kvs.back().value().as_string() == "value2");
 				}
 
 				redis->disconnect();

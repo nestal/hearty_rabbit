@@ -13,8 +13,10 @@
 #pragma once
 
 #include <boost/utility/string_view.hpp>
-#include <string_view>
+
 #include <array>
+#include <string_view>
+#include <vector>
 
 namespace hrb {
 
@@ -22,12 +24,28 @@ namespace hrb {
 class URLIntent
 {
 public:
-	// TODO: narrow down the possibility of actions in these enum
-	enum class Action {login, logout, view, coll, upload, home, lib, listcolls, query, none};
+	enum class Action {login, logout, view, upload, home, lib, query, none};
+
+	enum class QueryTarget {blob, collection, blob_set, none};
+
+	//! Possible parameters specified by a URL
+	enum class Parameter {
+		user,           //!< Name of a user whom this request is applied to. Note this may not
+						//!< be the user who send this request. Only occupy one segment in the URL.
+		collection,     //!< Name of the collection which the request is applied to. It may span
+						//!< across multiple segments.
+		filename,       //!< Filename of a resource. Single segment only.
+		blob,           //!< 40-character hex string for blob ID. Obviously single segment.
+		option,         //!< Query string of the URL
+		query_target    //!< Target of the query: blob or collection
+	};
 
 private:
+	using Parameters = std::vector<Parameter>;
+
 	static const std::array<bool, static_cast<int>(Action::none)> require_user, require_filename;
-	static const std::array<bool, static_cast<int>(Action::none)> forbid_user, forbid_filename, forbid_coll;
+	static const std::array<Parameters, static_cast<int>(Action::none)> intent_defintions;
+	static const Parameters separator_fields;
 
 public:
 	URLIntent() = default;
@@ -44,6 +62,7 @@ public:
 	std::string_view collection() const {return m_coll;}
 	std::string_view filename() const {return m_filename;}
 	std::string_view option() const {return m_option;}
+	QueryTarget query_target() const {return m_query_target;}
 
 	std::string str() const;
 
@@ -53,6 +72,9 @@ public:
 private:
 	static std::string_view trim(std::string_view s);
 	static Action parse_action(std::string_view str);
+	void parse_field_from_left(std::string_view& target, Parameter p);
+	void parse_field_from_right(std::string_view& target, Parameter p);
+	static QueryTarget parse_query_target(std::string_view str);
 
 private:
 	Action  m_action{Action::none};
@@ -67,6 +89,10 @@ private:
 
 	// option
 	std::string m_option;
+
+	QueryTarget m_query_target{QueryTarget::none};
+
+	bool m_valid{false};
 };
 
 } // end of namespace hrb

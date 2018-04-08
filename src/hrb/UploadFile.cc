@@ -10,7 +10,6 @@
 // Created by nestal on 2/18/18.
 //
 
-#include <iostream>
 #include "UploadFile.hh"
 
 namespace hrb {

@@ -106,7 +106,6 @@ public:
 	template <typename Complete>
 	void scan_all_collections(
 		redis::Connection& db,
-		std::string_view requester,
 		Complete&& complete
 	) const;
 

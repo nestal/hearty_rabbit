@@ -10,10 +10,10 @@
 
 #include <boost/utility/string_view.hpp>
 
+#include <optional>
 #include <string>
 #include <string_view>
 #include <tuple>
-#include <iostream>
 
 namespace hrb {
 
@@ -21,24 +21,37 @@ std::string url_encode(std::string_view in);
 
 std::string url_decode(std::string_view in);
 
-std::tuple<std::string_view, char> split_front(std::string_view& in, std::string_view value);
+std::tuple<std::string_view, char> split_left(std::string_view& in, std::string_view value);
+std::tuple<std::string_view, char> split_right(std::string_view& in, std::string_view value);
 std::string_view split_front_substring(std::string_view& in, std::string_view substring);
 
-template <typename... Fields>
-auto find_fields(std::string_view remain, Fields... fields)
+template <typename OutType, typename... Fields>
+auto basic_find_fields(std::string_view remain, Fields... fields)
 {
-	typename RepeatingTuple<std::string_view, sizeof...(fields)>::type result;
+	typename RepeatingTuple<OutType, sizeof...(fields)>::type result;
 	while (!remain.empty())
 	{
 		// Don't remove the temporary variables because the order
 		// of execution in function parameters is undefined.
 		// i.e. don't need change to callback(split_front("=;&"), split_front(";&"))
-		auto [name, match]  = split_front(remain, "=;&");
-		auto value = (match == '=' ? std::get<0>(split_front(remain, ";&")) : std::string_view{});
+		auto [name, match]  = split_left(remain, "=;&");
+		auto value = (match == '=' ? std::get<0>(split_left(remain, ";&")) : std::string_view{});
 
 		match_field(result, name, value, fields...);
 	}
 	return result;
+}
+
+template <typename... Fields>
+auto find_fields(std::string_view remain, Fields... fields)
+{
+	return basic_find_fields<std::string_view>(remain, std::forward<Fields>(fields)...);
+}
+
+template <typename... Fields>
+auto find_optional_fields(std::string_view remain, Fields... fields)
+{
+	return basic_find_fields<std::optional<std::string_view>>(remain, std::forward<Fields>(fields)...);
 }
 
 template <std::size_t index, typename ResultTuple>
@@ -46,7 +59,7 @@ void parse_token(std::string_view& remain, std::string_view value, ResultTuple& 
 {
 	static_assert(index < std::tuple_size<ResultTuple>::value);
 	static_assert(std::is_same<std::tuple_element_t<index, ResultTuple>, std::string_view>::value);
-	std::get<index>(tuple) = std::get<0>(split_front(remain, value));
+	std::get<index>(tuple) = std::get<0>(split_left(remain, value));
 
 	if constexpr (index + 1 < std::tuple_size<ResultTuple>::value)
 		parse_token<index+1>(remain, value, tuple);

@@ -11,7 +11,10 @@
 #include "util/Exception.hh"
 #include "util/Log.hh"
 #include "hrb/Server.hh"
+#include "net/Listener.hh"
+#include "net/Session.hh"
 
+#include <boost/asio/ssl/context.hpp>
 #include <boost/exception/errinfo_api_function.hpp>
 #include <boost/exception/info.hpp>
 #include <boost/exception/diagnostic_information.hpp>
@@ -23,6 +26,45 @@
 #include <cstdlib>
 
 namespace hrb {
+
+void run(Server& server, const Configuration& cfg)
+{
+	OpenSSL_add_all_digests();
+	auto const threads = std::max(1UL, cfg.thread_count());
+
+	boost::asio::ssl::context ctx{boost::asio::ssl::context::sslv23};
+	ctx.set_options(
+		boost::asio::ssl::context::default_workarounds |
+		boost::asio::ssl::context::no_sslv2
+	);
+	ctx.use_certificate_chain_file(cfg.cert_chain().string());
+	ctx.use_private_key_file(cfg.private_key().string(), boost::asio::ssl::context::pem);
+
+	// Create and launch a listening port for HTTP and HTTPS
+	std::make_shared<Listener>(
+		server.get_io_context(),
+		[&server](){return server.start_session();},
+		nullptr,
+		cfg
+	)->run();
+	std::make_shared<Listener>(
+		server.get_io_context(),
+		[&server](){return server.start_session();},
+		&ctx,
+		cfg
+	)->run();
+
+	// make sure we load the certificates and listen before dropping root privileges
+	server.drop_privileges();
+
+	// Run the I/O service on the requested number of threads
+	std::vector<std::thread> v;
+	v.reserve(threads - 1);
+	for (auto i = threads - 1; i > 0; --i)
+		v.emplace_back([&server]{server.get_io_context().run();});
+
+	server.get_io_context().run();
+}
 
 int StartServer(const Configuration& cfg)
 {
@@ -43,7 +85,7 @@ int StartServer(const Configuration& cfg)
 	else
 	{
 		Log(LOG_NOTICE, "hearty_rabbit (version %1%) starting", constants::version);
-		server.run();
+		run(server, cfg);
 		return EXIT_SUCCESS;
 	}
 }

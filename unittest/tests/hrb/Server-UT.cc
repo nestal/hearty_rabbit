@@ -15,7 +15,7 @@
 #include "CheckResource.hh"
 
 #include "hrb/Server.hh"
-#include "hrb/Server.ipp"
+#include "hrb/SessionHandler.ipp"
 #include "hrb/Ownership.ipp"
 
 #include "crypto/Random.hh"
@@ -146,7 +146,8 @@ TEST_CASE("General server tests", "[normal]")
 
 	auto session = create_session("testuser", "password", cfg);
 
-	Server subject{cfg};
+	Server server{cfg};
+	auto subject = server.start_session();
 	REQUIRE(cfg.web_root() == (current_src/"../../../lib").lexically_normal());
 
 	SECTION("Request with empty body")
@@ -161,7 +162,7 @@ TEST_CASE("General server tests", "[normal]")
 
 			req.target("/");
 			subject.handle_request(std::move(req), std::ref(checker), {});
-			REQUIRE(subject.get_io_context().run_for(10s) > 0);
+			REQUIRE(server.get_io_context().run_for(10s) > 0);
 			REQUIRE(checker.tested());
 		}
 
@@ -201,7 +202,7 @@ TEST_CASE("General server tests", "[normal]")
 			req.target("/");
 			req.set(boost::beast::http::field::cookie, session.set_cookie());
 			subject.handle_request(std::move(req), std::ref(checker), session);
-			REQUIRE(subject.get_io_context().run_for(10s) > 0);
+			REQUIRE(server.get_io_context().run_for(10s) > 0);
 			REQUIRE(checker.tested());
 		}
 
@@ -233,7 +234,7 @@ TEST_CASE("General server tests", "[normal]")
 			{
 				req.target("/");
 				subject.handle_request(std::move(req), std::ref(home_page), {});
-				REQUIRE(subject.get_io_context().run_for(10s) > 0);
+				REQUIRE(server.get_io_context().run_for(10s) > 0);
 				expected = &home_page;
 			}
 			SECTION("requests to others will get not found")
@@ -264,7 +265,7 @@ TEST_CASE("General server tests", "[normal]")
 			{
 				req.set(http::field::content_type, "application/x-www-form-urlencoded");
 				subject.handle_request(std::move(req), std::ref(login_incorrect), {});
-				REQUIRE(subject.get_io_context().run_for(10s) > 0);
+				REQUIRE(server.get_io_context().run_for(10s) > 0);
 				REQUIRE(login_incorrect.tested());
 				REQUIRE(login_incorrect[http::field::cookie] == "");
 			}
@@ -308,7 +309,7 @@ TEST_CASE("General server tests", "[normal]")
 			GenericStatusChecker checker{http::status::created};
 			req.set(boost::beast::http::field::cookie, session.set_cookie());
 			subject.handle_request(std::move(req), std::ref(checker), session);
-			REQUIRE(subject.get_io_context().run_for(10s) > 0);
+			REQUIRE(server.get_io_context().run_for(10s) > 0);
 			REQUIRE(checker.tested());
 			REQUIRE(checker[http::field::location] != "");
 
@@ -320,21 +321,21 @@ TEST_CASE("General server tests", "[normal]")
 			get_blob.method(http::verb::get);
 			get_blob.target(location);
 
-			subject.get_io_context().restart();
+			server.get_io_context().restart();
 
 			SECTION("get back the uploaded blob with valid session")
 			{
 				get_blob.set(boost::beast::http::field::cookie, session.set_cookie());
 				FileResponseChecker blob{http::status::ok, __FILE__};
 				subject.handle_request(std::move(get_blob), std::ref(blob), session);
-				REQUIRE(subject.get_io_context().run_for(3610s) > 0);
+				REQUIRE(server.get_io_context().run_for(3610s) > 0);
 				REQUIRE(blob.tested());
 			}
 			SECTION("get 403 without valid session and delay")
 			{
 				GenericStatusChecker forbidden{http::status::forbidden};
 				subject.handle_request(std::move(get_blob), std::ref(forbidden), {});
-				REQUIRE(subject.get_io_context().run_for(10s) > 0);
+				REQUIRE(server.get_io_context().run_for(10s) > 0);
 				REQUIRE(forbidden.tested());
 			}
 		}
@@ -342,7 +343,7 @@ TEST_CASE("General server tests", "[normal]")
 		{
 			GenericStatusChecker checker{http::status::forbidden};
 			subject.handle_request(std::move(req), std::ref(checker), {});
-			REQUIRE(subject.get_io_context().run_for(10s) > 0);
+//			REQUIRE(server.get_io_context().run_for(10s) > 0);
 			REQUIRE(checker.tested());
 		}
 	}

@@ -11,14 +11,27 @@
 //
 
 #include <catch.hpp>
-#include <iostream>
 
 #include "hrb/URLIntent.hh"
+#include "util/Escape.hh"
 
 using namespace hrb;
 
 TEST_CASE("path URL")
 {
+	URLIntent option_only{"/?option"};
+	REQUIRE(option_only.action() == URLIntent::Action::home);
+	REQUIRE(option_only.user() == "");
+	REQUIRE(option_only.collection() == "");
+	REQUIRE(option_only.filename() == "");
+	REQUIRE(option_only.option() == "option");
+	REQUIRE(option_only.valid());
+
+	URLIntent lib_svg{"/lib/svg"};
+	REQUIRE(lib_svg.action() == URLIntent::Action::lib);
+	REQUIRE(lib_svg.filename() == "svg");
+	REQUIRE(lib_svg.valid());
+
 	URLIntent empty{""};
 	REQUIRE(empty.action() == URLIntent::Action::none);
 	REQUIRE(empty.collection() == "");
@@ -50,6 +63,15 @@ TEST_CASE("path URL")
 	REQUIRE(view_filename.str() == "/view/file/fname/");
 	REQUIRE(view_filename.valid());
 
+	URLIntent view_json{"/view/user_name/a_col/lec/tion/?json"};
+	REQUIRE(view_json.action() == URLIntent::Action::view);
+	REQUIRE(view_json.user() == "user_name");
+	REQUIRE(view_json.collection() == "a_col/lec/tion");
+	REQUIRE(view_json.filename() == "");
+	REQUIRE(view_json.option() == "json");
+	REQUIRE(view_json.str() == "/view/user_name/a_col/lec/tion/?json");
+	REQUIRE(view_json.valid());
+
 	URLIntent slash_view_slash{"/view/"};
 	REQUIRE(slash_view_slash.action() == URLIntent::Action::view);
 	REQUIRE(slash_view_slash.user() == "");
@@ -71,8 +93,18 @@ TEST_CASE("path URL")
 	REQUIRE(slash_view_slash_user.user() == "sumyung");
 	REQUIRE(slash_view_slash_user.collection() == "");
 	REQUIRE(slash_view_slash_user.filename() == "");
+	REQUIRE(slash_view_slash_user.option() == "");
 	REQUIRE(slash_view_slash_user.str() == "/view/sumyung/");
 	REQUIRE(slash_view_slash_user.valid());
+
+	URLIntent slash_view_slash_user_option{"/view/sumyung?really"};
+	REQUIRE(slash_view_slash_user_option.action() == URLIntent::Action::view);
+	REQUIRE(slash_view_slash_user_option.user() == "sumyung");
+	REQUIRE(slash_view_slash_user_option.collection() == "");
+	REQUIRE(slash_view_slash_user_option.filename() == "");
+	REQUIRE(slash_view_slash_user_option.option() == "really");
+	REQUIRE(slash_view_slash_user_option.str() == "/view/sumyung/?really");
+	REQUIRE(slash_view_slash_user_option.valid());
 
 	URLIntent slash_upload_slash_user_slash{"/upload/not_exists/"};
 	REQUIRE(slash_upload_slash_user_slash.action() == URLIntent::Action::upload);
@@ -128,9 +160,9 @@ TEST_CASE("path URL")
 	URLIntent path_with_option{"/view/user/path/id?rendition"};
 	REQUIRE(path_with_option.action() == URLIntent::Action::view);
 	REQUIRE(path_with_option.user() == "user");
-	REQUIRE(path_with_option.collection() == "path/id");
-	REQUIRE(path_with_option.filename() == "");
 	REQUIRE(path_with_option.option() == "rendition");
+	REQUIRE(path_with_option.filename() == "");
+	REQUIRE(path_with_option.collection() == "path/id");
 	REQUIRE(path_with_2slashes.valid());
 
 	URLIntent path_with_question{"/view/user/path/big_id?"};
@@ -199,15 +231,32 @@ TEST_CASE("path URL")
 	REQUIRE(query.action() == URLIntent::Action::query);
 	REQUIRE(query.user() == "");
 	REQUIRE(query.collection() == "");
-	REQUIRE(query.filename() == "latest");
-	REQUIRE(query.valid());
+	REQUIRE(query.query_target() == URLIntent::QueryTarget::none);
+	REQUIRE(query.filename() == "");
+	REQUIRE_FALSE(query.valid());
 
-	URLIntent query2{"/query/coll/oldest"};
+	URLIntent query2{"/query/collection?oldest"};
 	REQUIRE(query2.action() == URLIntent::Action::query);
 	REQUIRE(query2.user() == "");
-	REQUIRE(query2.collection() == "coll");
-	REQUIRE(query2.filename() == "oldest");
+	REQUIRE(query2.query_target() == URLIntent::QueryTarget::collection);
+	REQUIRE(query2.option() == "oldest");
 	REQUIRE(query2.valid());
+
+	URLIntent query_user{"/query/collection?user=sum"};
+	REQUIRE(query_user.action() == URLIntent::Action::query);
+	REQUIRE(query_user.user() == "");
+	REQUIRE(query_user.query_target() == URLIntent::QueryTarget::collection);
+	REQUIRE(query_user.option() == "user=sum");
+	REQUIRE(query_user.valid());
+
+	URLIntent query_question{"/query/collection?user=quest?ion"};
+	REQUIRE(query_question.action() == URLIntent::Action::query);
+	REQUIRE(query_question.user() == "");
+	REQUIRE(query_question.query_target() == URLIntent::QueryTarget::collection);
+	REQUIRE(query_question.option() == "user=quest?ion");
+	REQUIRE(query_question.valid());
+
+	REQUIRE(std::get<0>(find_fields(query_user.option(), "user")) == "sum");
 
 	URLIntent query3{"/query"};
 	REQUIRE(query3.action() == URLIntent::Action::query);

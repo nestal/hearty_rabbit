@@ -29,6 +29,8 @@ std::string_view resource_mime(const std::string& ext)
 	else if (ext == ".js") return "application/javascript";
 	else return "application/octet-stream";
 }
+
+const std::string_view index_needle{"<script>var dir = {"};
 }
 
 template <typename Iterator>
@@ -91,6 +93,14 @@ WebResources::Response WebResources::find_dynamic(std::string_view filename, int
 bool WebResources::is_static(std::string_view filename) const
 {
 	return m_static.find(filename) != m_static.end();
+}
+
+WebResources::Response WebResources::inject_json(http::status status, std::string&& json, int version) const
+{
+	auto res = find_dynamic("index.html", version);
+	res.body().extra(hrb::index_needle, std::move(json), 1, 1);
+	res.result(status);
+	return res;
 }
 
 WebResources::Response WebResources::Resource::get(int version, bool dynamic) const

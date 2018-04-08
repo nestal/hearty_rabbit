@@ -19,6 +19,9 @@
 
 #include <json.hpp>
 
+#include <boost/range/adaptor/filtered.hpp>
+#include <boost/range/adaptor/transformed.hpp>
+
 #include <vector>
 
 #pragma once
@@ -54,6 +57,7 @@ public:
 	static const std::string_view m_dir_prefix;
 	static const std::string_view m_list_prefix;
 	static const std::string_view m_public_blobs;
+	static const std::string_view m_public_coll_entries;
 
 public:
 	Collection(std::string_view user, std::string_view path);
@@ -77,7 +81,7 @@ public:
 		redis::Connection& db,
 		std::string_view requester,
 		Complete&& complete
-	) const ;
+	) const;
 
 	template <typename CollectionCallback, typename Complete>
 	static void scan(redis::Connection& db, std::string_view user, long cursor,
@@ -86,13 +90,16 @@ public:
 	);
 
 	template <typename Complete>
-	static void scan_all(redis::Connection& db, std::string_view owner, std::string_view requester, Complete&& complete);
+	static void scan_all(redis::Connection& db, std::string_view owner, Complete&& complete);
 
 	const std::string& user() const {return m_user;}
 	const std::string& path() const {return m_path;}
 
-private:
-	std::string serialize(redis::Reply& reply, std::string_view requester) const;
+	static nlohmann::json serialize(
+		const redis::Reply& hash_getall_reply,
+		std::string_view requester,
+		std::string_view owner
+	);
 
 private:
 	std::string m_user;
@@ -125,14 +132,14 @@ void Ownership::Collection::scan(
 					auto cursor = cursor_reply.to_int();
 
 					// call the callback once to handle one collection
-					dirs.foreach_kv_pair([&cb](auto&& key, auto&& value)
+					for (auto&& p : dirs.kv_pairs())
 					{
-						auto sv = value.as_string();
+						auto sv = p.value().as_string();
 						if (sv.empty())
 							return;
 
-						cb(key, nlohmann::json::parse(sv));
-					});
+						cb(p.key(), nlohmann::json::parse(sv));
+					};
 
 					// if comp return true, keep scanning with the same callback and
 					// comp as completion routine
@@ -155,13 +162,11 @@ template <typename Complete>
 void Ownership::Collection::scan_all(
 	redis::Connection& db,
 	std::string_view owner,
-	std::string_view requester,
 	Complete&& complete
 )
 {
 	auto jdoc = std::make_shared<nlohmann::json>();
 	jdoc->emplace("owner",    std::string{owner});
-	jdoc->emplace("username", std::string{requester});
 	jdoc->emplace("colls",    nlohmann::json::object());
 
 	scan(db, owner, 0,
@@ -221,11 +226,13 @@ void Ownership::Collection::set_permission(
 		local updated  = ARGV[2] .. string.sub(original, 2, -1)
 		redis.call('HSET', KEYS[1], ARGV[1], updated)
 		if ARGV[2] == '*' then
+			redis.call('HSET', KEYS[3], ARGV[1], updated)
 			if redis.call('LPUSH', KEYS[2], ARGV[1]) > 100 then
-				redis.call('LPOP', KEYS[2])
+				redis.call('HDEL', KEYS[3], redis.call('RPOP', KEYS[2]))
 			end
 		else
-			redis.call('LREM', KEYS[2], ARGV[1])
+			redis.call('LREM', KEYS[2], 0, ARGV[1])
+			redis.call('HDEL', KEYS[3], ARGV[1])
 		end
 	)__";
 	db.command(
@@ -235,7 +242,7 @@ void Ownership::Collection::set_permission(
 				Log(LOG_WARNING, "Collection::set_permission(): script error: %1%", reply.as_error());
 			comp(std::move(ec));
 		},
-		"EVAL %s 2 %b%b:%b %b %b %b",
+		"EVAL %s 3 %b%b:%b %b %b %b %b",
 		lua,
 
 		// KEYS[1]: dir:<user>:<collection>
@@ -243,8 +250,11 @@ void Ownership::Collection::set_permission(
 		m_user.data(), m_user.size(),
 		m_path.data(), m_path.size(),
 
-		// KEYS[2]: public list of blob references
+		// KEYS[2]: list of public blob IDs
 		m_public_blobs.data(), m_public_blobs.size(),
+
+		// KEYS[3]: hash from public blob IDs to collection entries
+		m_public_coll_entries.data(), m_public_coll_entries.size(),
 
 		// ARGV[1]: blob ID
 		blob.data(), blob.size(),
@@ -282,7 +292,11 @@ void Ownership::Collection::serialize(
 			requester=std::string{requester}
 		](auto&& reply, std::error_code&& ec) mutable
 		{
-			comp(serialize(reply, requester), std::move(ec));
+			auto jdoc = serialize(reply, requester, m_user);
+			jdoc.emplace("owner", m_user);
+			jdoc.emplace("collection", m_path);
+
+			comp(std::move(jdoc), std::move(ec));
 		},
 		"HGETALL %b%b:%b",
 		m_dir_prefix.data(), m_dir_prefix.size(),
@@ -377,11 +391,10 @@ void Ownership::scan_collections(
 template <typename Complete>
 void Ownership::scan_all_collections(
 	redis::Connection& db,
-	std::string_view requester,
 	Complete&& complete
 ) const
 {
-	return Collection::scan_all(db, m_user, requester, std::forward<Complete>(complete));
+	return Collection::scan_all(db, m_user, std::forward<Complete>(complete));
 }
 
 template <typename Complete>
@@ -456,21 +469,10 @@ void Ownership::list_public_blobs(
 	db.command(
 		[comp=std::forward<Complete>(complete)](auto&& reply, auto ec)
 		{
-			for (auto&& en : reply)
-			{
-				auto s = en.as_string();
-				if (s.size() >= ObjectID{}.size())
-				{
-					// the first 20 bytes are the blob ID
-					auto blob = raw_to_object_id(s.substr(0, ObjectID{}.size()));
-					s.remove_prefix(ObjectID{}.size());
-
-					comp(*blob);
-				}
-			}
+			comp(Collection::serialize(reply, "", ""), ec);
 		},
-		"LRANGE %b 0 -1",
-		Collection::m_public_blobs.data(), Collection::m_public_blobs.size()
+		"HGETALL %b",
+		Collection::m_public_coll_entries.data(), Collection::m_public_coll_entries.size()
 	);
 }
 
@@ -487,15 +489,30 @@ void Ownership::query_blob(redis::Connection& db, const ObjectID& blob, Complete
 	)__";
 
 	db.command(
-		[comp=std::forward<Complete>(complete)](auto&& reply, auto ec)
+		[user=m_user, comp=std::forward<Complete>(complete)](auto&& reply, auto ec)
 		{
-			Log(LOG_INFO, "script reply: %1%", reply.as_error());
+			if (!reply)
+				Log(LOG_WARNING, "query_blob() script reply: %1%", reply.as_error());
 
-			reply.foreach_kv_pair([&comp](auto&& key, auto&& val)
+			struct Blob
 			{
-				Collection coll{key};
-				comp(coll.user(), coll.path(), CollEntry{val.as_string()});
-			});
+				std::string user;
+				std::string coll;
+				CollEntry   entry;
+			};
+
+			auto kv2blob = [](auto&& kv)
+			{
+				Collection coll{kv.key()};
+				return Blob{coll.user(), coll.path(), CollEntry{kv.value().as_string()}};
+			};
+			auto permitted = [&user](const Blob& blob)
+			{
+				return user == blob.user || blob.entry.permission().allow(user);
+			};
+
+			using namespace boost::adaptors;
+			comp(reply.kv_pairs() | transformed(kv2blob) | filtered(permitted), ec);
 		},
 		"EVAL %s 1 %b:%b %b",
 		lua,

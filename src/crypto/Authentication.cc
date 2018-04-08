@@ -231,8 +231,8 @@ std::optional<Authentication::Cookie> parse_cookie(std::string_view cookie)
 {
 	while (!cookie.empty())
 	{
-		auto [name, match] = split_front(cookie, "=");
-		auto value = (match == '=' ? std::get<0>(split_front(cookie, ";")) : std::string_view{});
+		auto [name, match] = split_left(cookie, "=");
+		auto value = (match == '=' ? std::get<0>(split_left(cookie, ";")) : std::string_view{});
 
 		if (Authentication::Cookie result{}; name == "id" && value.size() == result.size() * 2)
 		{

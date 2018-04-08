@@ -73,13 +73,6 @@ BlobDatabase::BlobResponse BlobDatabase::response(
 	if (invalid != rendition.end())
 		return http::response<MMapResponseBody>{http::status::bad_request, version};
 
-	if (etag == to_quoted_hex(id))
-	{
-		http::response<MMapResponseBody> res{http::status::not_modified, version};
-		set_cache_control(res, id);
-		return res;
-	}
-
 	auto path = dest(id);
 
 	std::error_code ec;
