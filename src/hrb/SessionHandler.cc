@@ -107,8 +107,11 @@ void SessionHandler::on_logout(const EmptyRequest& req, EmptyResponseSender&& se
 {
 	m_auth.destroy_session(*m_db, [this, send=std::move(send), version=req.version()](auto&& ec) mutable
 	{
+		// clear the user credential.
+		// Session will set the cookie in the response so no need to set here
+		m_auth = Authentication{};
+
 		auto&& res = see_other("/", version);
-		res.set(http::field::set_cookie, Authentication{}.set_cookie());
 		res.set(http::field::cache_control, "no-cache, no-store, must-revalidate");
 		res.keep_alive(false);
 		send(std::move(res));
@@ -271,7 +274,9 @@ http::response<SplitBuffers> SessionHandler::file_request(const URLIntent& inten
 
 bool SessionHandler::renewed_auth() const
 {
-	return m_auth.cookie() != m_request_cookie;
+	return m_request_cookie.has_value()      ?  // if request cookie is present, check against the new cookie
+		*m_request_cookie != m_auth.cookie() :  // otherwise, there's no cookie in the original request,
+		m_auth.valid();                         // if we have a valid cookie now, then the session is renewed.
 }
 
 } // end of namespace hrb

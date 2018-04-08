@@ -87,14 +87,12 @@ void SessionHandler::on_request_header(
 
 	// Everything else require a valid session.
 	auto cookie = header[http::field::cookie];
-	auto session = parse_cookie({cookie.data(), cookie.size()});
-	if (!session)
+	m_request_cookie = parse_cookie({cookie.data(), cookie.size()});
+	if (!m_request_cookie)
 		return complete(RequestBodyType::empty, std::error_code{});
 
-	m_request_cookie = *session;
-
 	Authentication::verify_session(
-		m_request_cookie,
+		*m_request_cookie,
 		*m_db,
 		session_length(),
 		[

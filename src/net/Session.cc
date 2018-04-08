@@ -204,7 +204,6 @@ void Session::send_response(Response&& response)
 	));
 }
 
-
 void Session::handle_read_error(std::string_view where, boost::system::error_code ec)
 {
 	assert(m_server.has_value());

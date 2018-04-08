@@ -18,8 +18,9 @@
 
 #include <json.hpp>
 
-#include <system_error>
 #include <functional>
+#include <optional>
+#include <system_error>
 #include <utility>
 
 namespace hrb {
@@ -120,7 +121,7 @@ private:
 
 private:
 	std::shared_ptr<redis::Connection>     m_db;
-	Authentication::Cookie  m_request_cookie;
+	std::optional<Authentication::Cookie>  m_request_cookie;
 	Authentication          m_auth;
 	WebResources&           m_lib;
 	BlobDatabase&           m_blob_db;
