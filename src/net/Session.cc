@@ -13,10 +13,8 @@
 #include "Session.hh"
 
 #include "crypto/Authentication.hh"
-
-#include "hrb/Server.hh"
 #include "hrb/SessionHandler.ipp"
-
+#include "net/SplitBuffers.hh"
 #include "util/Error.hh"
 #include "util/Log.hh"
 
@@ -28,7 +26,7 @@ using tcp = boost::asio::ip::tcp;       // from <boost/asio/ip/tcp.hpp>
 namespace http = boost::beast::http;    // from <boost/beast/http.hpp>
 
 Session::Session(
-	Server& server,
+	SessionHandler&& server,
 	boost::asio::ip::tcp::socket socket,
 	boost::asio::ssl::context&  ssl_ctx,
 	std::size_t nth
@@ -36,7 +34,7 @@ Session::Session(
 	m_socket{std::move(socket)},
 	m_stream{m_socket, ssl_ctx},
 	m_strand{m_socket.get_executor()},
-	m_server{server.start_session()},
+	m_server{std::move(server)},
 	m_nth_session{nth}
 {
 }

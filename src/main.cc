@@ -57,7 +57,7 @@ void run(Server& server, const Configuration& cfg)
 		cfg.listen_https(),
 		[&server](auto&& sock, auto& ssl, auto nth)
 		{
-			return std::make_shared<Session>(server, std::move(sock), ssl, nth);
+			return std::make_shared<Session>(server.start_session(), std::move(sock), ssl, nth);
 		},
 		&ctx,
 		https_root
