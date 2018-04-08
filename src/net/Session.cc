@@ -15,7 +15,7 @@
 #include "crypto/Authentication.hh"
 
 #include "hrb/Server.hh"
-#include "hrb/Server.ipp"
+#include "hrb/SessionHandler.ipp"
 
 #include "util/Error.hh"
 #include "util/Log.hh"

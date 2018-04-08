@@ -12,7 +12,7 @@
 
 #pragma once
 
-#include "Server.hh"
+#include "SessionHandler.hh"
 
 #include "Ownership.ipp"
 #include "UploadFile.hh"

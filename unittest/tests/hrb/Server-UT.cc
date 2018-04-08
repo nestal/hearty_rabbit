@@ -15,7 +15,7 @@
 #include "CheckResource.hh"
 
 #include "hrb/Server.hh"
-#include "hrb/Server.ipp"
+#include "hrb/SessionHandler.ipp"
 #include "hrb/Ownership.ipp"
 
 #include "crypto/Random.hh"
