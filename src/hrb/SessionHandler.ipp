@@ -152,10 +152,15 @@ void SessionHandler::on_request_body(Request&& req, Send&& send)
 			return send(file_request(intent, req[http::field::if_none_match], req.version()));
 
 		if (intent.action() == URLIntent::Action::home)
-			return Ownership{m_auth.user()}.scan_all_collections(
-				*m_db,
-				SendJSON{std::move(send), m_auth.user(), req.version(), &m_lib}
-			);
+			return m_auth.valid() ?
+				Ownership{m_auth.user()}.scan_all_collections(
+					*m_db,
+					SendJSON{std::move(send), m_auth.user(), req.version(), &m_lib}
+				) :
+				Ownership::list_public_blobs(
+					*m_db,
+					SendJSON{std::move(send), m_auth.user(), req.version(), &m_lib}
+				);
 
 		if (intent.action() == URLIntent::Action::query)
 			return on_query({std::move(req), std::move(intent), m_auth.user()}, std::forward<Send>(send));
@@ -324,13 +329,10 @@ void SessionHandler::query_blob_set(const URLIntent& intent, unsigned version, S
 {
 	auto [pub, json] = find_optional_fields(intent.option(), "public", "json");
 
-	if (pub.has_value())
-	{
-		Ownership::list_public_blobs(
-			*m_db,
-			SendJSON{std::forward<Send>(send), m_auth.user(), version, !json.has_value() ? &m_lib : nullptr}
-		);
-	}
+	Ownership::list_public_blobs(
+		*m_db,
+		SendJSON{std::forward<Send>(send), m_auth.user(), version, !json.has_value() ? &m_lib : nullptr}
+	);
 }
 
 } // end of namespace
