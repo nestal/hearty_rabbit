@@ -60,6 +60,7 @@ void Ownership::BlobBackLink::unlink(redis::Connection& db) const
 const std::string_view Ownership::Collection::m_dir_prefix = "dir:";
 const std::string_view Ownership::Collection::m_list_prefix = "dirs:";
 const std::string_view Ownership::Collection::m_public_blobs = "public-blobs";
+const std::string_view Ownership::Collection::m_public_coll_entries = "public-coll-entries";
 
 Ownership::Collection::Collection(std::string_view user, std::string_view path) :
 	m_user{user},
@@ -149,13 +150,10 @@ void Ownership::Collection::unlink(redis::Connection& db, const ObjectID& id)
 	);
 }
 
-nlohmann::json Ownership::Collection::serialize(redis::Reply& reply, std::string_view requester) const
+nlohmann::json Ownership::Collection::serialize(const redis::Reply& reply, std::string_view requester, std::string_view owner)
 {
 	// TODO: get the cover here... where to find a redis::Connection?
 	auto jdoc = nlohmann::json::object();
-
-	jdoc.emplace("owner", m_user);
-	jdoc.emplace("collection", m_path);
 
 	auto elements = nlohmann::json::object();
 	for (auto&& kv : reply.kv_pairs())
@@ -167,7 +165,7 @@ nlohmann::json Ownership::Collection::serialize(redis::Reply& reply, std::string
 		CollEntry entry{perm.as_string()};
 
 		// check permission: allow allow owner (i.e. m_user)
-		if (blob_id && (m_user == requester || entry.permission().allow(requester)))
+		if (blob_id && (owner == requester || entry.permission().allow(requester)))
 		{
 			try
 			{

@@ -57,6 +57,7 @@ public:
 	static const std::string_view m_dir_prefix;
 	static const std::string_view m_list_prefix;
 	static const std::string_view m_public_blobs;
+	static const std::string_view m_public_coll_entries;
 
 public:
 	Collection(std::string_view user, std::string_view path);
@@ -94,8 +95,11 @@ public:
 	const std::string& user() const {return m_user;}
 	const std::string& path() const {return m_path;}
 
-private:
-	nlohmann::json serialize(redis::Reply& reply, std::string_view requester) const;
+	static nlohmann::json serialize(
+		const redis::Reply& hash_getall_reply,
+		std::string_view requester,
+		std::string_view owner
+	);
 
 private:
 	std::string m_user;
@@ -222,11 +226,13 @@ void Ownership::Collection::set_permission(
 		local updated  = ARGV[2] .. string.sub(original, 2, -1)
 		redis.call('HSET', KEYS[1], ARGV[1], updated)
 		if ARGV[2] == '*' then
+			redis.call('HSET', KEYS[3], ARGV[1], updated)
 			if redis.call('LPUSH', KEYS[2], ARGV[1]) > 100 then
-				redis.call('RPOP', KEYS[2])
+				redis.call('HDEL', KEYS[3], redis.call('RPOP', KEYS[2]))
 			end
 		else
-			redis.call('LREM', KEYS[2], 1, ARGV[1])
+			redis.call('LREM', KEYS[2], 0, ARGV[1])
+			redis.call('HDEL', KEYS[3], ARGV[1])
 		end
 	)__";
 	db.command(
@@ -236,7 +242,7 @@ void Ownership::Collection::set_permission(
 				Log(LOG_WARNING, "Collection::set_permission(): script error: %1%", reply.as_error());
 			comp(std::move(ec));
 		},
-		"EVAL %s 2 %b%b:%b %b %b %b",
+		"EVAL %s 3 %b%b:%b %b %b %b %b",
 		lua,
 
 		// KEYS[1]: dir:<user>:<collection>
@@ -244,8 +250,11 @@ void Ownership::Collection::set_permission(
 		m_user.data(), m_user.size(),
 		m_path.data(), m_path.size(),
 
-		// KEYS[2]: public list of blob references
+		// KEYS[2]: list of public blob IDs
 		m_public_blobs.data(), m_public_blobs.size(),
+
+		// KEYS[3]: hash from public blob IDs to collection entries
+		m_public_coll_entries.data(), m_public_coll_entries.size(),
 
 		// ARGV[1]: blob ID
 		blob.data(), blob.size(),
@@ -283,7 +292,11 @@ void Ownership::Collection::serialize(
 			requester=std::string{requester}
 		](auto&& reply, std::error_code&& ec) mutable
 		{
-			comp(serialize(reply, requester), std::move(ec));
+			auto jdoc = serialize(reply, requester, m_user);
+			jdoc.emplace("owner", m_user);
+			jdoc.emplace("collection", m_path);
+
+			comp(std::move(jdoc), std::move(ec));
 		},
 		"HGETALL %b%b:%b",
 		m_dir_prefix.data(), m_dir_prefix.size(),
@@ -456,28 +469,10 @@ void Ownership::list_public_blobs(
 	db.command(
 		[comp=std::forward<Complete>(complete)](auto&& reply, auto ec)
 		{
-			// redis::Reply can be used as a boost range because it has begin()/end() (i.e.
-			// treated as an array). Each redis::Reply in the "reply" array contains a
-			// 20-byte string that should be ObjectIDs.
-
-			auto jdoc = nlohmann::json::object();
-			auto elements = nlohmann::json::object();
-			for (auto&& raw_oid : reply)
-			{
-				auto opt_oid = raw_to_object_id(raw_oid.as_string().substr(0, ObjectID{}.size()));
-				if (opt_oid.has_value())
-				{
-					auto entry = nlohmann::json::object();
-					entry.emplace("perm", "public");
-					entry.emplace("mime", "image/jpeg");    // WTF??
-					elements.emplace(to_hex(*opt_oid), std::move(entry));
-				}
-			}
-			jdoc.emplace("elements", std::move(elements));
-			comp(std::move(jdoc), ec);
+			comp(Collection::serialize(reply, "", ""), ec);
 		},
-		"LRANGE %b 0 -1",
-		Collection::m_public_blobs.data(), Collection::m_public_blobs.size()
+		"HGETALL %b",
+		Collection::m_public_coll_entries.data(), Collection::m_public_coll_entries.size()
 	);
 }
 
