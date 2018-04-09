@@ -454,7 +454,7 @@ void Ownership::find_reference(redis::Connection& db, const ObjectID& blob, Comp
 					comp(ref.path());
 			}
 		},
-		"SMEMBERS %b:%b",
+		"SMEMBERS %b%b",
 		BlobBackLink::m_prefix.data(), BlobBackLink::m_prefix.size(),
 		blob.data(), blob.size()
 	);
@@ -501,14 +501,9 @@ void Ownership::query_blob(redis::Connection& db, const ObjectID& blob, Complete
 				CollEntry   entry;
 			};
 
-			Log(LOG_WARNING, "blob query returns %1%", reply.array_size());
-
 			auto kv2blob = [](auto&& kv)
 			{
 				Collection coll{kv.key()};
-
-				Log(LOG_WARNING, "blob = %1% %2% %3%", kv.key(), kv.value().as_string());
-
 				return Blob{coll.user(), coll.path(), CollEntry{kv.value().as_string()}};
 			};
 			auto permitted = [&user](const Blob& blob)
