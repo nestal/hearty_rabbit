@@ -45,7 +45,7 @@ public:
 		std::error_code& ec
 	);
 
-	BufferView blob() const;
+	BufferView buffer() const;
 	MMap& mmap() {return m_mmap;}
 
 	const ObjectID& ID() const {return m_id;}

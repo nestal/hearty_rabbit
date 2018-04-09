@@ -79,7 +79,7 @@ BlobFile BlobFile::upload(
 	return result;
 }
 
-BufferView BlobFile::blob() const
+BufferView BlobFile::buffer() const
 {
 	return m_mmap.buffer();
 }

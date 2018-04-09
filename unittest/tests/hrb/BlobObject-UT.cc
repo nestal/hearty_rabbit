@@ -68,6 +68,23 @@ TEST_CASE("upload non-image BlobFile", "[normal]")
 	REQUIRE(!ec);
 	REQUIRE(out.size() == src.size());
 	REQUIRE(std::memcmp(out.data(), src.data(), out.size()) == 0);
+
+	SECTION("read back the original")
+	{
+		std::error_code read_ec;
+		BlobFile subject2{"/tmp/BlobFile-UT", subject.ID(), "master", cfg, read_ec};
+
+		REQUIRE(!read_ec);
+		REQUIRE(out.buffer() == subject2.buffer());
+	}
+	SECTION("read another rendition, but got the original")
+	{
+		std::error_code read_ec;
+		BlobFile subject2{"/tmp/BlobFile-UT", subject.ID(), "thumbnail", cfg, read_ec};
+
+		REQUIRE(!read_ec);
+		REQUIRE(out.buffer() == subject2.buffer());
+	}
 }
 
 TEST_CASE("upload small image BlobFile", "[normal]")
