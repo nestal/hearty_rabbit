@@ -1,9 +1,8 @@
 #!/usr/bin/python3
 import os, sys
 import requests
+import json
 import urllib.parse
-
-from io import BytesIO
 
 # download all images from nestal.net to local
 source_site = "https://www.nestal.net"
@@ -34,12 +33,23 @@ if login_response.status_code != 200 or source.cookies.get("id") == "":
 	exit(-1)
 
 album_list = source.get(source_site + "/query/collection?user=" + user + "&json")
+if album_list.status_code != 200:
+	print("cannot query album list: {0}".format(album_list.status_code))
+	exit(-1)
+
+# save album list to file
+with open(user + ".json", "w") as album_list_file:
+	json.dump(album_list.json()["colls"], album_list_file)
 
 for album_name in album_list.json()["colls"].keys():
 	print(album_name)
 
 	album = source.get(source_site + "/view/" + user + "/" + album_name + "?json")
 	print(album.json()["elements"])
+
+	# save elements list of album to file
+	with open(album_name + ".json", "w") as element_file:
+		json.dump(album.json()["elements"], element_file)
 
 	for blobid, coll_entry in album.json()["elements"].items():
 		print(blobid + "-> " + coll_entry["filename"])
