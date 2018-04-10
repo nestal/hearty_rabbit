@@ -454,7 +454,7 @@ void Ownership::find_reference(redis::Connection& db, const ObjectID& blob, Comp
 					comp(ref.path());
 			}
 		},
-		"SMEMBERS %b:%b",
+		"SMEMBERS %b%b",
 		BlobBackLink::m_prefix.data(), BlobBackLink::m_prefix.size(),
 		blob.data(), blob.size()
 	);
@@ -514,7 +514,7 @@ void Ownership::query_blob(redis::Connection& db, const ObjectID& blob, Complete
 			using namespace boost::adaptors;
 			comp(reply.kv_pairs() | transformed(kv2blob) | filtered(permitted), ec);
 		},
-		"EVAL %s 1 %b:%b %b",
+		"EVAL %s 1 %b%b %b",
 		lua,
 		BlobBackLink::m_prefix.data(), BlobBackLink::m_prefix.size(),
 		blob.data(), blob.size(),

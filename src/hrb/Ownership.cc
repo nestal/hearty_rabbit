@@ -36,7 +36,7 @@ Ownership::BlobBackLink::BlobBackLink(std::string_view user, std::string_view co
 void Ownership::BlobBackLink::link(redis::Connection& db) const
 {
 	db.command(
-		"SADD %b:%b %b%b:%b",
+		"SADD %b%b %b%b:%b",
 		m_prefix.data(), m_prefix.size(),
 		m_blob.data(), m_blob.size(),
 		Collection::m_dir_prefix.data(), Collection::m_dir_prefix.size(),
@@ -48,7 +48,7 @@ void Ownership::BlobBackLink::link(redis::Connection& db) const
 void Ownership::BlobBackLink::unlink(redis::Connection& db) const
 {
 	db.command(
-		"SREM %b:%b %b%b:%b",
+		"SREM %b%b %b%b:%b",
 		m_prefix.data(), m_prefix.size(),
 		m_blob.data(), m_blob.size(),
 		Collection::m_dir_prefix.data(), Collection::m_dir_prefix.size(),
