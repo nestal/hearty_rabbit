@@ -27,7 +27,7 @@ if login_response.status_code != 200 or dest.cookies.get("id") == "":
 
 for root, dirs, files in os.walk(blob_dir):
 	for file in files:
-		upload_url = site + "/upload/" + user + "/" + os.path.join(root, file)
+		upload_url = site + "/upload/" + user + os.path.join(root, file)[len(blob_dir):]
 		print(upload_url)
 		with open(os.path.join(root, file), "rb") as file_src:
 			dest.put(upload_url, data=file_src)

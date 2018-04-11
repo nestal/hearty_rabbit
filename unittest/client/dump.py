@@ -35,10 +35,7 @@ for album_name in album_list.json()["colls"].keys():
 	print("downloading album: {0}".format(album_name))
 	album = source.get(site + "/view/" + user + "/" + urllib.parse.quote_plus(album_name) + "?json")
 
-	album_dir = album_name
-	if album_dir == "":
-		album_dir = "_default_"
-	album_dir = os.path.join(blob_dir, album_dir)
+	album_dir = os.path.join(blob_dir, album_name)
 	if not os.path.isdir(album_dir):
 		os.mkdir(os.path.join(blob_dir, album_dir), 0o0700)
 
