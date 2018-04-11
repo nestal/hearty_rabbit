@@ -34,16 +34,18 @@ for album_name in album_list.json()["colls"].keys():
 	print("downloading album: {0}".format(album_name))
 	album = source.get(site + "/view/" + user + "/" + urllib.parse.quote_plus(album_name) + "?json")
 
-	if album_name == "":
-		album_name = "_default_"
-	if not os.path.isdir(os.path.join(blob_dir, album_name)):
-		os.mkdir(os.path.join(blob_dir, album_name), 0o0700)
+	album_dir = album_name
+	if album_dir == "":
+		album_dir = "_default_"
+	album_dir = os.path.join(blob_dir, album_dir)
+	if not os.path.isdir(album_dir):
+		os.mkdir(os.path.join(blob_dir, album_dir), 0o0700)
 
 	for blobid, coll_entry in album.json()["elements"].items():
 		source_url = site + "/view/" + user + "/" + urllib.parse.quote_plus(album_name) + "/" + blobid + "?master"
 		permission = coll_entry["perm"]
 
-		downloaded_file = os.path.join(blob_dir, album_name, coll_entry["filename"])
+		downloaded_file = os.path.join(album_dir, coll_entry["filename"])
 		if not os.path.isfile(downloaded_file):
 			with open(downloaded_file, "wb") as output_file:
 				print("downloading " + coll_entry["filename"])
