@@ -13,6 +13,8 @@ password = sys.argv[4]
 
 # connect to the source site
 source = requests.Session()
+source.verify = "../../etc/hearty_rabbit/certificate.pem"
+
 login_response = source.post(
 	site + "/login",
 	data="username=" + user + "&password=" + password,
@@ -27,20 +29,33 @@ if album_list.status_code != 200:
 	print("cannot query album list: {0}".format(album_list.status_code))
 	exit(-1)
 
-# save album list to file
-with open(user + ".json", "w") as album_list_file:
-	json.dump(album_list.json()["colls"], album_list_file)
-
 for album_name in album_list.json()["colls"].keys():
 
 	print("downloading album: {0}".format(album_name))
-	album = source.get(site + "/view/" + user + "/" + album_name + "?json")
+	album = source.get(site + "/view/" + user + "/" + urllib.parse.quote_plus(album_name) + "?json")
 
-	# save elements list of album to file
-	with open(album_name + ".json", "w") as element_file:
-		json.dump(album.json()["elements"], element_file)
+	if album_name == "":
+		album_name = "_default_"
+	if not os.path.isdir(os.path.join(blob_dir, album_name)):
+		os.mkdir(os.path.join(blob_dir, album_name), 0o0700)
 
 	for blobid, coll_entry in album.json()["elements"].items():
-		dest_path = Path("{0}/{1}/{2}".format(blob_dir, blobid[0:2], blobid))
-		if not dest_path.is_file():
-			print("downloading " + str(dest_path))
+		source_url = site + "/view/" + user + "/" + urllib.parse.quote_plus(album_name) + "/" + blobid + "?master"
+		permission = coll_entry["perm"]
+
+		downloaded_file = os.path.join(blob_dir, album_name, coll_entry["filename"])
+		if not os.path.isfile(downloaded_file):
+			with open(downloaded_file, "wb") as output_file:
+				print("downloading " + coll_entry["filename"])
+				file_download = source.get(source_url, stream=True)
+
+				for chunk in file_download.iter_content(chunk_size=1024*1024):
+					if chunk:
+						output_file.write(chunk)
+
+		if permission == "private":
+			os.chmod(downloaded_file, 0o600)
+		elif permission == "shared":
+			os.chmod(downloaded_file, 0o640)
+		elif permission == "public":
+			os.chmod(downloaded_file, 0o644)
