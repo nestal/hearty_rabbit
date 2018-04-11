@@ -13,7 +13,8 @@ password = sys.argv[4]
 
 # connect to the source site
 source = requests.Session()
-source.verify = "../../etc/hearty_rabbit/certificate.pem"
+if site == "https://localhost:4433":
+	source.verify = "../../etc/hearty_rabbit/certificate.pem"
 
 login_response = source.post(
 	site + "/login",
