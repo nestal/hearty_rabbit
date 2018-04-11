@@ -43,4 +43,4 @@ for album_name in album_list.json()["colls"].keys():
 	for blobid, coll_entry in album.json()["elements"].items():
 		dest_path = Path("{0}/{1}/{2}".format(blob_dir, blobid[0:2], blobid))
 		if not dest_path.is_file():
-			print("downloading " + dest_path)
+			print("downloading " + str(dest_path))
