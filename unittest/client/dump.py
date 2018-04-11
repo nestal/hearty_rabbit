@@ -37,7 +37,7 @@ for album_name in album_list.json()["colls"].keys():
 
 	album_dir = os.path.join(blob_dir, album_name)
 	if not os.path.isdir(album_dir):
-		os.mkdir(os.path.join(blob_dir, album_dir), 0o0700)
+		os.mkdir(album_dir, 0o0700)
 
 	for blobid, coll_entry in album.json()["elements"].items():
 		source_url = site + "/view/" + user + "/" + urllib.parse.quote_plus(album_name) + "/" + blobid + "?master"
