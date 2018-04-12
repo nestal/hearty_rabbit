@@ -57,7 +57,6 @@ public:
 	static const std::string_view m_dir_prefix;
 	static const std::string_view m_list_prefix;
 	static const std::string_view m_public_blobs;
-	static const std::string_view m_public_coll_entries;
 
 public:
 	Collection(std::string_view user, std::string_view path);
@@ -225,15 +224,15 @@ void Ownership::Collection::set_permission(
 		local original = redis.call('HGET', KEYS[1], ARGV[1])
 		local updated  = ARGV[2] .. string.sub(original, 2, -1)
 		redis.call('HSET', KEYS[1], ARGV[1], updated)
+
+		local msgpack = cmsgpack.pack(KEYS[1], ARGV[1])
 		if ARGV[2] == '*' then
-			redis.call('HSET', KEYS[3], ARGV[1], updated)
-			redis.call('LREM', KEYS[2], 0, ARGV[1])
-			if redis.call('LPUSH', KEYS[2], ARGV[1]) > 100 then
-				redis.call('HDEL', KEYS[3], redis.call('RPOP', KEYS[2]))
+			redis.call('LREM', KEYS[2], 0, msgpack)
+			if redis.call('LPUSH', KEYS[2], msgpack) > 100 then
+				redis.call('RPOP', KEYS[2])
 			end
 		else
-			redis.call('LREM', KEYS[2], 0, ARGV[1])
-			redis.call('HDEL', KEYS[3], ARGV[1])
+			redis.call('LREM', KEYS[2], 0, msgpack)
 		end
 	)__";
 	db.command(
@@ -241,9 +240,10 @@ void Ownership::Collection::set_permission(
 		{
 			if (!reply)
 				Log(LOG_WARNING, "Collection::set_permission(): script error: %1%", reply.as_error());
+
 			comp(std::move(ec));
 		},
-		"EVAL %s 3 %b%b:%b %b %b %b %b",
+		"EVAL %s 2 %b%b:%b %b %b %b",
 		lua,
 
 		// KEYS[1]: dir:<user>:<collection>
@@ -253,9 +253,6 @@ void Ownership::Collection::set_permission(
 
 		// KEYS[2]: list of public blob IDs
 		m_public_blobs.data(), m_public_blobs.size(),
-
-		// KEYS[3]: hash from public blob IDs to collection entries
-		m_public_coll_entries.data(), m_public_coll_entries.size(),
 
 		// ARGV[1]: blob ID
 		blob.data(), blob.size(),
@@ -467,13 +464,33 @@ void Ownership::list_public_blobs(
 	Complete&& complete
 )
 {
+	static const char lua[] = R"__(
+		local elements = {}
+		local pub_list = redis.call('LRANGE', KEYS[1], 0, -1)
+		for i, msgpack in ipairs(pub_list) do
+			local coll
+			local blob
+			coll,blob = cmsgpack.unpack(msgpack)
+			table.insert(elements, blob)
+			table.insert(elements, redis.call('HGET', coll, blob))
+		end
+		return elements
+	)__";
+
 	db.command(
 		[comp=std::forward<Complete>(complete)](auto&& reply, auto ec)
 		{
+			if (!reply)
+				Log(LOG_WARNING, "list_public_blobs() script return %1%", reply.as_error());
+
+			for (auto&& r: reply)
+				Log(LOG_CRIT, "list pub: %1%", r.as_string());
+
 			comp(Collection::serialize(reply, "", ""), ec);
 		},
-		"HGETALL %b",
-		Collection::m_public_coll_entries.data(), Collection::m_public_coll_entries.size()
+		"EVAL %s 1 %b",
+		lua,
+		Collection::m_public_blobs.data(), Collection::m_public_blobs.size()
 	);
 }
 
@@ -482,11 +499,11 @@ void Ownership::query_blob(redis::Connection& db, const ObjectID& blob, Complete
 {
 	static const char lua[] = R"__(
 		local dirs = {}
-		for k, coll in pairs(redis.call('SMEMBERS', KEYS[1])) do
+		for k, coll in ipairs(redis.call('SMEMBERS', KEYS[1])) do
 			table.insert(dirs, coll)
 			table.insert(dirs, redis.call('HGET', coll, ARGV[1]))
 		end
-		return dirs;
+		return dirs
 	)__";
 
 	db.command(
