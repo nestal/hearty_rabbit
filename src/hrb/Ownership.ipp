@@ -18,6 +18,7 @@
 #include "util/Log.hh"
 
 #include <json.hpp>
+#include <msgpack.hpp>
 
 #include <boost/range/adaptor/filtered.hpp>
 #include <boost/range/adaptor/transformed.hpp>
@@ -57,6 +58,12 @@ public:
 	static const std::string_view m_dir_prefix;
 	static const std::string_view m_list_prefix;
 	static const std::string_view m_public_blobs;
+
+	struct ListEntry
+	{
+		ObjectID cover;
+		MSGPACK_DEFINE_MAP(cover);
+	};
 
 public:
 	Collection(std::string_view user, std::string_view path);
@@ -131,13 +138,22 @@ void Ownership::Collection::scan(
 					auto cursor = cursor_reply.to_int();
 
 					// call the callback once to handle one collection
-					for (auto&& p : dirs.kv_pairs())
+					for (auto&& blob_mpack : dirs.kv_pairs())
 					{
-						auto sv = p.value().as_string();
-						if (sv.empty())
-							return;
+						auto mpack = blob_mpack.value().as_string();
+						if (mpack.empty())
+							continue;
 
-						cb(p.key(), nlohmann::json::parse(sv));
+						auto obj_handle = msgpack::unpack(mpack.data(), mpack.size());
+						auto obj = obj_handle.get();
+
+						ListEntry en{};
+						obj.convert(en);
+
+						auto json = nlohmann::json::object();
+						json.emplace("cover", to_hex(en.cover));
+
+						cb(blob_mpack.key(), std::move(json));
 					};
 
 					// if comp return true, keep scanning with the same callback and
@@ -267,15 +283,18 @@ void Ownership::Collection::set_permission(
 template <typename Complete>
 void Ownership::Collection::set_cover(redis::Connection& db, const ObjectID& cover, Complete&& complete)
 {
+	std::ostringstream ss;
+	msgpack::pack(ss, ListEntry{cover});
+	auto&& en = ss.str();
+
 	// set the cover of the collection
-	auto json = R"({"cover":)" + to_quoted_hex(cover) + "}";
 	db.command(
 		std::forward<Complete>(complete),
 		R"(HSETNX %b%b %b %b)",
 		m_list_prefix.data(), m_list_prefix.size(),
 		m_user.data(), m_user.size(),
 		m_path.data(), m_path.size(),
-		json.data(), json.size()
+		en.data(), en.size()
 	);
 }
 
