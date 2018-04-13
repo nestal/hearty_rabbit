@@ -35,11 +35,13 @@ Ownership::BlobBackLink::BlobBackLink(std::string_view user, std::string_view co
 
 void Ownership::BlobBackLink::link(redis::Connection& db) const
 {
+	static const char lua[] = R"__(
+		redis.call('SADD', KEYS[1], cmsgpack.pack(ARGV[1], ARGV[2]))
+	)__";
 	db.command(
-		"SADD %b%b %b%b:%b",
+		"EVAL %s 1 %b%b %b %b", lua,
 		m_prefix.data(), m_prefix.size(),
 		m_blob.data(), m_blob.size(),
-		Collection::m_dir_prefix.data(), Collection::m_dir_prefix.size(),
 		m_user.data(), m_user.size(),
 		m_coll.data(), m_coll.size()
 	);
@@ -47,11 +49,13 @@ void Ownership::BlobBackLink::link(redis::Connection& db) const
 
 void Ownership::BlobBackLink::unlink(redis::Connection& db) const
 {
+	static const char lua[] = R"__(
+		redis.call('SREM', KEYS[1], cmsgpack.pack(ARGV[1], ARGV[2]))
+	)__";
 	db.command(
-		"SREM %b%b %b%b:%b",
+		"EVAL %s 1 %b%b %b %b", lua,
 		m_prefix.data(), m_prefix.size(),
 		m_blob.data(), m_blob.size(),
-		Collection::m_dir_prefix.data(), Collection::m_dir_prefix.size(),
 		m_user.data(), m_user.size(),
 		m_coll.data(), m_coll.size()
 	);
