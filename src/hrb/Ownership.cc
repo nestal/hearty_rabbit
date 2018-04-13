@@ -112,15 +112,11 @@ void Ownership::Collection::unlink(redis::Connection& db, const ObjectID& id)
 	// image is the one being removed.
 	static const char cmd[] = R"__(
 		redis.call('HDEL', KEYS[1], ARGV[1])
-		if redis.call('EXISTS', KEYS[1]) == 0 then redis.call('HDEL', KEYS[2], ARGV[2]) else
-			local list_entry = {}
-			for k,v in pairs(cmsgpack.unpack(redis.call('HGET', KEYS[2], ARGV[2]))) do
-				if k == 'cover' and v == ARGV[3] then
-					list_entry[k] = 'deleted'
-				else
-					list_entry[k] = v
-				end
-			end
+		if redis.call('EXISTS', KEYS[1]) == 0 then
+			redis.call('HDEL', KEYS[2], ARGV[2])
+		else
+			local list_entry = cmsgpack.unpack(redis.call('HGET', KEYS[2], ARGV[2]))
+			list_entry['cover'] = nil
 			redis.call('HSET', KEYS[2], ARGV[2], cmsgpack.pack(list_entry))
 		end
 	)__";
