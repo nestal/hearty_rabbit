@@ -157,7 +157,7 @@ void SessionHandler::on_request_body(Request&& req, Send&& send)
 					*m_db,
 					SendJSON{std::move(send), m_auth.user(), req.version(), &m_lib}
 				) :
-				Ownership::list_public_blobs(
+				Ownership{m_auth.user()}.list_public_blobs(
 					*m_db,
 					SendJSON{std::move(send), m_auth.user(), req.version(), &m_lib}
 				);
@@ -329,7 +329,7 @@ void SessionHandler::query_blob_set(const URLIntent& intent, unsigned version, S
 {
 	auto [pub, json] = find_optional_fields(intent.option(), "public", "json");
 
-	Ownership::list_public_blobs(
+	Ownership{m_auth.user()}.list_public_blobs(
 		*m_db,
 		SendJSON{std::forward<Send>(send), m_auth.user(), version, !json.has_value() ? &m_lib : nullptr}
 	);

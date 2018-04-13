@@ -458,7 +458,7 @@ void Ownership::list_public_blobs(
 	)__";
 
 	db.command(
-		[comp=std::forward<Complete>(complete)](auto&& reply, auto ec)
+		[requester=m_user, comp=std::forward<Complete>(complete)](auto&& reply, auto ec)
 		{
 			if (!reply)
 				Log(LOG_WARNING, "list_public_blobs() script return %1%", reply.as_error());
@@ -469,7 +469,7 @@ void Ownership::list_public_blobs(
 			auto elements = nlohmann::json::object();
 			for (const redis::Reply& row : reply)
 			{
-				auto [user, coll, blob, perm] = row.as_tuple<4>(ec);
+				auto [owner, coll, blob, perm] = row.as_tuple<4>(ec);
 
 				if (perm.as_string().empty())
 					continue;
@@ -478,13 +478,13 @@ void Ownership::list_public_blobs(
 				CollEntry entry{perm.as_string()};
 
 				// check permission: allow allow owner (i.e. m_user)
-//				if (blob_id && (owner == requester || entry.permission().allow(requester)))
+				if (blob_id && (owner.as_string() == requester || entry.permission().allow(requester)))
 				{
 					try
 					{
 						auto entry_jdoc = nlohmann::json::parse(entry.json());
 						entry_jdoc.emplace("perm",  std::string{entry.permission().description()});
-						entry_jdoc.emplace("owner", std::string{user.as_string()});
+						entry_jdoc.emplace("owner", std::string{owner.as_string()});
 						entry_jdoc.emplace("collection", std::string{coll.as_string()});
 						elements.emplace(to_hex(*blob_id), std::move(entry_jdoc));
 					}
@@ -549,6 +549,12 @@ void Ownership::query_blob(redis::Connection& db, const ObjectID& blob, Complete
 		blob.data(), blob.size(),
 		blob.data(), blob.size()
 	);
+}
+
+template <typename Complete>
+void Ownership::set_cover(redis::Connection& db, std::string_view coll, const ObjectID& blob, Complete&& complete) const
+{
+
 }
 
 } // end of namespace

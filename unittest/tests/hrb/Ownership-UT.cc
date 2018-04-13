@@ -158,7 +158,7 @@ TEST_CASE("add blob to Ownership", "[normal]")
 
 	// verify that the newly added blob is in the public list
 	bool found = false;
-	Ownership::list_public_blobs(*redis, [&found, blobid](auto&& json, auto ec)
+	subject.list_public_blobs(*redis, [&found, blobid](auto&& json, auto ec)
 	{
 		REQUIRE(json.find("elements") != json.end());
 		auto&& elements = json["elements"];
