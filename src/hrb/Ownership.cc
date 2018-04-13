@@ -64,7 +64,6 @@ void Ownership::BlobBackLink::unlink(redis::Connection& db) const
 const std::string_view Ownership::Collection::m_dir_prefix = "dir:";
 const std::string_view Ownership::Collection::m_list_prefix = "dirs:";
 const std::string_view Ownership::Collection::m_public_blobs = "public-blobs";
-const std::string_view Ownership::Collection::m_public_coll_entries = "public-coll-entries";
 
 Ownership::Collection::Collection(std::string_view user, std::string_view path) :
 	m_user{user},
@@ -164,6 +163,9 @@ nlohmann::json Ownership::Collection::serialize(const redis::Reply& reply, std::
 	{
 		auto&& blob = kv.key();
 		auto&& perm = kv.value();
+
+		if (perm.as_string().empty())
+			continue;
 
 		auto blob_id = raw_to_object_id(blob);
 		CollEntry entry{perm.as_string()};

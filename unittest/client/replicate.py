@@ -1,9 +1,8 @@
 #!/usr/bin/python3
 import os, sys
 import requests
+import json
 import urllib.parse
-
-from io import BytesIO
 
 # download all images from nestal.net to local
 source_site = "https://www.nestal.net"
@@ -34,6 +33,9 @@ if login_response.status_code != 200 or source.cookies.get("id") == "":
 	exit(-1)
 
 album_list = source.get(source_site + "/query/collection?user=" + user + "&json")
+if album_list.status_code != 200:
+	print("cannot query album list: {0}".format(album_list.status_code))
+	exit(-1)
 
 for album_name in album_list.json()["colls"].keys():
 	print(album_name)
