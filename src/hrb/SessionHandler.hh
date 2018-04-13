@@ -97,6 +97,7 @@ private:
 	void on_upload(UploadRequest&& req, EmptyResponseSender&& send);
 	void unlink(BlobRequest&& req, EmptyResponseSender&& send);
 	void update_blob(BlobRequest&& req, EmptyResponseSender&& send);
+	void update_view(BlobRequest&& req, EmptyResponseSender&& send);
 
 	template <class Send>
 	void scan_collection(const URLIntent& intent, unsigned version, Send&& send);

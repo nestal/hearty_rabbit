@@ -153,6 +153,20 @@ void SessionHandler::unlink(BlobRequest&& req, EmptyResponseSender&& send)
 	);
 }
 
+void SessionHandler::update_view(BlobRequest&& req, EmptyResponseSender&& send)
+{
+	if (!req.request_by_owner())
+		return send(http::response<http::empty_body>{http::status::forbidden, req.version()});
+
+	assert(!req.blob());
+	auto[cover] = find_fields(req.body(), "cover");
+
+	if (!cover.empty())
+	{
+		// TODO: set cover here
+	}
+}
+
 void SessionHandler::update_blob(BlobRequest&& req, EmptyResponseSender&& send)
 {
 	if (!req.request_by_owner())
@@ -190,6 +204,10 @@ void SessionHandler::update_blob(BlobRequest&& req, EmptyResponseSender&& send)
 			*req.blob(),
 			std::move(on_complete)
 		);
+	}
+	else
+	{
+		send(http::response<http::empty_body>{http::status::bad_request, req.version()});
 	}
 }
 
