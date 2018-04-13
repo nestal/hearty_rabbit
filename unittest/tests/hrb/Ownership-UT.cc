@@ -54,9 +54,11 @@ TEST_CASE("list of collection owned by user", "[normal]")
 
 	// assert the blob backlink points back to the collection
 	std::vector<std::string> refs;
-	subject.find_reference(*redis, blobid, [&refs](auto coll)
+	subject.query_blob(*redis, blobid, [&refs](auto&& range, auto ec)
 	{
-		refs.emplace_back(coll);
+		for (auto&& ref : range)
+			if (ref.user == "owner")
+				refs.emplace_back(ref.coll);
 	});
 
 	REQUIRE(ioc.run_for(10s) > 0);

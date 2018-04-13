@@ -439,41 +439,6 @@ void Ownership::move_blob(
 }
 
 template <typename Complete>
-void Ownership::find_reference(redis::Connection& db, const ObjectID& blob, Complete&& complete) const
-{
-	static const char lua[] = R"__(
-		local dirs = {}
-		for k, mpack in ipairs(redis.call('SMEMBERS', KEYS[1])) do
-			local user
-			local coll
-			user,coll = cmsgpack.unpack(mpack)
-			if user == ARGV[1] then
-				table.insert('dir:' .. user .. ':' .. coll)
-			end
-		end
-		return dirs
-	)__";
-
-	db.command(
-		[comp=std::forward<Complete>(complete), blob, user=m_user](auto&& reply, auto ec)
-		{
-			if (!reply)
-				Log(LOG_WARNING, "find_reference() script reply: %1%", reply.as_error());
-			for (auto&& entry : reply)
-			{
-				Collection ref{entry.as_string()};
-				if (user == ref.user())
-					comp(ref.path());
-			}
-		},
-		"EVAL %s 1 %b%b %b", lua,
-		BlobBackLink::m_prefix.data(), BlobBackLink::m_prefix.size(),
-		blob.data(), blob.size(),
-		m_user.data(), m_user.size()
-	);
-}
-
-template <typename Complete>
 void Ownership::list_public_blobs(
 	redis::Connection& db,
 	Complete&& complete
@@ -497,9 +462,6 @@ void Ownership::list_public_blobs(
 		{
 			if (!reply)
 				Log(LOG_WARNING, "list_public_blobs() script return %1%", reply.as_error());
-
-			for (auto&& r: reply)
-				Log(LOG_CRIT, "list pub: %1%", r.as_string());
 
 			comp(Collection::serialize(reply, "", ""), ec);
 		},
