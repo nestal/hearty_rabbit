@@ -448,9 +448,7 @@ void Ownership::list_public_blobs(
 		local elements = {}
 		local pub_list = redis.call('LRANGE', KEYS[1], 0, -1)
 		for i, msgpack in ipairs(pub_list) do
-			local coll
-			local blob
-			coll,blob = cmsgpack.unpack(msgpack)
+			local coll, blob = cmsgpack.unpack(msgpack)
 			table.insert(elements, blob)
 			table.insert(elements, redis.call('HGET', coll, blob))
 		end
@@ -477,9 +475,7 @@ void Ownership::query_blob(redis::Connection& db, const ObjectID& blob, Complete
 	static const char lua[] = R"__(
 		local dirs = {}
 		for k, mpack in ipairs(redis.call('SMEMBERS', KEYS[1])) do
-			local user
-			local coll
-			user,coll = cmsgpack.unpack(mpack)
+			local user, coll = cmsgpack.unpack(mpack)
 			local coll_key = 'dir:' .. user .. ':' .. coll
 			table.insert(dirs, coll_key)
 			table.insert(dirs, redis.call('HGET', coll_key, ARGV[1]))
