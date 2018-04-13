@@ -221,18 +221,21 @@ void Ownership::Collection::set_permission(
 ) const
 {
 	static const char lua[] = R"__(
-		local original = redis.call('HGET', KEYS[1], ARGV[1])
-		local updated  = ARGV[2] .. string.sub(original, 2, -1)
-		redis.call('HSET', KEYS[1], ARGV[1], updated)
+		local user, coll, blob, perm = ARGV[1], ARGV[2], ARGV[3], ARGV[4]
+		local coll_key = 'dir:' .. user .. ':' .. coll
 
-		local msgpack = cmsgpack.pack(KEYS[1], ARGV[1])
-		if ARGV[2] == '*' then
-			redis.call('LREM', KEYS[2], 0, msgpack)
-			if redis.call('LPUSH', KEYS[2], msgpack) > 100 then
-				redis.call('RPOP', KEYS[2])
+		local original = redis.call('HGET', coll_key, blob)
+		local updated  = perm .. string.sub(original, 2, -1)
+		redis.call('HSET', coll_key, blob, updated)
+
+		local msgpack = cmsgpack.pack(user, coll, blob)
+		if perm == '*' then
+			redis.call('LREM', KEYS[1], 0, msgpack)
+			if redis.call('LPUSH', KEYS[1], msgpack) > 100 then
+				redis.call('RPOP', KEYS[1])
 			end
 		else
-			redis.call('LREM', KEYS[2], 0, msgpack)
+			redis.call('LREM', KEYS[1], 0, msgpack)
 		end
 	)__";
 	db.command(
@@ -242,21 +245,21 @@ void Ownership::Collection::set_permission(
 				Log(LOG_WARNING, "Collection::set_permission(): script error: %1%", reply.as_error());
 			comp(std::move(ec));
 		},
-		"EVAL %s 2 %b%b:%b %b %b %b",
-		lua,
+		"EVAL %s 1 %b %b %b %b %b", lua,
 
-		// KEYS[1]: dir:<user>:<collection>
-		m_dir_prefix.data(), m_dir_prefix.size(),
-		m_user.data(), m_user.size(),
-		m_path.data(), m_path.size(),
-
-		// KEYS[2]: list of public blob IDs
+		// KEYS[1]: list of public blob IDs
 		m_public_blobs.data(), m_public_blobs.size(),
 
-		// ARGV[1]: blob ID
+		// ARGV[1]: user
+		m_user.data(), m_user.size(),
+
+		// ARGV[2]: collection
+		m_path.data(), m_path.size(),
+
+		// ARGV[3]: blob ID
 		blob.data(), blob.size(),
 
-		// ARGV[2]: permission string
+		// ARGV[4]: permission string
 		perm.data(), perm.size()
 	);
 }
@@ -448,9 +451,9 @@ void Ownership::list_public_blobs(
 		local elements = {}
 		local pub_list = redis.call('LRANGE', KEYS[1], 0, -1)
 		for i, msgpack in ipairs(pub_list) do
-			local coll, blob = cmsgpack.unpack(msgpack)
+			local user, coll, blob = cmsgpack.unpack(msgpack)
 			table.insert(elements, blob)
-			table.insert(elements, redis.call('HGET', coll, blob))
+			table.insert(elements, redis.call('HGET', 'dir:' .. user .. ':' .. coll, blob))
 		end
 		return elements
 	)__";
