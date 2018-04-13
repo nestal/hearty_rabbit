@@ -452,8 +452,7 @@ void Ownership::list_public_blobs(
 		local pub_list = redis.call('LRANGE', KEYS[1], 0, -1)
 		for i, msgpack in ipairs(pub_list) do
 			local user, coll, blob = cmsgpack.unpack(msgpack)
-			table.insert(elements, blob)
-			table.insert(elements, redis.call('HGET', 'dir:' .. user .. ':' .. coll, blob))
+			table.insert(elements, {user, coll, blob, redis.call('HGET', 'dir:' .. user .. ':' .. coll, blob)})
 		end
 		return elements
 	)__";
@@ -464,7 +463,39 @@ void Ownership::list_public_blobs(
 			if (!reply)
 				Log(LOG_WARNING, "list_public_blobs() script return %1%", reply.as_error());
 
-			comp(Collection::serialize(reply, "", ""), ec);
+			// TODO: get the cover here... where to find a redis::Connection?
+			auto jdoc = nlohmann::json::object();
+
+			auto elements = nlohmann::json::object();
+			for (const redis::Reply& row : reply)
+			{
+				auto [user, coll, blob, perm] = row.as_tuple<4>(ec);
+
+				if (perm.as_string().empty())
+					continue;
+
+				auto blob_id = raw_to_object_id(blob.as_string());
+				CollEntry entry{perm.as_string()};
+
+				// check permission: allow allow owner (i.e. m_user)
+//				if (blob_id && (owner == requester || entry.permission().allow(requester)))
+				{
+					try
+					{
+						auto entry_jdoc = nlohmann::json::parse(entry.json());
+						entry_jdoc.emplace("perm",  std::string{entry.permission().description()});
+						entry_jdoc.emplace("owner", std::string{user.as_string()});
+						entry_jdoc.emplace("collection", std::string{coll.as_string()});
+						elements.emplace(to_hex(*blob_id), std::move(entry_jdoc));
+					}
+					catch (std::exception& e)
+					{
+						Log(LOG_WARNING, "exception thrown when parsing CollEntry::json(): %1% %2%", e.what(), entry.json());
+					}
+				}
+			};
+			jdoc.emplace("elements", std::move(elements));
+			comp(std::move(jdoc), ec);
 		},
 		"EVAL %s 1 %b",
 		lua,
