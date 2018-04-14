@@ -92,6 +92,10 @@ std::string Ownership::Collection::redis_key() const
 
 void Ownership::Collection::link(redis::Connection& db, const ObjectID& id, const CollEntry& entry)
 {
+	static const char lua[] = R"__(
+		local
+		redis.call('HSET', KEYS[1],
+	)__";
 	db.command(
 		"HSET %b%b:%b %b %b",
 		m_dir_prefix.data(), m_dir_prefix.size(),
@@ -115,16 +119,21 @@ void Ownership::Collection::unlink(redis::Connection& db, const ObjectID& id)
 		if redis.call('EXISTS', KEYS[1]) == 0 then
 			redis.call('HDEL', KEYS[2], ARGV[2])
 		else
-			local list_entry = cmsgpack.unpack(redis.call('HGET', KEYS[2], ARGV[2]))
-			list_entry['cover'] = nil
-			redis.call('HSET', KEYS[2], ARGV[2], cmsgpack.pack(list_entry))
+			local album = cjson.decode(redis.call('HGET', KEYS[2], ARGV[2]))
+			if album['cover'] == ARGV[3] then
+				album['cover'] = nil
+				redis.call('HSET', KEYS[2], ARGV[2], cjson.encode(album))
+			end
 		end
 	)__";
+
+	auto hex_id = to_hex(id);
+
 	db.command(
 		[](auto&& reply, auto ec)
 		{
 			if (!reply || ec)
-				Log(LOG_WARNING, "unlink lua script failure: %1% (%2%)", reply.as_error(), ec);
+				Log(LOG_WARNING, "Collection::unlink() lua script failure: %1% (%2%)", reply.as_error(), ec);
 		},
 		"EVAL %s 2 %b%b:%b %b%b %b %b %b",
 
@@ -146,7 +155,7 @@ void Ownership::Collection::unlink(redis::Connection& db, const ObjectID& id)
 		m_path.data(), m_path.size(),
 
 		// ARGV[3] (hex of blob ID)
-		id.data(), id.size()
+		hex_id.data(), hex_id.size()
 	);
 }
 
