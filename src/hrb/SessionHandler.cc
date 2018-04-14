@@ -163,7 +163,17 @@ void SessionHandler::update_view(BlobRequest&& req, EmptyResponseSender&& send)
 
 	if (!cover.empty())
 	{
-		// TODO: set cover here
+		auto cover_blob = hex_to_object_id(cover);
+		if (cover_blob)
+			Ownership{req.rendition()}.set_cover(
+				*m_db,
+				req.collection(),
+				*cover_blob,
+				[send=std::move(send), version=req.version()](auto&&, auto ec)
+				{
+					send(http::response<http::empty_body>{ec ? http::status::internal_server_error : http::status::no_content, version});
+				}
+			);
 	}
 }
 
