@@ -19,6 +19,8 @@
 #include "hrb/Permission.hh"
 #include "crypto/Random.hh"
 
+#include <iostream>
+
 using namespace hrb;
 using namespace std::chrono_literals;
 
@@ -326,15 +328,16 @@ TEST_CASE("Query blob of testuser")
 	REQUIRE(tested == 2);
 }
 
-TEST_CASE("Scan for all containers from testuser")
+TEST_CASE("setting and remove the cover of collection")
 {
 	boost::asio::io_context ioc;
 	auto redis = redis::connect(ioc);
 
 	Ownership subject{"testuser"};
+	auto cover_blob = insecure_random<ObjectID>();
 
 	bool added = false;
-	subject.link(*redis, "/", insecure_random<ObjectID>(), CollEntry{}, [&added](auto ec)
+	subject.link(*redis, "/", cover_blob, CollEntry{}, [&added](auto ec)
 	{
 		REQUIRE(!ec);
 		added = true;
@@ -350,7 +353,7 @@ TEST_CASE("Scan for all containers from testuser")
 			REQUIRE(!ec);
 			tested = true;
 
-			REQUIRE(jdoc["owner"]    == "testuser");
+			REQUIRE(jdoc["owner"] == "testuser");
 			for (auto&& it : jdoc["colls"].items())
 				dirs.push_back(it.key());
 		}
@@ -362,6 +365,38 @@ TEST_CASE("Scan for all containers from testuser")
 	REQUIRE(!dirs.empty());
 	INFO("dirs.size() " << dirs.size());
 	REQUIRE(std::find(dirs.begin(), dirs.end(), "/") != dirs.end());
+	ioc.restart();
+	tested = false;
+
+	// set the cover to be the new generated blob
+	subject.set_cover(*redis, "/", cover_blob, [&tested](auto&&, auto ec)
+	{
+		REQUIRE(!ec);
+		tested = true;
+	});
+	REQUIRE(ioc.run_for(10s) > 0);
+	REQUIRE(tested);
+	tested = false;
+	ioc.restart();
+
+	// check if the cover is updated
+	subject.scan_all_collections(*redis,
+		[&cover_blob, &tested](auto&& jdoc, auto ec)
+		{
+			REQUIRE(!ec);
+			REQUIRE(jdoc["owner"] == "testuser");
+			std::cout << "scan_all() returns " << jdoc;
+
+			for (auto&& it : jdoc["colls"].items())
+			{
+				std::cout << to_hex(cover_blob) << " " << it.value() << std::endl;
+				if (it.key() == "/" && it.value()["cover"] == to_hex(cover_blob))
+					tested = true;
+			}
+		}
+	);
+	REQUIRE(ioc.run_for(10s) > 0);
+	REQUIRE(tested);
 }
 
 TEST_CASE("collection entry", "[normal]")

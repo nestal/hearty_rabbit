@@ -74,7 +74,7 @@ public:
 	std::string redis_key() const;
 
 	template <typename Complete>
-	void set_cover(redis::Connection& db, const ObjectID& cover, Complete&& complete);
+	void set_cover(redis::Connection& db, const ObjectID& cover, Complete&& complete, bool force=false);
 
 	template <typename Complete>
 	void set_permission(redis::Connection& db, const ObjectID& blob, const Permission& perm, Complete&& complete) const;
@@ -281,21 +281,31 @@ void Ownership::Collection::set_permission(
 }
 
 template <typename Complete>
-void Ownership::Collection::set_cover(redis::Connection& db, const ObjectID& cover, Complete&& complete)
+void Ownership::Collection::set_cover(redis::Connection& db, const ObjectID& cover, Complete&& complete, bool force)
 {
 	std::ostringstream ss;
 	msgpack::pack(ss, ListEntry{cover});
 	auto&& en = ss.str();
 
 	// set the cover of the collection
-	db.command(
-		std::forward<Complete>(complete),
-		R"(HSETNX %b%b %b %b)",
-		m_list_prefix.data(), m_list_prefix.size(),
-		m_user.data(), m_user.size(),
-		m_path.data(), m_path.size(),
-		en.data(), en.size()
-	);
+	if (force)
+		db.command(
+			std::forward<Complete>(complete),
+			"HSET %b%b %b %b",
+			m_list_prefix.data(), m_list_prefix.size(),
+			m_user.data(), m_user.size(),
+			m_path.data(), m_path.size(),
+			en.data(), en.size()
+		);
+	else
+		db.command(
+			std::forward<Complete>(complete),
+			"HSETNX %b%b %b %b",
+			m_list_prefix.data(), m_list_prefix.size(),
+			m_user.data(), m_user.size(),
+			m_path.data(), m_path.size(),
+			en.data(), en.size()
+		);
 }
 
 template <typename Complete>
@@ -573,7 +583,7 @@ void Ownership::query_blob(redis::Connection& db, const ObjectID& blob, Complete
 template <typename Complete>
 void Ownership::set_cover(redis::Connection& db, std::string_view coll, const ObjectID& blob, Complete&& complete) const
 {
-
+	Collection{m_user, coll}.set_cover(db, blob, std::forward<Complete>(complete), true);
 }
 
 } // end of namespace
