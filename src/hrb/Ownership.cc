@@ -92,10 +92,6 @@ std::string Ownership::Collection::redis_key() const
 
 void Ownership::Collection::link(redis::Connection& db, const ObjectID& id, const CollEntry& entry)
 {
-	static const char lua[] = R"__(
-		local
-		redis.call('HSET', KEYS[1],
-	)__";
 	db.command(
 		"HSET %b%b:%b %b %b",
 		m_dir_prefix.data(), m_dir_prefix.size(),

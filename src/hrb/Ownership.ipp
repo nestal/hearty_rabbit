@@ -267,19 +267,33 @@ void Ownership::Collection::set_permission(
 template <typename Complete>
 void Ownership::Collection::set_cover(redis::Connection& db, const ObjectID& cover, Complete&& complete, bool force)
 {
-	auto json = R"({"cover":)" + to_quoted_hex(cover) + "}";
-
 	// set the cover of the collection
 	if (force)
+	{
+		auto hex_id = to_hex(cover);
+		static const char lua[] = R"__(
+			local coll, blob = ARGV[1], ARGV[2]
+			local album = cjson.decode(redis.call('HGET', KEYS[1], coll))
+			album['cover'] = blob
+			redis.call('HSET', KEYS[1], coll, cjson.encode(album))
+		)__";
 		db.command(
-			std::forward<Complete>(complete),
-			"HSET %b%b %b %b",
+			[comp=std::forward<Complete>(complete)](auto&& reply, auto ec)
+			{
+				if (!reply || ec)
+					Log(LOG_WARNING, "set_cover(): reply %1% %2%", reply.as_error(), ec);
+				comp(std::move(reply), ec);
+			},
+			"EVAL %s 1 %b%b %b %b", lua,
 			m_list_prefix.data(), m_list_prefix.size(),
 			m_user.data(), m_user.size(),
 			m_path.data(), m_path.size(),
-			json.data(), json.size()
+			hex_id.data(), hex_id.size()
 		);
+	}
 	else
+	{
+		auto json = R"({"cover":)" + to_quoted_hex(cover) + "}";
 		db.command(
 			std::forward<Complete>(complete),
 			"HSETNX %b%b %b %b",
@@ -288,6 +302,7 @@ void Ownership::Collection::set_cover(redis::Connection& db, const ObjectID& cov
 			m_path.data(), m_path.size(),
 			json.data(), json.size()
 		);
+	}
 }
 
 template <typename Complete>
