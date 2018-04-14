@@ -92,16 +92,35 @@ std::string Ownership::Collection::redis_key() const
 
 void Ownership::Collection::link(redis::Connection& db, const ObjectID& id, const CollEntry& entry)
 {
+	auto hex = to_hex(id);
+
+	static const char lua[] = R"__(
+		local blob, entry, cover, coll = ARGV[1], ARGV[2], ARGV[3], ARGV[4]
+		redis.call('HSET',   KEYS[1], blob, entry)
+		redis.call('HSETNX', KEYS[2], coll, cjson.encode({cover=cover}))
+	)__";
 	db.command(
-		"HSET %b%b:%b %b %b",
+		[](auto&& reply, auto ec)
+		{
+			if (!reply || ec)
+				Log(LOG_WARNING, "Collection::link() returns %1% %2%", reply.as_error(), ec);
+		},
+		"EVAL %s 2 %b%b:%b %b%b %b %b %b %b", lua,
+
+		// KEYS[1]
 		m_dir_prefix.data(), m_dir_prefix.size(),
 		m_user.data(), m_user.size(),
 		m_path.data(), m_path.size(),
-		id.data(), id.size(),
-		entry.data(), entry.size()
-	);
 
-	set_cover(db, id, [](auto&&, auto&&){});
+		// KEYS[2]
+		m_list_prefix.data(), m_list_prefix.size(),
+		m_user.data(), m_user.size(),
+
+		id.data(), id.size(),        // ARGV[1]
+		entry.data(), entry.size(),  // ARGV[2]
+		hex.data(), hex.size(),      // ARGV[3]
+		m_path.data(), m_path.size()
+	);
 }
 
 void Ownership::Collection::unlink(redis::Connection& db, const ObjectID& id)

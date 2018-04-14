@@ -67,7 +67,7 @@ public:
 	std::string redis_key() const;
 
 	template <typename Complete>
-	void set_cover(redis::Connection& db, const ObjectID& cover, Complete&& complete, bool force=false);
+	void set_cover(redis::Connection& db, const ObjectID& cover, Complete&& complete);
 
 	template <typename Complete>
 	void set_permission(redis::Connection& db, const ObjectID& blob, const Permission& perm, Complete&& complete) const;
@@ -265,44 +265,29 @@ void Ownership::Collection::set_permission(
 }
 
 template <typename Complete>
-void Ownership::Collection::set_cover(redis::Connection& db, const ObjectID& cover, Complete&& complete, bool force)
+void Ownership::Collection::set_cover(redis::Connection& db, const ObjectID& cover, Complete&& complete)
 {
 	// set the cover of the collection
-	if (force)
-	{
-		auto hex_id = to_hex(cover);
-		static const char lua[] = R"__(
-			local coll, blob = ARGV[1], ARGV[2]
-			local album = cjson.decode(redis.call('HGET', KEYS[1], coll))
-			album['cover'] = blob
-			redis.call('HSET', KEYS[1], coll, cjson.encode(album))
-		)__";
-		db.command(
-			[comp=std::forward<Complete>(complete)](auto&& reply, auto ec)
-			{
-				if (!reply || ec)
-					Log(LOG_WARNING, "set_cover(): reply %1% %2%", reply.as_error(), ec);
-				comp(std::move(reply), ec);
-			},
-			"EVAL %s 1 %b%b %b %b", lua,
-			m_list_prefix.data(), m_list_prefix.size(),
-			m_user.data(), m_user.size(),
-			m_path.data(), m_path.size(),
-			hex_id.data(), hex_id.size()
-		);
-	}
-	else
-	{
-		auto json = R"({"cover":)" + to_quoted_hex(cover) + "}";
-		db.command(
-			std::forward<Complete>(complete),
-			"HSETNX %b%b %b %b",
-			m_list_prefix.data(), m_list_prefix.size(),
-			m_user.data(), m_user.size(),
-			m_path.data(), m_path.size(),
-			json.data(), json.size()
-		);
-	}
+	auto hex_id = to_hex(cover);
+	static const char lua[] = R"__(
+		local coll, blob = ARGV[1], ARGV[2]
+		local album = cjson.decode(redis.call('HGET', KEYS[1], coll))
+		album['cover'] = blob
+		redis.call('HSET', KEYS[1], coll, cjson.encode(album))
+	)__";
+	db.command(
+		[comp=std::forward<Complete>(complete)](auto&& reply, auto ec)
+		{
+			if (!reply || ec)
+				Log(LOG_WARNING, "set_cover(): reply %1% %2%", reply.as_error(), ec);
+			comp(std::move(reply), ec);
+		},
+		"EVAL %s 1 %b%b %b %b", lua,
+		m_list_prefix.data(), m_list_prefix.size(),
+		m_user.data(), m_user.size(),
+		m_path.data(), m_path.size(),
+		hex_id.data(), hex_id.size()
+	);
 }
 
 template <typename Complete>
@@ -580,7 +565,7 @@ void Ownership::query_blob(redis::Connection& db, const ObjectID& blob, Complete
 template <typename Complete>
 void Ownership::set_cover(redis::Connection& db, std::string_view coll, const ObjectID& blob, Complete&& complete) const
 {
-	Collection{m_user, coll}.set_cover(db, blob, std::forward<Complete>(complete), true);
+	Collection{m_user, coll}.set_cover(db, blob, std::forward<Complete>(complete));
 }
 
 } // end of namespace
