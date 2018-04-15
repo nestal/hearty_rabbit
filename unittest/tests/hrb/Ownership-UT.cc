@@ -328,7 +328,41 @@ TEST_CASE("Query blob of testuser")
 	REQUIRE(tested == 2);
 }
 
-TEST_CASE("setting and remove the cover of collection")
+TEST_CASE("set cover error cases", "[error]")
+{
+	boost::asio::io_context ioc;
+	auto redis = redis::connect(ioc);
+
+	Ownership subject{"testuser"};
+	auto cover_blob = insecure_random<ObjectID>();
+
+	std::string inexist_album{"inexist"};
+
+	// concatenate all existing album name to create a album name that doesn't exist
+	subject.scan_all_collections(*redis,
+		[&inexist_album](auto&& jdoc, auto ec)
+		{
+			REQUIRE(jdoc["owner"] == "testuser");
+			for (auto&& it : jdoc["colls"].items())
+				inexist_album += it.key();
+		}
+	);
+
+	bool tested = false;
+
+	// setting the cover of an album that doesn't exists
+	subject.set_cover(*redis, inexist_album, cover_blob, [&tested](bool ok, auto ec)
+	{
+		REQUIRE(!ec);
+		REQUIRE(!ok);
+		tested = true;
+	});
+
+	REQUIRE(ioc.run_for(10s) > 0);
+	REQUIRE(tested);
+}
+
+TEST_CASE("setting and remove the cover of collection", "[normal]")
 {
 	boost::asio::io_context ioc;
 	auto redis = redis::connect(ioc);
@@ -376,9 +410,10 @@ TEST_CASE("setting and remove the cover of collection")
 	tested = false;
 
 	// set the cover to be the new generated blob
-	subject.set_cover(*redis, "/", cover_blob, [&tested](auto&&, auto ec)
+	subject.set_cover(*redis, "/", cover_blob, [&tested](bool ok, auto ec)
 	{
 		REQUIRE(!ec);
+		REQUIRE(ok);
 		tested = true;
 	});
 	REQUIRE(ioc.run_for(10s) > 0);

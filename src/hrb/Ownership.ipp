@@ -271,20 +271,24 @@ void Ownership::Collection::set_cover(redis::Connection& db, const ObjectID& cov
 	auto hex_id = to_hex(cover);
 	static const char lua[] = R"__(
 		local coll, blob = ARGV[1], ARGV[2]
-		local album = {}
 		local json = redis.call('HGET', KEYS[1], coll)
 		if json then
-			album = cjson.decode(json)
+			local album = cjson.decode(json)
+			album['cover'] = blob
+			redis.call('HSET', KEYS[1], coll, cjson.encode(album))
+
+			return 1
+		else
+			return 0
 		end
-		album['cover'] = blob
-		redis.call('HSET', KEYS[1], coll, cjson.encode(album))
 	)__";
 	db.command(
 		[comp=std::forward<Complete>(complete)](auto&& reply, auto ec)
 		{
 			if (!reply || ec)
 				Log(LOG_WARNING, "set_cover(): reply %1% %2%", reply.as_error(), ec);
-			comp(std::move(reply), ec);
+
+			comp(reply.as_int() == 1, ec);
 		},
 		"EVAL %s 1 %b%b %b %b", lua,
 		m_list_prefix.data(), m_list_prefix.size(),
