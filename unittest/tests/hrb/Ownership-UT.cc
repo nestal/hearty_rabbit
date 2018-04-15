@@ -72,6 +72,7 @@ TEST_CASE("list of collection owned by user", "[normal]")
 	subject.serialize(*redis, "owner", "/", [&tested, redis](auto&& jdoc, auto ec)
 	{
 		INFO("serialize() return " << jdoc);
+		std::cout << jdoc << std::endl;
 		for (auto&& blob : jdoc["elements"].items())
 		{
 			INFO("blob = " << blob.key());

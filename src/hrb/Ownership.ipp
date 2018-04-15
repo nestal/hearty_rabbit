@@ -317,21 +317,47 @@ void Ownership::Collection::serialize(
 	Complete&& complete
 ) const
 {
+	static const char lua[] = R"__(
+		return {
+			redis.call('HGETALL', KEYS[1]),
+			redis.call('HGET', KEYS[2], ARGV[1])
+		}
+	)__";
 	db.command(
 		[
 			comp=std::forward<Complete>(complete), *this,
-			requester=std::string{requester}
+			requester=std::string{requester},
+			path=m_path
 		](auto&& reply, std::error_code&& ec) mutable
 		{
-			auto jdoc = serialize(reply, requester, m_user);
-			jdoc.emplace("owner", m_user);
-			jdoc.emplace("collection", m_path);
+			if (!reply || ec)
+				Log(LOG_WARNING, "serialize() script reply %1% %2%", reply.as_error(), ec);
 
-			comp(std::move(jdoc), std::move(ec));
+			if (reply.array_size() == 2)
+			{
+				auto jdoc = serialize(reply[0], requester, m_user);
+				jdoc.emplace("owner", m_user);
+				jdoc.emplace("collection", m_path);
+
+				// in some error cases created by unit tests, the string is not valid JSON
+				// in the database
+				auto meta = nlohmann::json::parse(reply[1].as_string(), nullptr, false);
+				if (!meta.is_discarded())
+					jdoc.emplace("meta", std::move(meta));
+
+				comp(std::move(jdoc), std::move(ec));
+			}
+
+			// TODO: handle case where
 		},
-		"HGETALL %b%b:%b",
+		"EVAL %s 2 %b%b:%b %b%b %b", lua,
 		m_dir_prefix.data(), m_dir_prefix.size(),
 		m_user.data(), m_user.size(),
+		m_path.data(), m_path.size(),
+
+		m_list_prefix.data(), m_list_prefix.size(),
+		m_user.data(), m_user.size(),
+
 		m_path.data(), m_path.size()
 	);
 }
