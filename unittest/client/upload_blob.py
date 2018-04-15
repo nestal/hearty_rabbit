@@ -335,6 +335,16 @@ class NormalTestCase(unittest.TestCase):
 		for x in range(10):
 			self.assertEqual(r1.json()["colls"]["collection{}".format(x)]["cover"], covers[x])
 
+		# error case: try setting the covers using images from other collections
+		for x in range(10):
+			comp = 9 - x
+			if comp != x:
+				view = "https://localhost:4433/view/sumsum/collection{}/".format(x)
+				self.assertEqual(self.user1.post(view,
+					data="cover=" + covers[comp],
+					headers={"Content-type": "application/x-www-form-urlencoded"}
+				).status_code, 400)
+
 	def test_session_expired(self):
 		old_session = self.user1.cookies["id"]
 		self.user1.get("https://localhost:4433/logout")

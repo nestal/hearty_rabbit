@@ -268,13 +268,16 @@ template <typename Complete>
 void Ownership::Collection::set_cover(redis::Connection& db, const ObjectID& cover, Complete&& complete)
 {
 	// set the cover of the collection
+	// only set the cover if the collection is already in the dirs:<user> hash
+	// and only if the cover blob is already in the collection (i.e. dir:<user>:<collection> hash)
 	auto hex_id = to_hex(cover);
 	static const char lua[] = R"__(
-		local coll, blob = ARGV[1], ARGV[2]
-		local json = redis.call('HGET', KEYS[1], coll)
-		if json then
+		local coll, blob_hex, blob = ARGV[1], ARGV[2], ARGV[3]
+		local json  = redis.call('HGET', KEYS[1], coll)
+		local entry = redis.call('HGET', KEYS[2], blob)
+		if json and entry then
 			local album = cjson.decode(json)
-			album['cover'] = blob
+			album['cover'] = blob_hex
 			redis.call('HSET', KEYS[1], coll, cjson.encode(album))
 
 			return 1
@@ -290,12 +293,20 @@ void Ownership::Collection::set_cover(redis::Connection& db, const ObjectID& cov
 
 			comp(reply.as_int() == 1, ec);
 		},
-		"EVAL %s 1 %b%b %b %b", lua,
+		"EVAL %s 2 %b%b %b%b:%b %b %b %b", lua,
+
+		// KEYS[1]: dirs:<user>
 		m_list_prefix.data(), m_list_prefix.size(),
 		m_user.data(), m_user.size(),
 
+		// KEYS[2]: dir:<user>:<collection>
+		m_dir_prefix.data(), m_dir_prefix.size(),
+		m_user.data(), m_user.size(),
 		m_path.data(), m_path.size(),
-		hex_id.data(), hex_id.size()
+
+		m_path.data(), m_path.size(),
+		hex_id.data(), hex_id.size(),
+		cover.data(), cover.size()
 	);
 }
 

@@ -336,30 +336,70 @@ TEST_CASE("set cover error cases", "[error]")
 	Ownership subject{"testuser"};
 	auto cover_blob = insecure_random<ObjectID>();
 
-	std::string inexist_album{"inexist"};
-
-	// concatenate all existing album name to create a album name that doesn't exist
-	subject.scan_all_collections(*redis,
-		[&inexist_album](auto&& jdoc, auto ec)
-		{
-			REQUIRE(jdoc["owner"] == "testuser");
-			for (auto&& it : jdoc["colls"].items())
-				inexist_album += it.key();
-		}
-	);
-
-	bool tested = false;
-
-	// setting the cover of an album that doesn't exists
-	subject.set_cover(*redis, inexist_album, cover_blob, [&tested](bool ok, auto ec)
+	SECTION("setting cover of inexist album")
 	{
-		REQUIRE(!ec);
-		REQUIRE(!ok);
-		tested = true;
-	});
+		std::string inexist_album{"inexist"};
 
-	REQUIRE(ioc.run_for(10s) > 0);
-	REQUIRE(tested);
+		// concatenate all existing album name to create a album name that doesn't exist
+		subject.scan_all_collections(*redis,
+			[&inexist_album](auto&& jdoc, auto ec)
+			{
+				REQUIRE(jdoc["owner"] == "testuser");
+				for (auto&& it : jdoc["colls"].items())
+					inexist_album += it.key();
+			}
+		);
+
+		bool tested = false;
+
+		// setting the cover of an album that doesn't exists
+		subject.set_cover(*redis, inexist_album, cover_blob, [&tested](bool ok, auto ec)
+		{
+			REQUIRE(!ec);
+			REQUIRE(!ok);
+			tested = true;
+		});
+
+		REQUIRE(ioc.run_for(10s) > 0);
+		REQUIRE(tested);
+	}
+	SECTION("setting cover of inexist blob in a valid album")
+	{
+		auto blob1 = insecure_random<ObjectID>();
+		auto blob2 = insecure_random<ObjectID>();
+
+		// add 2 blobs to an album
+		int run = 0;
+		subject.link(*redis, "/", blob1, CollEntry{}, [&run](auto ec)
+		{
+			REQUIRE(!ec);
+			++run;
+		});
+		subject.link(*redis, "/", blob2, CollEntry{}, [&run](auto ec)
+		{
+			REQUIRE(!ec);
+			++run;
+		});
+		// remove blob1 so that it doesn't exist in the album
+		subject.unlink(*redis, "/", blob1, [&run](auto ec)
+		{
+			REQUIRE(!ec);
+			++run;
+		});
+		REQUIRE(ioc.run_for(10s) > 0);
+		REQUIRE(run == 3);
+		ioc.restart();
+
+		// try to set blob1 as cover, it should fail because blob1 doesn't exist
+		// in the album
+		subject.set_cover(*redis, "/", blob1, [&run](bool ok, auto ec)
+		{
+			REQUIRE(!ok);
+			++run;
+		});
+		REQUIRE(ioc.run_for(10s) > 0);
+		REQUIRE(run == 4);
+	}
 }
 
 TEST_CASE("setting and remove the cover of collection", "[normal]")

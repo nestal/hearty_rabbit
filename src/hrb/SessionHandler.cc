@@ -169,9 +169,14 @@ void SessionHandler::update_view(BlobRequest&& req, EmptyResponseSender&& send)
 				*m_db,
 				req.collection(),
 				*cover_blob,
-				[send=std::move(send), version=req.version()](auto&&, auto ec)
+				[send=std::move(send), version=req.version()](bool ok, auto ec)
 				{
-					send(http::response<http::empty_body>{ec ? http::status::internal_server_error : http::status::no_content, version});
+					send(http::response<http::empty_body>{
+						ec ?
+							http::status::internal_server_error :
+							(ok ? http::status::no_content : http::status::bad_request),
+						version
+					});
 				}
 			);
 		}
