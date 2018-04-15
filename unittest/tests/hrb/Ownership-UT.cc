@@ -385,11 +385,9 @@ TEST_CASE("setting and remove the cover of collection")
 		{
 			REQUIRE(!ec);
 			REQUIRE(jdoc["owner"] == "testuser");
-			std::cout << "scan_all() returns " << jdoc;
 
 			for (auto&& it : jdoc["colls"].items())
 			{
-				std::cout << to_hex(cover_blob) << " " << it.value() << std::endl;
 				if (it.key() == "/" && it.value()["cover"] == to_hex(cover_blob))
 					tested = true;
 			}
@@ -397,6 +395,33 @@ TEST_CASE("setting and remove the cover of collection")
 	);
 	REQUIRE(ioc.run_for(10s) > 0);
 	REQUIRE(tested);
+	bool removed = false;
+	ioc.restart();
+
+	// remove the new blob
+	subject.unlink(*redis, "/", cover_blob, [&removed](auto ec)
+	{
+		REQUIRE(!ec);
+		removed = true;
+	});
+
+	// check if the cover is updated
+	bool updated = false;
+	subject.scan_all_collections(*redis,
+		[&cover_blob, &updated](auto&& jdoc, auto ec)
+		{
+			REQUIRE(!ec);
+			REQUIRE(jdoc["owner"] == "testuser");
+			for (auto&& it : jdoc["colls"].items())
+			{
+				if (it.key() == "/" && it.value().find("cover") == it.value().end())
+					updated = true;
+			}
+		}
+	);
+	REQUIRE(ioc.run_for(10s) > 0);
+	REQUIRE(removed);
+	REQUIRE(updated);
 }
 
 TEST_CASE("collection entry", "[normal]")
