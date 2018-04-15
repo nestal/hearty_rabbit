@@ -137,7 +137,7 @@ void SessionHandler::on_request_body(Request&& req, Send&& send)
 		return send(http::response<http::empty_body>{http::status::bad_request, req.version()});
 	}
 
-	// handle_blob() is a function template on the request type. It can work with all
+	// on_request_view() is a function template on the request type. It can work with all
 	// request types so no need to check before calling.
 	if (intent.action() == URLIntent::Action::view)
 		return on_request_view(std::forward<Request>(req), std::move(intent), std::forward<Send>(send));
@@ -197,7 +197,10 @@ void SessionHandler::on_request_view(Request&& req, URLIntent&& intent, Send&& s
 	}
 	else if (req.method() == http::verb::post)
 	{
-		return update_blob(std::move(breq), std::move(send));
+		if (breq.blob())
+			return update_blob(std::move(breq), std::move(send));
+		else
+			return update_view(std::move(breq), std::move(send));
 	}
 	else
 	{

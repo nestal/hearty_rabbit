@@ -343,6 +343,13 @@ TEST_CASE("setting and remove the cover of collection")
 		added = true;
 	});
 
+	// add another blob to the collection so that the collection will be
+	// still here even after removing the first one
+	subject.link(*redis, "/", insecure_random<ObjectID>(), CollEntry{}, [&added](auto ec)
+	{
+		REQUIRE(!ec);
+	});
+
 	std::vector<std::string> dirs;
 
 	bool tested = false;
@@ -408,14 +415,18 @@ TEST_CASE("setting and remove the cover of collection")
 	// check if the cover is updated
 	bool updated = false;
 	subject.scan_all_collections(*redis,
-		[&cover_blob, &updated](auto&& jdoc, auto ec)
+		[&cover_blob, &updated, &removed](auto&& jdoc, auto ec)
 		{
+			REQUIRE(removed);
 			REQUIRE(!ec);
 			REQUIRE(jdoc["owner"] == "testuser");
 			for (auto&& it : jdoc["colls"].items())
 			{
-				if (it.key() == "/" && it.value().find("cover") == it.value().end())
+				if (it.key() == "/" )
+				{
+					REQUIRE(it.value().find("cover") == it.value().end());
 					updated = true;
+				}
 			}
 		}
 	);

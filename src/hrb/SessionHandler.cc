@@ -132,8 +132,6 @@ http::response<http::empty_body> SessionHandler::see_other(boost::beast::string_
 void SessionHandler::unlink(BlobRequest&& req, EmptyResponseSender&& send)
 {
 	assert(req.blob());
-//	Log(LOG_INFO, "unlinking object %1% from path(%2%)", *req.blob(), req.collection());
-
 	if (!req.request_by_owner())
 		return send(http::response<http::empty_body>{http::status::forbidden, req.version()});
 
@@ -165,7 +163,9 @@ void SessionHandler::update_view(BlobRequest&& req, EmptyResponseSender&& send)
 	{
 		auto cover_blob = hex_to_object_id(cover);
 		if (cover_blob)
-			Ownership{req.rendition()}.set_cover(
+		{
+			Log(LOG_INFO, "setting cover of %1% to %2%", req.collection(), cover);
+			return Ownership{req.rendition()}.set_cover(
 				*m_db,
 				req.collection(),
 				*cover_blob,
@@ -174,7 +174,10 @@ void SessionHandler::update_view(BlobRequest&& req, EmptyResponseSender&& send)
 					send(http::response<http::empty_body>{ec ? http::status::internal_server_error : http::status::no_content, version});
 				}
 			);
+		}
 	}
+
+	send(http::response<http::empty_body>{http::status::bad_request, req.version()});
 }
 
 void SessionHandler::update_blob(BlobRequest&& req, EmptyResponseSender&& send)

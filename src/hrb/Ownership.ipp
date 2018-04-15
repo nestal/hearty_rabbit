@@ -285,6 +285,7 @@ void Ownership::Collection::set_cover(redis::Connection& db, const ObjectID& cov
 		"EVAL %s 1 %b%b %b %b", lua,
 		m_list_prefix.data(), m_list_prefix.size(),
 		m_user.data(), m_user.size(),
+
 		m_path.data(), m_path.size(),
 		hex_id.data(), hex_id.size()
 	);
