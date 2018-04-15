@@ -164,8 +164,8 @@ void SessionHandler::update_view(BlobRequest&& req, EmptyResponseSender&& send)
 		auto cover_blob = hex_to_object_id(cover);
 		if (cover_blob)
 		{
-			Log(LOG_INFO, "setting cover of %1% to %2%", req.collection(), cover);
-			return Ownership{req.rendition()}.set_cover(
+			Log(LOG_INFO, "setting cover of %1% to %2%", req.collection(), to_hex(*cover_blob));
+			return Ownership{req.owner()}.set_cover(
 				*m_db,
 				req.collection(),
 				*cover_blob,

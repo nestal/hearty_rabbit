@@ -271,7 +271,11 @@ void Ownership::Collection::set_cover(redis::Connection& db, const ObjectID& cov
 	auto hex_id = to_hex(cover);
 	static const char lua[] = R"__(
 		local coll, blob = ARGV[1], ARGV[2]
-		local album = cjson.decode(redis.call('HGET', KEYS[1], coll))
+		local album = {}
+		local json = redis.call('HGET', KEYS[1], coll)
+		if json then
+			album = cjson.decode(json)
+		end
 		album['cover'] = blob
 		redis.call('HSET', KEYS[1], coll, cjson.encode(album))
 	)__";
