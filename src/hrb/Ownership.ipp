@@ -560,14 +560,15 @@ void Ownership::list_public_blobs(
 	);
 }
 
+
 template <typename Complete>
 void Ownership::query_blob(redis::Connection& db, const ObjectID& blob, Complete&& complete)
 {
 	static const char lua[] = R"__(
 		local dirs = {}
 		for k, mpack in ipairs(redis.call('SMEMBERS', KEYS[1])) do
-			local user, coll = cmsgpack.unpack(mpack)
-			local coll_key = 'dir:' .. user .. ':' .. coll
+			local dir, user, coll = cmsgpack.unpack(mpack)
+			local coll_key = dir .. user .. ':' .. coll
 			table.insert(dirs, coll_key)
 			table.insert(dirs, redis.call('HGET', coll_key, ARGV[1]))
 		end
