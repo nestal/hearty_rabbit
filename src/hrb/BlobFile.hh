@@ -45,7 +45,7 @@ public:
 		std::error_code& ec
 	);
 
-	BufferView blob() const;
+	BufferView buffer() const;
 	MMap& mmap() {return m_mmap;}
 
 	const ObjectID& ID() const {return m_id;}
@@ -54,7 +54,7 @@ public:
 	void save(const fs::path& dir, std::error_code& ec) const;
 
 private:
-	static TurboBuffer generate_rendition(BufferView master, std::string_view rend, Size2D dim, int quality, std::error_code& ec);
+	static TurboBuffer generate_rendition(BufferView master, Size2D dim, int quality, std::error_code& ec);
 
 private:
 	ObjectID    m_id{};

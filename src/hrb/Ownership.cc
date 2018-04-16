@@ -35,10 +35,14 @@ Ownership::BlobBackLink::BlobBackLink(std::string_view user, std::string_view co
 
 void Ownership::BlobBackLink::link(redis::Connection& db) const
 {
+	static const char lua[] = R"__(
+		redis.call('SADD', KEYS[1], cmsgpack.pack(ARGV[1], ARGV[2], ARGV[3]))
+	)__";
 	db.command(
-		"SADD %b%b %b%b:%b",
+		"EVAL %s 1 %b%b %b %b %b", lua,
 		m_prefix.data(), m_prefix.size(),
 		m_blob.data(), m_blob.size(),
+
 		Collection::m_dir_prefix.data(), Collection::m_dir_prefix.size(),
 		m_user.data(), m_user.size(),
 		m_coll.data(), m_coll.size()
@@ -47,10 +51,16 @@ void Ownership::BlobBackLink::link(redis::Connection& db) const
 
 void Ownership::BlobBackLink::unlink(redis::Connection& db) const
 {
+	static const char lua[] = R"__(
+		redis.call('SREM', KEYS[1], cmsgpack.pack(ARGV[1], ARGV[2], ARGV[3]))
+	)__";
 	db.command(
-		"SREM %b%b %b%b:%b",
+		"EVAL %s 1 %b%b %b %b %b", lua,
+
+		// KEYS[1]
 		m_prefix.data(), m_prefix.size(),
 		m_blob.data(), m_blob.size(),
+
 		Collection::m_dir_prefix.data(), Collection::m_dir_prefix.size(),
 		m_user.data(), m_user.size(),
 		m_coll.data(), m_coll.size()
@@ -60,7 +70,6 @@ void Ownership::BlobBackLink::unlink(redis::Connection& db) const
 const std::string_view Ownership::Collection::m_dir_prefix = "dir:";
 const std::string_view Ownership::Collection::m_list_prefix = "dirs:";
 const std::string_view Ownership::Collection::m_public_blobs = "public-blobs";
-const std::string_view Ownership::Collection::m_public_coll_entries = "public-coll-entries";
 
 Ownership::Collection::Collection(std::string_view user, std::string_view path) :
 	m_user{user},
@@ -89,16 +98,35 @@ std::string Ownership::Collection::redis_key() const
 
 void Ownership::Collection::link(redis::Connection& db, const ObjectID& id, const CollEntry& entry)
 {
+	auto hex = to_hex(id);
+
+	static const char lua[] = R"__(
+		local blob, entry, cover, coll = ARGV[1], ARGV[2], ARGV[3], ARGV[4]
+		redis.call('HSET',   KEYS[1], blob, entry)
+		redis.call('HSETNX', KEYS[2], coll, cjson.encode({cover=cover}))
+	)__";
 	db.command(
-		"HSET %b%b:%b %b %b",
+		[](auto&& reply, auto ec)
+		{
+			if (!reply || ec)
+				Log(LOG_WARNING, "Collection::link() returns %1% %2%", reply.as_error(), ec);
+		},
+		"EVAL %s 2 %b%b:%b %b%b %b %b %b %b", lua,
+
+		// KEYS[1]
 		m_dir_prefix.data(), m_dir_prefix.size(),
 		m_user.data(), m_user.size(),
 		m_path.data(), m_path.size(),
-		id.data(), id.size(),
-		entry.data(), entry.size()
-	);
 
-	set_cover(db, id, [](auto&&, auto&&){});
+		// KEYS[2]
+		m_list_prefix.data(), m_list_prefix.size(),
+		m_user.data(), m_user.size(),
+
+		id.data(), id.size(),        // ARGV[1]
+		entry.data(), entry.size(),  // ARGV[2]
+		hex.data(), hex.size(),      // ARGV[3]
+		m_path.data(), m_path.size()
+	);
 }
 
 void Ownership::Collection::unlink(redis::Connection& db, const ObjectID& id)
@@ -109,7 +137,9 @@ void Ownership::Collection::unlink(redis::Connection& db, const ObjectID& id)
 	// image is the one being removed.
 	static const char cmd[] = R"__(
 		redis.call('HDEL', KEYS[1], ARGV[1])
-		if redis.call('EXISTS', KEYS[1]) == 0 then redis.call('HDEL', KEYS[2], ARGV[2]) else
+		if redis.call('EXISTS', KEYS[1]) == 0 then
+			redis.call('HDEL', KEYS[2], ARGV[2])
+		else
 			local album = cjson.decode(redis.call('HGET', KEYS[2], ARGV[2]))
 			if album['cover'] == ARGV[3] then
 				album['cover'] = nil
@@ -124,7 +154,7 @@ void Ownership::Collection::unlink(redis::Connection& db, const ObjectID& id)
 		[](auto&& reply, auto ec)
 		{
 			if (!reply || ec)
-				Log(LOG_WARNING, "unlink lua script failure: %1% (%2%)", reply.as_error(), ec);
+				Log(LOG_WARNING, "Collection::unlink() lua script failure: %1% (%2%)", reply.as_error(), ec);
 		},
 		"EVAL %s 2 %b%b:%b %b%b %b %b %b",
 
@@ -160,6 +190,9 @@ nlohmann::json Ownership::Collection::serialize(const redis::Reply& reply, std::
 	{
 		auto&& blob = kv.key();
 		auto&& perm = kv.value();
+
+		if (perm.as_string().empty())
+			continue;
 
 		auto blob_id = raw_to_object_id(blob);
 		CollEntry entry{perm.as_string()};

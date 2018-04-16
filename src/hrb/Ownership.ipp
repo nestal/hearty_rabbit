@@ -57,7 +57,6 @@ public:
 	static const std::string_view m_dir_prefix;
 	static const std::string_view m_list_prefix;
 	static const std::string_view m_public_blobs;
-	static const std::string_view m_public_coll_entries;
 
 public:
 	Collection(std::string_view user, std::string_view path);
@@ -222,17 +221,21 @@ void Ownership::Collection::set_permission(
 ) const
 {
 	static const char lua[] = R"__(
-		local original = redis.call('HGET', KEYS[1], ARGV[1])
-		local updated  = ARGV[2] .. string.sub(original, 2, -1)
-		redis.call('HSET', KEYS[1], ARGV[1], updated)
-		if ARGV[2] == '*' then
-			redis.call('HSET', KEYS[3], ARGV[1], updated)
-			if redis.call('LPUSH', KEYS[2], ARGV[1]) > 100 then
-				redis.call('HDEL', KEYS[3], redis.call('RPOP', KEYS[2]))
+		local user, coll, blob, perm = ARGV[1], ARGV[2], ARGV[3], ARGV[4]
+		local coll_key = 'dir:' .. user .. ':' .. coll
+
+		local original = redis.call('HGET', coll_key, blob)
+		local updated  = perm .. string.sub(original, 2, -1)
+		redis.call('HSET', coll_key, blob, updated)
+
+		local msgpack = cmsgpack.pack(user, coll, blob)
+		if perm == '*' then
+			redis.call('LREM', KEYS[1], 0, msgpack)
+			if redis.call('LPUSH', KEYS[1], msgpack) > 100 then
+				redis.call('RPOP', KEYS[1])
 			end
 		else
-			redis.call('LREM', KEYS[2], 0, ARGV[1])
-			redis.call('HDEL', KEYS[3], ARGV[1])
+			redis.call('LREM', KEYS[1], 0, msgpack)
 		end
 	)__";
 	db.command(
@@ -242,24 +245,21 @@ void Ownership::Collection::set_permission(
 				Log(LOG_WARNING, "Collection::set_permission(): script error: %1%", reply.as_error());
 			comp(std::move(ec));
 		},
-		"EVAL %s 3 %b%b:%b %b %b %b %b",
-		lua,
+		"EVAL %s 1 %b %b %b %b %b", lua,
 
-		// KEYS[1]: dir:<user>:<collection>
-		m_dir_prefix.data(), m_dir_prefix.size(),
-		m_user.data(), m_user.size(),
-		m_path.data(), m_path.size(),
-
-		// KEYS[2]: list of public blob IDs
+		// KEYS[1]: list of public blob IDs
 		m_public_blobs.data(), m_public_blobs.size(),
 
-		// KEYS[3]: hash from public blob IDs to collection entries
-		m_public_coll_entries.data(), m_public_coll_entries.size(),
+		// ARGV[1]: user
+		m_user.data(), m_user.size(),
 
-		// ARGV[1]: blob ID
+		// ARGV[2]: collection
+		m_path.data(), m_path.size(),
+
+		// ARGV[3]: blob ID
 		blob.data(), blob.size(),
 
-		// ARGV[2]: permission string
+		// ARGV[4]: permission string
 		perm.data(), perm.size()
 	);
 }
@@ -268,14 +268,45 @@ template <typename Complete>
 void Ownership::Collection::set_cover(redis::Connection& db, const ObjectID& cover, Complete&& complete)
 {
 	// set the cover of the collection
-	auto json = R"({"cover":)" + to_quoted_hex(cover) + "}";
+	// only set the cover if the collection is already in the dirs:<user> hash
+	// and only if the cover blob is already in the collection (i.e. dir:<user>:<collection> hash)
+	auto hex_id = to_hex(cover);
+	static const char lua[] = R"__(
+		local coll, blob_hex, blob = ARGV[1], ARGV[2], ARGV[3]
+		local json  = redis.call('HGET', KEYS[1], coll)
+		local entry = redis.call('HGET', KEYS[2], blob)
+		if json and entry then
+			local album = cjson.decode(json)
+			album['cover'] = blob_hex
+			redis.call('HSET', KEYS[1], coll, cjson.encode(album))
+
+			return 1
+		else
+			return 0
+		end
+	)__";
 	db.command(
-		std::forward<Complete>(complete),
-		R"(HSETNX %b%b %b %b)",
+		[comp=std::forward<Complete>(complete)](auto&& reply, auto ec)
+		{
+			if (!reply || ec)
+				Log(LOG_WARNING, "set_cover(): reply %1% %2%", reply.as_error(), ec);
+
+			comp(reply.as_int() == 1, ec);
+		},
+		"EVAL %s 2 %b%b %b%b:%b %b %b %b", lua,
+
+		// KEYS[1]: dirs:<user>
 		m_list_prefix.data(), m_list_prefix.size(),
 		m_user.data(), m_user.size(),
+
+		// KEYS[2]: dir:<user>:<collection>
+		m_dir_prefix.data(), m_dir_prefix.size(),
+		m_user.data(), m_user.size(),
 		m_path.data(), m_path.size(),
-		json.data(), json.size()
+
+		m_path.data(), m_path.size(),
+		hex_id.data(), hex_id.size(),
+		cover.data(), cover.size()
 	);
 }
 
@@ -286,21 +317,47 @@ void Ownership::Collection::serialize(
 	Complete&& complete
 ) const
 {
+	static const char lua[] = R"__(
+		return {
+			redis.call('HGETALL', KEYS[1]),
+			redis.call('HGET', KEYS[2], ARGV[1])
+		}
+	)__";
 	db.command(
 		[
 			comp=std::forward<Complete>(complete), *this,
-			requester=std::string{requester}
+			requester=std::string{requester},
+			path=m_path
 		](auto&& reply, std::error_code&& ec) mutable
 		{
-			auto jdoc = serialize(reply, requester, m_user);
-			jdoc.emplace("owner", m_user);
-			jdoc.emplace("collection", m_path);
+			if (!reply || ec)
+				Log(LOG_WARNING, "serialize() script reply %1% %2%", reply.as_error(), ec);
 
-			comp(std::move(jdoc), std::move(ec));
+			if (reply.array_size() == 2)
+			{
+				auto jdoc = serialize(reply[0], requester, m_user);
+				jdoc.emplace("owner", m_user);
+				jdoc.emplace("collection", m_path);
+
+				// in some error cases created by unit tests, the string is not valid JSON
+				// in the database
+				auto meta = nlohmann::json::parse(reply[1].as_string(), nullptr, false);
+				if (!meta.is_discarded())
+					jdoc.emplace("meta", std::move(meta));
+
+				comp(std::move(jdoc), std::move(ec));
+			}
+
+			// TODO: handle case where
 		},
-		"HGETALL %b%b:%b",
+		"EVAL %s 2 %b%b:%b %b%b %b", lua,
 		m_dir_prefix.data(), m_dir_prefix.size(),
 		m_user.data(), m_user.size(),
+		m_path.data(), m_path.size(),
+
+		m_list_prefix.data(), m_list_prefix.size(),
+		m_user.data(), m_user.size(),
+
 		m_path.data(), m_path.size()
 	);
 }
@@ -442,50 +499,80 @@ void Ownership::move_blob(
 }
 
 template <typename Complete>
-void Ownership::find_reference(redis::Connection& db, const ObjectID& blob, Complete&& complete) const
-{
-	db.command(
-		[comp=std::forward<Complete>(complete), blob, user=m_user](auto&& reply, auto ec)
-		{
-			for (auto&& entry : reply)
-			{
-				Collection ref{entry.as_string()};
-				if (user == ref.user())
-					comp(ref.path());
-			}
-		},
-		"SMEMBERS %b%b",
-		BlobBackLink::m_prefix.data(), BlobBackLink::m_prefix.size(),
-		blob.data(), blob.size()
-	);
-}
-
-template <typename Complete>
 void Ownership::list_public_blobs(
 	redis::Connection& db,
 	Complete&& complete
 )
 {
+	static const char lua[] = R"__(
+		local elements = {}
+		local pub_list = redis.call('LRANGE', KEYS[1], 0, -1)
+		for i, msgpack in ipairs(pub_list) do
+			local user, coll, blob = cmsgpack.unpack(msgpack)
+			table.insert(elements, {user, coll, blob, redis.call('HGET', 'dir:' .. user .. ':' .. coll, blob)})
+		end
+		return elements
+	)__";
+
 	db.command(
-		[comp=std::forward<Complete>(complete)](auto&& reply, auto ec)
+		[requester=m_user, comp=std::forward<Complete>(complete)](auto&& reply, auto ec)
 		{
-			comp(Collection::serialize(reply, "", ""), ec);
+			if (!reply)
+				Log(LOG_WARNING, "list_public_blobs() script return %1%", reply.as_error());
+
+			// TODO: get the cover here... where to find a redis::Connection?
+			auto jdoc = nlohmann::json::object();
+
+			auto elements = nlohmann::json::object();
+			for (const redis::Reply& row : reply)
+			{
+				auto [owner, coll, blob, perm] = row.as_tuple<4>(ec);
+
+				if (perm.as_string().empty())
+					continue;
+
+				auto blob_id = raw_to_object_id(blob.as_string());
+				CollEntry entry{perm.as_string()};
+
+				// check permission: allow allow owner (i.e. m_user)
+				if (blob_id && (owner.as_string() == requester || entry.permission().allow(requester)))
+				{
+					try
+					{
+						auto entry_jdoc = nlohmann::json::parse(entry.json());
+						entry_jdoc.emplace("perm",  std::string{entry.permission().description()});
+						entry_jdoc.emplace("owner", std::string{owner.as_string()});
+						entry_jdoc.emplace("collection", std::string{coll.as_string()});
+						elements.emplace(to_hex(*blob_id), std::move(entry_jdoc));
+					}
+					catch (std::exception& e)
+					{
+						Log(LOG_WARNING, "exception thrown when parsing CollEntry::json(): %1% %2%", e.what(), entry.json());
+					}
+				}
+			};
+			jdoc.emplace("elements", std::move(elements));
+			comp(std::move(jdoc), ec);
 		},
-		"HGETALL %b",
-		Collection::m_public_coll_entries.data(), Collection::m_public_coll_entries.size()
+		"EVAL %s 1 %b",
+		lua,
+		Collection::m_public_blobs.data(), Collection::m_public_blobs.size()
 	);
 }
+
 
 template <typename Complete>
 void Ownership::query_blob(redis::Connection& db, const ObjectID& blob, Complete&& complete)
 {
 	static const char lua[] = R"__(
 		local dirs = {}
-		for k, coll in pairs(redis.call('SMEMBERS', KEYS[1])) do
-			table.insert(dirs, coll)
-			table.insert(dirs, redis.call('HGET', coll, ARGV[1]))
+		for k, mpack in ipairs(redis.call('SMEMBERS', KEYS[1])) do
+			local dir, user, coll = cmsgpack.unpack(mpack)
+			local coll_key = dir .. user .. ':' .. coll
+			table.insert(dirs, coll_key)
+			table.insert(dirs, redis.call('HGET', coll_key, ARGV[1]))
 		end
-		return dirs;
+		return dirs
 	)__";
 
 	db.command(
@@ -520,6 +607,12 @@ void Ownership::query_blob(redis::Connection& db, const ObjectID& blob, Complete
 		blob.data(), blob.size(),
 		blob.data(), blob.size()
 	);
+}
+
+template <typename Complete>
+void Ownership::set_cover(redis::Connection& db, std::string_view coll, const ObjectID& blob, Complete&& complete) const
+{
+	Collection{m_user, coll}.set_cover(db, blob, std::forward<Complete>(complete));
 }
 
 } // end of namespace

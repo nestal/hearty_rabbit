@@ -89,8 +89,9 @@ public:
 	) const;
 
 	template <typename Complete>
-	void find_reference(
+	void set_cover(
 		redis::Connection& db,
+		std::string_view coll,
 		const ObjectID& blob,
 		Complete&& complete
 	) const;
@@ -110,7 +111,7 @@ public:
 	) const;
 
 	template <typename Complete>
-	static void list_public_blobs(
+	void list_public_blobs(
 		redis::Connection& db,
 		Complete&& complete
 	);

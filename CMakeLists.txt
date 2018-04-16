@@ -83,8 +83,8 @@ target_link_libraries(
 	${HIREDIS_LIBRARIES}
 	OpenSSL::SSL
 	OpenSSL::Crypto
-	${LIBUNWIND_LIBRARIES}
-	${TURBOJPEG_LDFLAGS}        # libjpeg-turbo may not be installed in default paths
+	${LIBUNWIND_STATIC_LIBRARIES}
+	${TURBOJPEG_STATIC_LDFLAGS}        # libjpeg-turbo may not be installed in default paths
 	${LIBB2_LIBRARY}
 	${CMAKE_THREAD_LIBS_INIT}
 )

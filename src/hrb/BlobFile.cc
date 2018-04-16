@@ -52,7 +52,6 @@ BlobFile BlobFile::upload(
 		// generate default rendition
 		auto rotated = generate_rendition(
 			master.buffer(),
-			cfg.default_rendition(),
 			cfg.dimension(cfg.default_rendition()),
 			cfg.quality(cfg.default_rendition()),
 			ec
@@ -80,7 +79,7 @@ BlobFile BlobFile::upload(
 	return result;
 }
 
-BufferView BlobFile::blob() const
+BufferView BlobFile::buffer() const
 {
 	return m_mmap.buffer();
 }
@@ -134,19 +133,26 @@ void BlobFile::save(const fs::path& dir, std::error_code& ec) const
 	}
 }
 
-BlobFile::BlobFile(const fs::path& dir, const ObjectID& id, std::string_view rendition, const RenditionSetting& cfg, std::error_code& ec) :
+BlobFile::BlobFile(
+	const fs::path& dir,
+	const ObjectID& id,
+	std::string_view rendition,
+	const RenditionSetting& cfg,
+	std::error_code& ec
+) :
 	m_id{id}
 {
 	// check if rendition is allowed by config
 	if (!cfg.valid(rendition) && rendition != hrb::master_rendition)
 		rendition = cfg.default_rendition();
 
+	// generate the rendition if it doesn't exist
 	if (rendition != hrb::master_rendition && !exists(dir/std::string{rendition}))
 	{
 		auto master = MMap::open(dir/hrb::master_rendition, ec);
 		if (!ec)
 		{
-			auto tb = generate_rendition(master.buffer(), rendition, cfg.dimension(rendition), cfg.quality(rendition), ec);
+			auto tb = generate_rendition(master.buffer(), cfg.dimension(rendition), cfg.quality(rendition), ec);
 			if (!tb.empty())
 				save_blob(tb, dir / std::string{rendition}, ec);
 		}
@@ -161,7 +167,7 @@ CollEntry BlobFile::entry() const
 	return CollEntry{m_meta};
 }
 
-TurboBuffer BlobFile::generate_rendition(BufferView master, std::string_view rend, Size2D dim, int quality, std::error_code& ec)
+TurboBuffer BlobFile::generate_rendition(BufferView master, Size2D dim, int quality, std::error_code& ec)
 {
 	RotateImage transform;
 	auto rotated = transform.auto_rotate(master, ec);

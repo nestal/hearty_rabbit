@@ -19,6 +19,8 @@
 #include "hrb/Permission.hh"
 #include "crypto/Random.hh"
 
+#include <iostream>
+
 using namespace hrb;
 using namespace std::chrono_literals;
 
@@ -54,9 +56,11 @@ TEST_CASE("list of collection owned by user", "[normal]")
 
 	// assert the blob backlink points back to the collection
 	std::vector<std::string> refs;
-	subject.find_reference(*redis, blobid, [&refs](auto coll)
+	subject.query_blob(*redis, blobid, [&refs](auto&& range, auto ec)
 	{
-		refs.emplace_back(coll);
+		for (auto&& ref : range)
+			if (ref.user == "owner")
+				refs.emplace_back(ref.coll);
 	});
 
 	REQUIRE(ioc.run_for(10s) > 0);
@@ -68,6 +72,7 @@ TEST_CASE("list of collection owned by user", "[normal]")
 	subject.serialize(*redis, "owner", "/", [&tested, redis](auto&& jdoc, auto ec)
 	{
 		INFO("serialize() return " << jdoc);
+		std::cout << jdoc << std::endl;
 		for (auto&& blob : jdoc["elements"].items())
 		{
 			INFO("blob = " << blob.key());
@@ -156,7 +161,7 @@ TEST_CASE("add blob to Ownership", "[normal]")
 
 	// verify that the newly added blob is in the public list
 	bool found = false;
-	Ownership::list_public_blobs(*redis, [&found, blobid](auto&& json, auto ec)
+	subject.list_public_blobs(*redis, [&found, blobid](auto&& json, auto ec)
 	{
 		REQUIRE(json.find("elements") != json.end());
 		auto&& elements = json["elements"];
@@ -324,18 +329,100 @@ TEST_CASE("Query blob of testuser")
 	REQUIRE(tested == 2);
 }
 
-TEST_CASE("Scan for all containers from testuser")
+TEST_CASE("set cover error cases", "[error]")
 {
 	boost::asio::io_context ioc;
 	auto redis = redis::connect(ioc);
 
 	Ownership subject{"testuser"};
+	auto cover_blob = insecure_random<ObjectID>();
+
+	SECTION("setting cover of inexist album")
+	{
+		std::string inexist_album{"inexist"};
+
+		// concatenate all existing album name to create a album name that doesn't exist
+		subject.scan_all_collections(*redis,
+			[&inexist_album](auto&& jdoc, auto ec)
+			{
+				REQUIRE(jdoc["owner"] == "testuser");
+				for (auto&& it : jdoc["colls"].items())
+					inexist_album += it.key();
+			}
+		);
+
+		bool tested = false;
+
+		// setting the cover of an album that doesn't exists
+		subject.set_cover(*redis, inexist_album, cover_blob, [&tested](bool ok, auto ec)
+		{
+			REQUIRE(!ec);
+			REQUIRE(!ok);
+			tested = true;
+		});
+
+		REQUIRE(ioc.run_for(10s) > 0);
+		REQUIRE(tested);
+	}
+	SECTION("setting cover of inexist blob in a valid album")
+	{
+		auto blob1 = insecure_random<ObjectID>();
+		auto blob2 = insecure_random<ObjectID>();
+
+		// add 2 blobs to an album
+		int run = 0;
+		subject.link(*redis, "/", blob1, CollEntry{}, [&run](auto ec)
+		{
+			REQUIRE(!ec);
+			++run;
+		});
+		subject.link(*redis, "/", blob2, CollEntry{}, [&run](auto ec)
+		{
+			REQUIRE(!ec);
+			++run;
+		});
+		// remove blob1 so that it doesn't exist in the album
+		subject.unlink(*redis, "/", blob1, [&run](auto ec)
+		{
+			REQUIRE(!ec);
+			++run;
+		});
+		REQUIRE(ioc.run_for(10s) > 0);
+		REQUIRE(run == 3);
+		ioc.restart();
+
+		// try to set blob1 as cover, it should fail because blob1 doesn't exist
+		// in the album
+		subject.set_cover(*redis, "/", blob1, [&run](bool ok, auto ec)
+		{
+			REQUIRE(!ok);
+			++run;
+		});
+		REQUIRE(ioc.run_for(10s) > 0);
+		REQUIRE(run == 4);
+	}
+}
+
+TEST_CASE("setting and remove the cover of collection", "[normal]")
+{
+	boost::asio::io_context ioc;
+	auto redis = redis::connect(ioc);
+
+	Ownership subject{"testuser"};
+	auto cover_blob = insecure_random<ObjectID>();
 
 	bool added = false;
-	subject.link(*redis, "/", insecure_random<ObjectID>(), CollEntry{}, [&added](auto ec)
+	subject.link(*redis, "/", cover_blob, CollEntry{}, [&added](auto ec)
 	{
 		REQUIRE(!ec);
 		added = true;
+	});
+
+	// add another blob to the collection so that the collection will be
+	// still here even after removing the first one
+	subject.link(*redis, "/", insecure_random<ObjectID>(), CollEntry{}, [&added](auto ec)
+	{
+		REQUIRE(!ec);
 	});
 
 	std::vector<std::string> dirs;
@@ -348,7 +435,7 @@ TEST_CASE("Scan for all containers from testuser")
 			REQUIRE(!ec);
 			tested = true;
 
-			REQUIRE(jdoc["owner"]    == "testuser");
+			REQUIRE(jdoc["owner"] == "testuser");
 			for (auto&& it : jdoc["colls"].items())
 				dirs.push_back(it.key());
 		}
@@ -360,6 +447,68 @@ TEST_CASE("Scan for all containers from testuser")
 	REQUIRE(!dirs.empty());
 	INFO("dirs.size() " << dirs.size());
 	REQUIRE(std::find(dirs.begin(), dirs.end(), "/") != dirs.end());
+	ioc.restart();
+	tested = false;
+
+	// set the cover to be the new generated blob
+	subject.set_cover(*redis, "/", cover_blob, [&tested](bool ok, auto ec)
+	{
+		REQUIRE(!ec);
+		REQUIRE(ok);
+		tested = true;
+	});
+	REQUIRE(ioc.run_for(10s) > 0);
+	REQUIRE(tested);
+	tested = false;
+	ioc.restart();
+
+	// check if the cover is updated
+	subject.scan_all_collections(*redis,
+		[&cover_blob, &tested](auto&& jdoc, auto ec)
+		{
+			REQUIRE(!ec);
+			REQUIRE(jdoc["owner"] == "testuser");
+
+			for (auto&& it : jdoc["colls"].items())
+			{
+				if (it.key() == "/" && it.value()["cover"] == to_hex(cover_blob))
+					tested = true;
+			}
+		}
+	);
+	REQUIRE(ioc.run_for(10s) > 0);
+	REQUIRE(tested);
+	bool removed = false;
+	ioc.restart();
+
+	// remove the new blob
+	subject.unlink(*redis, "/", cover_blob, [&removed](auto ec)
+	{
+		REQUIRE(!ec);
+		removed = true;
+	});
+
+	// check if the cover is updated
+	bool updated = false;
+	subject.scan_all_collections(*redis,
+		[&cover_blob, &updated, &removed](auto&& jdoc, auto ec)
+		{
+			REQUIRE(removed);
+			REQUIRE(!ec);
+			REQUIRE(jdoc["owner"] == "testuser");
+			for (auto&& it : jdoc["colls"].items())
+			{
+				if (it.key() == "/" )
+				{
+					REQUIRE(it.value().find("cover") == it.value().end());
+					updated = true;
+				}
+			}
+		}
+	);
+	REQUIRE(ioc.run_for(10s) > 0);
+	REQUIRE(removed);
+	REQUIRE(updated);
 }
 
 TEST_CASE("collection entry", "[normal]")

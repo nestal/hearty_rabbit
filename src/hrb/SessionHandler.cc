@@ -132,8 +132,6 @@ http::response<http::empty_body> SessionHandler::see_other(boost::beast::string_
 void SessionHandler::unlink(BlobRequest&& req, EmptyResponseSender&& send)
 {
 	assert(req.blob());
-//	Log(LOG_INFO, "unlinking object %1% from path(%2%)", *req.blob(), req.collection());
-
 	if (!req.request_by_owner())
 		return send(http::response<http::empty_body>{http::status::forbidden, req.version()});
 
@@ -151,6 +149,40 @@ void SessionHandler::unlink(BlobRequest&& req, EmptyResponseSender&& send)
 			return send(http::response<http::empty_body>{status,version});
 		}
 	);
+}
+
+void SessionHandler::update_view(BlobRequest&& req, EmptyResponseSender&& send)
+{
+	if (!req.request_by_owner())
+		return send(http::response<http::empty_body>{http::status::forbidden, req.version()});
+
+	assert(!req.blob());
+	auto[cover] = find_fields(req.body(), "cover");
+
+	if (!cover.empty())
+	{
+		auto cover_blob = hex_to_object_id(cover);
+		if (cover_blob)
+		{
+			Log(LOG_INFO, "setting cover of %1% to %2%", req.collection(), to_hex(*cover_blob));
+			return Ownership{req.owner()}.set_cover(
+				*m_db,
+				req.collection(),
+				*cover_blob,
+				[send=std::move(send), version=req.version()](bool ok, auto ec)
+				{
+					send(http::response<http::empty_body>{
+						ec ?
+							http::status::internal_server_error :
+							(ok ? http::status::no_content : http::status::bad_request),
+						version
+					});
+				}
+			);
+		}
+	}
+
+	send(http::response<http::empty_body>{http::status::bad_request, req.version()});
 }
 
 void SessionHandler::update_blob(BlobRequest&& req, EmptyResponseSender&& send)
@@ -190,6 +222,10 @@ void SessionHandler::update_blob(BlobRequest&& req, EmptyResponseSender&& send)
 			*req.blob(),
 			std::move(on_complete)
 		);
+	}
+	else
+	{
+		send(http::response<http::empty_body>{http::status::bad_request, req.version()});
 	}
 }
 

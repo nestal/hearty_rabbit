@@ -9,7 +9,7 @@ RUN yum install -y deltarpm epel-release \
 	&& rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-EPEL-7 \
 	&& yum install -y --setopt=tsflags=nodocs openssl-devel git make rapidjson-devel hiredis-devel \
 		file-devel libicu-devel zlib-devel bzip2-devel xz-devel libunwind-devel which \
-		autoconf automake libtool exiv2-devel nasm \
+		autoconf automake libtool exiv2-devel msgpack-devel nasm \
 	&& source scl_source enable devtoolset-7 \
 	&& yum clean all -y \
 	&& mkdir /build
