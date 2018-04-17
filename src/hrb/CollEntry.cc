@@ -44,14 +44,14 @@ std::string_view CollEntry::json() const
 
 std::string CollEntry::filename() const
 {
-	auto doc = nlohmann::json::parse(CollEntry::json());
-	return doc.value(nlohmann::json::json_pointer{"/filename"}, "");
+	auto doc = nlohmann::json::parse(CollEntry::json(), nullptr, false);
+	return doc.is_discarded() ? "" : doc.value(nlohmann::json::json_pointer{"/filename"}, "");
 }
 
 std::string CollEntry::mime() const
 {
-	auto doc = nlohmann::json::parse(CollEntry::json());
-	return doc.value(nlohmann::json::json_pointer{"/mime"}, "");
+	auto doc = nlohmann::json::parse(CollEntry::json(), nullptr, false);
+	return doc.is_discarded() ? "" : doc.value(nlohmann::json::json_pointer{"/mime"}, "");
 }
 
 Permission CollEntry::permission() const

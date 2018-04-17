@@ -408,7 +408,6 @@ class NormalTestCase(unittest.TestCase):
 		# delete all images in test_cover_album
 		r0 = self.user1.get("https://localhost:4433/view/sumsum/%F0%9F%99%87/?json")
 		self.assertEqual(r0.status_code, 200)
-		print(r0.content)
 		for blob in r0.json()["elements"].keys():
 			self.assertEqual(self.user1.delete("https://localhost:4433/view/sumsum/%F0%9F%99%87/" + blob).status_code, 204)
 
