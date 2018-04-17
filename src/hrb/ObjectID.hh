@@ -14,8 +14,6 @@
 
 #include "crypto/Blake2.hh"
 
-#include <msgpack.hpp>
-
 #include <array>
 #include <iosfwd>
 #include <string_view>
@@ -45,35 +43,3 @@ std::ostream& operator<<(std::ostream& os, const ObjectID& id);
 
 } // end of namespace
 
-namespace msgpack {
-MSGPACK_API_VERSION_NAMESPACE(MSGPACK_DEFAULT_API_NS) {
-namespace adaptor {
-
-// Place class template specialization here
-template<>
-struct convert<hrb::ObjectID> {
-	msgpack::object const& operator()(msgpack::object const& o, hrb::ObjectID& v) const {
-		if (o.type != msgpack::type::STR)
-			throw msgpack::type_error();
-		if (o.via.str.size != v.size())
-			throw msgpack::type_error();
-
-		std::memcpy(&v[0], o.via.str.ptr, v.size());
-		return o;
-	}
-};
-
-template<>
-struct pack<hrb::ObjectID>
-{
-	template <typename Stream>
-	packer<Stream>& operator()(msgpack::packer<Stream>& o, const hrb::ObjectID& v) const
-    {
-		// packing member variables as an array.
-	    o.pack_str(v.size());
-	    o.pack_str_body(reinterpret_cast<const char*>(&v[0]), v.size());
-		return o;
-	}
-};
-
-}}}
