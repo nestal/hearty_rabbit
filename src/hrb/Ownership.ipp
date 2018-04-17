@@ -509,7 +509,9 @@ void Ownership::list_public_blobs(
 		local pub_list = redis.call('LRANGE', KEYS[1], 0, -1)
 		for i, msgpack in ipairs(pub_list) do
 			local user, coll, blob = cmsgpack.unpack(msgpack)
-			table.insert(elements, {user, coll, blob, redis.call('HGET', 'dir:' .. user .. ':' .. coll, blob)})
+			if user and coll and blob then
+				table.insert(elements, {user, coll, blob, redis.call('HGET', 'dir:' .. user .. ':' .. coll, blob)})
+			end
 		end
 		return elements
 	)__";
