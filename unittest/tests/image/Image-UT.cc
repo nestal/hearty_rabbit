@@ -54,7 +54,7 @@ TEST_CASE("auto rotate will change orientation=8 images to orientation=1", "[nor
 	EXIF2 exif2{rot90.buffer().data(), rot90.size(), ec};
 	REQUIRE(!ec);
 
-	auto dt_field = exif2.get(rot90.buffer().data(), EXIF2::Tag::date_time);
+	auto dt_field = exif2.get(rot90.buffer(), EXIF2::Tag::date_time);
 	REQUIRE(dt_field);
 	auto dt = exif2.get_value(rot90.buffer(), *dt_field);
 	REQUIRE(
@@ -138,7 +138,7 @@ TEST_CASE("read exif", "[normal]")
 	EXIF2 subject{&img[0], img.size(), ec};
 	REQUIRE(!ec);
 
-	auto orientation = subject.get(&img[0], EXIF2::Tag::orientation);
+	auto orientation = subject.get({&img[0], img.size()}, EXIF2::Tag::orientation);
 	REQUIRE(orientation);
 	REQUIRE(orientation->tag == 0x0112);
 	REQUIRE(orientation->value_offset == 1);

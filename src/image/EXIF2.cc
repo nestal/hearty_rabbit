@@ -251,7 +251,7 @@ EXIF2::EXIF2(const unsigned char *jpeg, std::size_t size, std::error_code& error
 	if (error)
 		return;
 
-	if (auto exif_offset = get(jpeg, Tag::exif_offset))
+	if (auto exif_offset = get({jpeg, size}, Tag::exif_offset))
 	{
 		if (m_tiff_offset + exif_offset->value_offset >= size)
 		{
@@ -270,16 +270,20 @@ EXIF2::EXIF2(BufferView blob, std::error_code& ec) : EXIF2{blob.data(), blob.siz
 {
 }
 
-std::optional<EXIF2::Field> EXIF2::get(const unsigned char *jpeg, Tag tag) const
+std::optional<EXIF2::Field> EXIF2::get(BufferView jpeg, Tag tag) const
 {
 	auto it = m_tags.find(tag);
 	if (it != m_tags.end())
 	{
 		assert(it->second > 0);
 
-		Field field{};
-		std::memcpy(&field, jpeg+it->second, sizeof(field));
-		return to_native(field);
+		if (auto s = jpeg.substr(static_cast<std::size_t>(it->second), sizeof(Field));
+			s.size() == sizeof(Field))
+		{
+			Field field{};
+			std::memcpy(&field, s.data(), s.size());
+			return to_native(field);
+		}
 	}
 	return std::nullopt;
 }
