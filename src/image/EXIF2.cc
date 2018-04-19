@@ -345,6 +345,18 @@ BufferView EXIF2::get_value(BufferView jpeg, const EXIF2::Field& field) const
 		return {reinterpret_cast<const unsigned char*>(&field.value_offset), sizeof(field.value_offset)};
 }
 
+EXIF2::time_point EXIF2::parse_datetime(BufferView field)
+{
+	struct tm result{};
+	if (field.size() > 0 && field.back() == '\0')
+	{
+		auto p = strptime(reinterpret_cast<const char*>(field.data()), "%Y:%m:%d %H:%M:%S", &result);
+		if (p)
+			return std::chrono::system_clock::from_time_t(::timegm(&result));
+	}
+	return {};
+}
+
 std::error_code make_error_code(EXIF2::Error error)
 {
 	return std::error_code{static_cast<int>(error), EXIF2::error_category()};

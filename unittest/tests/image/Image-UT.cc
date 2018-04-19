@@ -57,10 +57,12 @@ TEST_CASE("auto rotate will change orientation=8 images to orientation=1", "[nor
 	auto dt_field = exif2.get(rot90.buffer(), EXIF2::Tag::date_time);
 	REQUIRE(dt_field);
 	auto dt = exif2.get_value(rot90.buffer(), *dt_field);
+	REQUIRE(dt.size() == 20); // required by EXIF2 spec
 	REQUIRE(
 		std::string_view{reinterpret_cast<const char*>(dt.data()), dt.size()} ==
 		std::string_view{"1989:06:04 05:00:00\0", 20}
 	);
+//	REQUIRE(std::chrono::time_point_castEXIF2::parse_datetime(dt).count() == 0);
 }
 
 TEST_CASE("20x20 image can be auto-rotated but cropped", "[error]")

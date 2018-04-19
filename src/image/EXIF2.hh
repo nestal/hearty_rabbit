@@ -21,6 +21,7 @@
 #include <unordered_map>
 #include <optional>
 #include <system_error>
+#include <chrono>
 
 namespace hrb {
 
@@ -67,6 +68,9 @@ public:
 	bool set(unsigned char *jpeg, const Field& native) const;
 
 	BufferView get_value(BufferView jpeg, const Field& field) const;
+
+	using time_point = std::chrono::system_clock::time_point;
+	static time_point parse_datetime(BufferView field);
 
 private:
 	Field& to_native(Field& field) const;
