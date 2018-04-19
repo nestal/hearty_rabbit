@@ -325,3 +325,14 @@ section.heading {
 	margin-left: 20px;
 	font-family: 'Love Ya Like A Sister', cursive;
 }
+
+#toast {
+	display: none;
+	position: fixed;
+	bottom: 50px;
+	right: 50px;
+	color: rgba(0%, 20%, 20%, 1.0);
+	padding: 20px;
+	background-color: rgba(100%, 100%, 100%, 0.8);
+	z-index: 2;
+}
