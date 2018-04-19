@@ -66,6 +66,8 @@ public:
 	std::optional<Field> get(const unsigned char *jpeg, Tag tag) const;
 	bool set(unsigned char *jpeg, const Field& native) const;
 
+	BufferView get_value(BufferView jpeg, const Field& field) const;
+
 private:
 	Field& to_native(Field& field) const;
 

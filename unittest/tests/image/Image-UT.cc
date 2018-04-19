@@ -132,6 +132,10 @@ TEST_CASE("read exif", "[normal]")
 	REQUIRE(orientation->tag == 0x0112);
 	REQUIRE(orientation->value_offset == 1);
 
+	auto buf = subject.get_value({&img[0], img.size()}, *orientation);
+	REQUIRE(buf.size() == sizeof(std::uint32_t));
+	REQUIRE(*reinterpret_cast<const std::uint32_t *>(buf.data()) == 1);
+
 	// set orientation to 8
 	orientation->value_offset = 8;
 	REQUIRE(subject.set(&img[0], *orientation));
@@ -165,6 +169,13 @@ TEST_CASE("read all images successfully", "[normal]")
 			else
 			{
 				REQUIRE(!ec);
+
+
+				// check date time
+				if (auto dt_field = subject.get(mmap.buffer().data(), EXIF2::Tag::date_time); dt_field)
+				{
+					std::cout << "good! " << img << " " << (char*)subject.get_value(mmap.buffer(), *dt_field).data() << std::endl;
+				}
 
 				RotateImage rot;
 				auto rotated = rot.auto_rotate(mmap.buffer(), ec);
