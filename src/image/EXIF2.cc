@@ -338,7 +338,7 @@ const std::error_category& EXIF2::error_category()
 BufferView EXIF2::get_value(BufferView jpeg, const EXIF2::Field& field) const
 {
 	if (field.count > sizeof(field.value_offset))
-		return {jpeg.data() + m_tiff_offset + field.value_offset, field.count};
+		return jpeg.substr(m_tiff_offset + field.value_offset, field.count);
 	else
 		return {reinterpret_cast<const unsigned char*>(&field.value_offset), sizeof(field.value_offset)};
 }
