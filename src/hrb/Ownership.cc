@@ -200,15 +200,11 @@ nlohmann::json Ownership::Collection::serialize(const redis::Reply& reply, std::
 		// check permission: allow allow owner (i.e. m_user)
 		if (blob_id && (owner == requester || entry.permission().allow(requester)))
 		{
-			try
+			auto entry_jdoc = nlohmann::json::parse(entry.json(), nullptr, false);
+			if (!entry_jdoc.is_discarded())
 			{
-				auto entry_jdoc = nlohmann::json::parse(entry.json());
 				entry_jdoc.emplace("perm", std::string{entry.permission().description()});
 				elements.emplace(to_hex(*blob_id), std::move(entry_jdoc));
-			}
-			catch (std::exception& e)
-			{
-				Log(LOG_WARNING, "exception thrown when parsing CollEntry::json(): %1% %2%", e.what(), entry.json());
 			}
 		}
 	};
