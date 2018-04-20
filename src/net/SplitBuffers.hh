@@ -35,7 +35,7 @@ namespace hrb {
 class SplitBuffers
 {
 public:
-	using const_buffers_type = std::array<boost::asio::const_buffer, 3>;
+	using const_buffers_type = std::vector<boost::asio::const_buffer>;
 
 	class value_type
 	{
