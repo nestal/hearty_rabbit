@@ -62,7 +62,16 @@ TEST_CASE("auto rotate will change orientation=8 images to orientation=1", "[nor
 		std::string_view{reinterpret_cast<const char*>(dt.data()), dt.size()} ==
 		std::string_view{"1989:06:04 05:00:00\0", 20}
 	);
-//	REQUIRE(std::chrono::time_point_castEXIF2::parse_datetime(dt).count() == 0);
+
+	using namespace std::chrono;
+	REQUIRE(
+		duration_cast<seconds>(EXIF2::parse_datetime(dt).time_since_epoch()).count() == 612939600
+	);
+}
+
+TEST_CASE("parsing datetime in EXIF")
+{
+	REQUIRE(EXIF2::parse_datetime({reinterpret_cast<const uint8_t*>("abc"), 4}) == EXIF2::time_point{});
 }
 
 TEST_CASE("20x20 image can be auto-rotated but cropped", "[error]")
