@@ -10,3 +10,4 @@ ExecStart=/bin/docker run --rm \
 	-v /var/lib/hearty_rabbit:/var/lib/hearty_rabbit \
 	--network=host --name hearty_rabbit_systemd nestal/hearty_rabbit
 ExecStop=/bin/docker stop hearty_rabbit_systemd
+Restart=always
