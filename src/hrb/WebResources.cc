@@ -30,7 +30,7 @@ std::string_view resource_mime(const std::string& ext)
 	else return "application/octet-stream";
 }
 
-const std::string_view index_needle{"<script>var dir = {"};
+const std::string_view index_needle{"{/** dynamic json placeholder for dir **/}"};
 }
 
 template <typename Iterator>
@@ -98,7 +98,7 @@ bool WebResources::is_static(std::string_view filename) const
 WebResources::Response WebResources::inject_json(http::status status, std::string&& json, int version) const
 {
 	auto res = find_dynamic("index.html", version);
-	res.body().extra(hrb::index_needle, std::move(json), 1, 1);
+	res.body().extra(hrb::index_needle, std::move(json));
 	res.result(status);
 	return res;
 }

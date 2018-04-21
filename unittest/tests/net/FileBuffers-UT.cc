@@ -24,16 +24,17 @@ TEST_CASE("injecting script in HTML", "[normal]")
 	auto html = hrb::MMap::open(boost::filesystem::path{__FILE__}.parent_path() / "../../../lib/dynamic/index.html", ec);
 	REQUIRE(ec == std::error_code{});
 
-	std::string extra{"<script></script>"};
-	Subject subject{html.string(), "<head>", extra};
+	std::string extra{"<head><script></script>"};
+	std::string needle{"<head>"};
+	Subject subject{html.string(), needle, extra};
 	REQUIRE(ec == std::error_code{});
 
 	auto b = subject.data();
 	REQUIRE(b.size() == 3);
 
-	REQUIRE(std::string_view{static_cast<const char*>(b[0].data()), b[0].size()} == "<!doctype html>\n<html lang=\"en\">\n<head>");
+	REQUIRE(std::string_view{static_cast<const char*>(b[0].data()), b[0].size()} == "<!doctype html>\n<html lang=\"en\">\n");
 	REQUIRE(std::string_view{static_cast<const char*>(b[1].data()), b[1].size()} == extra);
-	REQUIRE(b[2].size() == html.size() - b[0].size());
+	REQUIRE(b[2].size() == html.size() - b[0].size() - needle.size());
 }
 
 TEST_CASE("non-HTML has no <head>, append at-the-end", "[normal]")
