@@ -32,11 +32,10 @@ namespace hrb {
 ///
 /// Only the middle buffer can be assigned dynamically. The first and third buffers are specified by
 /// std::string_view
-template <std::size_t N=1>
-class BasicSplitBuffers
+class SplitBuffers
 {
 public:
-	using const_buffers_type = std::array<boost::asio::const_buffer, N+2>;
+	using const_buffers_type = std::vector<boost::asio::const_buffer>;
 
 	class value_type
 	{
@@ -92,11 +91,11 @@ public:
 	class writer
 	{
 	public:
-        using const_buffers_type = BasicSplitBuffers::const_buffers_type;
+        using const_buffers_type = SplitBuffers::const_buffers_type;
 
         template<bool isRequest, class Fields>
         explicit
-        writer(boost::beast::http::message<isRequest, BasicSplitBuffers, Fields> const& msg)
+        writer(boost::beast::http::message<isRequest, SplitBuffers, Fields> const& msg)
             : m_body(msg.body())
         {
         }
@@ -120,7 +119,5 @@ public:
 		const value_type& m_body;
 	};
 };
-
-using SplitBuffers = BasicSplitBuffers<>;
 
 } // end of namespace hrb

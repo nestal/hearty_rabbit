@@ -15,7 +15,6 @@
 #include "crypto/Authentication.hh"
 #include "net/Redis.hh"
 #include "net/Request.hh"
-#include "net/SplitBuffers.hh"
 
 #include <json.hpp>
 
@@ -31,6 +30,7 @@ class BlobDatabase;
 class BlobRequest;
 class Configuration;
 class MMapResponseBody;
+class SplitBuffers;
 class URLIntent;
 class UploadFile;
 class WebResources;
