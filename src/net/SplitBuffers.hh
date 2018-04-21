@@ -41,45 +41,58 @@ public:
 	{
 	public:
 		explicit value_type(std::string_view file = {}) :
-			m_file{file},
-			m_offset{m_file.size()}
+			m_top{file}
 		{
 		}
 
 		value_type(std::string_view file, std::string_view needle, std::string_view xtra) :
-			m_file{file}
+			m_top{file}
 		{
 			extra(needle, std::string{xtra});
 		}
 
 		void extra(std::string_view needle, std::string&& extra)
 		{
-			m_length = 0;
-			m_extra  = std::move(extra);
-			m_offset = needle.empty() ? m_file.npos : m_file.find(needle);
+			auto offset = needle.empty() ? m_top.npos : m_top.find(needle);
 
-			if (m_offset != m_file.npos)
-				m_length = needle.size();
-			else
-				m_offset = m_file.size();
+			// if "needle" is not found, append "extra" at the end.
+			// i.e. m_top will remain unchanged, and "follow" in the new
+			// segment will be empty
+			m_segs.emplace_back(
+				std::move(extra),
+				offset != m_top.npos ?
+					m_top.substr(offset + needle.size()) :
+					std::string_view{}
+			);
+
+			// substr() works even when offset is npos
+			// if use remove_suffix(), need to check against npos ourselves
+			// less code -> fewer bugs
+			m_top = m_top.substr(0, offset);
 		}
 
 		const_buffers_type data() const
 		{
-			return {
-				boost::asio::const_buffer{m_file.data(),  m_offset},
-				boost::asio::const_buffer{m_extra.data(), m_extra.size()},
-				boost::asio::const_buffer{
-					m_file.data() + m_offset + m_length,
-					m_file.size() - m_offset - m_length
-				}
-			};
+			const_buffers_type result{{m_top.data(), m_top.size()}};
+
+			for (auto&& seg : m_segs)
+			{
+				result.emplace_back(seg.extra.data(), seg.extra.size());
+				result.emplace_back(seg.follow.data(), seg.follow.size());
+			}
+
+			return result;
 		}
 
 	private:
-		std::string_view    m_file;
-		std::size_t         m_offset{}, m_length{};
-		std::string         m_extra;
+		std::string_view    m_top;
+		struct Segment
+		{
+			Segment(std::string&& e, std::string_view f) : extra{std::move(e)}, follow{f} {}
+			std::string         extra;
+			std::string_view    follow;
+		};
+		std::vector<Segment>    m_segs;
 	};
 
 	static std::uint64_t size(const value_type& body)

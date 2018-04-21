@@ -65,11 +65,9 @@ TEST_CASE("Not change content", "[normal]")
 	REQUIRE(ec == std::error_code{});
 
 	auto b = subject.data();
-	REQUIRE(b.size() == 3);
+	REQUIRE(b.size() == 1);
 
 	REQUIRE(std::string_view{static_cast<const char*>(b[0].data()), b[0].size()} == css.string());
-	REQUIRE(b[1].size() == 0);
-	REQUIRE(b[2].size() == 0);
 }
 
 TEST_CASE("Default constructor", "[normal]")
