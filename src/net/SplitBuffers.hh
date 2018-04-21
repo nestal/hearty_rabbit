@@ -37,6 +37,8 @@ class SplitBuffers
 public:
 	using const_buffers_type = std::vector<boost::asio::const_buffer>;
 
+	enum class Option {inject_after, replace};
+
 	class value_type
 	{
 	public:
@@ -51,7 +53,7 @@ public:
 			extra(needle, std::string{xtra});
 		}
 
-		void extra(std::string_view needle, std::string&& extra);
+		void extra(std::string_view needle, std::string&& extra, Option opt = Option::replace);
 		const_buffers_type data() const;
 
 	private:

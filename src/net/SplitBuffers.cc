@@ -14,7 +14,7 @@
 
 namespace hrb {
 
-void SplitBuffers::value_type::extra(std::string_view needle, std::string&& extra)
+void SplitBuffers::value_type::extra(std::string_view needle, std::string&& extra, Option opt)
 {
 	auto offset = needle.empty() ? m_top.npos : m_top.find(needle);
 
@@ -24,7 +24,7 @@ void SplitBuffers::value_type::extra(std::string_view needle, std::string&& extr
 	m_segs.emplace_back(
 		std::move(extra),
 		offset != m_top.npos ?
-			m_top.substr(offset + needle.size()) :
+			m_top.substr(offset + (opt == Option::replace ? needle.size() : 0)) :
 			std::string_view{}
 	);
 
