@@ -228,7 +228,7 @@ void Connection::on_exec_transaction(Reply&& reply, std::error_code ec)
 }
 
 Reply::Reply(::redisReply *r) noexcept :
-	m_reply{r, [](::redisReply *r){if (!r)::freeReplyObject(r);}}
+	m_reply{r, [](::redisReply *r){if (r)::freeReplyObject(r);}}
 {
 	// Special handling for arrays
 	for (std::size_t i = 0 ; m_reply && m_reply->type == REDIS_REPLY_ARRAY && i < m_reply->elements; i++)
