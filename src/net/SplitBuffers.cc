@@ -16,35 +16,9 @@
 
 namespace hrb {
 
-void SplitBuffers::value_type::replace(std::string_view needle, std::string&& extra, Option opt)
+void SplitBuffers::value_type::replace(std::string_view needle, std::string&& extra)
 {
 	std::size_t needle_before{}, needle_after{};
-	switch (opt)
-	{
-		// input:  <before><needle><after>
-		// output: <before><extra><after>
-		case Option::replace: needle_before = 0;
-			needle_after = 0;
-			break;
-
-		// input:  <before><needle><after>
-		// output: <before><extra><needle><after>
-		case Option::inject_before: needle_before = 0;
-			needle_after = needle.size();
-			break;
-
-		// input:  <before><needle><after>
-		// output: <before><needle><extra><after>
-		case Option::inject_after: needle_before = needle.size();
-			needle_after = 0;
-			break;
-
-		// input:  <before><needle><after>
-		// output: <before><nee<extra>dle><after>
-		case Option::inject_middle: needle_before = needle.size() / 2;
-			needle_after = needle.size() - needle_before;
-			break;
-	}
 	inject(needle, std::move(extra), needle_before, needle_after);
 }
 
