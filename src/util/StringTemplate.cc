@@ -104,12 +104,4 @@ void StringTemplate::inject(
 	m_extra.push_back(std::move(extra));
 }
 
-std::string StringTemplate::str() const
-{
-	auto buf = data();
-	std::string result(boost::asio::buffer_size(buf), '_');
-	boost::asio::buffer_copy(boost::asio::buffer(result), buf);
-	return result;
-}
-
 } // end of namespace hrb

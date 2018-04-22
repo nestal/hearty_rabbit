@@ -41,8 +41,26 @@ public:
 
 	std::vector<boost::asio::const_buffer> data() const;
 
-	// wrapper for buffer_copy(data()), useful for unit test
-	std::string str() const;
+	using iterator   = std::vector<std::string_view>::const_iterator;
+	using value_type = std::string_view;
+	iterator begin() const {return m_src.begin();}
+	iterator end() const {return m_src.end();}
+
+	template <typename InputIt>
+	std::string str(InputIt first, InputIt last) const
+	{
+		auto it = m_src.begin();
+		std::string result{*it++};
+
+		for (;it != m_src.end() && first != last; first++, it++)
+		{
+			result.append(first->data(), first->size());
+			result.append(it->data(), it->size());
+		}
+		return result;
+	}
+
+	std::string str() const {return str(m_extra.begin(), m_extra.end());}
 
 	void set_extra(std::size_t i, std::string&& extra) {m_extra.at(i) = std::move(extra);}
 

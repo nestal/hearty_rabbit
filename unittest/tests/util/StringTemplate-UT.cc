@@ -30,7 +30,8 @@ TEST_CASE("replace simple needle", "[normal]")
 		subject.replace("{injection point #1}", "content1");
 	}
 
-	REQUIRE(subject.str() == "top content1 follow following content2 finale");
+	std::string_view content[] = {"content1", "content2"};
+	REQUIRE(subject.str(std::begin(content), std::end(content)) == "top content1 follow following content2 finale");
 }
 
 TEST_CASE("replace subneedle", "[normal]")
