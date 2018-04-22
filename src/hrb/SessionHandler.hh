@@ -109,10 +109,7 @@ private:
 	void on_request_api(Request&& req, URLIntent&& intent, Send&& send);
 
 	template <class Send>
-	void view_collection(const URLIntent& intent, unsigned version, Send&& send);
-
-	template <class Send>
-	void view_blob(const BlobRequest& req, Send&& send);
+	void get_blob(const BlobRequest& req, Send&& send);
 
 	template <class Send>
 	void on_query(const BlobRequest& req, Send&& send);

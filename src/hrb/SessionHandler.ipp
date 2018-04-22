@@ -111,7 +111,7 @@ void SessionHandler::on_request_header(
 				body_type = RequestBodyType::upload;
 
 			// blobs support post request
-			else if (!ec && action == URLIntent::Action::view && method == http::verb::post)
+			else if (!ec && action == URLIntent::Action::api && method == http::verb::post)
 				body_type = RequestBodyType::string;
 
 			// If the cookie returned by verify_session() is different from the one we passed to it,
@@ -185,12 +185,6 @@ void SessionHandler::on_request_body(Request&& req, Send&& send)
 template <class Request, class Send>
 void SessionHandler::on_request_api(Request&& req, URLIntent&& intent, Send&& send)
 {
-	return on_request_view(std::forward<Request>(req), std::move(intent), std::forward<Send>(send));
-}
-
-template <class Request, class Send>
-void SessionHandler::on_request_view(Request&& req, URLIntent&& intent, Send&& send)
-{
 	BlobRequest breq{req, std::move(intent), m_auth.user()};
 
 	if (req.method() == http::verb::delete_)
@@ -200,9 +194,14 @@ void SessionHandler::on_request_view(Request&& req, URLIntent&& intent, Send&& s
 	else if (req.method() == http::verb::get)
 	{
 		if (breq.blob())
-			return view_blob(std::move(breq), std::move(send));
+			return get_blob(std::move(breq), std::move(send));
 		else
-			return view_collection(breq.intent(), req.version(), std::forward<Send>(send));
+			return Ownership{breq.owner()}.serialize(
+				*m_db,
+				m_auth.user(),
+				breq.collection(),
+				SendJSON{std::move(send), m_auth.user(), req.version()}
+			);
 	}
 	else if (req.method() == http::verb::post)
 	{
@@ -213,13 +212,33 @@ void SessionHandler::on_request_view(Request&& req, URLIntent&& intent, Send&& s
 	}
 	else
 	{
-		Log(LOG_WARNING, "blob request error: bad method %1%", req.method_string());
+		Log(LOG_WARNING, "/api request error: bad method %1%", req.method_string());
+		return send(http::response<http::empty_body>{http::status::bad_request, req.version()});
+	}
+}
+
+template <class Request, class Send>
+void SessionHandler::on_request_view(Request&& req, URLIntent&& intent, Send&& send)
+{
+	if (req.method() == http::verb::get)
+	{
+		// view request always sends HTML: pass &m_lib to SendJSON
+		return Ownership{intent.user()}.serialize(
+			*m_db,
+			m_auth.user(),
+			intent.collection(),
+			SendJSON{std::move(send), m_auth.user(), req.version(), &m_lib}
+		);
+	}
+	else
+	{
+		Log(LOG_WARNING, "/view request error: bad method %1%", req.method_string());
 		return send(http::response<http::empty_body>{http::status::bad_request, req.version()});
 	}
 }
 
 template <class Send>
-void SessionHandler::view_blob(const BlobRequest& req, Send&& send)
+void SessionHandler::get_blob(const BlobRequest& req, Send&& send)
 {
 	assert(req.blob());
 
@@ -295,17 +314,6 @@ void SessionHandler::scan_collection(const URLIntent& intent, unsigned version, 
 	Ownership{*user}.scan_all_collections(
 		*m_db,
 		SendJSON{std::move(send), m_auth.user(), version, json.has_value() ? nullptr : &m_lib}
-	);
-}
-
-template <class Send>
-void SessionHandler::view_collection(const URLIntent& intent, unsigned version, Send&& send)
-{
-	Ownership{intent.user()}.serialize(
-		*m_db,
-		m_auth.user(),
-		intent.collection(),
-		SendJSON{std::move(send), m_auth.user(), version, intent.option() == "json" ? nullptr : &m_lib}
 	);
 }
 
