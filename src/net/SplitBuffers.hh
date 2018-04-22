@@ -50,11 +50,14 @@ public:
 		value_type(std::string_view file, std::string_view needle, std::string_view xtra) :
 			m_src(1, file)
 		{
-			extra(needle, std::string{xtra});
+			replace(needle, std::string{xtra});
 		}
 
-		void extra(std::string_view needle, std::string&& extra, Option opt = Option::replace);
+		void replace(std::string_view needle, std::string&& extra, Option opt = Option::replace);
 		const_buffers_type data() const;
+
+	private:
+		void inject(std::string_view needle, std::string&& extra, std::size_t needle_before, std::size_t needle_after);
 
 	private:
 		std::vector<std::string_view>   m_src;

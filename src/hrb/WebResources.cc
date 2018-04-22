@@ -98,7 +98,7 @@ bool WebResources::is_static(std::string_view filename) const
 WebResources::Response WebResources::inject_json(http::status status, std::string&& json, int version) const
 {
 	auto res = find_dynamic("index.html", version);
-	res.body().extra(hrb::index_needle, std::move(json));
+	res.body().replace(hrb::index_needle, std::move(json));
 	res.result(status);
 	return res;
 }

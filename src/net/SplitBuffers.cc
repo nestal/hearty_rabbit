@@ -16,7 +16,58 @@
 
 namespace hrb {
 
-void SplitBuffers::value_type::extra(std::string_view needle, std::string&& extra, Option opt)
+void SplitBuffers::value_type::replace(std::string_view needle, std::string&& extra, Option opt)
+{
+	std::size_t needle_before{}, needle_after{};
+	switch (opt)
+	{
+		// input:  <before><needle><after>
+		// output: <before><extra><after>
+		case Option::replace: needle_before = 0;
+			needle_after = 0;
+			break;
+
+		// input:  <before><needle><after>
+		// output: <before><extra><needle><after>
+		case Option::inject_before: needle_before = 0;
+			needle_after = needle.size();
+			break;
+
+		// input:  <before><needle><after>
+		// output: <before><needle><extra><after>
+		case Option::inject_after: needle_before = needle.size();
+			needle_after = 0;
+			break;
+
+		// input:  <before><needle><after>
+		// output: <before><nee<extra>dle><after>
+		case Option::inject_middle: needle_before = needle.size() / 2;
+			needle_after = needle.size() - needle_before;
+			break;
+	}
+	inject(needle, std::move(extra), needle_before, needle_after);
+}
+
+SplitBuffers::const_buffers_type SplitBuffers::value_type::data() const
+{
+	assert(m_extra.size() + 1 == m_src.size());
+	const_buffers_type result{{m_src.front().data(), m_src.front().size()}};
+
+	for (auto i = 0ULL; i < m_extra.size(); i++)
+	{
+		result.emplace_back(m_extra[i].data(), m_extra[i].size());
+		result.emplace_back(m_src[i+1].data(), m_src[i+1].size());
+	}
+
+	return result;
+}
+
+void SplitBuffers::value_type::inject(
+	std::string_view needle,
+	std::string&& extra,
+	std::size_t needle_before,
+	std::size_t needle_after
+)
 {
 	assert(!m_src.empty());
 	assert(m_extra.size() + 1 == m_src.size());
@@ -37,34 +88,6 @@ void SplitBuffers::value_type::extra(std::string_view needle, std::string&& extr
 	{
 		auto offset = needle.empty() ? m_src[i].npos : m_src[i].find(needle);
 
-		std::size_t needle_top{}, needle_follow{};
-		switch (opt)
-		{
-			// input:  <before><needle><after>
-			// output: <before><extra><after>
-			case Option::replace: needle_top = 0;
-				needle_follow = 0;
-				break;
-
-			// input:  <before><needle><after>
-			// output: <before><extra><needle><after>
-			case Option::inject_before: needle_top = 0;
-				needle_follow = needle.size();
-				break;
-
-			// input:  <before><needle><after>
-			// output: <before><needle><extra><after>
-			case Option::inject_after: needle_top = needle.size();
-				needle_follow = 0;
-				break;
-
-			// input:  <before><needle><after>
-			// output: <before><nee<extra>dle><after>
-			case Option::inject_middle: needle_top = needle.size() / 2;
-				needle_follow = needle.size() - needle_top;
-				break;
-		}
-
 		// offset points to the position of the needle
 		// <before><needle><after>
 		//         ^
@@ -75,13 +98,13 @@ void SplitBuffers::value_type::extra(std::string_view needle, std::string&& extr
 		// segment will be empty
 		if (offset != m_src[i].npos)
 		{
-			auto before = m_src[i].substr(0, offset + needle_top);
-			auto follow = m_src[i].substr(offset + needle.size() - needle_follow);
+			auto before = m_src[i].substr(0, offset + needle_before);
+			auto after  = m_src[i].substr(offset + needle.size() - needle_after);
 
 			// WARNING! modifying the vector when looping it
 			// That is why we always use indexes to access the vector
 			m_src[i] = before;
-			m_src.emplace(m_src.begin() + i + 1, follow);
+			m_src.emplace(m_src.begin() + i + 1, after);
 			m_extra.insert(m_extra.begin() + i, std::move(extra));
 			return;
 		}
@@ -90,20 +113,6 @@ void SplitBuffers::value_type::extra(std::string_view needle, std::string&& extr
 	// special handling for not found
 	m_src.emplace_back();
 	m_extra.push_back(std::move(extra));
-}
-
-SplitBuffers::const_buffers_type SplitBuffers::value_type::data() const
-{
-	assert(m_extra.size() + 1 == m_src.size());
-	const_buffers_type result{{m_src.front().data(), m_src.front().size()}};
-
-	for (auto i = 0ULL; i < m_extra.size(); i++)
-	{
-		result.emplace_back(m_extra[i].data(), m_extra[i].size());
-		result.emplace_back(m_src[i+1].data(), m_src[i+1].size());
-	}
-
-	return result;
 }
 
 } // end of namespace
