@@ -63,7 +63,7 @@ TEST_CASE("standard path URL")
 	REQUIRE_FALSE(login_fn.valid());
 }
 
-TEST_CASE("view URL actions")
+TEST_CASE("/view URL parsing")
 {
 	URLIntent no_path{"/view/file"};
 	REQUIRE(no_path.action() == URLIntent::Action::view);
@@ -80,15 +80,6 @@ TEST_CASE("view URL actions")
 	REQUIRE(view_filename.filename() == "");
 	REQUIRE(view_filename.str() == "/view/file/fname/");
 	REQUIRE(view_filename.valid());
-
-	URLIntent view_json{"/api/user_name/a_col/lec/tion/?json"};
-	REQUIRE(view_json.action() == URLIntent::Action::api);
-	REQUIRE(view_json.user() == "user_name");
-	REQUIRE(view_json.collection() == "a_col/lec/tion");
-	REQUIRE(view_json.filename() == "");
-	REQUIRE(view_json.option() == "json");
-	REQUIRE(view_json.str() == "/api/user_name/a_col/lec/tion/?json");
-	REQUIRE(view_json.valid());
 
 	URLIntent slash_view_slash{"/view/"};
 	REQUIRE(slash_view_slash.action() == URLIntent::Action::view);
@@ -115,6 +106,26 @@ TEST_CASE("view URL actions")
 	REQUIRE(slash_view_slash_user.str() == "/view/sumyung/");
 	REQUIRE(slash_view_slash_user.valid());
 
+	URLIntent trim_action{URLIntent::Action::view, "user", "", ""};
+	REQUIRE(trim_action.str() == "/view/user/");
+
+	URLIntent with_option{"/view/siuyung/?option"};
+	REQUIRE(with_option.action() == URLIntent::Action::view);
+	REQUIRE(with_option.collection() == "");
+	REQUIRE_FALSE(with_option.valid());
+}
+
+TEST_CASE("/api URL parsing")
+{
+	URLIntent view_json{"/api/user_name/a_col/lec/tion/?json"};
+	REQUIRE(view_json.action() == URLIntent::Action::api);
+	REQUIRE(view_json.user() == "user_name");
+	REQUIRE(view_json.collection() == "a_col/lec/tion");
+	REQUIRE(view_json.filename() == "");
+	REQUIRE(view_json.option() == "json");
+	REQUIRE(view_json.str() == "/api/user_name/a_col/lec/tion/?json");
+	REQUIRE(view_json.valid());
+
 	URLIntent slash_view_slash_user_option{"/api/sumyung?really"};
 	REQUIRE(slash_view_slash_user_option.action() == URLIntent::Action::api);
 	REQUIRE(slash_view_slash_user_option.user() == "sumyung");
@@ -139,9 +150,6 @@ TEST_CASE("view URL actions")
 	REQUIRE(path_with_question.filename() == "");
 	REQUIRE(path_with_question.option() == "");
 	REQUIRE(path_with_question.valid());
-
-	URLIntent trim_action{URLIntent::Action::view, "user", "", ""};
-	REQUIRE(trim_action.str() == "/view/user/");
 }
 
 TEST_CASE("upload URL")

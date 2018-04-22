@@ -155,7 +155,9 @@ void URLIntent::parse_field_from_right(std::string_view& target, hrb::URLIntent:
 			target     = target_copy;
 		}
 	}
-	else if (p == Parameter::collection)
+
+	// collection must not contain '?' character, which denote the start of query string
+	else if (p == Parameter::collection && target.find('?') == target.npos)
 	{
 		m_coll = url_decode(trim(target));
 		target = std::string_view{};
