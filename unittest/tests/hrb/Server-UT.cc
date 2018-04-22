@@ -128,7 +128,6 @@ Authentication create_session(std::string_view username, std::string_view passwo
 			REQUIRE(!ec);
 			REQUIRE(auth.valid());
 			result.set_value(auth);
-			db->disconnect();
 		});
 	});
 	ioc.run();
