@@ -52,7 +52,11 @@ public:
 		}
 
 		void replace(std::string_view needle, std::string&& extra);
+		void replace(std::string_view needle, std::string_view subneedle, std::string&& extra);
 		const_buffers_type data() const;
+
+		// wrapper for buffer_copy(data()), useful for unit test
+		std::string str() const;
 
 	private:
 		void inject(std::string_view needle, std::string&& extra, std::size_t needle_before, std::size_t needle_after);

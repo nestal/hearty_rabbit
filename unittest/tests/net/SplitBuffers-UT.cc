@@ -18,7 +18,7 @@
 
 using Subject = hrb::SplitBuffers::value_type;
 
-TEST_CASE("injecting simple", "[normal]")
+TEST_CASE("replace simple needle", "[normal]")
 {
 	Subject subject{"top {injection point #1} follow following {injection point #2} finale"};
 	SECTION("inject #1 before #2")
@@ -32,11 +32,16 @@ TEST_CASE("injecting simple", "[normal]")
 		subject.replace("{injection point #1}", "content1");
 	}
 
-	auto out_buf = subject.data();
-	std::string out(boost::asio::buffer_size(out_buf), '_');
-	boost::asio::buffer_copy(boost::asio::buffer(out), out_buf);
+	REQUIRE(subject.str() == "top content1 follow following content2 finale");
+}
 
-	REQUIRE(out == "top content1 follow following content2 finale");
+TEST_CASE("replace subneedle", "[normal]")
+{
+	Subject subject{"top <script>/*placeholder*/</script> follow"};
+
+	subject.replace("<script>/*placeholder*/</script>", "/*placeholder*/", "var dir = {};");
+
+	REQUIRE(subject.str() == "top <script>var dir = {};</script> follow");
 }
 
 TEST_CASE("injecting script in HTML", "[normal]")

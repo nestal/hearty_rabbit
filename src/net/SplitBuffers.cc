@@ -18,7 +18,15 @@ namespace hrb {
 
 void SplitBuffers::value_type::replace(std::string_view needle, std::string&& extra)
 {
-	std::size_t needle_before{}, needle_after{};
+	inject(needle, std::move(extra), 0, 0);
+}
+
+void SplitBuffers::value_type::replace(std::string_view needle, std::string_view subneedle, std::string&& extra)
+{
+	auto offset = needle.find(subneedle);
+	auto needle_before = offset == needle.npos ? 0 : offset;
+	auto needle_after  = offset == needle.npos ? 0 : needle.size() - offset - subneedle.size();
+
 	inject(needle, std::move(extra), needle_before, needle_after);
 }
 
@@ -87,6 +95,14 @@ void SplitBuffers::value_type::inject(
 	// special handling for not found
 	m_src.emplace_back();
 	m_extra.push_back(std::move(extra));
+}
+
+std::string SplitBuffers::value_type::str() const
+{
+	auto buf = data();
+	std::string result(boost::asio::buffer_size(buf), '_');
+	boost::asio::buffer_copy(boost::asio::buffer(result), buf);
+	return result;
 }
 
 } // end of namespace
