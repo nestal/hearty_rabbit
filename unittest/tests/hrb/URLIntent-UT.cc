@@ -292,4 +292,5 @@ TEST_CASE("query URLs")
 	URLIntent query3{"/query"};
 	REQUIRE(query3.action() == URLIntent::Action::query);
 	REQUIRE_FALSE(query3.valid());
+	REQUIRE(!query3);
 }

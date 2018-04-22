@@ -265,11 +265,6 @@ bool URLIntent::valid() const
 	}
 }
 
-bool URLIntent::need_auth() const
-{
-	return m_action == Action::upload;
-}
-
 URLIntent::QueryTarget URLIntent::parse_query_target(std::string_view str)
 {
 	     if (str == "blob")       return QueryTarget::blob;

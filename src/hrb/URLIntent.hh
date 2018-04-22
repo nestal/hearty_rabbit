@@ -72,9 +72,8 @@ public:
 	QueryTarget query_target() const {return m_query_target;}
 
 	std::string str() const;
-
 	bool valid() const;
-	bool need_auth() const;
+	explicit operator bool() const {return valid();}
 
 private:
 	static std::string_view trim(std::string_view s);
