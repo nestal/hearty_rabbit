@@ -54,14 +54,15 @@ Connection::Connection(
 ) :
 	m_socket{std::move(socket)},
 	m_strand{m_socket.get_executor()},
-	m_read_buf(1024*1024),
 	m_parent{parent}
 {
 }
 
 Connection::~Connection()
 {
-	m_parent.dealloc(std::move(m_socket));
+	// no point to reuse a closed socket
+	if (m_socket.is_open())
+		m_parent.dealloc(std::move(m_socket));
 }
 
 void Connection::do_write(CommandString&& cmd, Completion&& completion)
@@ -183,6 +184,10 @@ void Connection::on_read(boost::system::error_code ec, std::size_t bytes)
 
 void Connection::disconnect()
 {
+/*		for (auto&& cb : m_callbacks)
+			cb(Reply{}, std::error_code{Error::io});
+		m_callbacks.clear();
+*/
 	m_socket.close();
 }
 

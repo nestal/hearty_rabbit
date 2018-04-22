@@ -341,6 +341,8 @@ public:
 
 
 	boost::asio::io_context& get_io_context() {return m_socket.get_io_context();}
+
+private:
 	void disconnect() ;
 
 private:
@@ -356,9 +358,7 @@ private:
 	boost::asio::ip::tcp::socket m_socket;
 	boost::asio::strand<boost::asio::io_context::executor_type> m_strand;
 
-	// Since we store blobs in redis, we need a large read buffer.
-	// Large enough to allocate in heap dynamically.
-	std::vector<char> m_read_buf;
+	char m_read_buf[8*1024];
 
 	std::deque<Completion> m_callbacks;
 	std::vector<Completion> m_queued_callbacks;
