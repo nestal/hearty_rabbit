@@ -72,4 +72,14 @@ private:
 	std::vector<std::string>        m_extra;
 };
 
+template <std::size_t N=1>
+class InstantiatedStringTemplate
+{
+public:
+
+private:
+	std::array<std::string_view, N+1>   m_src;
+	std::array<std::string, N>          m_extra;
+};
+
 } // end of namespace hrb
