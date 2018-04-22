@@ -32,8 +32,7 @@ const std::array<
 	Parameters{
 		URLIntent::Parameter::user,
 		URLIntent::Parameter::collection,
-		URLIntent::Parameter::blob,
-		URLIntent::Parameter::option
+		URLIntent::Parameter::blob
 	},
 
 	// upload
