@@ -81,13 +81,13 @@ TEST_CASE("view URL actions")
 	REQUIRE(view_filename.str() == "/view/file/fname/");
 	REQUIRE(view_filename.valid());
 
-	URLIntent view_json{"/view/user_name/a_col/lec/tion/?json"};
-	REQUIRE(view_json.action() == URLIntent::Action::view);
+	URLIntent view_json{"/api/user_name/a_col/lec/tion/?json"};
+	REQUIRE(view_json.action() == URLIntent::Action::api);
 	REQUIRE(view_json.user() == "user_name");
 	REQUIRE(view_json.collection() == "a_col/lec/tion");
 	REQUIRE(view_json.filename() == "");
 	REQUIRE(view_json.option() == "json");
-	REQUIRE(view_json.str() == "/view/user_name/a_col/lec/tion/?json");
+	REQUIRE(view_json.str() == "/api/user_name/a_col/lec/tion/?json");
 	REQUIRE(view_json.valid());
 
 	URLIntent slash_view_slash{"/view/"};
@@ -124,8 +124,8 @@ TEST_CASE("view URL actions")
 	REQUIRE(slash_view_slash_user_option.str() == "/api/sumyung/?really");
 	REQUIRE(slash_view_slash_user_option.valid());
 
-	URLIntent path_with_option{"/view/user/path/id?rendition"};
-	REQUIRE(path_with_option.action() == URLIntent::Action::view);
+	URLIntent path_with_option{"/api/user/path/id?rendition"};
+	REQUIRE(path_with_option.action() == URLIntent::Action::api);
 	REQUIRE(path_with_option.user() == "user");
 	REQUIRE(path_with_option.option() == "rendition");
 	REQUIRE(path_with_option.filename() == "");
@@ -210,7 +210,6 @@ TEST_CASE("upload URL")
 
 TEST_CASE("UTF8 special characters")
 {
-
 	URLIntent view_blob{"/view/sumsum/collection1/6d0ef85c5798fd4d3151302dbb6fdadeb095a65c"};
 	REQUIRE(view_blob.action() == URLIntent::Action::view);
 	REQUIRE(view_blob.user() == "sumsum");

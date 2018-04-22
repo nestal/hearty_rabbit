@@ -105,6 +105,9 @@ private:
 	template <class Request, class Send>
 	void on_request_view(Request&& req, URLIntent&& intent, Send&& send);
 
+	template <class Request, class Send>
+	void on_request_api(Request&& req, URLIntent&& intent, Send&& send);
+
 	template <class Send>
 	void view_collection(const URLIntent& intent, unsigned version, Send&& send);
 

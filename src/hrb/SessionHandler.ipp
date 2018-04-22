@@ -142,6 +142,9 @@ void SessionHandler::on_request_body(Request&& req, Send&& send)
 	if (intent.action() == URLIntent::Action::view)
 		return on_request_view(std::forward<Request>(req), std::move(intent), std::forward<Send>(send));
 
+	if (intent.action() == URLIntent::Action::api)
+		return on_request_api(std::forward<Request>(req), std::move(intent), std::forward<Send>(send));
+
 	// The following URL only support EmptyRequests, i.e. requests without body.
 	if constexpr (std::is_same<std::remove_reference_t<Request>, EmptyRequest>::value)
 	{
@@ -177,6 +180,12 @@ void SessionHandler::on_request_body(Request&& req, Send&& send)
 	}
 
 	return send(not_found(req.target(), req.version()));
+}
+
+template <class Request, class Send>
+void SessionHandler::on_request_api(Request&& req, URLIntent&& intent, Send&& send)
+{
+	return on_request_view(std::forward<Request>(req), std::move(intent), std::forward<Send>(send));
 }
 
 template <class Request, class Send>
