@@ -43,7 +43,14 @@ public:
 private:
 	using Parameters = std::vector<Parameter>;
 
-	static const std::array<bool, static_cast<int>(Action::none)> require_user, require_filename;
+	static constexpr std::array<bool, static_cast<int>(Action::none)> require_user =
+	//   login, logout, view, upload, home,  lib,   query, api, none
+		{false, false,  true, true,   false, false, false, true};
+
+	static constexpr std::array<bool, static_cast<int>(Action::none)> require_filename =
+	//   login, logout, view,  upload, home,  lib,  query, api, none
+		{false, false,  false, true,   false, true, false, false};
+
 	static const std::array<Parameters, static_cast<int>(Action::none)> intent_defintions;
 	static const Parameters separator_fields;
 

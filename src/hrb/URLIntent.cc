@@ -244,20 +244,12 @@ URLIntent::Action URLIntent::parse_action(std::string_view str)
 	else                        return Action::none;
 }
 
-const std::array<bool, static_cast<int>(URLIntent::Action::none)> URLIntent::require_user =
-//   login, logout, view, upload, home,  lib,   query, api, none
-	{false, false,  true, true,   false, false, false, true};
-
-const std::array<bool, static_cast<int>(URLIntent::Action::none)> URLIntent::require_filename =
-//   login, logout, view,  upload, home,  lib,  query, api, none
-	{false, false,  false, true,   false, true, false, false};
-
 bool URLIntent::valid() const
 {
 	if (m_action != Action::none)
 	{
 		auto action_index = static_cast<std::size_t>(m_action);
-		assert(require_user.at(static_cast<std::size_t>(Action::view)));
+		static_assert(require_user.at(static_cast<std::size_t>(Action::view)));
 
 		if (require_user.at(action_index) && m_user.empty())
 			return false;
