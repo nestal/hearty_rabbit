@@ -94,12 +94,7 @@ void Connection::do_write(CommandString&& cmd, Completion&& completion)
 				if (ec)
 				{
 					Log(LOG_WARNING, "redis write error %1% %2%", ec, ec.message());
-
-					while (!m_callbacks.empty())
-						m_callbacks.front()(Reply{}, std::error_code{Error::protocol});
-						m_callbacks.pop_front();
-
-					disconnect();
+					disconnect(Error::protocol);
 				}
 			}
 		)
@@ -167,7 +162,7 @@ void Connection::on_read(boost::system::error_code ec, std::size_t bytes)
 		if (result == ReplyReader::Result::error)
 		{
 			Log(LOG_WARNING, "Redis reply parse error. Disconnecting.");
-			disconnect();
+			disconnect(Error::protocol);
 		}
 
 		// Keep reading until all outstanding commands are finished.
@@ -178,16 +173,22 @@ void Connection::on_read(boost::system::error_code ec, std::size_t bytes)
 	else
 	{
 		Log(LOG_WARNING, "Redis read error: %1% (%2%). Disconnecting.", ec, ec.message());
-		disconnect();
+		disconnect(ec);
 	}
 }
 
-void Connection::disconnect()
+void Connection::disconnect(std::error_code ec)
 {
-/*		for (auto&& cb : m_callbacks)
-			cb(Reply{}, std::error_code{Error::io});
-		m_callbacks.clear();
-*/
+	// clean up all outstanding callbacks
+	// must not call this function inside any of these callbacks!!
+	for (auto&& cb : m_queued_callbacks)
+		cb(Reply{}, ec ? ec : std::error_code{Error::io});
+	m_queued_callbacks.clear();
+
+	for (auto&& cb : m_callbacks)
+		cb(Reply{}, ec ? ec : std::error_code{Error::io});
+	m_callbacks.clear();
+
 	m_socket.close();
 }
 

@@ -343,7 +343,8 @@ public:
 	boost::asio::io_context& get_io_context() {return m_socket.get_io_context();}
 
 private:
-	void disconnect() ;
+	// must not call disconnect() inside the callbacks in m_callbacks
+	void disconnect(std::error_code ec) ;
 
 private:
 	using Completion = std::function<void(Reply, std::error_code)>;
