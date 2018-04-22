@@ -179,8 +179,11 @@ std::string URLIntent::str() const
 		case Action::api:       oss << "api/";      break;
 
 		case Action::home:
-		case Action::none:
 			break;
+
+		// including Action::none
+		default:
+			return oss.str();
 	}
 
 	auto& intent_definition = intent_defintions[static_cast<std::size_t>(m_action)];
