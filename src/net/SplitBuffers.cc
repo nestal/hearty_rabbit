@@ -12,6 +12,8 @@
 
 #include "SplitBuffers.hh"
 
+#include <boost/range/adaptor/reversed.hpp>
+
 namespace hrb {
 
 void SplitBuffers::value_type::extra(std::string_view needle, std::string&& extra, Option opt)
@@ -80,7 +82,7 @@ SplitBuffers::const_buffers_type SplitBuffers::value_type::data() const
 {
 	const_buffers_type result{{m_top.data(), m_top.size()}};
 
-	for (auto&& seg : m_segs)
+	for (auto&& seg : boost::adaptors::reverse(m_segs))
 	{
 		result.emplace_back(seg.extra.data(), seg.extra.size());
 		result.emplace_back(seg.follow.data(), seg.follow.size());

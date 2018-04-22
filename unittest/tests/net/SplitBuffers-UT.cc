@@ -18,6 +18,21 @@
 
 using Subject = hrb::SplitBuffers::value_type;
 
+TEST_CASE("injecting simple", "[normal]")
+{
+	std::string_view src{"top {injection point #1} follow following {injection point #2} finale"};
+
+	Subject subject{src};
+	subject.extra("{injection point #2}", "content2");
+	subject.extra("{injection point #1}", "content1");
+
+	auto out_buf = subject.data();
+	std::string out(boost::asio::buffer_size(out_buf), '_');
+	boost::asio::buffer_copy(boost::asio::buffer(out), out_buf);
+
+	REQUIRE(out == "top content1 follow following content2 finale");
+}
+
 TEST_CASE("injecting script in HTML", "[normal]")
 {
 	std::error_code ec;
