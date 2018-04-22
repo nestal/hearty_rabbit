@@ -115,13 +115,13 @@ TEST_CASE("view URL actions")
 	REQUIRE(slash_view_slash_user.str() == "/view/sumyung/");
 	REQUIRE(slash_view_slash_user.valid());
 
-	URLIntent slash_view_slash_user_option{"/view/sumyung?really"};
-	REQUIRE(slash_view_slash_user_option.action() == URLIntent::Action::view);
+	URLIntent slash_view_slash_user_option{"/api/sumyung?really"};
+	REQUIRE(slash_view_slash_user_option.action() == URLIntent::Action::api);
 	REQUIRE(slash_view_slash_user_option.user() == "sumyung");
 	REQUIRE(slash_view_slash_user_option.collection() == "");
 	REQUIRE(slash_view_slash_user_option.filename() == "");
 	REQUIRE(slash_view_slash_user_option.option() == "really");
-	REQUIRE(slash_view_slash_user_option.str() == "/view/sumyung/?really");
+	REQUIRE(slash_view_slash_user_option.str() == "/api/sumyung/?really");
 	REQUIRE(slash_view_slash_user_option.valid());
 
 	URLIntent path_with_option{"/view/user/path/id?rendition"};
@@ -132,8 +132,8 @@ TEST_CASE("view URL actions")
 	REQUIRE(path_with_option.collection() == "path/id");
 	REQUIRE(path_with_option.valid());
 
-	URLIntent path_with_question{"/view/user/path/big_id?"};
-	REQUIRE(path_with_question.action() == URLIntent::Action::view);
+	URLIntent path_with_question{"/api/user/path/big_id?"};
+	REQUIRE(path_with_question.action() == URLIntent::Action::api);
 	REQUIRE(path_with_question.user() == "user");
 	REQUIRE(path_with_question.collection() == "path/big_id");
 	REQUIRE(path_with_question.filename() == "");
@@ -285,6 +285,7 @@ TEST_CASE("query URLs")
 	REQUIRE(query_question.query_target() == URLIntent::QueryTarget::collection);
 	REQUIRE(query_question.option() == "user=quest?ion");
 	REQUIRE(query_question.valid());
+	REQUIRE(query_question.str() == "/query/collection?user=quest?ion");
 
 	REQUIRE(std::get<0>(find_fields(query_user.option(), "user")) == "sum");
 

@@ -24,7 +24,7 @@ namespace hrb {
 class URLIntent
 {
 public:
-	enum class Action {login, logout, view, upload, home, lib, query, none};
+	enum class Action {login, logout, view, upload, home, lib, query, api, none};
 
 	enum class QueryTarget {blob, collection, blob_set, none};
 
@@ -75,6 +75,7 @@ private:
 	void parse_field_from_left(std::string_view& target, Parameter p);
 	void parse_field_from_right(std::string_view& target, Parameter p);
 	static QueryTarget parse_query_target(std::string_view str);
+	static std::string_view to_string(QueryTarget query_target);
 
 private:
 	Action  m_action{Action::none};
