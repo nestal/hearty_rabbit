@@ -66,12 +66,10 @@ TEST_CASE("simple redis", "[normal]")
 				REQUIRE(reply.as_string() == "100");
 
 				redis->command(
-					[redis, &tested](auto reply, auto)
+					[&tested](auto reply, auto)
 					{
 						REQUIRE(tested++ == 2);
 						REQUIRE(reply.as_int() == 1);
-
-						redis->disconnect();
 					}, "DEL key"
 				);
 			}, "GET key"
@@ -88,7 +86,7 @@ TEST_CASE("simple redis", "[normal]")
 			REQUIRE(!ec);
 			REQUIRE(tested++ == 1);
 
-			redis->command([redis, &tested](Reply reply, auto&& ec)
+			redis->command([&tested](Reply reply, auto&& ec)
 			{
 				REQUIRE(!ec);
 				REQUIRE(tested++ == 2);
@@ -139,8 +137,6 @@ TEST_CASE("simple redis", "[normal]")
 					REQUIRE(kvs.back().key() == "field2");
 					REQUIRE(kvs.back().value().as_string() == "value2");
 				}
-
-				redis->disconnect();
 			}, "HGETALL test_hash");
 
 		}, "HSET test_hash field1 value1 field2 value2");
