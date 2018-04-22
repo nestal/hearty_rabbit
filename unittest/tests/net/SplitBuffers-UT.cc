@@ -20,11 +20,17 @@ using Subject = hrb::SplitBuffers::value_type;
 
 TEST_CASE("injecting simple", "[normal]")
 {
-	std::string_view src{"top {injection point #1} follow following {injection point #2} finale"};
-
-	Subject subject{src};
-	subject.extra("{injection point #2}", "content2");
-	subject.extra("{injection point #1}", "content1");
+	Subject subject{"top {injection point #1} follow following {injection point #2} finale"};
+	SECTION("inject #1 before #2")
+	{
+		subject.extra("{injection point #1}", "content1");
+		subject.extra("{injection point #2}", "content2");
+	}
+	SECTION("inject #2 before #1")
+	{
+		subject.extra("{injection point #2}", "content2");
+		subject.extra("{injection point #1}", "content1");
+	}
 
 	auto out_buf = subject.data();
 	std::string out(boost::asio::buffer_size(out_buf), '_');

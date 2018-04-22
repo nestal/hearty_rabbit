@@ -46,20 +46,20 @@ void SplitBuffers::value_type::extra(std::string_view needle, std::string&& extr
 				needle_follow = 0;
 				break;
 
-				// input:  <before><needle><after>
-				// output: <before><extra><needle><after>
+			// input:  <before><needle><after>
+			// output: <before><extra><needle><after>
 			case Option::inject_before: needle_top = 0;
 				needle_follow = needle.size();
 				break;
 
-				// input:  <before><needle><after>
-				// output: <before><needle><extra><after>
+			// input:  <before><needle><after>
+			// output: <before><needle><extra><after>
 			case Option::inject_after: needle_top = needle.size();
 				needle_follow = 0;
 				break;
 
-				// input:  <before><needle><after>
-				// output: <before><nee<extra>dle><after>
+			// input:  <before><needle><after>
+			// output: <before><nee<extra>dle><after>
 			case Option::inject_middle: needle_top = needle.size() / 2;
 				needle_follow = needle.size() - needle_top;
 				break;
