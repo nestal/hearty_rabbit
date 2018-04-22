@@ -154,56 +154,56 @@ TEST_CASE("/api URL parsing")
 
 TEST_CASE("upload URL")
 {
-	URLIntent slash_upload_slash_user_slash{"/upload/not_exists/"};
-	REQUIRE(slash_upload_slash_user_slash.action() == URLIntent::Action::upload);
-	REQUIRE(slash_upload_slash_user_slash.user() == "not_exists");
-	REQUIRE(slash_upload_slash_user_slash.collection() == "");
-	REQUIRE(slash_upload_slash_user_slash.filename() == "");
-	REQUIRE(slash_upload_slash_user_slash.str() == "/upload/not_exists/");
-	REQUIRE_FALSE(slash_upload_slash_user_slash.valid());
+	URLIntent user_slash{"/upload/not_exists/"};
+	REQUIRE(user_slash.action() == URLIntent::Action::upload);
+	REQUIRE(user_slash.user() == "not_exists");
+	REQUIRE(user_slash.collection() == "");
+	REQUIRE(user_slash.filename() == "");
+	REQUIRE(user_slash.str() == "/upload/not_exists/");
+	REQUIRE_FALSE(user_slash.valid());
 
-	URLIntent slash_upload_slash_path_slash{"/upload/some/path/to/"};
-	REQUIRE(slash_upload_slash_path_slash.action() == URLIntent::Action::upload);
-	REQUIRE(slash_upload_slash_path_slash.user() == "some");
-	REQUIRE(slash_upload_slash_path_slash.collection() == "path/to");
-	REQUIRE(slash_upload_slash_path_slash.filename() == "");
-	REQUIRE(slash_upload_slash_path_slash.str() == "/upload/some/path/to/");
-	REQUIRE_FALSE(slash_upload_slash_path_slash.valid());
+	URLIntent path_slash{"/upload/some/path/to/"};
+	REQUIRE(path_slash.action() == URLIntent::Action::upload);
+	REQUIRE(path_slash.user() == "some");
+	REQUIRE(path_slash.collection() == "path/to");
+	REQUIRE(path_slash.filename() == "");
+	REQUIRE(path_slash.str() == "/upload/some/path/to/");
+	REQUIRE_FALSE(path_slash.valid());
 
-	URLIntent slash_upload_slash_path_slash_filename{"/upload/path/to/upload/myfile.jpeg"};
-	REQUIRE(slash_upload_slash_path_slash_filename.action() == URLIntent::Action::upload);
-	REQUIRE(slash_upload_slash_path_slash_filename.user() == "path");
-	REQUIRE(slash_upload_slash_path_slash_filename.collection() == "to/upload");
-	REQUIRE(slash_upload_slash_path_slash_filename.filename() == "myfile.jpeg");
-	REQUIRE(slash_upload_slash_path_slash_filename.str() == "/upload/path/to/upload/myfile.jpeg");
-	REQUIRE(slash_upload_slash_path_slash_filename.valid());
-
-	// slash at the start and end of path will be removed
-	URLIntent slash_upload_slash_path_slash_slash_filename{"/upload/path//myfile.jpeg"};
-	REQUIRE(slash_upload_slash_path_slash_slash_filename.action() == URLIntent::Action::upload);
-	REQUIRE(slash_upload_slash_path_slash_slash_filename.user() == "path");
-	REQUIRE(slash_upload_slash_path_slash_slash_filename.collection() == "");
-	REQUIRE(slash_upload_slash_path_slash_slash_filename.filename() == "myfile.jpeg");
-	REQUIRE(slash_upload_slash_path_slash_slash_filename.str() == "/upload/path/myfile.jpeg");
-	REQUIRE(slash_upload_slash_path_slash_slash_filename.valid());
+	URLIntent path_slash_filename{"/upload/path/to/upload/myfile.jpeg"};
+	REQUIRE(path_slash_filename.action() == URLIntent::Action::upload);
+	REQUIRE(path_slash_filename.user() == "path");
+	REQUIRE(path_slash_filename.collection() == "to/upload");
+	REQUIRE(path_slash_filename.filename() == "myfile.jpeg");
+	REQUIRE(path_slash_filename.str() == "/upload/path/to/upload/myfile.jpeg");
+	REQUIRE(path_slash_filename.valid());
 
 	// slash at the start and end of path will be removed
-	URLIntent slash_upload_slash_path_3slash_filename{"/upload/path///password"};
-	REQUIRE(slash_upload_slash_path_3slash_filename.action() == URLIntent::Action::upload);
-	REQUIRE(slash_upload_slash_path_3slash_filename.user() == "path");
-	REQUIRE(slash_upload_slash_path_3slash_filename.collection() == "");
-	REQUIRE(slash_upload_slash_path_3slash_filename.filename() == "password");
-	REQUIRE(slash_upload_slash_path_3slash_filename.str() == "/upload/path/password");
-	REQUIRE(slash_upload_slash_path_3slash_filename.valid());
+	URLIntent path_2slash_filename{"/upload/path//myfile.jpeg"};
+	REQUIRE(path_2slash_filename.action() == URLIntent::Action::upload);
+	REQUIRE(path_2slash_filename.user() == "path");
+	REQUIRE(path_2slash_filename.collection() == "");
+	REQUIRE(path_2slash_filename.filename() == "myfile.jpeg");
+	REQUIRE(path_2slash_filename.str() == "/upload/path/myfile.jpeg");
+	REQUIRE(path_2slash_filename.valid());
 
 	// slash at the start and end of path will be removed
-	URLIntent path_with_2slashes{"/upload/path/something/////wrong/image.jpeg"};
-	REQUIRE(path_with_2slashes.action() == URLIntent::Action::upload);
-	REQUIRE(path_with_2slashes.user() == "path");
-	REQUIRE(path_with_2slashes.collection() == "something/////wrong");
-	REQUIRE(path_with_2slashes.filename() == "image.jpeg");
-	REQUIRE(path_with_2slashes.str() == "/upload/path/something/////wrong/image.jpeg");
-	REQUIRE(path_with_2slashes.valid());
+	URLIntent path_3slash_filename{"/upload/path///password"};
+	REQUIRE(path_3slash_filename.action() == URLIntent::Action::upload);
+	REQUIRE(path_3slash_filename.user() == "path");
+	REQUIRE(path_3slash_filename.collection() == "");
+	REQUIRE(path_3slash_filename.filename() == "password");
+	REQUIRE(path_3slash_filename.str() == "/upload/path/password");
+	REQUIRE(path_3slash_filename.valid());
+
+	// slash at the start and end of path will be removed
+	URLIntent path_2slashes_mid{"/upload/path/something/////wrong/image.jpeg"};
+	REQUIRE(path_2slashes_mid.action() == URLIntent::Action::upload);
+	REQUIRE(path_2slashes_mid.user() == "path");
+	REQUIRE(path_2slashes_mid.collection() == "something/////wrong");
+	REQUIRE(path_2slashes_mid.filename() == "image.jpeg");
+	REQUIRE(path_2slashes_mid.str() == "/upload/path/something/////wrong/image.jpeg");
+	REQUIRE(path_2slashes_mid.valid());
 
 	URLIntent trim_action_fn{URLIntent::Action::upload, "user", "", "read.me"};
 	REQUIRE(trim_action_fn.str() == "/upload/user/read.me");
