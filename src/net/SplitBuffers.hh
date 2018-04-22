@@ -13,6 +13,7 @@
 #pragma once
 
 #include "util/MMap.hh"
+#include "util/StringTemplate.hh"
 
 #include <boost/filesystem/path.hpp>
 #include <boost/beast/http/message.hpp>
@@ -36,39 +37,7 @@ class SplitBuffers
 {
 public:
 	using const_buffers_type = std::vector<boost::asio::const_buffer>;
-
-	class value_type
-	{
-	public:
-		explicit value_type(std::string_view file = {}) :
-			m_src(1, file)
-		{
-		}
-
-		value_type(std::string_view file, std::string_view needle, std::string_view xtra) :
-			m_src(1, file)
-		{
-			replace(needle, std::string{xtra});
-		}
-
-		void replace(std::string_view needle, std::string&& extra);
-		void replace(std::string_view needle, std::string_view subneedle, std::string&& extra);
-		void inject_before(std::string_view needle, std::string&& extra);
-		void inject_after(std::string_view needle, std::string&& extra);
-		const_buffers_type data() const;
-
-		// wrapper for buffer_copy(data()), useful for unit test
-		std::string str() const;
-
-		void set_extra(std::size_t i, std::string&& extra) {m_extra.at(i) = std::move(extra);}
-
-	private:
-		void inject(std::string_view needle, std::string&& extra, std::size_t needle_before, std::size_t needle_after);
-
-	private:
-		std::vector<std::string_view>   m_src;
-		std::vector<std::string>        m_extra;
-	};
+	using value_type = StringTemplate;
 
 	static std::uint64_t size(const value_type& body)
     {
