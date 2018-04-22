@@ -42,7 +42,15 @@ TEST_CASE("replace subneedle", "[normal]")
 	SECTION("replace subneedle with extra when found")
 	{
 		subject.replace("<script>/*placeholder*/</script>", "/*placeholder*/", "var dir = {};");
-		REQUIRE(subject.str() == "top <script>var dir = {};</script> follow");
+		SECTION("not change extra")
+		{
+			REQUIRE(subject.str() == "top <script>var dir = {};</script> follow");
+		}
+		SECTION("set another extra")
+		{
+			subject.set_extra(0, "alert('oops');");
+			REQUIRE(subject.str() == "top <script>alert('oops');</script> follow");
+		}
 	}
 	SECTION("inject before")
 	{

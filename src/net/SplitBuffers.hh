@@ -60,6 +60,8 @@ public:
 		// wrapper for buffer_copy(data()), useful for unit test
 		std::string str() const;
 
+		void set_extra(std::size_t i, std::string&& extra) {m_extra.at(i) = std::move(extra);}
+
 	private:
 		void inject(std::string_view needle, std::string&& extra, std::size_t needle_before, std::size_t needle_after);
 
