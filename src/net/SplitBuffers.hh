@@ -53,6 +53,8 @@ public:
 
 		void replace(std::string_view needle, std::string&& extra);
 		void replace(std::string_view needle, std::string_view subneedle, std::string&& extra);
+		void inject_before(std::string_view needle, std::string&& extra);
+		void inject_after(std::string_view needle, std::string&& extra);
 		const_buffers_type data() const;
 
 		// wrapper for buffer_copy(data()), useful for unit test

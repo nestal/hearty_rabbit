@@ -23,11 +23,18 @@ void SplitBuffers::value_type::replace(std::string_view needle, std::string&& ex
 
 void SplitBuffers::value_type::replace(std::string_view needle, std::string_view subneedle, std::string&& extra)
 {
-	auto offset = needle.find(subneedle);
-	auto needle_before = offset == needle.npos ? 0 : offset;
-	auto needle_after  = offset == needle.npos ? 0 : needle.size() - offset - subneedle.size();
+	if (auto offset = needle.find(subneedle); offset != needle.npos)
+		inject(needle, std::move(extra), offset, needle.size() - offset - subneedle.size());
+}
 
-	inject(needle, std::move(extra), needle_before, needle_after);
+void SplitBuffers::value_type::inject_before(std::string_view needle, std::string&& extra)
+{
+	inject(needle, std::move(extra), 0, needle.size());
+}
+
+void SplitBuffers::value_type::inject_after(std::string_view needle, std::string&& extra)
+{
+	inject(needle, std::move(extra), needle.size(), 0);
 }
 
 SplitBuffers::const_buffers_type SplitBuffers::value_type::data() const

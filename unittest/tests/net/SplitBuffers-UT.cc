@@ -39,9 +39,26 @@ TEST_CASE("replace subneedle", "[normal]")
 {
 	Subject subject{"top <script>/*placeholder*/</script> follow"};
 
-	subject.replace("<script>/*placeholder*/</script>", "/*placeholder*/", "var dir = {};");
-
-	REQUIRE(subject.str() == "top <script>var dir = {};</script> follow");
+	SECTION("replace subneedle with extra when found")
+	{
+		subject.replace("<script>/*placeholder*/</script>", "/*placeholder*/", "var dir = {};");
+		REQUIRE(subject.str() == "top <script>var dir = {};</script> follow");
+	}
+	SECTION("inject before")
+	{
+		subject.inject_before("<script>/*placeholder*/</script>", "<link></link>");
+		REQUIRE(subject.str() == "top <link></link><script>/*placeholder*/</script> follow");
+	}
+	SECTION("inject after")
+	{
+		subject.inject_after("<script>/*placeholder*/</script>", "<body></body>");
+		REQUIRE(subject.str() == "top <script>/*placeholder*/</script><body></body> follow");
+	}
+	SECTION("does not replace when subneedle not found")
+	{
+		subject.replace("<script>/*placeholder*/</script>", "subneedle not found", "var dir = {};");
+		REQUIRE(subject.str() == "top <script>/*placeholder*/</script> follow");
+	}
 }
 
 TEST_CASE("injecting script in HTML", "[normal]")
