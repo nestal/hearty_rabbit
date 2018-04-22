@@ -18,7 +18,8 @@ namespace hrb {
 
 void SplitBuffers::value_type::extra(std::string_view needle, std::string&& extra, Option opt)
 {
-	auto offset = needle.empty() ? m_top.npos : m_top.find(needle);
+	assert(!m_src.empty());
+	assert(m_extra.size() + 1 == m_src.size());
 
 	// for Option::replace: the needle will not be included in "m_top" and "follow".
 	// for Option::inject_after: the needle will be included in "m_top"
@@ -32,60 +33,74 @@ void SplitBuffers::value_type::extra(std::string_view needle, std::string&& extr
 	// to "m_top" and the rest n/2+1 bytes to follow. Note that in C/C++ division will
 	// always truncate the remainder.
 
-	std::size_t needle_top{}, needle_follow{};
-	switch (opt)
+	for (auto i = 0UL; i < m_src.size(); i++)
 	{
-		// input:  <before><needle><after>
-		// output: <before><extra><after>
-		case Option::replace:       needle_top = 0;             needle_follow = 0; break;
+		auto offset = needle.empty() ? m_src[i].npos : m_src[i].find(needle);
 
-		// input:  <before><needle><after>
-		// output: <before><extra><needle><after>
-		case Option::inject_before: needle_top = 0;             needle_follow = needle.size(); break;
+		std::size_t needle_top{}, needle_follow{};
+		switch (opt)
+		{
+			// input:  <before><needle><after>
+			// output: <before><extra><after>
+			case Option::replace: needle_top = 0;
+				needle_follow = 0;
+				break;
 
-		// input:  <before><needle><after>
-		// output: <before><needle><extra><after>
-		case Option::inject_after:  needle_top = needle.size(); needle_follow = 0; break;
+				// input:  <before><needle><after>
+				// output: <before><extra><needle><after>
+			case Option::inject_before: needle_top = 0;
+				needle_follow = needle.size();
+				break;
 
-		// input:  <before><needle><after>
-		// output: <before><nee<extra>dle><after>
-		case Option::inject_middle:
-			needle_top    = needle.size()/2;
-			needle_follow = needle.size()-needle_top;
-			break;
+				// input:  <before><needle><after>
+				// output: <before><needle><extra><after>
+			case Option::inject_after: needle_top = needle.size();
+				needle_follow = 0;
+				break;
+
+				// input:  <before><needle><after>
+				// output: <before><nee<extra>dle><after>
+			case Option::inject_middle: needle_top = needle.size() / 2;
+				needle_follow = needle.size() - needle_top;
+				break;
+		}
+
+		// offset points to the position of the needle
+		// <before><needle><after>
+		//         ^
+		//         offset
+
+		// if "needle" is not found, append "extra" at the end.
+		// i.e. m_top will remain unchanged, and "follow" in the new
+		// segment will be empty
+		if (offset != m_src[i].npos)
+		{
+			auto before = m_src[i].substr(0, offset + needle_top);
+			auto follow = m_src[i].substr(offset + needle.size() - needle_follow);
+
+			// WARNING! modifying the vector when looping it
+			// That is why we always use indexes to access the vector
+			m_src[i] = before;
+			m_src.emplace(m_src.begin() + i + 1, follow);
+			m_extra.insert(m_extra.begin() + i, std::move(extra));
+			return;
+		}
 	}
 
-	// offset points to the position of the needle
-	// <before><needle><after>
-	//         ^
-	//         offset
-
-	// if "needle" is not found, append "extra" at the end.
-	// i.e. m_top will remain unchanged, and "follow" in the new
-	// segment will be empty
-	std::string_view follow;
-	if (offset != m_top.npos)
-		follow = m_top.substr(offset + needle.size() - needle_follow);
-
-	m_segs.emplace_back(std::move(extra), follow);
-
-	if (offset != m_top.npos)
-		offset += needle_top;
-
-	// substr() works even when offset is npos
-	// if use remove_suffix(), need to check against npos ourselves
-	// less code -> fewer bugs
-	m_top = m_top.substr(0, offset);
+	// special handling for not found
+	m_src.emplace_back();
+	m_extra.push_back(std::move(extra));
 }
 
 SplitBuffers::const_buffers_type SplitBuffers::value_type::data() const
 {
-	const_buffers_type result{{m_top.data(), m_top.size()}};
+	assert(m_extra.size() + 1 == m_src.size());
+	const_buffers_type result{{m_src.front().data(), m_src.front().size()}};
 
-	for (auto&& seg : boost::adaptors::reverse(m_segs))
+	for (auto i = 0ULL; i < m_extra.size(); i++)
 	{
-		result.emplace_back(seg.extra.data(), seg.extra.size());
-		result.emplace_back(seg.follow.data(), seg.follow.size());
+		result.emplace_back(m_extra[i].data(), m_extra[i].size());
+		result.emplace_back(m_src[i+1].data(), m_src[i+1].size());
 	}
 
 	return result;

@@ -43,12 +43,12 @@ public:
 	{
 	public:
 		explicit value_type(std::string_view file = {}) :
-			m_top{file}
+			m_src(1, file)
 		{
 		}
 
 		value_type(std::string_view file, std::string_view needle, std::string_view xtra) :
-			m_top{file}
+			m_src(1, file)
 		{
 			extra(needle, std::string{xtra});
 		}
@@ -57,14 +57,8 @@ public:
 		const_buffers_type data() const;
 
 	private:
-		std::string_view    m_top;
-		struct Segment
-		{
-			Segment(std::string&& e, std::string_view f) : extra{std::move(e)}, follow{f} {}
-			std::string         extra;
-			std::string_view    follow;
-		};
-		std::vector<Segment>    m_segs;
+		std::vector<std::string_view>   m_src;
+		std::vector<std::string>        m_extra;
 	};
 
 	static std::uint64_t size(const value_type& body)
