@@ -95,7 +95,11 @@ TurboBuffer RotateImage::auto_rotate(BufferView jpeg, std::error_code& ec)
 
 		return {};
 	}
+	return auto_rotate(jpeg, exif2, ec);
+}
 
+TurboBuffer RotateImage::auto_rotate(BufferView jpeg, const EXIF2& exif2, std::error_code& ec)
+{
 	if (auto orientation = exif2.get(jpeg, EXIF2::Tag::orientation))
 	{
 		auto buf = rotate(orientation->value_offset, jpeg, ec);
