@@ -30,7 +30,7 @@ TEST_CASE("web resource", "[normal]")
 		auto res = lib.inject(
 			http::status::ok,
 			"{/** dynamic json placeholder for dir **/}",
-			R"(<meta property="og:title" content="Hearty Rabbit" />)",
+			R"(<meta property="og:title" content="Hearty Rabbit">)",
 			11
 		);
 		REQUIRE(res.version() == 11);

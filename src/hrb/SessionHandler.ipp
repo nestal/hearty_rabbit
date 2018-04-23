@@ -79,7 +79,7 @@ public:
 				(
 					boost::format{fmt} % m_server_root %
 					URLIntent{URLIntent::Action::api, owner, coll, cover}.str() %
-					URLIntent{URLIntent::Action::view, owner, coll, ""}.str() %
+					URLIntent{URLIntent::Action::view, owner, coll, "Hearty Rabbit"}.str() %
 					coll
 				).str(),
 				m_version)

@@ -25,11 +25,11 @@
 
 namespace hrb {
 
-class UploadFile;
 class CollEntry;
+class EXIF2;
 class Magic;
-class CollEntry;
 class RenditionSetting;
+class UploadFile;
 
 class BlobFile
 {
