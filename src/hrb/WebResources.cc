@@ -98,16 +98,34 @@ bool WebResources::is_static(std::string_view filename) const
 WebResources::Response WebResources::inject_json(http::status status, std::string&& json, int version) const
 {
 	auto res = find_dynamic("index.html", version);
-	res.body().replace(hrb::index_needle, std::move(json));
+	res.body().set_extra(0, std::move(json));
 	res.result(status);
 	return res;
 }
 
+WebResources::Resource::Resource(std::string_view name, MMap&& file, std::string&& mime, boost::string_view etag) :
+	m_name{name}, m_file{std::move(file)}, m_mime{std::move(mime)}, m_etag{etag}
+{
+	if (name == "index.html")
+	{
+		StringTemplate tmp{m_file.string()};
+		tmp.replace(hrb::index_needle, "");
+		m_src.assign(tmp.begin(), tmp.end());
+	}
+	else
+	{
+		m_src.push_back(m_file.string());
+		m_src.push_back({});
+	}
+	assert(m_src.size() == 2);
+}
+
 WebResources::Response WebResources::Resource::get(int version, bool dynamic) const
 {
+	assert(m_src.size() == 2);
 	http::response<hrb::SplitBuffers> result{
 		std::piecewise_construct,
-		std::make_tuple(m_file.string()),
+		std::make_tuple(m_src.begin(), m_src.end()),
 		std::make_tuple(http::status::ok, version)
 	};
 	result.set(http::field::content_type, m_mime);
@@ -118,4 +136,5 @@ WebResources::Response WebResources::Resource::get(int version, bool dynamic) co
 	result.prepare_payload();
 	return result;
 }
+
 } // end of namespace hrb

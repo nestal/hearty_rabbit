@@ -26,7 +26,7 @@ TEST_CASE("web resource", "[normal]")
 
 	SECTION("dynamic resource")
 	{
-		auto res = lib.find_dynamic("index.html", 11);
+		auto res = lib.inject_json(http::status::ok, "{/** dynamic json placeholder for dir **/}", 11);
 		REQUIRE(res.version() == 11);
 		REQUIRE(res.result() == http::status::ok);
 		REQUIRE(res[http::field::content_type] == "text/html");

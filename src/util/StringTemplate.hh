@@ -34,6 +34,13 @@ public:
 		replace(needle, std::string{xtra});
 	}
 
+	// feel free to copy
+	StringTemplate(StringTemplate&&) = default;
+	StringTemplate(const StringTemplate&) = default;
+	StringTemplate& operator=(StringTemplate&&) = default;
+	StringTemplate& operator=(const StringTemplate&) = default;
+	~StringTemplate() = default;
+
 	void replace(std::string_view needle, std::string&& extra);
 	void replace(std::string_view needle, std::string_view subneedle, std::string&& extra);
 	void inject_before(std::string_view needle, std::string&& extra);
@@ -76,9 +83,11 @@ template <std::size_t N=1>
 class InstantiatedStringTemplate
 {
 public:
-	using const_buffers_type = std::array<boost::asio::const_buffer, N*2+1>;
+	using const_buffers_type = std::vector<boost::asio::const_buffer>;
 
 public:
+	InstantiatedStringTemplate() = default;
+
 	template <typename FwdIt>
 	InstantiatedStringTemplate(FwdIt first, FwdIt last)
 	{
@@ -92,17 +101,18 @@ public:
 
 	auto data() const
 	{
-		const_buffers_type result;
-
 		auto src   = m_src.begin();
 		auto extra = m_extra.begin();
-		result[0]  = boost::asio::buffer(src->data(), src->size());
+
+		const_buffers_type result{boost::asio::buffer(src->data(), src->size())};
 		src++;
 
-		for (auto i = 1; i < result.size() && src != m_src.end() && extra != m_extra.end(); src++, extra++, i+=2)
+		for (;src != m_src.end() && extra != m_extra.end(); src++, extra++)
 		{
-			result[i]   = boost::asio::buffer(extra->data(), extra->size());
-			result[i+1] = boost::asio::buffer(src->data(), src->size());
+			if (extra->size() > 0)
+				result.emplace_back(extra->data(), extra->size());
+			if (src->size() > 0)
+				result.emplace_back(src->data(), src->size());
 		}
 		return result;
 	}
