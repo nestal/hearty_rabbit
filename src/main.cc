@@ -97,7 +97,7 @@ int main(int argc, char *argv[])
 	using namespace hrb;
 	try
 	{
-		Configuration cfg{argc, argv, ::getenv("HEART_RABBIT_CONFIG")};
+		Configuration cfg{argc, argv, ::getenv("HEARTY_RABBIT_CONFIG")};
 		if (cfg.help())
 		{
 			cfg.usage(std::cout);

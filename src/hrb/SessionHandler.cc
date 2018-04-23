@@ -283,7 +283,7 @@ http::response<SplitBuffers> SessionHandler::not_found(boost::string_view target
 	dir.emplace("error_message", "The request resource was not found.");
 	dir.emplace("username", std::string{m_auth.user()});
 
-	return m_lib.inject_json(http::status::not_found, dir.dump(), version);
+	return m_lib.inject(http::status::not_found, dir.dump(), "<meta></meta>", version);
 }
 
 http::response<http::string_body> SessionHandler::server_error(boost::beast::string_view what, unsigned version)
@@ -300,7 +300,7 @@ http::response<http::string_body> SessionHandler::server_error(boost::beast::str
 http::response<SplitBuffers> SessionHandler::file_request(const URLIntent& intent, boost::string_view etag, unsigned version)
 {
 	return intent.filename() == "login_incorrect.html" ?
-		m_lib.inject_json(http::status::ok, R"_({login_message: "Login incorrect... Try again?"})_", version) :
+		m_lib.inject(http::status::ok, R"_({login_message: "Login incorrect... Try again?"})_", "", version) :
 		m_lib.find_static(intent.filename(), etag, version);
 }
 
@@ -309,6 +309,11 @@ bool SessionHandler::renewed_auth() const
 	return m_request_cookie.has_value()      ?  // if request cookie is present, check against the new cookie
 		*m_request_cookie != m_auth.cookie() :  // otherwise, there's no cookie in the original request,
 		m_auth.valid();                         // if we have a valid cookie now, then the session is renewed.
+}
+
+std::string SessionHandler::server_root() const
+{
+	return m_cfg.https_root();
 }
 
 } // end of namespace hrb

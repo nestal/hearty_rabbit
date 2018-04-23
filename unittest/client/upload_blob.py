@@ -389,7 +389,7 @@ class NormalTestCase(unittest.TestCase):
 
 	def test_percent_filename(self):
 		r1 = self.user1.put(
-			"https://localhost:4433/upload/sumsum/%E3%83%8F%E3%82%A4%E3%83%AA%E3%82%A2%E3%81%AE%E7%9B%BE/%E9%A3%9F%E5%93%82%E5%95%B2%E7%94%98%E8%8D%80_carrot.jpg",
+			"https://localhost:4433/upload/sumsum/%E3%83%8F%E3%82%A4%E3%83%AA%E3%82%A2%E3%81%AE%E7%9B%BE/%E9%A3%9F%E5%93%82%E5%95%B2%E7%94%98%E8%8D%80%3F_carrot.jpg",
 			data=self.random_image(300, 200)
 		)
 		self.assertEqual(r1.status_code, 201)
@@ -398,7 +398,7 @@ class NormalTestCase(unittest.TestCase):
 		# should find it in the new collection
 		r2 = self.user1.get("https://localhost:4433/api/sumsum/%E3%83%8F%E3%82%A4%E3%83%AA%E3%82%A2%E3%81%AE%E7%9B%BE/?json")
 		self.assertEqual(r2.status_code, 200)
-		self.assertEqual(r2.json()["elements"][blob_id]["filename"], "食哂啲甘荀_carrot.jpg")
+		self.assertEqual(r2.json()["elements"][blob_id]["filename"], "食哂啲甘荀?_carrot.jpg")
 		self.assertEqual(r2.json()["elements"][blob_id]["mime"], "image/jpeg")
 		self.assertEqual("sumsum", r2.json()["username"])
 		self.assertEqual("ハイリアの盾", r2.json()["collection"])

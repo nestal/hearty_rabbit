@@ -32,8 +32,7 @@ const std::array<
 	Parameters{
 		URLIntent::Parameter::user,
 		URLIntent::Parameter::collection,
-		URLIntent::Parameter::blob,
-		URLIntent::Parameter::option
+		URLIntent::Parameter::blob
 	},
 
 	// upload
@@ -156,7 +155,9 @@ void URLIntent::parse_field_from_right(std::string_view& target, hrb::URLIntent:
 			target     = target_copy;
 		}
 	}
-	else if (p == Parameter::collection)
+
+	// collection must not contain '?' character, which denote the start of query string
+	else if (p == Parameter::collection && target.find('?') == target.npos)
 	{
 		m_coll = url_decode(trim(target));
 		target = std::string_view{};
@@ -178,8 +179,11 @@ std::string URLIntent::str() const
 		case Action::api:       oss << "api/";      break;
 
 		case Action::home:
-		case Action::none:
 			break;
+
+		// including Action::none
+		default:
+			return oss.str();
 	}
 
 	auto& intent_definition = intent_defintions[static_cast<std::size_t>(m_action)];

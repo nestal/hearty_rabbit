@@ -13,6 +13,7 @@
 #pragma once
 
 #include "util/MMap.hh"
+#include "util/StringTemplate.hh"
 
 #include <boost/filesystem/path.hpp>
 #include <boost/beast/http/message.hpp>
@@ -35,37 +36,8 @@ namespace hrb {
 class SplitBuffers
 {
 public:
-	using const_buffers_type = std::vector<boost::asio::const_buffer>;
-
-	enum class Option {inject_before, inject_after, inject_middle, replace};
-
-	class value_type
-	{
-	public:
-		explicit value_type(std::string_view file = {}) :
-			m_top{file}
-		{
-		}
-
-		value_type(std::string_view file, std::string_view needle, std::string_view xtra) :
-			m_top{file}
-		{
-			extra(needle, std::string{xtra});
-		}
-
-		void extra(std::string_view needle, std::string&& extra, Option opt = Option::replace);
-		const_buffers_type data() const;
-
-	private:
-		std::string_view    m_top;
-		struct Segment
-		{
-			Segment(std::string&& e, std::string_view f) : extra{std::move(e)}, follow{f} {}
-			std::string         extra;
-			std::string_view    follow;
-		};
-		std::vector<Segment>    m_segs;
-	};
+	using value_type = InstantiatedStringTemplate<2>;
+	using const_buffers_type = value_type::const_buffers_type;
 
 	static std::uint64_t size(const value_type& body)
     {
