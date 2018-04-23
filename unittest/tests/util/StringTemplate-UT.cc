@@ -39,34 +39,44 @@ TEST_CASE("replace simple needle", "[normal]")
 
 TEST_CASE("replace subneedle", "[normal]")
 {
-	StringTemplate subject{"top <script>/*placeholder*/</script> follow"};
+	StringTemplate tmp{"top <script>/*placeholder*/</script> follow"};
 
 	SECTION("replace subneedle with extra when found")
 	{
-		subject.replace("<script>/*placeholder*/</script>", "/*placeholder*/", "var dir = {};");
+		tmp.replace("<script>/*placeholder*/</script>", "/*placeholder*/", "var dir = {};");
 		SECTION("not change extra")
 		{
+			InstantiatedStringTemplate<1> subject{tmp.begin(), tmp.end()};
+			subject.set_extra(0, "var dir = {};");
 			REQUIRE(subject.str() == "top <script>var dir = {};</script> follow");
 		}
 		SECTION("set another extra")
 		{
+			InstantiatedStringTemplate<1> subject{tmp.begin(), tmp.end()};
 			subject.set_extra(0, "alert('oops');");
 			REQUIRE(subject.str() == "top <script>alert('oops');</script> follow");
 		}
 	}
 	SECTION("inject before")
 	{
-		subject.inject_before("<script>/*placeholder*/</script>", "<link></link>");
+		tmp.inject_before("<script>/*placeholder*/</script>", "<link></link>");
+		InstantiatedStringTemplate<1> subject{tmp.begin(), tmp.end()};
+		subject.set_extra(0, "<link></link>");
 		REQUIRE(subject.str() == "top <link></link><script>/*placeholder*/</script> follow");
 	}
 	SECTION("inject after")
 	{
-		subject.inject_after("<script>/*placeholder*/</script>", "<body></body>");
+		tmp.inject_after("<script>/*placeholder*/</script>", "<body></body>");
+		InstantiatedStringTemplate<1> subject{tmp.begin(), tmp.end()};
+		subject.set_extra(0, "<body></body>");
 		REQUIRE(subject.str() == "top <script>/*placeholder*/</script><body></body> follow");
 	}
 	SECTION("does not replace when subneedle not found")
 	{
-		subject.replace("<script>/*placeholder*/</script>", "subneedle not found", "var dir = {};");
+		tmp.replace("<script>/*placeholder*/</script>", "subneedle not found", "var dir = {};");
+		REQUIRE(std::distance(tmp.begin(), tmp.end()) == 1);
+
+		InstantiatedStringTemplate<0> subject{tmp.begin(), tmp.end()};
 		REQUIRE(subject.str() == "top <script>/*placeholder*/</script> follow");
 	}
 }
