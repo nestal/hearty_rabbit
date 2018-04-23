@@ -22,13 +22,13 @@ TEST_CASE("replace simple needle", "[normal]")
 
 	SECTION("inject #1 before #2")
 	{
-		tmp.replace("{injection point #1}", "content1");
-		tmp.replace("{injection point #2}", "content2");
+		tmp.replace("{injection point #1}");
+		tmp.replace("{injection point #2}");
 	}
 	SECTION("inject #2 before #1")
 	{
-		tmp.replace("{injection point #2}", "content2");
-		tmp.replace("{injection point #1}", "content1");
+		tmp.replace("{injection point #2}");
+		tmp.replace("{injection point #1}");
 	}
 
 	InstantiatedStringTemplate<2> subject{tmp.begin(), tmp.end()};
@@ -43,7 +43,7 @@ TEST_CASE("replace subneedle", "[normal]")
 
 	SECTION("replace subneedle with extra when found")
 	{
-		tmp.replace("<script>/*placeholder*/</script>", "/*placeholder*/", "var dir = {};");
+		tmp.replace("<script>/*placeholder*/</script>", "/*placeholder*/");
 		SECTION("not change extra")
 		{
 			InstantiatedStringTemplate<1> subject{tmp.begin(), tmp.end()};
@@ -59,21 +59,21 @@ TEST_CASE("replace subneedle", "[normal]")
 	}
 	SECTION("inject before")
 	{
-		tmp.inject_before("<script>/*placeholder*/</script>", "<link></link>");
+		tmp.inject_before("<script>/*placeholder*/</script>");
 		InstantiatedStringTemplate<1> subject{tmp.begin(), tmp.end()};
 		subject.set_extra(0, "<link></link>");
 		REQUIRE(subject.str() == "top <link></link><script>/*placeholder*/</script> follow");
 	}
 	SECTION("inject after")
 	{
-		tmp.inject_after("<script>/*placeholder*/</script>", "<body></body>");
+		tmp.inject_after("<script>/*placeholder*/</script>");
 		InstantiatedStringTemplate<1> subject{tmp.begin(), tmp.end()};
 		subject.set_extra(0, "<body></body>");
 		REQUIRE(subject.str() == "top <script>/*placeholder*/</script><body></body> follow");
 	}
 	SECTION("does not replace when subneedle not found")
 	{
-		tmp.replace("<script>/*placeholder*/</script>", "subneedle not found", "var dir = {};");
+		tmp.replace("<script>/*placeholder*/</script>", "subneedle not found");
 		REQUIRE(std::distance(tmp.begin(), tmp.end()) == 1);
 
 		InstantiatedStringTemplate<0> subject{tmp.begin(), tmp.end()};

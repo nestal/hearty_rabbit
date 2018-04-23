@@ -109,7 +109,7 @@ WebResources::Resource::Resource(std::string_view name, MMap&& file, std::string
 	if (name == "index.html")
 	{
 		StringTemplate tmp{m_file.string()};
-		tmp.replace(hrb::index_needle, "");
+		tmp.replace(hrb::index_needle);
 		m_src.assign(tmp.begin(), tmp.end());
 	}
 	else

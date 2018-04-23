@@ -29,7 +29,7 @@ TEST_CASE("injecting script in HTML", "[normal]")
 	std::string needle{"{/** dynamic json placeholder for dir **/}"};
 
 	StringTemplate tmp{html.string()};
-	tmp.replace(needle, "");
+	tmp.replace(needle);
 
 	Subject subject{tmp.begin(), tmp.end()};
 	subject.set_extra(0, std::string{extra});

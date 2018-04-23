@@ -16,50 +16,34 @@
 
 namespace hrb {
 
-void StringTemplate::replace(std::string_view needle, std::string&& extra)
+void StringTemplate::replace(std::string_view needle)
 {
-	inject(needle, std::move(extra), 0, 0);
+	inject(needle, 0, 0);
 }
 
-void StringTemplate::replace(std::string_view needle, std::string_view subneedle, std::string&& extra)
+void StringTemplate::replace(std::string_view needle, std::string_view subneedle)
 {
 	if (auto offset = needle.find(subneedle); offset != needle.npos)
-		inject(needle, std::move(extra), offset, needle.size() - offset - subneedle.size());
+		inject(needle, offset, needle.size() - offset - subneedle.size());
 }
 
-void StringTemplate::inject_before(std::string_view needle, std::string&& extra)
+void StringTemplate::inject_before(std::string_view needle)
 {
-	inject(needle, std::move(extra), 0, needle.size());
+	inject(needle, 0, needle.size());
 }
 
-void StringTemplate::inject_after(std::string_view needle, std::string&& extra)
+void StringTemplate::inject_after(std::string_view needle)
 {
-	inject(needle, std::move(extra), needle.size(), 0);
-}
-
-std::vector<boost::asio::const_buffer> StringTemplate::data() const
-{
-	assert(m_extra.size() + 1 == m_src.size());
-	std::vector<boost::asio::const_buffer> result{{m_src.front().data(), m_src.front().size()}};
-
-	for (auto i = 0ULL; i < m_extra.size(); i++)
-	{
-		result.emplace_back(m_extra[i].data(), m_extra[i].size());
-		result.emplace_back(m_src[i+1].data(), m_src[i+1].size());
-	}
-
-	return result;
+	inject(needle, needle.size(), 0);
 }
 
 void StringTemplate::inject(
 	std::string_view needle,
-	std::string&& extra,
 	std::size_t needle_before,
 	std::size_t needle_after
 )
 {
 	assert(!m_src.empty());
-	assert(m_extra.size() + 1 == m_src.size());
 
 	// for Option::replace: the needle will not be included in "m_top" and "follow".
 	// for Option::inject_after: the needle will be included in "m_top"
@@ -94,14 +78,12 @@ void StringTemplate::inject(
 			// That is why we always use indexes to access the vector
 			m_src[i] = before;
 			m_src.emplace(m_src.begin() + i + 1, after);
-			m_extra.insert(m_extra.begin() + i, std::move(extra));
 			return;
 		}
 	}
 
 	// special handling for not found
 	m_src.emplace_back();
-	m_extra.push_back(std::move(extra));
 }
 
 } // end of namespace hrb
