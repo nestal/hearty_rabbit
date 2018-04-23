@@ -54,14 +54,15 @@ Connection::Connection(
 ) :
 	m_socket{std::move(socket)},
 	m_strand{m_socket.get_executor()},
-	m_read_buf(1024*1024),
 	m_parent{parent}
 {
 }
 
 Connection::~Connection()
 {
-	m_parent.dealloc(std::move(m_socket));
+	// no point to reuse a closed socket
+	if (m_socket.is_open())
+		m_parent.dealloc(std::move(m_socket));
 }
 
 void Connection::do_write(CommandString&& cmd, Completion&& completion)
@@ -93,12 +94,7 @@ void Connection::do_write(CommandString&& cmd, Completion&& completion)
 				if (ec)
 				{
 					Log(LOG_WARNING, "redis write error %1% %2%", ec, ec.message());
-
-					while (!m_callbacks.empty())
-						m_callbacks.front()(Reply{}, std::error_code{Error::protocol});
-						m_callbacks.pop_front();
-
-					disconnect();
+					disconnect(Error::protocol);
 				}
 			}
 		)
@@ -166,7 +162,7 @@ void Connection::on_read(boost::system::error_code ec, std::size_t bytes)
 		if (result == ReplyReader::Result::error)
 		{
 			Log(LOG_WARNING, "Redis reply parse error. Disconnecting.");
-			disconnect();
+			disconnect(Error::protocol);
 		}
 
 		// Keep reading until all outstanding commands are finished.
@@ -177,12 +173,22 @@ void Connection::on_read(boost::system::error_code ec, std::size_t bytes)
 	else
 	{
 		Log(LOG_WARNING, "Redis read error: %1% (%2%). Disconnecting.", ec, ec.message());
-		disconnect();
+		disconnect(ec);
 	}
 }
 
-void Connection::disconnect()
+void Connection::disconnect(std::error_code ec)
 {
+	// clean up all outstanding callbacks
+	// must not call this function inside any of these callbacks!!
+	for (auto&& cb : m_queued_callbacks)
+		cb(Reply{}, ec ? ec : std::error_code{Error::io});
+	m_queued_callbacks.clear();
+
+	for (auto&& cb : m_callbacks)
+		cb(Reply{}, ec ? ec : std::error_code{Error::io});
+	m_callbacks.clear();
+
 	m_socket.close();
 }
 
@@ -228,7 +234,7 @@ void Connection::on_exec_transaction(Reply&& reply, std::error_code ec)
 }
 
 Reply::Reply(::redisReply *r) noexcept :
-	m_reply{r, [](::redisReply *r){if (!r)::freeReplyObject(r);}}
+	m_reply{r, [](::redisReply *r){if (r)::freeReplyObject(r);}}
 {
 	// Special handling for arrays
 	for (std::size_t i = 0 ; m_reply && m_reply->type == REDIS_REPLY_ARRAY && i < m_reply->elements; i++)
