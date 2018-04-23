@@ -21,6 +21,7 @@
 
 namespace hrb {
 
+class EXIF2;
 class TurboBuffer;
 
 class RotateImage
@@ -29,9 +30,15 @@ public:
 	RotateImage() = default;
 	~RotateImage();
 
+	RotateImage(RotateImage&&) = delete;
+	RotateImage(const RotateImage&) = delete;
+	RotateImage& operator=(RotateImage&&) = delete;
+	RotateImage& operator=(const RotateImage&) = delete;
+
 	TurboBuffer rotate(long orientation, BufferView blob, std::error_code& ec);
 
-	TurboBuffer auto_rotate(BufferView blob, std::error_code& ec);
+	TurboBuffer auto_rotate(BufferView jpeg, std::error_code& ec);
+	TurboBuffer auto_rotate(BufferView jpeg, const EXIF2& exif2, std::error_code& ec);
 
 private:
 	static int map_op(long& orientation);
