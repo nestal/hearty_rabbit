@@ -76,6 +76,9 @@ template <std::size_t N=1>
 class InstantiatedStringTemplate
 {
 public:
+	using const_buffers_type = std::array<boost::asio::const_buffer, N*2+1>;
+
+public:
 	template <typename FwdIt>
 	InstantiatedStringTemplate(FwdIt first, FwdIt last)
 	{
@@ -87,17 +90,28 @@ public:
 
 	void set_extra(std::size_t i, std::string&& extra) {m_extra.at(i) = std::move(extra);}
 
-	std::string str() const
+	auto data() const
 	{
+		const_buffers_type result;
+
 		auto src   = m_src.begin();
 		auto extra = m_extra.begin();
-		std::string result{*src++};
+		result[0]  = boost::asio::buffer(src->data(), src->size());
+		src++;
 
-		for (;src != m_src.end() && extra != m_extra.end(); src++, extra++)
+		for (auto i = 1; i < result.size() && src != m_src.end() && extra != m_extra.end(); src++, extra++, i+=2)
 		{
-			result.append(extra->data(), extra->size());
-			result.append(src->data(), src->size());
+			result[i]   = boost::asio::buffer(extra->data(), extra->size());
+			result[i+1] = boost::asio::buffer(src->data(), src->size());
 		}
+		return result;
+	}
+
+	std::string str() const
+	{
+		auto bufs = data();
+		std::string result(boost::asio::buffer_size(bufs), ' ');
+		boost::asio::buffer_copy(boost::asio::buffer(result), bufs);
 		return result;
 	}
 
