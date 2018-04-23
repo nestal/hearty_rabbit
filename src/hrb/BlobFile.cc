@@ -15,7 +15,6 @@
 #include "Ownership.hh"
 #include "Permission.hh"
 
-#include "image/EXIF2.hh"
 #include "image/RotateImage.hh"
 #include "image/JPEG.hh"
 #include "util/MMap.hh"
