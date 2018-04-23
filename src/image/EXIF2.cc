@@ -249,7 +249,7 @@ EXIF2::EXIF2(const unsigned char *jpeg, std::size_t size, std::error_code& error
 	if (error)
 		return;
 
-	if (auto exif_offset = get(jpeg, Tag::exif_offset))
+	if (auto exif_offset = get({jpeg, size}, Tag::exif_offset))
 	{
 		if (m_tiff_offset + exif_offset->value_offset >= size)
 		{
@@ -268,16 +268,20 @@ EXIF2::EXIF2(BufferView blob, std::error_code& ec) : EXIF2{blob.data(), blob.siz
 {
 }
 
-std::optional<EXIF2::Field> EXIF2::get(const unsigned char *jpeg, Tag tag) const
+std::optional<EXIF2::Field> EXIF2::get(BufferView jpeg, Tag tag) const
 {
 	auto it = m_tags.find(tag);
 	if (it != m_tags.end())
 	{
 		assert(it->second > 0);
 
-		Field field{};
-		std::memcpy(&field, jpeg+it->second, sizeof(field));
-		return to_native(field);
+		if (auto s = jpeg.substr(static_cast<std::size_t>(it->second), sizeof(Field));
+			s.size() == sizeof(Field))
+		{
+			Field field{};
+			std::memcpy(&field, s.data(), s.size());
+			return to_native(field);
+		}
 	}
 	return std::nullopt;
 }
@@ -331,6 +335,26 @@ const std::error_category& EXIF2::error_category()
 	};
 	static const cat c{};
 	return c;
+}
+
+BufferView EXIF2::get_value(BufferView jpeg, const EXIF2::Field& field) const
+{
+	if (field.count > sizeof(field.value_offset))
+		return jpeg.substr(m_tiff_offset + field.value_offset, field.count);
+	else
+		return {reinterpret_cast<const unsigned char*>(&field.value_offset), sizeof(field.value_offset)};
+}
+
+EXIF2::time_point EXIF2::parse_datetime(BufferView field)
+{
+	struct tm result{};
+	if (field.size() > 0 && field.back() == '\0')
+	{
+		auto p = strptime(reinterpret_cast<const char*>(field.data()), "%Y:%m:%d %H:%M:%S", &result);
+		if (p)
+			return std::chrono::system_clock::from_time_t(::timegm(&result));
+	}
+	return {};
 }
 
 std::error_code make_error_code(EXIF2::Error error)

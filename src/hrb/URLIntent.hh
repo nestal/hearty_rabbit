@@ -24,7 +24,7 @@ namespace hrb {
 class URLIntent
 {
 public:
-	enum class Action {login, logout, view, upload, home, lib, query, none};
+	enum class Action {login, logout, view, upload, home, lib, query, api, none};
 
 	enum class QueryTarget {blob, collection, blob_set, none};
 
@@ -43,7 +43,14 @@ public:
 private:
 	using Parameters = std::vector<Parameter>;
 
-	static const std::array<bool, static_cast<int>(Action::none)> require_user, require_filename;
+	static constexpr std::array<bool, static_cast<int>(Action::none)> require_user =
+	//   login, logout, view, upload, home,  lib,   query, api, none
+		{false, false,  true, true,   false, false, false, true};
+
+	static constexpr std::array<bool, static_cast<int>(Action::none)> require_filename =
+	//   login, logout, view,  upload, home,  lib,  query, api, none
+		{false, false,  false, true,   false, true, false, false};
+
 	static const std::array<Parameters, static_cast<int>(Action::none)> intent_defintions;
 	static const Parameters separator_fields;
 
@@ -65,9 +72,8 @@ public:
 	QueryTarget query_target() const {return m_query_target;}
 
 	std::string str() const;
-
 	bool valid() const;
-	bool need_auth() const;
+	explicit operator bool() const {return valid();}
 
 private:
 	static std::string_view trim(std::string_view s);
@@ -75,6 +81,7 @@ private:
 	void parse_field_from_left(std::string_view& target, Parameter p);
 	void parse_field_from_right(std::string_view& target, Parameter p);
 	static QueryTarget parse_query_target(std::string_view str);
+	static std::string_view to_string(QueryTarget query_target);
 
 private:
 	Action  m_action{Action::none};

@@ -37,17 +37,45 @@ template <class Send>
 class SessionHandler::SendJSON
 {
 public:
-	SendJSON(Send&& send, std::string_view auth_user, unsigned version, const WebResources *lib = nullptr) :
-		m_send{std::move(send)}, m_user{auth_user}, m_version{version}, m_lib{lib} {}
+	SendJSON(
+		Send&& send,
+		std::string_view auth_user,
+		unsigned version,
+		std::optional<ObjectID> blob,
+		std::string&& server_root,
+		const WebResources *lib = nullptr
+	) :
+		m_send{std::move(send)},
+		m_user{auth_user},
+		m_version{version},
+		m_blob{blob},
+		m_server_root{std::move(server_root)},
+		m_lib{lib}
+	{
+	}
+
 	auto operator()(nlohmann::json&& json, std::error_code ec) const
 	{
 		if (!m_user.empty())
 			json.emplace("username", m_user);
+		if (m_blob)
+			json.emplace("blob", to_hex(*m_blob));
 
 		auto result = ec ? http::status::internal_server_error : http::status::ok;
 		if (m_lib)
 		{
-			return m_send(m_lib->inject_json(result, json.dump(), m_version));
+			using jptr = nlohmann::json::json_pointer;
+			auto&& cover = json.value(jptr{"/meta/cover"}, std::string{""});
+			auto&& owner = json.value(jptr{"/owner"},      std::string{""});
+			auto&& coll  = json.value(jptr{"/collection"}, std::string{""});
+
+			static const boost::format fmt{R"(<meta property="og:image" content="%1%%2%" />)"};
+			return m_send(m_lib->inject(
+				result,
+				json.dump(),
+				(boost::format{fmt} % m_server_root % URLIntent{URLIntent::Action::api, owner, coll, cover}.str()).str(),
+				m_version)
+			);
 		}
 		else
 		{
@@ -64,6 +92,8 @@ private:
 	mutable Send    m_send;
 	std::string     m_user;
 	unsigned        m_version;
+	std::optional<ObjectID> m_blob;
+	std::string     m_server_root;
 	const WebResources *m_lib;
 };
 
@@ -111,7 +141,7 @@ void SessionHandler::on_request_header(
 				body_type = RequestBodyType::upload;
 
 			// blobs support post request
-			else if (!ec && action == URLIntent::Action::view && method == http::verb::post)
+			else if (!ec && action == URLIntent::Action::api && method == http::verb::post)
 				body_type = RequestBodyType::string;
 
 			// If the cookie returned by verify_session() is different from the one we passed to it,
@@ -142,6 +172,9 @@ void SessionHandler::on_request_body(Request&& req, Send&& send)
 	if (intent.action() == URLIntent::Action::view)
 		return on_request_view(std::forward<Request>(req), std::move(intent), std::forward<Send>(send));
 
+	if (intent.action() == URLIntent::Action::api)
+		return on_request_api(std::forward<Request>(req), std::move(intent), std::forward<Send>(send));
+
 	// The following URL only support EmptyRequests, i.e. requests without body.
 	if constexpr (std::is_same<std::remove_reference_t<Request>, EmptyRequest>::value)
 	{
@@ -155,11 +188,11 @@ void SessionHandler::on_request_body(Request&& req, Send&& send)
 			return m_auth.valid() ?
 				Ownership{m_auth.user()}.scan_all_collections(
 					*m_db,
-					SendJSON{std::move(send), m_auth.user(), req.version(), &m_lib}
+					SendJSON{std::move(send), m_auth.user(), req.version(), std::nullopt, server_root(), &m_lib}
 				) :
 				Ownership{m_auth.user()}.list_public_blobs(
 					*m_db,
-					SendJSON{std::move(send), m_auth.user(), req.version(), &m_lib}
+					SendJSON{std::move(send), m_auth.user(), req.version(), std::nullopt, server_root(), &m_lib}
 				);
 
 		if (intent.action() == URLIntent::Action::query)
@@ -180,7 +213,7 @@ void SessionHandler::on_request_body(Request&& req, Send&& send)
 }
 
 template <class Request, class Send>
-void SessionHandler::on_request_view(Request&& req, URLIntent&& intent, Send&& send)
+void SessionHandler::on_request_api(Request&& req, URLIntent&& intent, Send&& send)
 {
 	BlobRequest breq{req, std::move(intent), m_auth.user()};
 
@@ -191,9 +224,14 @@ void SessionHandler::on_request_view(Request&& req, URLIntent&& intent, Send&& s
 	else if (req.method() == http::verb::get)
 	{
 		if (breq.blob())
-			return view_blob(std::move(breq), std::move(send));
+			return get_blob(std::move(breq), std::move(send));
 		else
-			return view_collection(breq.intent(), req.version(), std::forward<Send>(send));
+			return Ownership{breq.owner()}.serialize(
+				*m_db,
+				m_auth.user(),
+				breq.collection(),
+				SendJSON{std::move(send), m_auth.user(), req.version(), std::nullopt, server_root()}
+			);
 	}
 	else if (req.method() == http::verb::post)
 	{
@@ -204,13 +242,34 @@ void SessionHandler::on_request_view(Request&& req, URLIntent&& intent, Send&& s
 	}
 	else
 	{
-		Log(LOG_WARNING, "blob request error: bad method %1%", req.method_string());
+		Log(LOG_WARNING, "/api request error: bad method %1%", req.method_string());
+		return send(http::response<http::empty_body>{http::status::bad_request, req.version()});
+	}
+}
+
+template <class Request, class Send>
+void SessionHandler::on_request_view(Request&& req, URLIntent&& intent, Send&& send)
+{
+	BlobRequest breq{req, std::move(intent), m_auth.user()};
+	if (req.method() == http::verb::get)
+	{
+		// view request always sends HTML: pass &m_lib to SendJSON
+		return Ownership{breq.owner()}.serialize(
+			*m_db,
+			m_auth.user(),
+			breq.collection(),
+			SendJSON{std::move(send), m_auth.user(), breq.version(), breq.blob(), server_root(), &m_lib}
+		);
+	}
+	else
+	{
+		Log(LOG_WARNING, "/view request error: bad method %1%", req.method_string());
 		return send(http::response<http::empty_body>{http::status::bad_request, req.version()});
 	}
 }
 
 template <class Send>
-void SessionHandler::view_blob(const BlobRequest& req, Send&& send)
+void SessionHandler::get_blob(const BlobRequest& req, Send&& send)
 {
 	assert(req.blob());
 
@@ -285,18 +344,7 @@ void SessionHandler::scan_collection(const URLIntent& intent, unsigned version, 
 
 	Ownership{*user}.scan_all_collections(
 		*m_db,
-		SendJSON{std::move(send), m_auth.user(), version, json.has_value() ? nullptr : &m_lib}
-	);
-}
-
-template <class Send>
-void SessionHandler::view_collection(const URLIntent& intent, unsigned version, Send&& send)
-{
-	Ownership{intent.user()}.serialize(
-		*m_db,
-		m_auth.user(),
-		intent.collection(),
-		SendJSON{std::move(send), m_auth.user(), version, intent.option() == "json" ? nullptr : &m_lib}
+		SendJSON{std::move(send), m_auth.user(), version, std::nullopt, server_root(), json.has_value() ? nullptr : &m_lib}
 	);
 }
 
@@ -334,7 +382,7 @@ void SessionHandler::query_blob_set(const URLIntent& intent, unsigned version, S
 
 	Ownership{m_auth.user()}.list_public_blobs(
 		*m_db,
-		SendJSON{std::forward<Send>(send), m_auth.user(), version, !json.has_value() ? &m_lib : nullptr}
+		SendJSON{std::forward<Send>(send), m_auth.user(), version, std::nullopt, server_root(), !json.has_value() ? &m_lib : nullptr}
 	);
 }
 

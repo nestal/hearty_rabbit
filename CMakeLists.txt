@@ -2,7 +2,7 @@
 cmake_minimum_required(VERSION 3.8)
 project(hearty_rabbit)
 
-set(VERSION "0.21")
+set(VERSION "0.3")
 
 # Get build number from environment variable. It should be set by travis.
 if (NOT BUILD_NUMBER)

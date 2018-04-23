@@ -48,7 +48,7 @@ Configuration::Configuration(int argc, const char *const *argv, const char *env)
 		("blob-id",   po::value<std::string>()->value_name("filename"), "calculate the blob object ID of a given file")
 		("cfg",       po::value<std::string>()->default_value(
 			env ? std::string{env} : std::string{hrb::constants::config_filename}
-		)->value_name("path"), "Configuration file. Use environment variable HEART_RABBIT_CONFIG to set default path.")
+		)->value_name("path"), "Configuration file. Use environment variable HEARTY_RABBIT_CONFIG to set default path.")
 	;
 
 	store(po::parse_command_line(argc, argv, m_desc), m_args);

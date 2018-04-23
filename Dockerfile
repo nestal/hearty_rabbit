@@ -58,5 +58,5 @@ COPY --from=builder /usr/share/misc/magic /usr/share/misc/magic
 
 # Use environment to specify config file location.
 # It works even when we run --add-user
-ENV HEART_RABBIT_CONFIG /etc/hearty_rabbit/hearty_rabbit.json
+ENV HEARTY_RABBIT_CONFIG /etc/hearty_rabbit/hearty_rabbit.json
 ENTRYPOINT ["/bin/hearty_rabbit"]

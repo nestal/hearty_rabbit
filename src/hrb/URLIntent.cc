@@ -24,6 +24,7 @@ const std::array<
     URLIntent::Parameters,
     static_cast<int>(URLIntent::Action::none)
 > URLIntent::intent_defintions{
+
 	// login, logout
 	Parameters{}, Parameters{},
 
@@ -31,8 +32,7 @@ const std::array<
 	Parameters{
 		URLIntent::Parameter::user,
 		URLIntent::Parameter::collection,
-		URLIntent::Parameter::blob,
-		URLIntent::Parameter::option
+		URLIntent::Parameter::blob
 	},
 
 	// upload
@@ -45,7 +45,15 @@ const std::array<
 	Parameters{URLIntent::Parameter::filename},
 
 	// query
-	Parameters{URLIntent::Parameter::query_target, URLIntent::Parameter::option}
+	Parameters{URLIntent::Parameter::query_target, URLIntent::Parameter::option},
+
+	// api
+	Parameters{
+		URLIntent::Parameter::user,
+		URLIntent::Parameter::collection,
+		URLIntent::Parameter::blob,
+		URLIntent::Parameter::option
+	}
 };
 
 const URLIntent::Parameters URLIntent::separator_fields{URLIntent::Parameter::collection, URLIntent::Parameter::option};
@@ -147,7 +155,9 @@ void URLIntent::parse_field_from_right(std::string_view& target, hrb::URLIntent:
 			target     = target_copy;
 		}
 	}
-	else if (p == Parameter::collection)
+
+	// collection must not contain '?' character, which denote the start of query string
+	else if (p == Parameter::collection && target.find('?') == target.npos)
 	{
 		m_coll = url_decode(trim(target));
 		target = std::string_view{};
@@ -165,20 +175,52 @@ std::string URLIntent::str() const
 		case Action::view:      oss << "view/";     break;
 		case Action::upload:    oss << "upload/";   break;
 		case Action::lib:       oss << "lib/";      break;
+		case Action::query:     oss << "query/";    break;
+		case Action::api:       oss << "api/";      break;
 
 		case Action::home:
-		case Action::none:
 			break;
+
+		// including Action::none
+		default:
+			return oss.str();
 	}
-	oss << url_encode(m_user);
-	if (!m_user.empty())
-		oss << '/';
-	oss << url_encode(m_coll);
-	if (!m_coll.empty())
-		oss << '/';
-	oss << url_encode(m_filename);
-	if (!m_option.empty())
-		oss << "?" << m_option;
+
+	auto& intent_definition = intent_defintions[static_cast<std::size_t>(m_action)];
+	for (auto&& intent : intent_definition)
+	{
+		switch (intent)
+		{
+		case Parameter::user:
+			oss << url_encode(m_user);
+			if (!m_user.empty())
+				oss << '/';
+			break;
+
+		case Parameter::collection:
+			oss << url_encode(m_coll);
+			if (!m_coll.empty())
+				oss << '/';
+			break;
+
+		case Parameter::filename:
+			oss << url_encode(m_filename);
+			break;
+
+		case Parameter::blob:
+			oss << m_filename;
+			break;
+
+		case Parameter::option:
+			if (!m_option.empty())
+				oss << "?" << m_option;
+			break;
+
+		case Parameter::query_target:
+			oss << to_string(m_query_target);
+			break;
+		}
+	}
 
 	return oss.str();
 }
@@ -201,24 +243,17 @@ URLIntent::Action URLIntent::parse_action(std::string_view str)
 	else if (str == "logout")   return Action::logout;
 	else if (str == "lib")      return Action::lib;
 	else if (str == "query")    return Action::query;
+	else if (str == "api")      return Action::api;
 	else if (str.empty())       return Action::home;
 	else                        return Action::none;
 }
-
-const std::array<bool, static_cast<int>(URLIntent::Action::none)> URLIntent::require_user =
-//   login, logout, view, upload, home,  lib,   query, none
-	{false, false,  true, true,   false, false, false};
-
-const std::array<bool, static_cast<int>(URLIntent::Action::none)> URLIntent::require_filename =
-//   login, logout, view,  upload, home,  lib,  query, none
-	{false, false,  false, true,   false, true, false};
 
 bool URLIntent::valid() const
 {
 	if (m_action != Action::none)
 	{
 		auto action_index = static_cast<std::size_t>(m_action);
-		assert(require_user.at(static_cast<std::size_t>(Action::view)));
+		static_assert(require_user.at(static_cast<std::size_t>(Action::view)));
 
 		if (require_user.at(action_index) && m_user.empty())
 			return false;
@@ -234,17 +269,23 @@ bool URLIntent::valid() const
 	}
 }
 
-bool URLIntent::need_auth() const
-{
-	return m_action == Action::upload;
-}
-
 URLIntent::QueryTarget URLIntent::parse_query_target(std::string_view str)
 {
 	     if (str == "blob")       return QueryTarget::blob;
 	else if (str == "collection") return QueryTarget::collection;
 	else if (str == "blob_set")   return QueryTarget::blob_set;
 	else                          return QueryTarget::none;
+}
+
+std::string_view URLIntent::to_string(URLIntent::QueryTarget query_target)
+{
+	switch (query_target)
+	{
+		case QueryTarget::blob:         return "blob";
+		case QueryTarget::collection:   return "collection";
+		case QueryTarget::blob_set:     return "blob_set";
+		default: return "";
+	}
 }
 
 } // end of namespace hrb

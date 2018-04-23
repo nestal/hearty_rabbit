@@ -336,7 +336,7 @@ void Ownership::Collection::serialize(
 			if (reply.array_size() == 2)
 			{
 				auto jdoc = serialize(reply[0], requester, m_user);
-				jdoc.emplace("owner", m_user);
+				jdoc.emplace("owner",      m_user);
 				jdoc.emplace("collection", m_path);
 
 				// in some error cases created by unit tests, the string is not valid JSON

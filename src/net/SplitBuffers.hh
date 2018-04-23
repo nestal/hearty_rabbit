@@ -13,6 +13,7 @@
 #pragma once
 
 #include "util/MMap.hh"
+#include "util/StringTemplate.hh"
 
 #include <boost/filesystem/path.hpp>
 #include <boost/beast/http/message.hpp>
@@ -30,58 +31,13 @@ namespace hrb {
 /// 2. The additional <script> tag.
 /// 3. The rest of the HTML file.
 ///
-/// Only the middle buffer can be assigned dynamically. The first and third buffers are specified by
-/// std::string_view
+/// Only the middle buffer can be assigned dynamically. The first and third buffer are specified by
+/// std::string_view.
 class SplitBuffers
 {
 public:
-	using const_buffers_type = std::array<boost::asio::const_buffer, 3>;
-
-	class value_type
-	{
-	public:
-		explicit value_type(std::string_view file = {}) :
-			m_file{file},
-			m_offset{m_file.size()}
-		{
-		}
-
-		value_type(std::string_view file, std::string_view needle, std::string_view xtra) :
-			m_file{file}
-		{
-			extra(needle, std::string{xtra});
-		}
-
-		void extra(std::string_view needle, std::string&& extra, std::size_t left = 0, std::size_t right = 0)
-		{
-			m_left  = left;
-			m_right = right;
-
-			m_extra = std::move(extra);
-			m_offset = needle.empty() ? m_file.npos : m_file.find(needle);
-			if (m_offset != m_file.npos)
-				m_offset += needle.size();
-			else
-				m_offset = m_file.size();
-		}
-
-		const_buffers_type data() const
-		{
-			return {
-				boost::asio::const_buffer{m_file.data(),  m_offset - m_left},
-				boost::asio::const_buffer{m_extra.data(), m_extra.size()},
-				boost::asio::const_buffer{
-					m_file.data() + m_offset + m_right,
-					m_file.size() - m_offset - m_right
-				}
-			};
-		}
-
-	private:
-		std::string_view    m_file;
-		std::size_t         m_offset{}, m_left{}, m_right{};
-		std::string         m_extra;
-	};
+	using value_type = InstantiatedStringTemplate<2>;
+	using const_buffers_type = value_type::const_buffers_type;
 
 	static std::uint64_t size(const value_type& body)
     {

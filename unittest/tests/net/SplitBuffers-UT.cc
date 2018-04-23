@@ -16,6 +16,7 @@
 
 #include <boost/filesystem.hpp>
 
+using namespace hrb;
 using Subject = hrb::SplitBuffers::value_type;
 
 TEST_CASE("injecting script in HTML", "[normal]")
@@ -24,17 +25,26 @@ TEST_CASE("injecting script in HTML", "[normal]")
 	auto html = hrb::MMap::open(boost::filesystem::path{__FILE__}.parent_path() / "../../../lib/dynamic/index.html", ec);
 	REQUIRE(ec == std::error_code{});
 
-	std::string extra{"<script></script>"};
-	Subject subject{html.string(), "<head>", extra};
+	std::string extra{R"({"field": "value"})"};
+	std::string needle{"{/** dynamic json placeholder for dir **/}"};
+
+	StringTemplate tmp{html.string()};
+	tmp.replace(needle);
+
+	Subject subject{tmp.begin(), tmp.end()};
+	subject.set_extra(0, std::string{extra});
 	REQUIRE(ec == std::error_code{});
 
-	auto buf = subject.data();
-	static_assert(buf.size() == 3);
+	auto b = subject.data();
+	REQUIRE(b.size() == 3);
 
-	auto [b1, b2, b3] = buf;
-	REQUIRE(std::string_view{static_cast<const char*>(b1.data()), b1.size()} == "<!doctype html>\n<html lang=\"en\">\n<head>");
-	REQUIRE(std::string_view{static_cast<const char*>(b2.data()), b2.size()} == extra);
-	REQUIRE(b3.size() == html.size() - b1.size());
+	REQUIRE(std::string_view{static_cast<const char*>(b[0].data()), b[0].size()} == R"__(<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<script>var dir = )__");
+	REQUIRE(std::string_view{static_cast<const char*>(b[1].data()), b[1].size()} == extra);
+	REQUIRE(b[2].size() == html.size() - b[0].size() - needle.size());
 }
 
 TEST_CASE("non-HTML has no <head>, append at-the-end", "[normal]")
@@ -44,16 +54,18 @@ TEST_CASE("non-HTML has no <head>, append at-the-end", "[normal]")
 	REQUIRE(ec == std::error_code{});
 
 	std::string extra{"hahaha"};
-	Subject subject{css.string(), "<head>", extra};
+	StringTemplate tmp{css.string()};
+	tmp.replace("<head>", "");
+
+	Subject subject{tmp.begin(), tmp.end()};
+	subject.set_extra(0, std::string{extra});
 	REQUIRE(ec == std::error_code{});
 
-	auto buf = subject.data();
-	static_assert(buf.size() == 3);
+	auto b = subject.data();
+	REQUIRE(b.size() == 2);
 
-	auto [b1, b2, b3] = buf;
-	REQUIRE(std::string_view{static_cast<const char*>(b1.data()), b1.size()} == css.string());
-	REQUIRE(std::string_view{static_cast<const char*>(b2.data()), b2.size()} == extra);
-	REQUIRE(b3.size() == 0);
+	REQUIRE(std::string_view{static_cast<const char*>(b[0].data()), b[0].size()} == css.string());
+	REQUIRE(std::string_view{static_cast<const char*>(b[1].data()), b[1].size()} == extra);
 }
 
 TEST_CASE("Not change content", "[normal]")
@@ -62,16 +74,15 @@ TEST_CASE("Not change content", "[normal]")
 	auto css = hrb::MMap::open(boost::filesystem::path{__FILE__}.parent_path() / "../../../lib/static/hearty_rabbit.js", ec);
 	REQUIRE(ec == std::error_code{});
 
-	Subject subject{css.string()};
+	std::string_view vs[] = {css.string(), ""};
+	Subject subject{std::begin(vs), std::end(vs)};
+
 	REQUIRE(ec == std::error_code{});
 
-	auto buf = subject.data();
-	static_assert(buf.size() == 3);
+	auto b = subject.data();
+	REQUIRE(b.size() == 1);
 
-	auto [b1, b2, b3] = buf;
-	REQUIRE(std::string_view{static_cast<const char*>(b1.data()), b1.size()} == css.string());
-	REQUIRE(b2.size() == 0);
-	REQUIRE(b3.size() == 0);
+	REQUIRE(std::string_view{static_cast<const char*>(b[0].data()), b[0].size()} == css.string());
 }
 
 TEST_CASE("Default constructor", "[normal]")

@@ -48,8 +48,30 @@ TEST_CASE("auto rotate will change orientation=8 images to orientation=1", "[nor
 	REQUIRE(!ec);
 
 	REQUIRE(!ec);
-//	auto meta = BlobMeta::deduce_meta({rotated.data(), rotated.size()}, Magic{});
 	REQUIRE(exiv2_orientation({rotated.data(), rotated.size()}) == 1);
+
+	// check date time
+	EXIF2 exif2{rot90.buffer().data(), rot90.size(), ec};
+	REQUIRE(!ec);
+
+	auto dt_field = exif2.get(rot90.buffer(), EXIF2::Tag::date_time);
+	REQUIRE(dt_field);
+	auto dt = exif2.get_value(rot90.buffer(), *dt_field);
+	REQUIRE(dt.size() == 20); // required by EXIF2 spec
+	REQUIRE(
+		std::string_view{reinterpret_cast<const char*>(dt.data()), dt.size()} ==
+		std::string_view{"1989:06:04 05:00:00\0", 20}
+	);
+
+	using namespace std::chrono;
+	REQUIRE(
+		duration_cast<seconds>(EXIF2::parse_datetime(dt).time_since_epoch()).count() == 612939600
+	);
+}
+
+TEST_CASE("parsing datetime in EXIF")
+{
+	REQUIRE(EXIF2::parse_datetime({reinterpret_cast<const uint8_t*>("abc"), 4}) == EXIF2::time_point{});
 }
 
 TEST_CASE("20x20 image can be auto-rotated but cropped", "[error]")
@@ -127,10 +149,14 @@ TEST_CASE("read exif", "[normal]")
 	EXIF2 subject{&img[0], img.size(), ec};
 	REQUIRE(!ec);
 
-	auto orientation = subject.get(&img[0], EXIF2::Tag::orientation);
+	auto orientation = subject.get({&img[0], img.size()}, EXIF2::Tag::orientation);
 	REQUIRE(orientation);
 	REQUIRE(orientation->tag == 0x0112);
 	REQUIRE(orientation->value_offset == 1);
+
+	auto buf = subject.get_value({&img[0], img.size()}, *orientation);
+	REQUIRE(buf.size() == sizeof(std::uint32_t));
+	REQUIRE(*reinterpret_cast<const std::uint32_t *>(buf.data()) == 1);
 
 	// set orientation to 8
 	orientation->value_offset = 8;
@@ -165,7 +191,6 @@ TEST_CASE("read all images successfully", "[normal]")
 			else
 			{
 				REQUIRE(!ec);
-
 				RotateImage rot;
 				auto rotated = rot.auto_rotate(mmap.buffer(), ec);
 				REQUIRE(!ec);
