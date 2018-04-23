@@ -311,4 +311,9 @@ bool SessionHandler::renewed_auth() const
 		m_auth.valid();                         // if we have a valid cookie now, then the session is renewed.
 }
 
+std::string SessionHandler::server_root() const
+{
+	return m_cfg.https_root();
+}
+
 } // end of namespace hrb

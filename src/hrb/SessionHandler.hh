@@ -120,6 +120,8 @@ private:
 	template <class Send>
 	void query_blob_set(const URLIntent& intent, unsigned version, Send&& send);
 
+	std::string server_root() const;
+
 private:
 	std::shared_ptr<redis::Connection>     m_db;
 	std::optional<Authentication::Cookie>  m_request_cookie;

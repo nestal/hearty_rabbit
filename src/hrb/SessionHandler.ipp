@@ -42,9 +42,15 @@ public:
 		std::string_view auth_user,
 		unsigned version,
 		std::optional<ObjectID> blob,
+		std::string&& server_root,
 		const WebResources *lib = nullptr
 	) :
-		m_send{std::move(send)}, m_user{auth_user}, m_version{version}, m_blob{blob}, m_lib{lib}
+		m_send{std::move(send)},
+		m_user{auth_user},
+		m_version{version},
+		m_blob{blob},
+		m_server_root{std::move(server_root)},
+		m_lib{lib}
 	{
 	}
 
@@ -60,12 +66,14 @@ public:
 		{
 			using jptr = nlohmann::json::json_pointer;
 			auto&& cover = json.value(jptr{"/meta/cover"}, std::string{""});
+			auto&& owner = json.value(jptr{"/owner"},      std::string{""});
+			auto&& coll  = json.value(jptr{"/collection"}, std::string{""});
 
-			static const boost::format fmt{R"(<meta property="og:image" content="%1%" />)"};
+			static const boost::format fmt{R"(<meta property="og:image" content="%1%%2%" />)"};
 			return m_send(m_lib->inject(
 				result,
 				json.dump(),
-				(boost::format{fmt} % cover).str(),
+				(boost::format{fmt} % m_server_root % URLIntent{URLIntent::Action::api, owner, coll, cover}.str()).str(),
 				m_version)
 			);
 		}
@@ -85,6 +93,7 @@ private:
 	std::string     m_user;
 	unsigned        m_version;
 	std::optional<ObjectID> m_blob;
+	std::string     m_server_root;
 	const WebResources *m_lib;
 };
 
@@ -179,11 +188,11 @@ void SessionHandler::on_request_body(Request&& req, Send&& send)
 			return m_auth.valid() ?
 				Ownership{m_auth.user()}.scan_all_collections(
 					*m_db,
-					SendJSON{std::move(send), m_auth.user(), req.version(), std::nullopt, &m_lib}
+					SendJSON{std::move(send), m_auth.user(), req.version(), std::nullopt, server_root(), &m_lib}
 				) :
 				Ownership{m_auth.user()}.list_public_blobs(
 					*m_db,
-					SendJSON{std::move(send), m_auth.user(), req.version(), std::nullopt, &m_lib}
+					SendJSON{std::move(send), m_auth.user(), req.version(), std::nullopt, server_root(), &m_lib}
 				);
 
 		if (intent.action() == URLIntent::Action::query)
@@ -221,7 +230,7 @@ void SessionHandler::on_request_api(Request&& req, URLIntent&& intent, Send&& se
 				*m_db,
 				m_auth.user(),
 				breq.collection(),
-				SendJSON{std::move(send), m_auth.user(), req.version(), std::nullopt}
+				SendJSON{std::move(send), m_auth.user(), req.version(), std::nullopt, server_root()}
 			);
 	}
 	else if (req.method() == http::verb::post)
@@ -249,7 +258,7 @@ void SessionHandler::on_request_view(Request&& req, URLIntent&& intent, Send&& s
 			*m_db,
 			m_auth.user(),
 			breq.collection(),
-			SendJSON{std::move(send), m_auth.user(), breq.version(), breq.blob(), &m_lib}
+			SendJSON{std::move(send), m_auth.user(), breq.version(), breq.blob(), server_root(), &m_lib}
 		);
 	}
 	else
@@ -335,7 +344,7 @@ void SessionHandler::scan_collection(const URLIntent& intent, unsigned version, 
 
 	Ownership{*user}.scan_all_collections(
 		*m_db,
-		SendJSON{std::move(send), m_auth.user(), version, std::nullopt, json.has_value() ? nullptr : &m_lib}
+		SendJSON{std::move(send), m_auth.user(), version, std::nullopt, server_root(), json.has_value() ? nullptr : &m_lib}
 	);
 }
 
@@ -373,7 +382,7 @@ void SessionHandler::query_blob_set(const URLIntent& intent, unsigned version, S
 
 	Ownership{m_auth.user()}.list_public_blobs(
 		*m_db,
-		SendJSON{std::forward<Send>(send), m_auth.user(), version, std::nullopt, !json.has_value() ? &m_lib : nullptr}
+		SendJSON{std::forward<Send>(send), m_auth.user(), version, std::nullopt, server_root(), !json.has_value() ? &m_lib : nullptr}
 	);
 }
 
