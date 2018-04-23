@@ -79,4 +79,14 @@ TEST_CASE("replace subneedle", "[normal]")
 		InstantiatedStringTemplate<0> subject{tmp.begin(), tmp.end()};
 		REQUIRE(subject.str() == "top <script>/*placeholder*/</script> follow");
 	}
+	SECTION("instantiation is bigger than template")
+	{
+		tmp.replace("/*placeholder*/");
+		REQUIRE(std::distance(tmp.begin(), tmp.end()) == 2);
+
+		// we only have 2 segments in the template, but the instantiation expect 4
+		InstantiatedStringTemplate<4> subject{tmp.begin(), tmp.end()};
+		subject.set_extra(0, "<hi></hi>");
+		REQUIRE(subject.str() == "top <script><hi></hi></script> follow");
+	}
 }

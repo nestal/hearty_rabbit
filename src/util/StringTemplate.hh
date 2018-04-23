@@ -64,13 +64,15 @@ class InstantiatedStringTemplate
 public:
 	using const_buffers_type = std::vector<boost::asio::const_buffer>;
 
+	static constexpr auto segment_count() {return N+1;}
+
 public:
 	InstantiatedStringTemplate() = default;
 
 	template <typename FwdIt>
 	InstantiatedStringTemplate(FwdIt first, FwdIt last)
 	{
-		if (std::distance(first, last) != m_src.size())
+		if (std::distance(first, last) > m_src.size())
 			throw std::out_of_range("size mismatch");
 
 		std::copy(first, last, m_src.begin());
@@ -104,9 +106,9 @@ public:
 		return result;
 	}
 
-	private:
-	std::array<std::string_view, N+1>   m_src;
-	std::array<std::string, N>          m_extra;
+private:
+	std::array<std::string_view, segment_count()>   m_src;
+	std::array<std::string, N>                      m_extra;
 };
 
 } // end of namespace hrb

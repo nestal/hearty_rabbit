@@ -115,14 +115,13 @@ WebResources::Resource::Resource(std::string_view name, MMap&& file, std::string
 	else
 	{
 		m_src.push_back(m_file.string());
-		m_src.push_back({});
 	}
-	assert(m_src.size() == 2);
+	assert(m_src.size() <= 2);
 }
 
 WebResources::Response WebResources::Resource::get(int version, bool dynamic) const
 {
-	assert(m_src.size() == 2);
+	assert(m_src.size() <= 2);
 	http::response<hrb::SplitBuffers> result{
 		std::piecewise_construct,
 		std::make_tuple(m_src.begin(), m_src.end()),
