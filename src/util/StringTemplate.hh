@@ -76,8 +76,32 @@ template <std::size_t N=1>
 class InstantiatedStringTemplate
 {
 public:
+	template <typename FwdIt>
+	InstantiatedStringTemplate(FwdIt first, FwdIt last)
+	{
+		if (std::distance(first, last) != m_src.size())
+			throw std::out_of_range("size mismatch");
 
-private:
+		std::copy(first, last, m_src.begin());
+	}
+
+	void set_extra(std::size_t i, std::string&& extra) {m_extra.at(i) = std::move(extra);}
+
+	std::string str() const
+	{
+		auto src   = m_src.begin();
+		auto extra = m_extra.begin();
+		std::string result{*src++};
+
+		for (;src != m_src.end() && extra != m_extra.end(); src++, extra++)
+		{
+			result.append(extra->data(), extra->size());
+			result.append(src->data(), src->size());
+		}
+		return result;
+	}
+
+	private:
 	std::array<std::string_view, N+1>   m_src;
 	std::array<std::string, N>          m_extra;
 };

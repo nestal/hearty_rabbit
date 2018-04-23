@@ -18,20 +18,23 @@ using namespace hrb;
 
 TEST_CASE("replace simple needle", "[normal]")
 {
-	StringTemplate subject{"top {injection point #1} follow following {injection point #2} finale"};
+	StringTemplate tmp{"top {injection point #1} follow following {injection point #2} finale"};
+
 	SECTION("inject #1 before #2")
 	{
-		subject.replace("{injection point #1}", "content1");
-		subject.replace("{injection point #2}", "content2");
+		tmp.replace("{injection point #1}", "content1");
+		tmp.replace("{injection point #2}", "content2");
 	}
 	SECTION("inject #2 before #1")
 	{
-		subject.replace("{injection point #2}", "content2");
-		subject.replace("{injection point #1}", "content1");
+		tmp.replace("{injection point #2}", "content2");
+		tmp.replace("{injection point #1}", "content1");
 	}
 
-	std::string_view content[] = {"content1", "content2"};
-	REQUIRE(subject.str(std::begin(content), std::end(content)) == "top content1 follow following content2 finale");
+	InstantiatedStringTemplate<2> subject{tmp.begin(), tmp.end()};
+	subject.set_extra(0, "content1");
+	subject.set_extra(1, "content2");
+	REQUIRE(subject.str() == "top content1 follow following content2 finale");
 }
 
 TEST_CASE("replace subneedle", "[normal]")
