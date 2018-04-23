@@ -58,11 +58,14 @@ public:
 		auto result = ec ? http::status::internal_server_error : http::status::ok;
 		if (m_lib)
 		{
-			static const boost::format fmt{R"(<meta property="og:title" content="%1%" />)"};
+			using jptr = nlohmann::json::json_pointer;
+			auto&& cover = json.value(jptr{"/meta/cover"}, std::string{""});
+
+			static const boost::format fmt{R"(<meta property="og:image" content="%1%" />)"};
 			return m_send(m_lib->inject(
 				result,
 				json.dump(),
-				(boost::format{fmt} % ec.message()).str(),
+				(boost::format{fmt} % cover).str(),
 				m_version)
 			);
 		}
