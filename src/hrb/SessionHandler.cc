@@ -248,7 +248,7 @@ void SessionHandler::on_upload(UploadRequest&& req, EmptyResponseSender&& send)
 	// It will be used for authorizing the user's request on these blob later.
 	Ownership{m_auth.user()}.link(
 		*m_db, path_url.collection(), blob.ID(), blob.entry(), [
-			location = URLIntent{URLIntent::Action::view, m_auth.user(), path_url.collection(), to_hex(blob.ID())}.str(),
+			location = URLIntent{URLIntent::Action::api, m_auth.user(), path_url.collection(), to_hex(blob.ID())}.str(),
 			send = std::move(send),
 			version = req.version()
 		](auto ec)
