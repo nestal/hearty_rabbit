@@ -36,7 +36,7 @@ namespace hrb {
 class SplitBuffers
 {
 public:
-	using value_type = InstantiatedStringTemplate<1>;
+	using value_type = InstantiatedStringTemplate<2>;
 	using const_buffers_type = value_type::const_buffers_type;
 
 	static std::uint64_t size(const value_type& body)

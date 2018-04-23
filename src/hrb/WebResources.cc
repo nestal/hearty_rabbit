@@ -30,7 +30,8 @@ std::string_view resource_mime(const std::string& ext)
 	else return "application/octet-stream";
 }
 
-const std::string_view index_needle{"{/** dynamic json placeholder for dir **/}"};
+const std::string_view dir_needle{"{/** dynamic json placeholder for dir **/}"};
+const std::string_view meta_needle{R"(<meta property="og:title" content="Hearty Rabbit" />)"};
 }
 
 template <typename Iterator>
@@ -95,10 +96,11 @@ bool WebResources::is_static(std::string_view filename) const
 	return m_static.find(filename) != m_static.end();
 }
 
-WebResources::Response WebResources::inject_json(http::status status, std::string&& json, int version) const
+WebResources::Response WebResources::inject(http::status status, std::string&& json, std::string&& meta, int version) const
 {
 	auto res = find_dynamic("index.html", version);
 	res.body().set_extra(0, std::move(json));
+	res.body().set_extra(1, std::move(meta));
 	res.result(status);
 	return res;
 }
@@ -109,19 +111,20 @@ WebResources::Resource::Resource(std::string_view name, MMap&& file, std::string
 	if (name == "index.html")
 	{
 		StringTemplate tmp{m_file.string()};
-		tmp.replace(hrb::index_needle);
+		tmp.replace(hrb::dir_needle);
+		tmp.replace(hrb::meta_needle);
 		m_src.assign(tmp.begin(), tmp.end());
 	}
 	else
 	{
 		m_src.push_back(m_file.string());
 	}
-	assert(m_src.size() <= 2);
+	assert(m_src.size() <= hrb::SplitBuffers::value_type::segment_count());
 }
 
 WebResources::Response WebResources::Resource::get(int version, bool dynamic) const
 {
-	assert(m_src.size() <= 2);
+	assert(m_src.size() <= hrb::SplitBuffers::value_type::segment_count());
 	http::response<hrb::SplitBuffers> result{
 		std::piecewise_construct,
 		std::make_tuple(m_src.begin(), m_src.end()),

@@ -39,7 +39,7 @@ public:
 	explicit WebResources(const fs::path& web_root);
 
 	Response find_static(std::string_view filename, boost::string_view etag, int version) const;
-	Response inject_json(http::status status, std::string&& json, int version) const;
+	Response inject(http::status status, std::string&& json, std::string&& meta, int version) const;
 
 	bool is_static(std::string_view filename) const;
 

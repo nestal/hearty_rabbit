@@ -26,7 +26,13 @@ TEST_CASE("web resource", "[normal]")
 
 	SECTION("dynamic resource")
 	{
-		auto res = lib.inject_json(http::status::ok, "{/** dynamic json placeholder for dir **/}", 11);
+		// inject the same stuff to make sure the content remain unchanged
+		auto res = lib.inject(
+			http::status::ok,
+			"{/** dynamic json placeholder for dir **/}",
+			R"(<meta property="og:title" content="Hearty Rabbit" />)",
+			11
+		);
 		REQUIRE(res.version() == 11);
 		REQUIRE(res.result() == http::status::ok);
 		REQUIRE(res[http::field::content_type] == "text/html");

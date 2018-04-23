@@ -58,7 +58,13 @@ public:
 		auto result = ec ? http::status::internal_server_error : http::status::ok;
 		if (m_lib)
 		{
-			return m_send(m_lib->inject_json(result, json.dump(), m_version));
+			static const boost::format fmt{R"(<meta property="og:title" content="%1%" />)"};
+			return m_send(m_lib->inject(
+				result,
+				json.dump(),
+				(boost::format{fmt} % ec.message()).str(),
+				m_version)
+			);
 		}
 		else
 		{
