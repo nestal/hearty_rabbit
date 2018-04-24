@@ -10,7 +10,7 @@
 
 namespace hrb {
 
-void BinStruct::pack(const std::string& s)
+void BinStruct::pack(std::string_view s)
 {
 	// null terminated
 	m_bytes.insert(m_bytes.end(), s.begin(), s.end());

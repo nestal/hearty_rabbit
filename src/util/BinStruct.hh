@@ -13,6 +13,7 @@
 #include <cstddef>
 #include <tuple>
 #include <cstring>
+#include <type_traits>
 
 namespace hrb {
 
@@ -28,7 +29,7 @@ public:
 		m_bytes.insert(m_bytes.end(), pt, pt + sizeof(t));
 	}
 
-	void pack(const std::string& s);
+	void pack(std::string_view s);
 
 	template <typename T, typename ... Args>
 	void pack(T&& t, Args&& ... args)
