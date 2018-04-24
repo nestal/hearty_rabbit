@@ -31,7 +31,7 @@ std::string_view resource_mime(const std::string& ext)
 }
 
 const std::string_view dir_needle{"{/** dynamic json placeholder for dir **/}"};
-const std::string_view meta_needle{R"(<meta property="og:title" content="Hearty Rabbit" />)"};
+const std::string_view meta_needle{R"(<meta property="og:title" content="Hearty Rabbit">)"};
 }
 
 template <typename Iterator>

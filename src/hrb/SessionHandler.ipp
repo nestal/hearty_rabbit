@@ -65,15 +65,23 @@ public:
 		if (m_lib)
 		{
 			using jptr = nlohmann::json::json_pointer;
-			auto&& cover = json.value(jptr{"/meta/cover"}, std::string{""});
+			auto&& cover = json.value(jptr{"/blob"},       json.value(jptr{"/meta/cover"}, std::string{""}));
 			auto&& owner = json.value(jptr{"/owner"},      std::string{""});
 			auto&& coll  = json.value(jptr{"/collection"}, std::string{""});
 
-			static const boost::format fmt{R"(<meta property="og:image" content="%1%%2%" />)"};
+			static const boost::format fmt{R"(<meta property="og:image" content="%1%%2%">
+	<meta property="og:url" content="%1%%3%">
+	<meta property="og:title" content="%4%">
+	)"};
 			return m_send(m_lib->inject(
 				result,
 				json.dump(),
-				(boost::format{fmt} % m_server_root % URLIntent{URLIntent::Action::api, owner, coll, cover}.str()).str(),
+				(
+					boost::format{fmt} % m_server_root %
+					URLIntent{URLIntent::Action::api, owner, coll, cover}.str() %
+					URLIntent{URLIntent::Action::view, owner, coll, "Hearty Rabbit"}.str() %
+					coll
+				).str(),
 				m_version)
 			);
 		}
