@@ -20,4 +20,7 @@ TEST_CASE("BinStruct pack 3 fields", "[normal]")
 	subject.pack(a, b, c);
 
 	REQUIRE(subject.size() == sizeof(int)*3);
+
+	auto out_a = subject.unpack(-1);
+	REQUIRE(out_a == a);
 }
