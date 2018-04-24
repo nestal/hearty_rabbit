@@ -65,7 +65,7 @@ public:
 		if (m_lib)
 		{
 			using jptr = nlohmann::json::json_pointer;
-			auto&& cover = json.value(jptr{"/meta/cover"}, std::string{""});
+			auto&& cover = json.value(jptr{"/blob"},       json.value(jptr{"/meta/cover"}, std::string{""}));
 			auto&& owner = json.value(jptr{"/owner"},      std::string{""});
 			auto&& coll  = json.value(jptr{"/collection"}, std::string{""});
 
