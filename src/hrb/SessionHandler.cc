@@ -159,24 +159,21 @@ void SessionHandler::update_view(BlobRequest&& req, EmptyResponseSender&& send)
 	assert(!req.blob());
 	auto[cover] = find_fields(req.body(), "cover");
 
-	if (!cover.empty())
-	{
-		if (auto cover_blob = hex_to_object_id(cover); cover_blob)
-			return Ownership{req.owner()}.set_cover(
-				*m_db,
-				req.collection(),
-				*cover_blob,
-				[send=std::move(send), version=req.version()](bool ok, auto ec)
-				{
-					send(http::response<http::empty_body>{
-						ec ?
-							http::status::internal_server_error :
-							(ok ? http::status::no_content : http::status::bad_request),
-						version
-					});
-				}
-			);
-	}
+	if (auto cover_blob = hex_to_object_id(cover); cover_blob)
+		return Ownership{req.owner()}.set_cover(
+			*m_db,
+			req.collection(),
+			*cover_blob,
+			[send=std::move(send), version=req.version()](bool ok, auto ec)
+			{
+				send(http::response<http::empty_body>{
+					ec ?
+						http::status::internal_server_error :
+						(ok ? http::status::no_content : http::status::bad_request),
+					version
+				});
+			}
+		);
 
 	send(http::response<http::empty_body>{http::status::bad_request, req.version()});
 }
