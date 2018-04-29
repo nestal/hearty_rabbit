@@ -108,10 +108,19 @@ void Session::on_read_header(boost::system::error_code ec, std::size_t bytes_tra
 				// Call async_read() using the chosen parser to read and parse the request body.
 				std::visit([&self, this](auto&& parser)
 				{
-					async_read(m_stream, m_buffer, parser.base(), boost::asio::bind_executor(
-						m_strand,
-						[self](auto ec, auto bytes){self->on_read(ec, bytes);}
-					));
+					if constexpr (std::is_same_v<std::remove_reference_t<decltype(parser)>, std::monostate>)
+					{
+
+					}
+					else
+					{
+						async_read(
+							m_stream, m_buffer, parser.base(), boost::asio::bind_executor(
+								m_strand,
+								[self](auto ec, auto bytes)
+								{ self->on_read(ec, bytes); }
+							));
+					}
 				}, m_body);
 			}
 		);
@@ -130,17 +139,26 @@ void Session::on_read(boost::system::error_code ec, std::size_t)
 	{
 		std::visit([self=shared_from_this(), this](auto&& parser)
 		{
-			m_server->on_request_body(parser.release(), [this, self](auto&& response)
+			if constexpr (std::is_same_v<std::remove_reference_t<decltype(parser)>, std::monostate>)
 			{
-				// server must not set session cookie
-				assert(response.count(http::field::set_cookie) == 0);
 
-				// check if auth is renewed. if yes, set it to cookie before sending
-				if (m_server->renewed_auth())
-					response.set(http::field::set_cookie, m_server->auth().set_cookie(m_login_session));
+			}
+			else
+			{
+				m_server->on_request_body(
+					parser.release(), [this, self](auto&& response)
+					{
+						// server must not set session cookie
+						assert(response.count(http::field::set_cookie) == 0);
 
-				send_response(std::forward<decltype(response)>(response));
-			});
+						// check if auth is renewed. if yes, set it to cookie before sending
+						if (m_server->renewed_auth())
+							response.set(http::field::set_cookie, m_server->auth().set_cookie(m_login_session));
+
+						send_response(std::forward<decltype(response)>(response));
+					}
+				);
+			}
 		}, m_body);
 	}
 	m_nth_transaction++;
