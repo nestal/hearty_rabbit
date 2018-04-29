@@ -111,8 +111,10 @@ TEST_CASE("/view URL parsing")
 
 	URLIntent with_option{"/view/siuyung/?option"};
 	REQUIRE(with_option.action() == URLIntent::Action::view);
+	REQUIRE(with_option.user() == "siuyung");
 	REQUIRE(with_option.collection() == "");
-	REQUIRE_FALSE(with_option.valid());
+	REQUIRE(with_option.option() == "option");
+	REQUIRE(with_option.valid());
 }
 
 TEST_CASE("/api URL parsing")
@@ -214,6 +216,14 @@ TEST_CASE("upload URL")
 	URLIntent upload_default{"/upload/nestal/DSC_1460.JPG"};
 	REQUIRE(upload_default.action() == URLIntent::Action::upload);
 	REQUIRE(upload_default.valid());
+
+	URLIntent with_option{"/upload/siuyung/file?oops"};
+	REQUIRE(with_option.action() == URLIntent::Action::upload);
+	REQUIRE(with_option.user() == "siuyung");
+	REQUIRE(with_option.collection() == "");
+	REQUIRE(with_option.filename() == "file");
+	REQUIRE(with_option.option() == "oops");
+	REQUIRE(with_option.valid());
 }
 
 TEST_CASE("UTF8 special characters")

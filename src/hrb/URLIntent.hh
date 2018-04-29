@@ -36,7 +36,6 @@ public:
 						//!< across multiple segments.
 		filename,       //!< Filename of a resource. Single segment only.
 		blob,           //!< 40-character hex string for blob ID. Obviously single segment.
-		option,         //!< Query string of the URL
 		query_target    //!< Target of the query: blob or collection
 	};
 
