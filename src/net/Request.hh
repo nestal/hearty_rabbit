@@ -14,7 +14,7 @@
 
 #include <boost/beast/http/message.hpp>
 #include <boost/beast/http/string_body.hpp>
-#include <boost/beast/http/file_body.hpp>
+#include <boost/beast/http/dynamic_body.hpp>
 #include <boost/beast/http/empty_body.hpp>
 #include <boost/beast/http/parser.hpp>
 
@@ -34,15 +34,13 @@ using EndPoint = boost::asio::ip::tcp::endpoint;
 using RequestHeader = http::header<true, http::fields>;
 
 using StringRequest = http::request<http::string_body>;
-using FileRequest   = http::request<http::file_body>;
 using EmptyRequest  = http::request<http::empty_body>;
+using DynamicRequest  = http::request<http::dynamic_body>;
 using UploadRequest = http::request<UploadRequestBody>;
 
+using DynamicRequestParser 	= http::request_parser<http::dynamic_body>;
 using StringRequestParser 	= http::request_parser<http::string_body>;
-using FileRequestParser 	= http::request_parser<http::file_body>;
 using EmptyRequestParser 	= http::request_parser<http::empty_body>;
 using UploadRequestParser   = http::request_parser<UploadRequestBody>;
-
-using RequestBodyParsers = std::variant<StringRequestParser, UploadRequestParser, EmptyRequestParser>;
 
 }
