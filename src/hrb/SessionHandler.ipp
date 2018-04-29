@@ -71,7 +71,7 @@ public:
 
 			static const boost::format fmt{R"(<meta property="og:image" content="%1%%2%">
 	<meta property="og:url" content="%1%%3%">
-	<meta property="og:title" content="%4%">
+	<meta property="og:title" content="Hearty Rabbit: %4%">
 	)"};
 			return m_send(m_lib->inject(
 				result,
