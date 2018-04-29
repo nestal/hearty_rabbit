@@ -85,7 +85,7 @@ private:
 
 	// The parsed message are stored inside the parsers.
 	// Use parser::get() or release() to get the message.
-	std::optional<DynamicRequestParser> m_parser;
+	std::optional<HeaderRequestParser> m_parser;
 	std::variant<EmptyRequestParser, StringRequestParser, UploadRequestParser> m_body;
 
 	std::function<SessionHandler()> m_factory;

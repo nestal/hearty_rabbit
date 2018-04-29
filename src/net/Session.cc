@@ -64,6 +64,7 @@ void Session::on_handshake(boost::system::error_code ec)
 	do_read();
 }
 
+
 void Session::do_read()
 {
 	// Destroy and re-construct the parser for a new HTTP transaction
@@ -78,6 +79,7 @@ void Session::do_read()
 		[self=shared_from_this()](auto ec, auto bytes) {self->on_read_header(ec, bytes);}
 	));
 }
+
 
 void Session::on_read_header(boost::system::error_code ec, std::size_t bytes_transferred)
 {
