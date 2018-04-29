@@ -32,8 +32,8 @@ public:
 
         template<bool isRequest, class Fields>
         explicit
-        writer(boost::beast::http::message<isRequest, MMapResponseBody, Fields> const& msg)
-            : m_body(msg.body())
+        writer(boost::beast::http::header<isRequest, Fields> const&, value_type& body)
+            : m_body(body)
         {
         }
 

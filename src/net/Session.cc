@@ -108,7 +108,7 @@ void Session::on_read_header(boost::system::error_code ec, std::size_t bytes_tra
 				// Call async_read() using the chosen parser to read and parse the request body.
 				std::visit([&self, this](auto&& parser)
 				{
-					async_read(m_stream, m_buffer, parser, boost::asio::bind_executor(
+					async_read(m_stream, m_buffer, parser.base(), boost::asio::bind_executor(
 						m_strand,
 						[self](auto ec, auto bytes){self->on_read(ec, bytes);}
 					));
@@ -253,9 +253,13 @@ void Session::on_shutdown(boost::system::error_code)
 
 void Session::init_request_body(SessionHandler::RequestBodyType body_type, std::error_code& ec)
 {
+//	StringRequestParser p{std::move(*m_parser)};
+//	EmptyRequestParser p{std::move(m_parser->base())};
+//	UploadRequestParser p{std::move(*m_parser)};
+
 	switch (body_type)
 	{
-	case SessionHandler::RequestBodyType::empty:  m_body.emplace<EmptyRequestParser>(std::move(*m_parser)); break;
+//	case SessionHandler::RequestBodyType::empty:  m_body.emplace<EmptyRequestParser>(std::move(*m_parser)); break;
 	case SessionHandler::RequestBodyType::string: m_body.emplace<StringRequestParser>(std::move(*m_parser)); break;
 	case SessionHandler::RequestBodyType::upload:
 		m_server->prepare_upload(m_body.emplace<UploadRequestParser>(std::move(*m_parser)).get().body(), ec);
