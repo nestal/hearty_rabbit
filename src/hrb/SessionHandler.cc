@@ -157,7 +157,7 @@ void SessionHandler::update_view(BlobRequest&& req, EmptyResponseSender&& send)
 		return send(http::response<http::empty_body>{http::status::forbidden, req.version()});
 
 	assert(!req.blob());
-	auto[cover] = find_fields(req.body(), "cover");
+	auto[cover, share] = find_fields(req.body(), "cover", "share");
 
 	if (auto cover_blob = hex_to_object_id(cover); cover_blob)
 		return Ownership{req.owner()}.set_cover(
@@ -174,7 +174,12 @@ void SessionHandler::update_view(BlobRequest&& req, EmptyResponseSender&& send)
 				});
 			}
 		);
-
+	else if (!share.empty())
+	{
+		http::response<http::empty_body> res{http::status::no_content, req.version()};
+		res.set(http::field::location, "somewhere else");
+		return send(std::move(res));
+	}
 	send(http::response<http::empty_body>{http::status::bad_request, req.version()});
 }
 

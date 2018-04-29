@@ -467,5 +467,13 @@ class NormalTestCase(unittest.TestCase):
 		self.assertEqual(r6.status_code, 200)
 		self.assertFalse("🙇" in r6.json()["colls"])
 
+	def test_share_link(self):
+		# upload to server
+		r1 = self.user1.post("https://localhost:4433/api/sumsum/", data="share=link",
+			headers={"Content-type": "application/x-www-form-urlencoded"}
+		)
+		self.assertEqual(r1.status_code, 204)
+		self.assertEqual(r1.headers["Location"], "somewhere else")
+
 if __name__ == '__main__':
 	unittest.main()
