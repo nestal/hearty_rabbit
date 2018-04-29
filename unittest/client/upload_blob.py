@@ -259,6 +259,20 @@ class NormalTestCase(unittest.TestCase):
 			404
 		)
 
+		# invalid post data
+		self.assertEqual(self.user1.post(
+			"https://localhost:4433/api/sumsum/another/collection/" + blob_id,
+			data="invalid=parameters",
+			headers={"Content-type": "application/x-www-form-urlencoded"}
+		).status_code, 400)
+
+		# invalid content type
+		self.assertEqual(self.user1.post(
+			"https://localhost:4433/api/sumsum/another/collection/" + blob_id,
+			data="invalid=parameters",
+			headers={"Content-type": "multipart/form-data; boundary=something"}
+		).status_code, 400)
+
 	def test_set_permission(self):
 		# upload to server
 		r1 = self.user1.put("https://localhost:4433/upload/sumsum/some/collection/random%F0%9F%98%8A.jpg", data=self.random_image(1000, 1200))

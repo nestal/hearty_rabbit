@@ -186,8 +186,6 @@ void SessionHandler::update_blob(BlobRequest&& req, EmptyResponseSender&& send)
 	if (!req.request_by_owner())
 		return send(http::response<http::empty_body>{http::status::forbidden, req.version()});
 
-	Log(LOG_DEBUG, "update_blob(%1%)", req.body());
-
 	assert(req.blob());
 	auto [perm_str, move_destination] = find_fields(req.body(), "perm", "move");
 
