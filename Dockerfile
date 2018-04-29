@@ -13,7 +13,7 @@ COPY . /build/src
 RUN mkdir /build/docker-build \
 	&& cd docker-build \
 	&& cmake \
-		-DBOOST_ROOT=/opt \
+		-DBOOST_ROOT=/opt/boost_1_66 \
 		-DBUILD_NUMBER=$BUILD_NUMBER \
 		-DCMAKE_PREFIX_PATH=/opt \
 		-DCMAKE_BUILD_TYPE=Release \
