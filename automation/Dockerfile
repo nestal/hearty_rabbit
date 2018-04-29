@@ -16,6 +16,7 @@ RUN yum install -y deltarpm epel-release \
 
 ADD https://github.com/libjpeg-turbo/libjpeg-turbo/archive/1.5.3.tar.gz \
 	https://dl.bintray.com/boostorg/release/1.66.0/source/boost_1_66_0.tar.gz \
+	https://dl.bintray.com/boostorg/release/1.67.0/source/boost_1_67_0.tar.gz \
 	https://cmake.org/files/v3.11/cmake-3.11.0.tar.gz /build/
 
 WORKDIR /build
@@ -34,9 +35,16 @@ RUN tar zxf boost_1_66_0.tar.gz \
 	&& cd boost_1_66_0 \
 	&& ./bootstrap.sh \
 		--with-libraries=program_options,filesystem,system \
-		--prefix=/opt \
+		--prefix=/opt/boost_1_66 \
 	&& (./b2 -j8 install; exit 0) \
 	&& rm -rf /build/boost_1_66_0
+RUN tar zxf boost_1_67_0.tar.gz \
+	&& cd boost_1_67_0 \
+	&& ./bootstrap.sh \
+		--with-libraries=program_options,filesystem,system \
+		--prefix=/opt/boost_1_67 \
+	&& (./b2 -j8 install; exit 0) \
+	&& rm -rf /build/boost_1_67_0
 
 # build cmake 3.11.0 (>= 3.8 to support C++17)
 RUN tar zxf cmake-3.11.0.tar.gz \

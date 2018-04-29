@@ -28,8 +28,9 @@ auto flatten_content(http::response<Body, http::basic_fields<Allocator>>&& res)
 	boost::system::error_code ec;
 	boost::beast::flat_buffer fbuf;
 
-	// Spend a lot of time to get this line to compile...
-	typename http::response<Body, http::basic_fields<Allocator>>::body_type::writer writer{res};
+	// spend a lot of time to get this line to compile...
+	// and even more for boost 1.67
+	typename http::response<Body, http::basic_fields<Allocator>>::body_type::writer writer{res, res.body()};
 	while (auto buf = writer.get(ec))
 	{
 		if (!ec)
