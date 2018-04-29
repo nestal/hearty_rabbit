@@ -82,7 +82,7 @@ public:
 	{
 	public:
 		template<bool is_request, class Fields>
-		explicit reader(http::message<is_request, UploadRequestBody, Fields>& m) : m_body{m.body()}
+		explicit reader(http::header<is_request, Fields>&, value_type& body) : m_body{body}
 		{
 		}
 
