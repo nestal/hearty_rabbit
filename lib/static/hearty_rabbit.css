@@ -13,12 +13,14 @@ body {
 	font-size: 130%;
 }
 
-.dialog-container h1 {
+.dialog-container legend {
 	text-align: center;
+	font-size: 150%;
 }
 
 .dialog-container input {
 	width: 100%;
+	line-height: 1.2;
 	box-sizing: border-box;
 	border: 0;
 	margin: 0 0 15px;
