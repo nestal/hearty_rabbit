@@ -64,6 +64,7 @@ void Session::on_handshake(boost::system::error_code ec)
 	do_read();
 }
 
+
 void Session::do_read()
 {
 	// Destroy and re-construct the parser for a new HTTP transaction
@@ -78,6 +79,7 @@ void Session::do_read()
 		[self=shared_from_this()](auto ec, auto bytes) {self->on_read_header(ec, bytes);}
 	));
 }
+
 
 void Session::on_read_header(boost::system::error_code ec, std::size_t bytes_transferred)
 {
@@ -106,12 +108,14 @@ void Session::on_read_header(boost::system::error_code ec, std::size_t bytes_tra
 				}
 
 				// Call async_read() using the chosen parser to read and parse the request body.
-				std::visit([&self, this](auto&& parser)
+				std::visit([this, self](auto&& parser)
 				{
-					async_read(m_stream, m_buffer, parser, boost::asio::bind_executor(
-						m_strand,
-						[self](auto ec, auto bytes){self->on_read(ec, bytes);}
-					));
+					async_read(
+						m_stream, m_buffer, parser.base(), boost::asio::bind_executor(
+							m_strand,
+							[self](auto ec, auto bytes)
+							{ self->on_read(ec, bytes); }
+						));
 				}, m_body);
 			}
 		);
@@ -128,19 +132,21 @@ void Session::on_read(boost::system::error_code ec, std::size_t)
 		return handle_read_error(__PRETTY_FUNCTION__, ec);
 	else
 	{
-		std::visit([self=shared_from_this(), this](auto&& parser)
+		std::visit([this, self=shared_from_this()](auto&& parser)
 		{
-			m_server->on_request_body(parser.release(), [this, self](auto&& response)
-			{
-				// server must not set session cookie
-				assert(response.count(http::field::set_cookie) == 0);
+			m_server->on_request_body(
+				parser.release(), [this, self](auto&& response)
+				{
+					// server must not set session cookie
+					assert(response.count(http::field::set_cookie) == 0);
 
-				// check if auth is renewed. if yes, set it to cookie before sending
-				if (m_server->renewed_auth())
-					response.set(http::field::set_cookie, m_server->auth().set_cookie(m_login_session));
+					// check if auth is renewed. if yes, set it to cookie before sending
+					if (m_server->renewed_auth())
+						response.set(http::field::set_cookie, m_server->auth().set_cookie(m_login_session));
 
-				send_response(std::forward<decltype(response)>(response));
-			});
+					send_response(std::forward<decltype(response)>(response));
+				}
+			);
 		}, m_body);
 	}
 	m_nth_transaction++;
@@ -255,7 +261,7 @@ void Session::init_request_body(SessionHandler::RequestBodyType body_type, std::
 {
 	switch (body_type)
 	{
-	case SessionHandler::RequestBodyType::empty:  m_body.emplace<EmptyRequestParser>(std::move(*m_parser)); break;
+	case SessionHandler::RequestBodyType::empty: m_body.emplace<EmptyRequestParser>(std::move(*m_parser)); break;
 	case SessionHandler::RequestBodyType::string: m_body.emplace<StringRequestParser>(std::move(*m_parser)); break;
 	case SessionHandler::RequestBodyType::upload:
 		m_server->prepare_upload(m_body.emplace<UploadRequestParser>(std::move(*m_parser)).get().body(), ec);

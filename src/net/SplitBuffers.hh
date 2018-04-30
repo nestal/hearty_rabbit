@@ -51,8 +51,8 @@ public:
 
         template<bool isRequest, class Fields>
         explicit
-        writer(boost::beast::http::message<isRequest, SplitBuffers, Fields> const& msg)
-            : m_body(msg.body())
+        writer(boost::beast::http::header<isRequest, Fields> const& header, value_type& body)
+            : m_body(body)
         {
         }
 

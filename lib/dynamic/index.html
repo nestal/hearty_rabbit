@@ -23,7 +23,7 @@
 <nav class="topnav">
 	<img class="nav-logo" src="/lib/logo.svg">
 	<span id="username-nav" class="nav-level1 show-only-after-logged-in" >
-		<a href="/"><span id="show-username"></span>'s Photo</a>
+		<span id="show-username"></span>'s Photo
 	</span>
 	<span class="nav-level1 show-only-before-logged-in" id="login-nav">Login</span>
 	<label class="nav-level1 show-only-after-logged-in" for="file-upload" id="upload-nav" title="File upload">
@@ -95,28 +95,33 @@
 	<div class="light-box-button-bar">
 		<i class="close-overlays light-box-button material-icons">close</i>
 	</div>
-	<div class="modal-content dialog-container">
+	<form class="modal-content dialog-container">
 		<h1>Name of the new album:</h1>
-		<div><input id="new-album-name" type="text" placeholder="album name"></div>
-		<button id="create-album-btn">Create</button>
-	</div>
+		<fieldset>
+			<legend>Create New Album</legend>
+			<input id="new-album-name" type="text" placeholder="album name">
+			<button type="submit">Create</button>
+		</fieldset>
+	</form>
 </section>
 
 <section id="move-blob-dialog" class="modal">
 	<div class="light-box-button-bar">
 		<i class="close-overlays light-box-button material-icons">close</i>
 	</div>
-	<div class="modal-content dialog-container">
+	<form class="modal-content dialog-container">
 		<h1>Name of the destination album:</h1>
-		<div><input id="dest-album-name" type="text" list="album-list" placeholder="album name"></div>
-		<button id="move-blob-btn">Create</button>
-	</div>
+		<fieldset>
+			<legend>Move image to other album</legend>
+			<input id="dest-album-name" type="text" list="album-list" placeholder="album name">
+			<button type="submit">Move</button>
+		</fieldset>
+	</form>
 </section>
 
 <section id="toast">Uploading stuff</section>
 
-<datalist id="album-list">
-</datalist>
+<datalist id="album-list"></datalist>
 
 <script>
 	// Make sure it's called after loading the DOM.

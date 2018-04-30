@@ -69,6 +69,9 @@ private:
 	template <class Response>
 	void send_response(Response&& response);
 
+	template <typename Function>
+	void VisitParsers(Function&& func);
+
 	void handle_read_error(std::string_view where, boost::system::error_code ec);
 	void init_request_body(SessionHandler::RequestBodyType body_type, std::error_code& ec);
 
@@ -82,8 +85,8 @@ private:
 
 	// The parsed message are stored inside the parsers.
 	// Use parser::get() or release() to get the message.
-	std::optional<EmptyRequestParser> m_parser;
-	std::variant<StringRequestParser, UploadRequestParser, EmptyRequestParser> m_body;
+	std::optional<HeaderRequestParser> m_parser;
+	std::variant<EmptyRequestParser, StringRequestParser, UploadRequestParser> m_body;
 
 	std::function<SessionHandler()> m_factory;
 	std::optional<SessionHandler>   m_server;

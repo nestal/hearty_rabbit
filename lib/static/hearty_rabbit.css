@@ -7,18 +7,30 @@ body {
 	display: none;
 }
 
-div.dialog-container {
+.dialog-container {
 	background: white;
 	padding: 45px;
 	font-size: 130%;
 }
 
-div.dialog-container h1 {
+/* hide the legend */
+.dialog-container legend {
+	width: 1px;
+	height: 1px;
+	overflow: hidden;
+}
+
+.dialog-container fieldset {
+	border: none;
+}
+
+.dialog-container h1 {
 	text-align: center;
 }
 
-div.dialog-container input {
+.dialog-container input {
 	width: 100%;
+	line-height: 1.2;
 	box-sizing: border-box;
 	border: 0;
 	margin: 0 0 15px;
@@ -26,7 +38,7 @@ div.dialog-container input {
 	background: #f2f2f2;
 }
 
-div.dialog-container button {
+.dialog-container button {
 	background-color: #4CAF50;
     color: white;
     padding: 14px 20px;
@@ -36,7 +48,7 @@ div.dialog-container button {
 	font-size: 100%;
 }
 
-div.dialog-container button:hover {
+.dialog-container button:hover {
 	 opacity: 0.8;
 }
 

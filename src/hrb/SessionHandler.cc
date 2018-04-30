@@ -189,35 +189,36 @@ void SessionHandler::update_blob(BlobRequest&& req, EmptyResponseSender&& send)
 	assert(req.blob());
 	auto [perm_str, move_destination] = find_fields(req.body(), "perm", "move");
 
-	auto on_complete = [send = std::move(send), version = req.version()](auto&& ec)
+	if (!perm_str.empty() || !move_destination.empty())
 	{
-		send(
-			http::response<http::empty_body>{
-				ec ? http::status::internal_server_error : http::status::no_content,
-				version
-			}
-		);
-	};
+		auto on_complete = [send = std::move(send), version = req.version()](auto&& ec)
+		{
+			send(
+				http::response<http::empty_body>{
+					ec ? http::status::internal_server_error : http::status::no_content,
+					version
+				}
+			);
+		};
 
-	if (!perm_str.empty())
-	{
-		Ownership{req.owner()}.set_permission(
-			*m_db,
-			req.collection(),
-			*req.blob(),
-			Permission::from_description(perm_str),
-			std::move(on_complete)
-		);
-	}
-	else if (!move_destination.empty())
-	{
-		Ownership{req.owner()}.move_blob(
-			*m_db,
-			req.collection(),
-			move_destination,
-			*req.blob(),
-			std::move(on_complete)
-		);
+		if (!perm_str.empty())
+			Ownership{req.owner()}.set_permission(
+				*m_db,
+				req.collection(),
+				*req.blob(),
+				Permission::from_description(perm_str),
+				std::move(on_complete)
+			);
+		else if (!move_destination.empty())
+		{
+			Ownership{req.owner()}.move_blob(
+				*m_db,
+				req.collection(),
+				move_destination,
+				*req.blob(),
+				std::move(on_complete)
+			);
+		}
 	}
 	else
 	{

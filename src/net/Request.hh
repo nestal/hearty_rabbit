@@ -10,11 +10,15 @@
 // Created by nestal on 1/14/18.
 //
 
-#pragma once
+// This file is intended to be used as a precompile header.
+// #pragma once doesn't work well for precompiled headers
+// so we use an old-style include guard here
+#ifndef HRB_NET_REQUEST_PRECOMPILED_HEADER_INCLUDED
+#define HRB_NET_REQUEST_PRECOMPILED_HEADER_INCLUDED
 
 #include <boost/beast/http/message.hpp>
 #include <boost/beast/http/string_body.hpp>
-#include <boost/beast/http/file_body.hpp>
+#include <boost/beast/http/buffer_body.hpp>
 #include <boost/beast/http/empty_body.hpp>
 #include <boost/beast/http/parser.hpp>
 
@@ -33,16 +37,16 @@ using EndPoint = boost::asio::ip::tcp::endpoint;
 
 using RequestHeader = http::header<true, http::fields>;
 
+using HeaderRequest = http::request<http::buffer_body>;
 using StringRequest = http::request<http::string_body>;
-using FileRequest   = http::request<http::file_body>;
 using EmptyRequest  = http::request<http::empty_body>;
 using UploadRequest = http::request<UploadRequestBody>;
 
+using HeaderRequestParser 	= http::request_parser<http::buffer_body>;
 using StringRequestParser 	= http::request_parser<http::string_body>;
-using FileRequestParser 	= http::request_parser<http::file_body>;
 using EmptyRequestParser 	= http::request_parser<http::empty_body>;
 using UploadRequestParser   = http::request_parser<UploadRequestBody>;
 
-using RequestBodyParsers = std::variant<StringRequestParser, UploadRequestParser, EmptyRequestParser>;
-
 }
+
+#endif

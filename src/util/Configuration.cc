@@ -51,12 +51,18 @@ Configuration::Configuration(int argc, const char *const *argv, const char *env)
 		)->value_name("path"), "Configuration file. Use environment variable HEARTY_RABBIT_CONFIG to set default path.")
 	;
 
-	store(po::parse_command_line(argc, argv, m_desc), m_args);
-	po::notify(m_args);
+	if (argc > 0)
+	{
+		store(po::parse_command_line(argc, argv, m_desc), m_args);
+		po::notify(m_args);
+
+	}
 
 	// no need for other options when --help is specified
 	if (!help())
-		load_config(m_args["cfg"].as<std::string>());
+		load_config(
+			m_args.count("cfg") > 0 ? m_args["cfg"].as<std::string>() : env
+	    );
 }
 
 void Configuration::usage(std::ostream &out) const
