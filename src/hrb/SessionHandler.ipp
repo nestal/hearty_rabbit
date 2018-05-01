@@ -22,6 +22,7 @@
 #include "WebResources.hh"
 
 #include "crypto/Authentication.hh"
+#include "crypto/Authentication.ipp"
 #include "net/MMapResponseBody.hh"
 #include "util/Log.hh"
 #include "util/Escape.hh"
@@ -127,7 +128,30 @@ void SessionHandler::on_request_header(
 	auto cookie = header[http::field::cookie];
 	m_request_cookie = parse_cookie({cookie.data(), cookie.size()});
 	if (!m_request_cookie)
-		return complete(RequestBodyType::empty, std::error_code{});
+	{
+		auto [auth_str] = find_fields(intent.option(), "auth");
+		auto auth_key = hex_to_array<Authentication::Cookie{}.size()>(auth_str);
+		if (header.method() == http::verb::get && auth_key)
+		{
+			Authentication auth{*auth_key, intent.user(), true};
+			return auth.is_shared_resource(
+				intent.collection(),
+				*m_db,
+				[complete = std::forward<Complete>(complete), auth, this](bool shared, auto err)
+				{
+					assert(auth.is_guest());
+					if (!err && shared)
+						m_auth = auth;
+
+					complete(RequestBodyType::empty, err);
+				}
+			);
+		}
+		else
+		{
+			return complete(RequestBodyType::empty, std::error_code{});
+		}
+	}
 
 	Authentication::verify_session(
 		*m_request_cookie,
