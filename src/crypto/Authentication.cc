@@ -321,4 +321,14 @@ void Authentication::renew_session(
 	);
 }
 
+bool Authentication::operator==(const Authentication& rhs) const
+{
+	return m_user == rhs.m_user && m_cookie == rhs.m_cookie && m_guest == rhs.m_guest;
+}
+
+bool Authentication::operator!=(const Authentication& rhs) const
+{
+	return !operator==(rhs);
+}
+
 } // end of namespace hrb

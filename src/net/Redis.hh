@@ -68,6 +68,7 @@ public:
 	Reply& operator=(Reply&& other) = default ;
 	void swap(Reply& other) noexcept ;
 
+	using reference = std::vector<Reply>::reference;
 	using iterator = std::vector<Reply>::const_iterator;
 	using const_iterator = std::vector<Reply>::const_iterator;
 	iterator begin() const;

@@ -198,23 +198,39 @@ TEST_CASE("Sharing resource to guest", "[normal]")
 	boost::asio::io_context ioc;
 	auto redis = redis::connect(ioc);
 
-	bool tested = false;
+	auto tested = 0;
 	Authentication::share_resource("sumsum", "dir:", *redis, [&tested, redis](auto&& auth, auto ec)
 	{
 		REQUIRE(!ec);
 		REQUIRE(auth.is_guest());
 		REQUIRE(auth.valid());
 
+		tested++;
+
 		auth.is_shared_resource("dir:", *redis, [&tested](bool shared, auto ec)
 		{
 			REQUIRE_FALSE(ec);
 			REQUIRE(shared);
 
-			tested = true;
+			tested++;
+		});
+
+		Authentication::list_guests("sumsum", "dir:", *redis, [&tested, auth](auto&& guests, auto ec)
+		{
+			REQUIRE_FALSE(ec);
+
+			for (auto&& guest : guests)
+				if (guest == auth)
+				{
+					tested++;
+					break;
+				}
 		});
 	});
 
 	REQUIRE(ioc.run_for(10s) > 0);
-	REQUIRE(tested);
+	REQUIRE(tested == 3);
 	ioc.restart();
+
+
 }

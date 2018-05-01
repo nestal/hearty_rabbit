@@ -80,6 +80,14 @@ public:
 		Complete&& comp
 	);
 
+	template <typename Complete>
+	static void list_guests(
+		std::string_view owner,
+		std::string_view resource,
+		redis::Connection& db,
+		Complete&& comp
+	);
+
 	void destroy_session(
 		redis::Connection& db,
 		std::function<void(std::error_code)>&& completion
@@ -91,6 +99,9 @@ public:
 	const Cookie& cookie() const {return m_cookie;}
 	const std::string& user() const {return m_user;}
 	bool is_guest() const {return m_guest;}
+
+	bool operator==(const Authentication& rhs) const;
+	bool operator!=(const Authentication& rhs) const;
 
 private:
 	void renew_session(
