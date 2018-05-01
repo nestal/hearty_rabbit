@@ -468,12 +468,28 @@ class NormalTestCase(unittest.TestCase):
 		self.assertFalse("🙇" in r6.json()["colls"])
 
 	def test_share_link(self):
-		# upload to server
-		r1 = self.user1.post("https://localhost:4433/api/sumsum/", data="share=link",
+		# upload to default album
+		up1 = self.user1.put("https://localhost:4433/upload/sumsum/new.jpg", data=self.random_image(1000, 1200))
+
+		# set permission to shared
+		perm = self.user1.post(
+			"https://localhost:4433" + up1.headers["Location"],
+			data="perm=shared",
 			headers={"Content-type": "application/x-www-form-urlencoded"}
 		)
-		self.assertEqual(r1.status_code, 204)
-		self.assertNotEqual(r1.headers["Location"], "")
+		self.assertEqual(perm.status_code, 204)
+
+		# share link of default album
+		slink = self.user1.post("https://localhost:4433/api/sumsum/", data="share=link",
+			headers={"Content-type": "application/x-www-form-urlencoded"}
+		)
+		self.assertEqual(slink.status_code, 204)
+		self.assertNotEqual(slink.headers["Location"], "")
+
+		# anonymous user can fetch the shared link
+		view_slink = self.anon.get(("https://localhost:4433" + slink.headers["Location"]).replace("/view", "/api"))
+		self.assertEqual(view_slink.status_code, 200)
+		self.assertTrue(self.response_blob(up1) in view_slink.json()["elements"])
 
 if __name__ == '__main__':
 	unittest.main()

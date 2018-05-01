@@ -143,6 +143,7 @@ void SessionHandler::on_request_header(
 					if (!err && shared)
 						m_auth = auth;
 
+					Log(LOG_DEBUG, "accepting guest from %1%", auth.user());
 					complete(RequestBodyType::empty, err);
 				}
 			);
