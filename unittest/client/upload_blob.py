@@ -148,10 +148,10 @@ class NormalTestCase(unittest.TestCase):
 		self.assertEqual(jpeg.height, 1024)
 
 		# read back some renditions of the upload image
-		self.assertEqual(self.user1.get("https://localhost:4433" + r1.headers["Location"] + "?2048x2048").status_code, 200)
+		self.assertEqual(self.user1.get("https://localhost:4433" + r1.headers["Location"] + "?rendition=2048x2048").status_code, 200)
 
 		# the master rendition should have the same width and height
-		r3 = self.user1.get("https://localhost:4433" + r1.headers["Location"] + "?master")
+		r3 = self.user1.get("https://localhost:4433" + r1.headers["Location"] + "?rendition=master")
 		self.assertEqual(r3.status_code, 200)
 
 		master = Image.open(BytesIO(r3.content))
@@ -159,7 +159,7 @@ class NormalTestCase(unittest.TestCase):
 		self.assertEqual(master.height, 2048)
 
 		# generated thumbnail should be less than 768x768
-		r4 = self.user1.get("https://localhost:4433" + r1.headers["Location"] + "?thumbnail")
+		r4 = self.user1.get("https://localhost:4433" + r1.headers["Location"] + "?rendition=thumbnail")
 		self.assertEqual(r4.status_code, 200)
 
 		thumb = Image.open(BytesIO(r4.content))

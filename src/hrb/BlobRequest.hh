@@ -43,7 +43,7 @@ public:
 	std::string_view requester() const      {return m_requester;}
 	std::string_view owner() const          {return m_url.user();}
 	std::string_view collection() const     {return m_url.collection();}
-	std::string_view rendition() const      {return m_url.option();}
+	std::string_view option() const         {return m_url.option();}
 	std::string_view etag() const           {return m_etag;}
 	unsigned version() const                {return m_version;}
 

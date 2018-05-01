@@ -12,6 +12,8 @@
 
 #include "BlobRequest.hh"
 
+#include "util/Escape.hh"
+
 namespace hrb {
 
 } // end of namespace

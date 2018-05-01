@@ -342,7 +342,9 @@ void SessionHandler::get_blob(const BlobRequest& req, Send&& send)
 			if (!req.request_by_owner() && !entry.permission().allow(req.requester()))
 				return send(http::response<http::empty_body>{http::status::forbidden, req.version()});
 
-			return send(m_blob_db.response(*req.blob(), req.version(), entry.mime(), req.etag(), req.rendition()));
+			auto [rendition] = find_fields(req.option(), "rendition");
+
+			return send(m_blob_db.response(*req.blob(), req.version(), entry.mime(), req.etag(), rendition));
 		}
 	);
 }
@@ -387,7 +389,7 @@ void SessionHandler::scan_collection(const URLIntent& intent, unsigned version, 
 template <class Send>
 void SessionHandler::query_blob(const BlobRequest& req, Send&& send)
 {
-	auto [blob_arg, rendition] = find_fields(req.rendition(), "id", "rendition");
+	auto [blob_arg, rendition] = find_fields(req.option(), "id", "rendition");
 	auto blob = hex_to_object_id(blob_arg);
 	if (!blob)
 		return send(bad_request("invalid blob ID", req.version()));
