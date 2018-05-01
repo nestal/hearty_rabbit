@@ -73,6 +73,13 @@ public:
 		Complete&& comp
 	);
 
+	template <typename Complete>
+	void is_shared_resource(
+		std::string_view resource,
+		redis::Connection& db,
+		Complete&& comp
+	);
+
 	void destroy_session(
 		redis::Connection& db,
 		std::function<void(std::error_code)>&& completion

@@ -46,5 +46,24 @@ void Authentication::share_resource(
 	);
 }
 
+template <typename Complete>
+void Authentication::is_shared_resource(
+	std::string_view resource,
+	redis::Connection& db,
+	Complete&& comp
+)
+{
+	db.command(
+		[comp=std::forward<Complete>(comp)](auto&& reply, auto ec)
+		{
+			comp(reply.as_int() == 1, ec);
+		},
+		"SISMEMBER %b%b:%b %b",
+		m_shared_auth_prefix.data(), m_shared_auth_prefix.size(),
+		m_user.data(), m_user.size(),
+		resource.data(), resource.size(),
+		m_cookie.data(), m_cookie.size()
+	);
+}
 
 } // end of namespace
