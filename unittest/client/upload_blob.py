@@ -489,7 +489,11 @@ class NormalTestCase(unittest.TestCase):
 		# anonymous user can fetch the shared link
 		view_slink = self.anon.get(("https://localhost:4433" + slink.headers["Location"]).replace("/view", "/api"))
 		self.assertEqual(view_slink.status_code, 200)
+		self.assertTrue("auth" in view_slink.json())
 		self.assertTrue(self.response_blob(up1) in view_slink.json()["elements"])
+
+		auth_key = view_slink.json()["auth"]
+		self.assertEqual(slink.headers["Location"][-len(auth_key):], auth_key)
 
 if __name__ == '__main__':
 	unittest.main()
