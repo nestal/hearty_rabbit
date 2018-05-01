@@ -15,6 +15,7 @@
 #include "net/Redis.hh"
 #include "util/Error.hh"
 #include "crypto/Authentication.hh"
+#include "crypto/Authentication.ipp"
 #include "crypto/Password.hh"
 #include "crypto/Random.hh"
 
@@ -81,6 +82,7 @@ TEST_CASE("Test normal user login", "[normal]")
 							// Username returned is always lower case.
 							REQUIRE(!ec);
 							REQUIRE(auth.valid());
+							REQUIRE_FALSE(auth.is_guest());
 							REQUIRE(auth.user() == "sumsum");
 							tested = true;
 						}
@@ -97,6 +99,7 @@ TEST_CASE("Test normal user login", "[normal]")
 					INFO("verify_user(incorrect) result = " << ec.message());
 					REQUIRE(ec == Error::login_incorrect);
 					REQUIRE(!session.valid());
+					REQUIRE_FALSE(session.is_guest());
 					tested = true;
 				}
 			);
@@ -109,7 +112,8 @@ TEST_CASE("Test normal user login", "[normal]")
 				{
 					INFO("verify_session(incorrect) result = " << ec.message());
 					REQUIRE(!ec);
-					REQUIRE(!session.valid());
+					REQUIRE_FALSE(session.valid());
+					REQUIRE_FALSE(session.is_guest());
 					tested = true;
 				}
 			);
@@ -134,6 +138,7 @@ TEST_CASE("Test normal user login", "[normal]")
 				{
 					REQUIRE(!ec);
 					REQUIRE(auth.valid());
+					REQUIRE_FALSE(auth.is_guest());
 					REQUIRE(auth.user() == "sumsum");
 
 					// Verify cookie changed
@@ -185,4 +190,25 @@ TEST_CASE("Parsing cookie", "[normal]")
 	session = parse_cookie(cookie);
 	REQUIRE(session.has_value());
 	REQUIRE(*session == rand);
+}
+
+TEST_CASE("Sharing resource to guest", "[normal]")
+{
+	using namespace std::chrono_literals;
+	boost::asio::io_context ioc;
+	auto redis = redis::connect(ioc);
+
+	bool tested = false;
+	Authentication::share_resource("sumsum", "dir:", *redis, [&tested](auto&& auth, auto ec)
+	{
+		REQUIRE(!ec);
+		REQUIRE(auth.is_guest());
+		REQUIRE(auth.valid());
+
+		tested = true;
+	});
+
+	REQUIRE(ioc.run_for(10s) > 0);
+	REQUIRE(tested);
+	ioc.restart();
 }

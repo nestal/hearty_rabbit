@@ -100,8 +100,10 @@ void create_session(
 
 } // end of anonymous namespace
 
-Authentication::Authentication(Cookie cookie, std::string_view user) :
-	m_cookie{cookie}, m_user{user}
+const std::string_view Authentication::m_shared_auth_prefix{"shared_auth:"};
+
+Authentication::Authentication(Cookie cookie, std::string_view user, bool guest) :
+	m_cookie{cookie}, m_user{user}, m_guest{guest}
 {
 	if (m_user.empty())
 		m_cookie = Cookie{};
