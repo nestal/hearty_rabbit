@@ -126,6 +126,8 @@ void SessionHandler::on_request_header(
 	if (intent.action() == URLIntent::Action::login)
 		return complete(RequestBodyType::string, std::error_code{});
 
+	Log(LOG_DEBUG, "request from %1%", header.target());
+
 	// Everything else require a valid session.
 	auto cookie = header[http::field::cookie];
 	m_request_cookie = parse_cookie({cookie.data(), cookie.size()});
@@ -139,13 +141,13 @@ void SessionHandler::on_request_header(
 			return auth.is_shared_resource(
 				intent.collection(),
 				*m_db,
-				[complete = std::forward<Complete>(complete), auth, this](bool shared, auto err)
+				[complete = std::forward<Complete>(complete), auth, this, intent](bool shared, auto err)
 				{
 					assert(auth.is_guest());
 					if (!err && shared)
 						m_auth = auth;
 
-					Log(LOG_DEBUG, "accepting guest from %1%", auth.user());
+					Log(LOG_DEBUG, "accepting (%3%) guest from '%1%' '%2%'", auth.user(), intent.collection(), shared);
 					complete(RequestBodyType::empty, err);
 				}
 			);

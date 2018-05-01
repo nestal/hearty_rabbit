@@ -470,6 +470,7 @@ class NormalTestCase(unittest.TestCase):
 	def test_share_link(self):
 		# upload to default album
 		up1 = self.user1.put("https://localhost:4433/upload/sumsum/new.jpg", data=self.random_image(1000, 1200))
+		new_blob = self.response_blob(up1)
 
 		# set permission to shared
 		perm = self.user1.post(
@@ -485,15 +486,32 @@ class NormalTestCase(unittest.TestCase):
 		)
 		self.assertEqual(slink.status_code, 204)
 		self.assertNotEqual(slink.headers["Location"], "")
+		print(slink.headers["Location"])
 
 		# anonymous user can fetch the shared link
 		view_slink = self.anon.get(("https://localhost:4433" + slink.headers["Location"]).replace("/view", "/api"))
+		self.assertNotEqual(self.anon.cookies.get("id"), "")
 		self.assertEqual(view_slink.status_code, 200)
 		self.assertTrue("auth" in view_slink.json())
-		self.assertTrue(self.response_blob(up1) in view_slink.json()["elements"])
+		self.assertTrue(new_blob in view_slink.json()["elements"])
 
+		# verify auth key
 		auth_key = view_slink.json()["auth"]
 		self.assertEqual(slink.headers["Location"][-len(auth_key):], auth_key)
+
+		# the same auth key does not work for other collections
+		other_response = self.anon.get("https://localhost:4433/api/sumsum/other/?auth=" + auth_key)
+		self.assertNotEqual(self.anon.cookies.get("id"), "")
+		self.assertFalse(new_blob in other_response.json()["elements"])
+
+		somecoll_response = self.anon.get("https://localhost:4433/api/sumsum/some/collection/?auth=" + auth_key)
+		self.assertNotEqual(self.anon.cookies.get("id"), "")
+		self.assertFalse(new_blob in somecoll_response.json()["elements"])
+
+		# the auth key can't be used for upload
+		up2 = self.anon.put("https://localhost:4433/upload/sumsum/new.jpg?auth=" + auth_key, data=self.random_image(1000, 1200))
+		self.assertNotEqual(self.anon.cookies.get("id"), "")
+		self.assertEqual(up2.status_code, 400)
 
 if __name__ == '__main__':
 	unittest.main()
