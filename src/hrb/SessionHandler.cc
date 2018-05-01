@@ -23,6 +23,7 @@
 
 #include "crypto/Password.hh"
 #include "crypto/Authentication.hh"
+#include "crypto/Authentication.ipp"
 
 #include "net/SplitBuffers.hh"
 #include "net/MMapResponseBody.hh"
@@ -174,12 +175,18 @@ void SessionHandler::update_view(BlobRequest&& req, EmptyResponseSender&& send)
 				});
 			}
 		);
+
 	else if (!share.empty())
-	{
-		http::response<http::empty_body> res{http::status::no_content, req.version()};
-		res.set(http::field::location, "somewhere else");
-		return send(std::move(res));
-	}
+		return Authentication::share_resource(req.owner(), req.collection(), *m_db, [
+			send=std::move(send),
+			version=req.version()
+		](auto&& auth, auto ec)
+		{
+			http::response<http::empty_body> res{http::status::no_content, version};
+			res.set(http::field::location, "somewhere else");
+			return send(std::move(res));
+		});
+
 	send(http::response<http::empty_body>{http::status::bad_request, req.version()});
 }
 
@@ -191,41 +198,36 @@ void SessionHandler::update_blob(BlobRequest&& req, EmptyResponseSender&& send)
 	assert(req.blob());
 	auto [perm_str, move_destination] = find_fields(req.body(), "perm", "move");
 
-	if (!perm_str.empty() || !move_destination.empty())
-	{
-		auto on_complete = [send = std::move(send), version = req.version()](auto&& ec)
-		{
-			send(
-				http::response<http::empty_body>{
-					ec ? http::status::internal_server_error : http::status::no_content,
-					version
-				}
-			);
-		};
+	if (perm_str.empty() && move_destination.empty())
+		return send(http::response<http::empty_body>{http::status::bad_request, req.version()});
 
-		if (!perm_str.empty())
-			Ownership{req.owner()}.set_permission(
-				*m_db,
-				req.collection(),
-				*req.blob(),
-				Permission::from_description(perm_str),
-				std::move(on_complete)
-			);
-		else if (!move_destination.empty())
-		{
-			Ownership{req.owner()}.move_blob(
-				*m_db,
-				req.collection(),
-				move_destination,
-				*req.blob(),
-				std::move(on_complete)
-			);
-		}
-	}
-	else
+	auto on_complete = [send = std::move(send), version = req.version()](auto&& ec)
 	{
-		send(http::response<http::empty_body>{http::status::bad_request, req.version()});
-	}
+		send(
+			http::response<http::empty_body>{
+				ec ? http::status::internal_server_error : http::status::no_content,
+				version
+			}
+		);
+	};
+
+	if (!perm_str.empty())
+		Ownership{req.owner()}.set_permission(
+			*m_db,
+			req.collection(),
+			*req.blob(),
+			Permission::from_description(perm_str),
+			std::move(on_complete)
+		);
+
+	else if (!move_destination.empty())
+		Ownership{req.owner()}.move_blob(
+			*m_db,
+			req.collection(),
+			move_destination,
+			*req.blob(),
+			std::move(on_complete)
+		);
 }
 
 void SessionHandler::on_upload(UploadRequest&& req, EmptyResponseSender&& send)

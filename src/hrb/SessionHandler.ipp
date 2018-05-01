@@ -335,7 +335,6 @@ void SessionHandler::on_query(const BlobRequest& req, Send&& send)
 		default:
 			return send(bad_request("unsupported query target", req.version()));
 	}
-
 }
 
 template <class Send>

@@ -232,5 +232,16 @@ TEST_CASE("Sharing resource to guest", "[normal]")
 	REQUIRE(tested == 3);
 	ioc.restart();
 
+	bool found = false;
 
+	Authentication someone_else{insecure_random<Authentication::Cookie>(), "someone"};
+	someone_else.is_shared_resource("dir:", *redis, [&found](bool shared, auto ec)
+	{
+		REQUIRE_FALSE(shared);
+		found = false;
+	});
+
+	REQUIRE(ioc.run_for(10s) > 0);
+	REQUIRE(true);
+	ioc.restart();
 }
