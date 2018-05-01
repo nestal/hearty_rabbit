@@ -57,7 +57,7 @@ public:
 
 	auto operator()(nlohmann::json&& json, std::error_code ec) const
 	{
-		if (m_auth.valid())
+		if (!m_auth.is_guest() && m_auth.valid())
 			json.emplace("username", m_auth.user());
 		if (m_auth.is_guest())
 			json.emplace("auth", to_hex(m_auth.cookie()));
