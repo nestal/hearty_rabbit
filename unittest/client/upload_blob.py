@@ -473,7 +473,7 @@ class NormalTestCase(unittest.TestCase):
 			headers={"Content-type": "application/x-www-form-urlencoded"}
 		)
 		self.assertEqual(r1.status_code, 204)
-		self.assertEqual(r1.headers["Location"], "somewhere else")
+		self.assertNotEqual(r1.headers["Location"], "")
 
 if __name__ == '__main__':
 	unittest.main()

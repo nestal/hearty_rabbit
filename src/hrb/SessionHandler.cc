@@ -179,11 +179,13 @@ void SessionHandler::update_view(BlobRequest&& req, EmptyResponseSender&& send)
 	else if (!share.empty())
 		return Authentication::share_resource(req.owner(), req.collection(), *m_db, [
 			send=std::move(send),
-			version=req.version()
+			req
 		](auto&& auth, auto ec)
 		{
-			http::response<http::empty_body> res{http::status::no_content, version};
-			res.set(http::field::location, "somewhere else");
+			URLIntent location{URLIntent::Action::view, req.owner(), req.collection(), "", "auth=" + to_hex(auth.cookie())};
+
+			http::response<http::empty_body> res{http::status::no_content, req.version()};
+			res.set(http::field::location, location.str());
 			return send(std::move(res));
 		});
 

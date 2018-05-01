@@ -152,6 +152,16 @@ TEST_CASE("/api URL parsing")
 	REQUIRE(path_with_question.filename() == "");
 	REQUIRE(path_with_question.option() == "");
 	REQUIRE(path_with_question.valid());
+
+	URLIntent auth_key{URLIntent::Action::api, "someone", "someplace", "some_file", "auth=1234"};
+	REQUIRE(auth_key.str() == "/api/someone/someplace/some_file?auth=1234");
+
+	// is this a bug?
+	URLIntent round_trip{auth_key.str()};
+	REQUIRE(round_trip.user() == "someone");
+	REQUIRE(round_trip.collection() == "someplace/some_file");
+	REQUIRE(round_trip.filename() == "");
+	REQUIRE(round_trip.option() == "auth=1234");
 }
 
 TEST_CASE("upload URL")

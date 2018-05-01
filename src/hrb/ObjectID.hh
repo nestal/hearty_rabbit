@@ -32,8 +32,6 @@ struct ObjectID : std::array<unsigned char, Blake2::size>
 
 static_assert(std::is_standard_layout<ObjectID>::value);
 
-std::string to_hex(const ObjectID& id);
-std::string to_quoted_hex(const ObjectID& id, char quote = '\"');
 std::optional<ObjectID> hex_to_object_id(std::string_view hex);
 bool is_valid_blob_id(std::string_view hex);
 

@@ -14,9 +14,9 @@
 
 #include "crypto/Blake2.hh"
 #include "util/Error.hh"
+#include "util/Escape.hh"
 
 #include <boost/algorithm/hex.hpp>
-
 #include <openssl/evp.h>
 
 #include <cstring>
@@ -25,20 +25,6 @@
 #include <iomanip>
 
 namespace hrb {
-
-std::string to_hex(const ObjectID& id)
-{
-	std::string result(id.size()*2, '\0');
-	boost::algorithm::hex_lower(id.begin(), id.end(), result.begin());
-	return result;
-}
-
-std::string to_quoted_hex(const ObjectID& id, char quote)
-{
-	std::string result(id.size()*2 + 2, quote);
-	boost::algorithm::hex_lower(id.begin(), id.end(), result.begin()+1);
-	return result;
-}
 
 std::optional<ObjectID> hex_to_object_id(std::string_view hex)
 {

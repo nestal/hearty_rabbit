@@ -61,7 +61,7 @@ public:
 	URLIntent& operator=(const URLIntent&) = default;
 
 	explicit URLIntent(boost::string_view target);
-	URLIntent(Action act, std::string_view user, std::string_view coll, std::string_view name);
+	URLIntent(Action act, std::string_view user, std::string_view coll, std::string_view name, std::string_view option = "");
 
 	Action action() const {return m_action;}
 	std::string_view user() const {return m_user;}

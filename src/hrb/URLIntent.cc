@@ -115,8 +115,8 @@ URLIntent::URLIntent(boost::string_view boost_target)
 		m_valid = false;
 }
 
-URLIntent::URLIntent(Action act, std::string_view user, std::string_view coll, std::string_view name) :
-	m_action{act}, m_user{trim(user)}, m_coll{trim(coll)}, m_filename{trim(name)}, m_valid{true}
+URLIntent::URLIntent(Action act, std::string_view user, std::string_view coll, std::string_view name, std::string_view option) :
+	m_action{act}, m_user{trim(user)}, m_coll{trim(coll)}, m_filename{trim(name)}, m_option{option}, m_valid{true}
 {
 }
 
