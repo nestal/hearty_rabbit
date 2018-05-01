@@ -133,7 +133,7 @@ http::response<http::empty_body> SessionHandler::see_other(boost::beast::string_
 void SessionHandler::unlink(BlobRequest&& req, EmptyResponseSender&& send)
 {
 	assert(req.blob());
-	if (!req.request_by_owner())
+	if (!req.request_by_owner(m_auth))
 		return send(http::response<http::empty_body>{http::status::forbidden, req.version()});
 
 	// remove from user's container
@@ -154,7 +154,7 @@ void SessionHandler::unlink(BlobRequest&& req, EmptyResponseSender&& send)
 
 void SessionHandler::update_view(BlobRequest&& req, EmptyResponseSender&& send)
 {
-	if (!req.request_by_owner())
+	if (!req.request_by_owner(m_auth))
 		return send(http::response<http::empty_body>{http::status::forbidden, req.version()});
 
 	assert(!req.blob());
@@ -194,7 +194,7 @@ void SessionHandler::update_view(BlobRequest&& req, EmptyResponseSender&& send)
 
 void SessionHandler::update_blob(BlobRequest&& req, EmptyResponseSender&& send)
 {
-	if (!req.request_by_owner())
+	if (!req.request_by_owner(m_auth))
 		return send(http::response<http::empty_body>{http::status::forbidden, req.version()});
 
 	assert(req.blob());

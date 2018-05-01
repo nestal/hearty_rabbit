@@ -126,8 +126,6 @@ void SessionHandler::on_request_header(
 	if (intent.action() == URLIntent::Action::login)
 		return complete(RequestBodyType::string, std::error_code{});
 
-	Log(LOG_DEBUG, "request from %1%", header.target());
-
 	// Everything else require a valid session.
 	auto cookie = header[http::field::cookie];
 	m_request_cookie = parse_cookie({cookie.data(), cookie.size()});
@@ -147,7 +145,6 @@ void SessionHandler::on_request_header(
 					if (!err && shared)
 						m_auth = auth;
 
-					Log(LOG_DEBUG, "accepting (%3%) guest from '%1%' '%2%'", auth.user(), intent.collection(), shared);
 					complete(RequestBodyType::empty, err);
 				}
 			);
@@ -233,7 +230,7 @@ void SessionHandler::on_request_body(Request&& req, Send&& send)
 				);
 
 		if (intent.action() == URLIntent::Action::query)
-			return on_query({std::move(req), std::move(intent), m_auth.user()}, std::forward<Send>(send));
+			return on_query({std::move(req), std::move(intent)}, std::forward<Send>(send));
 
 		if (intent.action() == URLIntent::Action::logout)
 			return on_logout(std::forward<Request>(req), std::forward<Send>(send));
@@ -252,7 +249,7 @@ void SessionHandler::on_request_body(Request&& req, Send&& send)
 template <class Request, class Send>
 void SessionHandler::on_request_api(Request&& req, URLIntent&& intent, Send&& send)
 {
-	BlobRequest breq{req, std::move(intent), m_auth.user()};
+	BlobRequest breq{req, std::move(intent)};
 
 	if (req.method() == http::verb::delete_)
 	{
@@ -287,7 +284,7 @@ void SessionHandler::on_request_api(Request&& req, URLIntent&& intent, Send&& se
 template <class Request, class Send>
 void SessionHandler::on_request_view(Request&& req, URLIntent&& intent, Send&& send)
 {
-	BlobRequest breq{req, std::move(intent), m_auth.user()};
+	BlobRequest breq{req, std::move(intent)};
 	if (req.method() == http::verb::get)
 	{
 		// view request always sends HTML: pass &m_lib to SendJSON
@@ -332,14 +329,14 @@ void SessionHandler::get_blob(const BlobRequest& req, Send&& send)
 			// Always reply forbidden for everyone else.
 			if (ec == Error::object_not_exist)
 				return send(http::response<http::empty_body>{
-					req.request_by_owner() ? http::status::not_found : http::status::forbidden,
+					req.request_by_owner(m_auth) ? http::status::not_found : http::status::forbidden,
 					req.version()
 				});
 
 			if (ec)
 				return send(http::response<http::empty_body>{http::status::internal_server_error, req.version()});
 
-			if (!req.request_by_owner() && !entry.permission().allow(req.requester()))
+			if (!req.request_by_owner(m_auth) && !entry.permission().allow(m_auth.user()))
 				return send(http::response<http::empty_body>{http::status::forbidden, req.version()});
 
 			auto [rendition] = find_fields(req.option(), "rendition");

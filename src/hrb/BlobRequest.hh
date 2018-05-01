@@ -20,13 +20,14 @@
 
 namespace hrb {
 
+class Authentication;
+
 class BlobRequest
 {
 public:
 	template <typename Request>
-	BlobRequest(Request&& req, URLIntent&& intent, std::string_view auth_user) :
-		m_requester{auth_user}, m_url{std::move(intent)}, m_version{req.version()},
-		m_etag{req[http::field::if_none_match]}
+	BlobRequest(Request&& req, URLIntent&& intent) :
+		m_url{std::move(intent)}, m_version{req.version()}, m_etag{req[http::field::if_none_match]}
 	{
 		if constexpr (std::is_same<std::remove_reference_t<Request>, StringRequest>::value)
 		{
@@ -40,21 +41,19 @@ public:
 	BlobRequest& operator=(const BlobRequest& other) = default;
 
 	std::optional<ObjectID> blob() const    {return hex_to_object_id(m_url.filename());}
-	std::string_view requester() const      {return m_requester;}
 	std::string_view owner() const          {return m_url.user();}
 	std::string_view collection() const     {return m_url.collection();}
 	std::string_view option() const         {return m_url.option();}
 	std::string_view etag() const           {return m_etag;}
 	unsigned version() const                {return m_version;}
 
-	bool request_by_owner() const           {return m_requester == owner();}
+	bool request_by_owner(const Authentication& requester) const;
 
 	std::string_view body() const           {return m_body;}
 
 	const URLIntent& intent() const         {return m_url;}
 
 private:
-	std::string m_requester;
 	URLIntent   m_url;
 	unsigned    m_version;
 

@@ -11,9 +11,13 @@
 //
 
 #include "BlobRequest.hh"
-
-#include "util/Escape.hh"
+#include "crypto/Authentication.hh"
 
 namespace hrb {
+
+bool BlobRequest::request_by_owner(const Authentication& requester) const
+{
+	return !requester.is_guest() && requester.user() == m_url.user();
+}
 
 } // end of namespace
