@@ -262,7 +262,7 @@ void SessionHandler::on_request_api(Request&& req, URLIntent&& intent, Send&& se
 		else
 			return Ownership{breq.owner()}.serialize(
 				*m_db,
-				m_auth.user(),
+				m_auth,
 				breq.collection(),
 				SendJSON{std::move(send), m_auth, req.version(), std::nullopt, server_root()}
 			);
@@ -290,7 +290,7 @@ void SessionHandler::on_request_view(Request&& req, URLIntent&& intent, Send&& s
 		// view request always sends HTML: pass &m_lib to SendJSON
 		return Ownership{breq.owner()}.serialize(
 			*m_db,
-			m_auth.user(),
+			m_auth,
 			breq.collection(),
 			SendJSON{std::move(send), m_auth, breq.version(), breq.blob(), server_root(), &m_lib}
 		);
@@ -336,7 +336,7 @@ void SessionHandler::get_blob(const BlobRequest& req, Send&& send)
 			if (ec)
 				return send(http::response<http::empty_body>{http::status::internal_server_error, req.version()});
 
-			if (!req.request_by_owner(m_auth) && !entry.permission().allow(m_auth.user()))
+			if (!entry.permission().allow(m_auth, req.owner()))
 				return send(http::response<http::empty_body>{http::status::forbidden, req.version()});
 
 			auto [rendition] = find_fields(req.option(), "rendition");

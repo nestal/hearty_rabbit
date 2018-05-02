@@ -69,7 +69,7 @@ TEST_CASE("list of collection owned by user", "[normal]")
 	ioc.restart();
 
 	// remove all blobs in the collection
-	subject.serialize(*redis, "owner", "/", [&tested, redis](auto&& jdoc, auto ec)
+	subject.serialize(*redis, Authentication{{}, "owner"}, "/", [&tested, redis](auto&& jdoc, auto ec)
 	{
 		INFO("serialize() return " << jdoc);
 		for (auto&& blob : jdoc["elements"].items())
@@ -139,7 +139,7 @@ TEST_CASE("add blob to Ownership", "[normal]")
 	subject.find(*redis, "/", blobid, [&tested](auto&& entry, std::error_code ec)
 	{
 		REQUIRE(!ec);
-		REQUIRE(!entry.permission().allow(""));
+		REQUIRE(!entry.permission().allow({}, "owner"));
 		tested++;
 	});
 
@@ -178,7 +178,7 @@ TEST_CASE("add blob to Ownership", "[normal]")
 	subject.find(*redis, "/", blobid, [&tested](auto&& entry, std::error_code ec)
 	{
 		REQUIRE(!ec);
-		REQUIRE(entry.permission().allow(""));
+		REQUIRE(entry.permission().allow({}, "owner"));
 		tested++;
 	});
 
@@ -201,7 +201,7 @@ TEST_CASE("add blob to Ownership", "[normal]")
 	subject.find(*redis, "someother", blobid, [&tested](auto&& entry, std::error_code ec)
 	{
 		REQUIRE(!ec);
-		REQUIRE(entry.permission().allow(""));
+		REQUIRE(entry.permission().allow({}, "owner"));
 		tested++;
 	});
 
@@ -238,7 +238,7 @@ TEST_CASE("Load 3 images in json", "[normal]")
 	ioc.restart();
 
 	bool tested = false;
-	subject.serialize(*redis, "testuser", "some/collection", [&tested, &blobids](auto&& doc, auto ec)
+	subject.serialize(*redis, {{},"testuser"}, "some/collection", [&tested, &blobids](auto&& doc, auto ec)
 	{
 		using json = nlohmann::json;
 		INFO("serialize() error_code: " << ec << " " << ec.message());
@@ -518,13 +518,13 @@ TEST_CASE("collection entry", "[normal]")
 
 	REQUIRE(subject.filename() == "somepic.jpeg");
 	REQUIRE(subject.mime() == "image/jpeg");
-	REQUIRE(subject.permission().allow("sumsum") == false);
+	REQUIRE_FALSE(subject.permission().allow({{}, "sumsum"}, "yungyung"));
 	REQUIRE(subject.raw() == s);
 
 	CollEntry same{subject.raw()};
 	REQUIRE(same.filename() == "somepic.jpeg");
 	REQUIRE(same.mime() == "image/jpeg");
-	REQUIRE(same.permission().allow("yungyung") == false);
+	REQUIRE_FALSE(same.permission().allow({{}, "yungyung"}, "sumsum"));
 	REQUIRE(same.raw() == subject.raw());
 }
 
