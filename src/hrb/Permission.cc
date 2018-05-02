@@ -19,13 +19,13 @@ Permission::Permission(char perm) : m_perm{perm}
 {
 }
 
-bool Permission::allow(std::string_view user)
+bool Permission::allow(const Authentication& requester, std::string_view owner)
 {
 	switch (m_perm)
 	{
 		case '*':   return true;
-		case '+':   return !user.empty();
-		case ' ':	return false;
+		case '+':   return requester.valid() || requester.is_guest();
+		case ' ':	return !requester.is_guest() && requester.user() == owner;
 
 		// TODO: handle ACL
 		default:    return false;

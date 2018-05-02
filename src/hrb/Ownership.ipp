@@ -14,6 +14,7 @@
 #include "Permission.hh"
 #include "CollEntry.hh"
 
+#include "crypto/Authentication.hh"
 #include "util/Error.hh"
 #include "util/Log.hh"
 #include "util/Escape.hh"
@@ -79,7 +80,7 @@ public:
 	template <typename Complete>
 	void serialize(
 		redis::Connection& db,
-		std::string_view requester,
+		const Authentication& requester,
 		Complete&& complete
 	) const;
 
@@ -97,7 +98,7 @@ public:
 
 	static nlohmann::json serialize(
 		const redis::Reply& hash_getall_reply,
-		std::string_view requester,
+		const Authentication& requester,
 		std::string_view owner
 	);
 
@@ -314,7 +315,7 @@ void Ownership::Collection::set_cover(redis::Connection& db, const ObjectID& cov
 template <typename Complete>
 void Ownership::Collection::serialize(
 	redis::Connection& db,
-	std::string_view requester,
+	const Authentication& requester,
 	Complete&& complete
 ) const
 {
@@ -326,9 +327,8 @@ void Ownership::Collection::serialize(
 	)__";
 	db.command(
 		[
-			comp=std::forward<Complete>(complete), *this,
-			requester=std::string{requester},
-			path=m_path
+			comp=std::forward<Complete>(complete),
+			*this, requester, path=m_path
 		](auto&& reply, std::error_code&& ec) mutable
 		{
 			if (!reply || ec)
@@ -413,7 +413,7 @@ void Ownership::unlink(
 template <typename Complete>
 void Ownership::serialize(
 	redis::Connection& db,
-	std::string_view requester,
+	const Authentication& requester,
 	std::string_view coll,
 	Complete&& complete
 ) const
@@ -518,7 +518,7 @@ void Ownership::list_public_blobs(
 	)__";
 
 	db.command(
-		[requester=m_user, comp=std::forward<Complete>(complete)](auto&& reply, auto ec)
+		[user=m_user, comp=std::forward<Complete>(complete)](auto&& reply, auto ec)
 		{
 			if (!reply)
 				Log(LOG_WARNING, "list_public_blobs() script return %1%", reply.as_error());
@@ -537,8 +537,9 @@ void Ownership::list_public_blobs(
 				auto blob_id = raw_to_object_id(blob.as_string());
 				CollEntry entry{perm.as_string()};
 
-				// check permission: allow allow owner (i.e. m_user)
-				if (blob_id && (owner.as_string() == requester || entry.permission().allow(requester)))
+				// filter by "user" if it is not empty: that means we want all public blobs from all users
+				// if "user" is empty string.
+				if (blob_id && (user.empty() || user == owner.as_string()) && entry.permission() == Permission::public_())
 				{
 					try
 					{
@@ -596,13 +597,13 @@ void Ownership::query_blob(redis::Connection& db, const ObjectID& blob, Complete
 				Collection coll{kv.key()};
 				return Blob{coll.user(), coll.path(), CollEntry{kv.value().as_string()}};
 			};
-			auto permitted = [&user](const Blob& blob)
+			auto owned = [&user](const Blob& blob)
 			{
-				return user == blob.user || blob.entry.permission().allow(user);
+				return user.empty() ? blob.entry.permission() == Permission::public_() : user == blob.user;
 			};
 
 			using namespace boost::adaptors;
-			comp(reply.kv_pairs() | transformed(kv2blob) | filtered(permitted), ec);
+			comp(reply.kv_pairs() | transformed(kv2blob) | filtered(owned), ec);
 		},
 		"EVAL %s 1 %b%b %b",
 		lua,
