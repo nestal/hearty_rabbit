@@ -15,6 +15,7 @@
 #include "net/Redis.hh"
 #include "util/Error.hh"
 #include "crypto/Authentication.hh"
+#include "crypto/Authentication.ipp"
 #include "crypto/Password.hh"
 #include "crypto/Random.hh"
 
@@ -81,6 +82,7 @@ TEST_CASE("Test normal user login", "[normal]")
 							// Username returned is always lower case.
 							REQUIRE(!ec);
 							REQUIRE(auth.valid());
+							REQUIRE_FALSE(auth.is_guest());
 							REQUIRE(auth.user() == "sumsum");
 							tested = true;
 						}
@@ -97,6 +99,7 @@ TEST_CASE("Test normal user login", "[normal]")
 					INFO("verify_user(incorrect) result = " << ec.message());
 					REQUIRE(ec == Error::login_incorrect);
 					REQUIRE(!session.valid());
+					REQUIRE_FALSE(session.is_guest());
 					tested = true;
 				}
 			);
@@ -109,7 +112,8 @@ TEST_CASE("Test normal user login", "[normal]")
 				{
 					INFO("verify_session(incorrect) result = " << ec.message());
 					REQUIRE(!ec);
-					REQUIRE(!session.valid());
+					REQUIRE_FALSE(session.valid());
+					REQUIRE_FALSE(session.is_guest());
 					tested = true;
 				}
 			);
@@ -134,6 +138,7 @@ TEST_CASE("Test normal user login", "[normal]")
 				{
 					REQUIRE(!ec);
 					REQUIRE(auth.valid());
+					REQUIRE_FALSE(auth.is_guest());
 					REQUIRE(auth.user() == "sumsum");
 
 					// Verify cookie changed
@@ -185,4 +190,58 @@ TEST_CASE("Parsing cookie", "[normal]")
 	session = parse_cookie(cookie);
 	REQUIRE(session.has_value());
 	REQUIRE(*session == rand);
+}
+
+TEST_CASE("Sharing resource to guest", "[normal]")
+{
+	using namespace std::chrono_literals;
+	boost::asio::io_context ioc;
+	auto redis = redis::connect(ioc);
+
+	auto tested = 0;
+	Authentication::share_resource("sumsum", "dir:", *redis, [&tested, redis](auto&& auth, auto ec)
+	{
+		REQUIRE(!ec);
+		REQUIRE(auth.is_guest());
+		REQUIRE(auth.valid());
+
+		tested++;
+
+		auth.is_shared_resource("dir:", *redis, [&tested](bool shared, auto ec)
+		{
+			REQUIRE_FALSE(ec);
+			REQUIRE(shared);
+
+			tested++;
+		});
+
+		Authentication::list_guests("sumsum", "dir:", *redis, [&tested, auth](auto&& guests, auto ec)
+		{
+			REQUIRE_FALSE(ec);
+
+			for (auto&& guest : guests)
+				if (guest == auth)
+				{
+					tested++;
+					break;
+				}
+		});
+	});
+
+	REQUIRE(ioc.run_for(10s) > 0);
+	REQUIRE(tested == 3);
+	ioc.restart();
+
+	bool found = false;
+
+	Authentication someone_else{insecure_random<Authentication::Cookie>(), "someone"};
+	someone_else.is_shared_resource("dir:", *redis, [&found](bool shared, auto ec)
+	{
+		REQUIRE_FALSE(shared);
+		found = false;
+	});
+
+	REQUIRE(ioc.run_for(10s) > 0);
+	REQUIRE(true);
+	ioc.restart();
 }

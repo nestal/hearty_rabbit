@@ -148,10 +148,10 @@ class NormalTestCase(unittest.TestCase):
 		self.assertEqual(jpeg.height, 1024)
 
 		# read back some renditions of the upload image
-		self.assertEqual(self.user1.get("https://localhost:4433" + r1.headers["Location"] + "?2048x2048").status_code, 200)
+		self.assertEqual(self.user1.get("https://localhost:4433" + r1.headers["Location"] + "?rendition=2048x2048").status_code, 200)
 
 		# the master rendition should have the same width and height
-		r3 = self.user1.get("https://localhost:4433" + r1.headers["Location"] + "?master")
+		r3 = self.user1.get("https://localhost:4433" + r1.headers["Location"] + "?rendition=master")
 		self.assertEqual(r3.status_code, 200)
 
 		master = Image.open(BytesIO(r3.content))
@@ -159,7 +159,7 @@ class NormalTestCase(unittest.TestCase):
 		self.assertEqual(master.height, 2048)
 
 		# generated thumbnail should be less than 768x768
-		r4 = self.user1.get("https://localhost:4433" + r1.headers["Location"] + "?thumbnail")
+		r4 = self.user1.get("https://localhost:4433" + r1.headers["Location"] + "?rendition=thumbnail")
 		self.assertEqual(r4.status_code, 200)
 
 		thumb = Image.open(BytesIO(r4.content))
@@ -466,6 +466,52 @@ class NormalTestCase(unittest.TestCase):
 		r6 = self.user1.get("https://localhost:4433/query/collection?user=sumsum&json")
 		self.assertEqual(r6.status_code, 200)
 		self.assertFalse("🙇" in r6.json()["colls"])
+
+	def test_share_link(self):
+		# upload to default album
+		up1 = self.user1.put("https://localhost:4433/upload/sumsum/new.jpg", data=self.random_image(1000, 1200))
+		new_blob = self.response_blob(up1)
+
+		# set permission to shared
+		perm = self.user1.post(
+			"https://localhost:4433" + up1.headers["Location"],
+			data="perm=shared",
+			headers={"Content-type": "application/x-www-form-urlencoded"}
+		)
+		self.assertEqual(perm.status_code, 204)
+
+		# share link of default album
+		slink = self.user1.post("https://localhost:4433/api/sumsum/", data="share=link",
+			headers={"Content-type": "application/x-www-form-urlencoded"}
+		)
+		self.assertEqual(slink.status_code, 204)
+		self.assertNotEqual(slink.headers["Location"], "")
+		print(slink.headers["Location"])
+
+		# anonymous user can fetch the shared link
+		view_slink = self.anon.get(("https://localhost:4433" + slink.headers["Location"]).replace("/view", "/api"))
+		self.assertNotEqual(self.anon.cookies.get("id"), "")
+		self.assertEqual(view_slink.status_code, 200)
+		self.assertTrue("auth" in view_slink.json())
+		self.assertTrue(new_blob in view_slink.json()["elements"])
+
+		# verify auth key
+		auth_key = view_slink.json()["auth"]
+		self.assertEqual(slink.headers["Location"][-len(auth_key):], auth_key)
+
+		# the same auth key does not work for other collections
+		other_response = self.anon.get("https://localhost:4433/api/sumsum/other/?auth=" + auth_key)
+		self.assertNotEqual(self.anon.cookies.get("id"), "")
+		self.assertFalse(new_blob in other_response.json()["elements"])
+
+		somecoll_response = self.anon.get("https://localhost:4433/api/sumsum/some/collection/?auth=" + auth_key)
+		self.assertNotEqual(self.anon.cookies.get("id"), "")
+		self.assertFalse(new_blob in somecoll_response.json()["elements"])
+
+		# the auth key can't be used for upload
+		up2 = self.anon.put("https://localhost:4433/upload/sumsum/new.jpg?auth=" + auth_key, data=self.random_image(1000, 1200))
+		self.assertNotEqual(self.anon.cookies.get("id"), "")
+		self.assertEqual(up2.status_code, 400)
 
 if __name__ == '__main__':
 	unittest.main()
