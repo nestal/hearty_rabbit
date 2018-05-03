@@ -77,8 +77,13 @@ public:
 	<meta property="og:title" content="Hearty Rabbit: %4%">
 	)"};
 			URLIntent cover_url{URLIntent::Action::api, owner, coll, cover};
+			URLIntent view_url{URLIntent::Action::view, owner, coll, "Hearty Rabbit"};
 			if (m_auth.is_guest())
-				cover_url.set_option("auth=" + to_hex(m_auth.cookie()));
+			{
+				auto auth = "auth=" + to_hex(m_auth.cookie());
+				cover_url.set_option(auth);
+				view_url.set_option(auth);
+			}
 
 			return m_send(m_lib->inject(
 				result,
@@ -86,7 +91,7 @@ public:
 				(
 					boost::format{fmt} % m_server_root %
 					cover_url.str() %
-					URLIntent{URLIntent::Action::view, owner, coll, "Hearty Rabbit"}.str() %
+					view_url.str() %
 					coll
 				).str(),
 				m_version)
