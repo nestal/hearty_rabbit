@@ -76,12 +76,16 @@ public:
 	<meta property="og:url" content="%1%%3%">
 	<meta property="og:title" content="Hearty Rabbit: %4%">
 	)"};
+			URLIntent cover_url{URLIntent::Action::api, owner, coll, cover};
+			if (m_auth.is_guest())
+				cover_url.set_option("auth=" + to_hex(m_auth.cookie()));
+
 			return m_send(m_lib->inject(
 				result,
 				json.dump(),
 				(
 					boost::format{fmt} % m_server_root %
-					URLIntent{URLIntent::Action::api, owner, coll, cover}.str() %
+					cover_url.str() %
 					URLIntent{URLIntent::Action::view, owner, coll, "Hearty Rabbit"}.str() %
 					coll
 				).str(),

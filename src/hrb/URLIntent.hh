@@ -70,6 +70,8 @@ public:
 	std::string_view option() const {return m_option;}
 	QueryTarget query_target() const {return m_query_target;}
 
+	void set_option(std::string_view option) {m_option = option;}
+
 	std::string str() const;
 	bool valid() const;
 	explicit operator bool() const {return valid();}
