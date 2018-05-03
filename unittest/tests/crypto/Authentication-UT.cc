@@ -199,7 +199,7 @@ TEST_CASE("Sharing resource to guest", "[normal]")
 	auto redis = redis::connect(ioc);
 
 	auto tested = 0;
-	Authentication::share_resource("sumsum", "dir:", *redis, [&tested, redis](auto&& auth, auto ec)
+	Authentication::share_resource("sumsum", "dir:", 3600s, *redis, [&tested, redis](auto&& auth, auto ec)
 	{
 		REQUIRE(!ec);
 		REQUIRE(auth.is_guest());

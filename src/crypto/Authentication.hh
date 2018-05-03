@@ -65,10 +65,11 @@ public:
 		std::function<void(std::error_code, Authentication&&)>&& completion
 	);
 
-	template <typename Complete>
+	template <typename Complete, typename Duration>
 	static void share_resource(
 		std::string_view owner,
 		std::string_view resource,
+		Duration valid_period,
 		redis::Connection& db,
 		Complete&& comp
 	);

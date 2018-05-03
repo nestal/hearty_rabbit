@@ -160,6 +160,8 @@ void SessionHandler::update_view(BlobRequest&& req, EmptyResponseSender&& send)
 	assert(!req.blob());
 	auto[cover, share] = find_fields(req.body(), "cover", "share");
 
+	using namespace std::chrono_literals;
+
 	if (auto cover_blob = hex_to_object_id(cover); cover_blob)
 		return Ownership{req.owner()}.set_cover(
 			*m_db,
@@ -177,7 +179,7 @@ void SessionHandler::update_view(BlobRequest&& req, EmptyResponseSender&& send)
 		);
 
 	else if (!share.empty())
-		return Authentication::share_resource(req.owner(), req.collection(), *m_db, [
+		return Authentication::share_resource(req.owner(), req.collection(), 3600s, *m_db, [
 			send=std::move(send),
 			req
 		](auto&& auth, auto ec)

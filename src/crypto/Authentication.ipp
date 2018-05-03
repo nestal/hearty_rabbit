@@ -24,18 +24,21 @@
 #include <cassert>
 #include <ctime>
 #include <limits>
+#include <chrono>
 
 namespace hrb {
 
-template <typename Complete>
+template <typename Complete, typename Duration>
 void Authentication::share_resource(
 	std::string_view owner,
 	std::string_view resource,
+	Duration valid_period,
 	redis::Connection& db,
 	Complete&& comp
 )
 {
 	auto auth = insecure_random<Cookie>();
+	auto expired = std::chrono::system_clock::now() + valid_period;
 
 	db.command(
 		[
@@ -51,7 +54,7 @@ void Authentication::share_resource(
 		owner.data(), owner.size(),
 		resource.data(), resource.size(),
 		auth.data(), auth.size(),
-		std::numeric_limits<std::int64_t>::max()
+		std::chrono::duration_cast<std::chrono::seconds>(expired.time_since_epoch()).count()
 	);
 }
 
