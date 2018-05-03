@@ -314,6 +314,10 @@ TEST_CASE("query URLs")
 	REQUIRE(query_question.valid());
 	REQUIRE(query_question.str() == "/query/collection?user=quest?ion");
 
+	query_question.set_option("other=option");
+	REQUIRE(query_question.option() == "other=option");
+	REQUIRE(query_question.str() == "/query/collection?other=option");
+
 	REQUIRE(std::get<0>(find_fields(query_user.option(), "user")) == "sum");
 
 	URLIntent query3{"/query"};
