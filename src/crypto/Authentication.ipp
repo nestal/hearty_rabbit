@@ -16,11 +16,14 @@
 #include "Random.hh"
 
 #include "net/Redis.hh"
+#include "util/Log.hh"
 
 #include <boost/range/adaptor/filtered.hpp>
 #include <boost/range/adaptor/transformed.hpp>
 
 #include <cassert>
+#include <ctime>
+#include <limits>
 
 namespace hrb {
 
@@ -43,11 +46,12 @@ void Authentication::share_resource(
 		{
 			comp(Authentication{auth, owner, true}, ec);
 		},
-		"SADD %b%b:%b %b",
+		"HSET %b%b:%b %b %ld",
 		m_shared_auth_prefix.data(), m_shared_auth_prefix.size(),
 		owner.data(), owner.size(),
 		resource.data(), resource.size(),
-		auth.data(), auth.size()
+		auth.data(), auth.size(),
+		std::numeric_limits<std::int64_t>::max()
 	);
 }
 
@@ -61,9 +65,10 @@ void Authentication::is_shared_resource(
 	db.command(
 		[comp=std::forward<Complete>(comp)](auto&& reply, auto ec)
 		{
-			comp(reply.as_int() == 1, ec);
+			Log(LOG_DEBUG, "TTL = (str)%1% %2%", reply.as_string(), reply.to_int());
+			comp(reply.to_int() > std::time(0), ec);
 		},
-		"SISMEMBER %b%b:%b %b",
+		"HGET %b%b:%b %b",
 		m_shared_auth_prefix.data(), m_shared_auth_prefix.size(),
 		m_user.data(), m_user.size(),
 		resource.data(), resource.size(),
@@ -85,14 +90,14 @@ void Authentication::list_guests(
 			owner=std::string{owner}
 	    ](auto&& reply, auto ec)
 		{
-			auto valid_cookie = [](const redis::Reply& reply)
+			auto valid_cookie = [](auto&& kv)
 			{
-				return reply.as_string().size() == Cookie{}.size();
+				return kv.key().size() == Cookie{}.size();
 			};
-			auto make_guest = [&owner](const redis::Reply& reply)
+			auto make_guest = [&owner](auto&& kv)
 			{
 				Cookie c{};
-				auto s = reply.as_string();
+				auto s = kv.key();
 				assert(s.size() == c.size());
 
 				std::copy(s.begin(), s.end(), c.begin());
@@ -101,9 +106,9 @@ void Authentication::list_guests(
 
 			using namespace boost::adaptors;
 
-			comp(reply | filtered(valid_cookie) | transformed(make_guest), ec);
+			comp(reply.kv_pairs() | filtered(valid_cookie) | transformed(make_guest), ec);
 		},
-		"SMEMBERS %b%b:%b",
+		"HGETALL %b%b:%b",
 		m_shared_auth_prefix.data(), m_shared_auth_prefix.size(),
 		owner.data(), owner.size(),
 		resource.data(), resource.size()
