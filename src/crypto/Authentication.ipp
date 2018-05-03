@@ -65,7 +65,6 @@ void Authentication::is_shared_resource(
 	db.command(
 		[comp=std::forward<Complete>(comp)](auto&& reply, auto ec)
 		{
-			Log(LOG_DEBUG, "TTL = (str)%1% %2%", reply.as_string(), reply.to_int());
 			comp(reply.to_int() > std::time(0), ec);
 		},
 		"HGET %b%b:%b %b",
