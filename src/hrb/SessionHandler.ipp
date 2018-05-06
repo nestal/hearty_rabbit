@@ -279,9 +279,9 @@ void SessionHandler::on_request_api(Request&& req, URLIntent&& intent, Send&& se
 	else if (req.method() == http::verb::post)
 	{
 		if (breq.blob())
-			return update_blob(std::move(breq), std::move(send));
+			return post_blob(std::move(breq), std::move(send));
 		else
-			return update_view(std::move(breq), std::move(send));
+			return post_view(std::move(breq), std::move(send));
 	}
 	else
 	{

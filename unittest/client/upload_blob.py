@@ -482,7 +482,7 @@ class NormalTestCase(unittest.TestCase):
 		self.assertEqual(perm.status_code, 204)
 
 		# share link of default album
-		slink = self.user1.post("https://localhost:4433/api/sumsum/", data="share=link",
+		slink = self.user1.post("https://localhost:4433/api/sumsum/", data="share=create_link",
 			headers={"Content-type": "application/x-www-form-urlencoded"}
 		)
 		self.assertEqual(slink.status_code, 204)
