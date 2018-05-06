@@ -178,7 +178,7 @@ void SessionHandler::post_view(BlobRequest&& req, EmptyResponseSender&& send)
 			}
 		);
 
-	else if (share == "create_link")
+	else if (share == "create")
 		return Authentication::share_resource(req.owner(), req.collection(), 3600s, *m_db, [
 			send=std::move(send),
 			req
