@@ -22,6 +22,7 @@
 
 namespace hrb {
 
+class Authentication;
 class Permission;
 class CollEntry;
 
@@ -66,7 +67,7 @@ public:
 	template <typename Complete>
 	void serialize(
 		redis::Connection& db,
-		std::string_view requester,
+		const Authentication& requester,
 		std::string_view coll,
 		Complete&& complete
 	) const;

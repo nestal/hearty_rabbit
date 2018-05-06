@@ -100,8 +100,10 @@ void create_session(
 
 } // end of anonymous namespace
 
-Authentication::Authentication(Cookie cookie, std::string_view user) :
-	m_cookie{cookie}, m_user{user}
+const std::string_view Authentication::m_shared_auth_prefix{"shared_auth:"};
+
+Authentication::Authentication(Cookie cookie, std::string_view user, bool guest) :
+	m_cookie{cookie}, m_user{user}, m_guest{guest}
 {
 	if (m_user.empty())
 		m_cookie = Cookie{};
@@ -317,6 +319,16 @@ void Authentication::renew_session(
 		m_user.data(), m_user.size(),               // ARGV[1]: username
 		session_length                              // ARGV[2]: session length
 	);
+}
+
+bool Authentication::operator==(const Authentication& rhs) const
+{
+	return m_user == rhs.m_user && m_cookie == rhs.m_cookie && m_guest == rhs.m_guest;
+}
+
+bool Authentication::operator!=(const Authentication& rhs) const
+{
+	return !operator==(rhs);
 }
 
 } // end of namespace hrb

@@ -28,7 +28,6 @@ class CollEntry;
 class Configuration;
 class MMapResponseBody;
 class Magic;
-class ObjectID;
 class UploadFile;
 
 class BlobDatabase

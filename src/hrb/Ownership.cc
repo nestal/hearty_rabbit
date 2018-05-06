@@ -180,7 +180,7 @@ void Ownership::Collection::unlink(redis::Connection& db, const ObjectID& id)
 	);
 }
 
-nlohmann::json Ownership::Collection::serialize(const redis::Reply& reply, std::string_view requester, std::string_view owner)
+nlohmann::json Ownership::Collection::serialize(const redis::Reply& reply, const Authentication& requester, std::string_view owner)
 {
 	// TODO: get the cover here... where to find a redis::Connection?
 	auto jdoc = nlohmann::json::object();
@@ -198,7 +198,7 @@ nlohmann::json Ownership::Collection::serialize(const redis::Reply& reply, std::
 		CollEntry entry{perm.as_string()};
 
 		// check permission: allow allow owner (i.e. m_user)
-		if (blob_id && (owner == requester || entry.permission().allow(requester)))
+		if (blob_id && entry.permission().allow(requester, owner))
 		{
 			auto entry_jdoc = nlohmann::json::parse(entry.json(), nullptr, false);
 			if (!entry_jdoc.is_discarded())

@@ -39,24 +39,23 @@ const std::array<
 	Parameters{URLIntent::Parameter::user, URLIntent::Parameter::collection, URLIntent::Parameter::filename},
 
 	// home
-	Parameters{URLIntent::Parameter::option},
+	Parameters{},
 
 	// lib
 	Parameters{URLIntent::Parameter::filename},
 
 	// query
-	Parameters{URLIntent::Parameter::query_target, URLIntent::Parameter::option},
+	Parameters{URLIntent::Parameter::query_target},
 
 	// api
 	Parameters{
 		URLIntent::Parameter::user,
 		URLIntent::Parameter::collection,
-		URLIntent::Parameter::blob,
-		URLIntent::Parameter::option
+		URLIntent::Parameter::blob
 	}
 };
 
-const URLIntent::Parameters URLIntent::separator_fields{URLIntent::Parameter::collection, URLIntent::Parameter::option};
+const URLIntent::Parameters URLIntent::separator_fields{URLIntent::Parameter::collection};
 
 namespace {
 std::string_view extract_left(std::string_view& target)
@@ -90,6 +89,21 @@ URLIntent::URLIntent(boost::string_view boost_target)
 	// assume valid unless see unwanted fields
 	m_valid = true;
 
+	// Extract the query string:
+	// only truncate "target" when "?" is found; keep "target" unchange if "?" is not found
+	// use split_left() because the query string starts from the _first_ '?' according to
+	// [RFC 3986](https://tools.ietf.org/html/rfc3986#page-23).
+	auto tmp = target;
+	auto[field, sep] = split_left(tmp, "?");
+	if (sep == '?')
+	{
+		m_option = tmp;
+		target   = field;
+	}
+
+	if (m_action == Action::query && m_option.empty())
+		m_valid = false;
+
 	auto& intent_definition = intent_defintions[static_cast<std::size_t>(m_action)];
 	auto mid = std::find_first_of(intent_definition.begin(), intent_definition.end(), separator_fields.begin(), separator_fields.end());
 	for (auto i = intent_definition.begin() ; i != mid; i++)
@@ -101,8 +115,8 @@ URLIntent::URLIntent(boost::string_view boost_target)
 		m_valid = false;
 }
 
-URLIntent::URLIntent(Action act, std::string_view user, std::string_view coll, std::string_view name) :
-	m_action{act}, m_user{trim(user)}, m_coll{trim(coll)}, m_filename{trim(name)}, m_valid{true}
+URLIntent::URLIntent(Action act, std::string_view user, std::string_view coll, std::string_view name, std::string_view option) :
+	m_action{act}, m_user{trim(user)}, m_coll{trim(coll)}, m_filename{trim(name)}, m_option{option}, m_valid{true}
 {
 }
 
@@ -123,23 +137,7 @@ void URLIntent::parse_field_from_left(std::string_view& target, hrb::URLIntent::
 
 void URLIntent::parse_field_from_right(std::string_view& target, hrb::URLIntent::Parameter p)
 {
-	if (p == Parameter::option)
-	{
-		// only truncate "target" when "?" is found; keep "target" unchange if "?" is not found
-		// use split_left() because the query string starts from the _first_ '?' according to
-		// [RFC 3986](https://tools.ietf.org/html/rfc3986#page-23).
-		auto tmp = target;
-		auto[field, sep] = split_left(tmp, "?");
-		if (sep == '?')
-		{
-			m_option = tmp;
-			target   = field;
-		}
-
-		if (m_action == Action::query && m_option.empty())
-			m_valid = false;
-	}
-	else if (p == Parameter::filename || p == Parameter::blob)
+	if (p == Parameter::filename || p == Parameter::blob)
 	{
 		// After split_right() remove the matched string from "target", we can't undo it.
 		// Therefore we make a copy of target and match that instead.
@@ -211,16 +209,14 @@ std::string URLIntent::str() const
 			oss << m_filename;
 			break;
 
-		case Parameter::option:
-			if (!m_option.empty())
-				oss << "?" << m_option;
-			break;
-
 		case Parameter::query_target:
 			oss << to_string(m_query_target);
 			break;
 		}
 	}
+
+	if (!m_option.empty())
+		oss << "?" << m_option;
 
 	return oss.str();
 }

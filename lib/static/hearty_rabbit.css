@@ -328,6 +328,14 @@ body {
 	font-family: sans-serif;
 }
 
+#share-link-textbox {
+	width: 60vw;
+}
+
+.material-icons {
+	vertical-align: middle;
+}
+
 /* Show the tooltip text when you mouse over the tooltip container */
 .tooltip:hover .tooltiptext {
 	visibility: visible;

@@ -6,9 +6,12 @@
     distribution for more details.
 */
 
+#pragma once
+
 #include "RepeatingTuple.hh"
 
 #include <boost/utility/string_view.hpp>
+#include <boost/algorithm/hex.hpp>
 
 #include <optional>
 #include <string>
@@ -16,6 +19,40 @@
 #include <tuple>
 
 namespace hrb {
+
+template <std::size_t N>
+std::string to_hex(const std::array<unsigned char, N>& arr)
+{
+	std::string result(arr.size()*2, '\0');
+	boost::algorithm::hex_lower(arr.begin(), arr.end(), result.begin());
+	return result;
+}
+
+template <std::size_t N>
+std::string to_quoted_hex(const std::array<unsigned char, N>& id, char quote = '\"')
+{
+	std::string result(id.size()*2 + 2, quote);
+	boost::algorithm::hex_lower(id.begin(), id.end(), result.begin()+1);
+	return result;
+}
+
+template <std::size_t N>
+std::optional<std::array<unsigned char, N>> hex_to_array(std::string_view hex)
+{
+	try
+	{
+		std::array<unsigned char, N> result;
+		if (hex.size() == result.size()*2)
+		{
+			boost::algorithm::unhex(hex.begin(), hex.end(), result.begin());
+			return result;
+		}
+	}
+	catch (boost::algorithm::hex_decode_error&)
+	{
+	}
+	return std::nullopt;
+}
 
 std::string url_encode(std::string_view in);
 
@@ -85,3 +122,8 @@ auto tokenize(boost::string_view remain, boost::string_view value)
 }
 
 } // end of namespace
+template <std::size_t N>
+std::ostream& operator<<(std::ostream& os, const std::array<unsigned char, N>& id)
+{
+	return os << hrb::to_hex(id);
+}

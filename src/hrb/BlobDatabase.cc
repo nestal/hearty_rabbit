@@ -16,6 +16,7 @@
 #include "BlobFile.hh"
 
 #include "net/MMapResponseBody.hh"
+#include "util/Escape.hh"
 
 #include "util/Log.hh"
 #include "util/Configuration.hh"
