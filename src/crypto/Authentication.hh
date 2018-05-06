@@ -33,7 +33,7 @@ public:
 	using Cookie = std::array<unsigned char, 16>;
 
 	Authentication() = default;
-	Authentication(Cookie cookie, std::string_view user);
+	Authentication(Cookie cookie, std::string_view user, bool guest=false);
 	Authentication(Authentication&&) = default;
 	Authentication(const Authentication&) = default;
 	~Authentication() = default;
@@ -65,6 +65,30 @@ public:
 		std::function<void(std::error_code, Authentication&&)>&& completion
 	);
 
+	template <typename Complete, typename Duration>
+	static void share_resource(
+		std::string_view owner,
+		std::string_view resource,
+		Duration valid_period,
+		redis::Connection& db,
+		Complete&& comp
+	);
+
+	template <typename Complete>
+	void is_shared_resource(
+		std::string_view resource,
+		redis::Connection& db,
+		Complete&& comp
+	);
+
+	template <typename Complete>
+	static void list_guests(
+		std::string_view owner,
+		std::string_view resource,
+		redis::Connection& db,
+		Complete&& comp
+	);
+
 	void destroy_session(
 		redis::Connection& db,
 		std::function<void(std::error_code)>&& completion
@@ -75,6 +99,10 @@ public:
 
 	const Cookie& cookie() const {return m_cookie;}
 	const std::string& user() const {return m_user;}
+	bool is_guest() const {return m_guest;}
+
+	bool operator==(const Authentication& rhs) const;
+	bool operator!=(const Authentication& rhs) const;
 
 private:
 	void renew_session(
@@ -84,8 +112,12 @@ private:
 	) const;
 
 private:
+	static const std::string_view m_shared_auth_prefix;
+
+private:
 	Cookie      m_cookie{};
 	std::string m_user;
+	bool        m_guest{false};
 };
 
 std::optional<Authentication::Cookie> parse_cookie(std::string_view cookie);

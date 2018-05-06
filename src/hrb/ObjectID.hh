@@ -22,24 +22,12 @@
 
 namespace hrb {
 
-// If use a typedef (or using), then the argument-dependent lookup (ADL) will not
-// work for operator<<
-struct ObjectID : std::array<unsigned char, Blake2::size>
-{
-	using array::array;
-	explicit ObjectID(const array& ar) : array{ar} {}
-};
-
+using ObjectID = std::array<unsigned char, Blake2::size>;
 static_assert(std::is_standard_layout<ObjectID>::value);
 
-std::string to_hex(const ObjectID& id);
-std::string to_quoted_hex(const ObjectID& id, char quote = '\"');
 std::optional<ObjectID> hex_to_object_id(std::string_view hex);
 bool is_valid_blob_id(std::string_view hex);
 
 std::optional<ObjectID> raw_to_object_id(std::string_view raw);
 
-std::ostream& operator<<(std::ostream& os, const ObjectID& id);
-
 } // end of namespace
-

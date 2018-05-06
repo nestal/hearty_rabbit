@@ -32,6 +32,9 @@
 	<span class="nav-level1 show-only-after-logged-in" id="create-album-nav" title="Create new album">
 		<i class="nav-icons material-icons">create_new_folder</i>
 	</span>
+	<span class="nav-level1 show-only-after-logged-in" id="share-nav" title="Share link">
+		<i class="nav-icons material-icons">share</i>
+	</span>
 	<span class="nav-level1 show-only-after-logged-in" id="logout-nav" title="Log out">
 		<a href="/logout"><i class="nav-icons material-icons">exit_to_app</i></a>
 	</span>
@@ -117,6 +120,19 @@
 			<button type="submit">Move</button>
 		</fieldset>
 	</form>
+</section>
+
+<section id="share-link-dialog" class="modal">
+	<div class="light-box-button-bar">
+		<i class="close-overlays light-box-button material-icons">close</i>
+	</div>
+	<div class="modal-content dialog-container">
+		<h1>Share Link</h1>
+		<p>Here is a direct link to the album. You can copy-and-paste and share it to others.</p>
+		<p>Note that all shared <i class="material-icons">people</i> images can be viewed by anyone
+			via this link:</p>
+		<p><textarea id="share-link-textbox" readonly></textarea><i id="copy-shared-link" class="light-box-button material-icons">content_copy</i></p>
+	</div>
 </section>
 
 <section id="toast">Uploading stuff</section>

@@ -111,8 +111,10 @@ TEST_CASE("/view URL parsing")
 
 	URLIntent with_option{"/view/siuyung/?option"};
 	REQUIRE(with_option.action() == URLIntent::Action::view);
+	REQUIRE(with_option.user() == "siuyung");
 	REQUIRE(with_option.collection() == "");
-	REQUIRE_FALSE(with_option.valid());
+	REQUIRE(with_option.option() == "option");
+	REQUIRE(with_option.valid());
 }
 
 TEST_CASE("/api URL parsing")
@@ -150,6 +152,16 @@ TEST_CASE("/api URL parsing")
 	REQUIRE(path_with_question.filename() == "");
 	REQUIRE(path_with_question.option() == "");
 	REQUIRE(path_with_question.valid());
+
+	URLIntent auth_key{URLIntent::Action::api, "someone", "someplace", "some_file", "auth=1234"};
+	REQUIRE(auth_key.str() == "/api/someone/someplace/some_file?auth=1234");
+
+	// is this a bug?
+	URLIntent round_trip{auth_key.str()};
+	REQUIRE(round_trip.user() == "someone");
+	REQUIRE(round_trip.collection() == "someplace/some_file");
+	REQUIRE(round_trip.filename() == "");
+	REQUIRE(round_trip.option() == "auth=1234");
 }
 
 TEST_CASE("upload URL")
@@ -214,6 +226,14 @@ TEST_CASE("upload URL")
 	URLIntent upload_default{"/upload/nestal/DSC_1460.JPG"};
 	REQUIRE(upload_default.action() == URLIntent::Action::upload);
 	REQUIRE(upload_default.valid());
+
+	URLIntent with_option{"/upload/siuyung/file?oops"};
+	REQUIRE(with_option.action() == URLIntent::Action::upload);
+	REQUIRE(with_option.user() == "siuyung");
+	REQUIRE(with_option.collection() == "");
+	REQUIRE(with_option.filename() == "file");
+	REQUIRE(with_option.option() == "oops");
+	REQUIRE(with_option.valid());
 }
 
 TEST_CASE("UTF8 special characters")
@@ -293,6 +313,14 @@ TEST_CASE("query URLs")
 	REQUIRE(query_question.option() == "user=quest?ion");
 	REQUIRE(query_question.valid());
 	REQUIRE(query_question.str() == "/query/collection?user=quest?ion");
+
+	query_question.add_option("one=more");
+	REQUIRE(query_question.option() == "user=quest?ion&one=more");
+	REQUIRE(query_question.str() == "/query/collection?user=quest?ion&one=more");
+
+	query_question.set_option("other=option");
+	REQUIRE(query_question.option() == "other=option");
+	REQUIRE(query_question.str() == "/query/collection?other=option");
 
 	REQUIRE(std::get<0>(find_fields(query_user.option(), "user")) == "sum");
 

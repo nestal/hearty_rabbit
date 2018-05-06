@@ -11,9 +11,12 @@
 //
 
 #include <catch.hpp>
-#include <iostream>
 
 #include "hrb/BlobRequest.hh"
+#include "crypto/Authentication.hh"
+#include "crypto/Random.hh"
+
+#include <iostream>
 
 using namespace hrb;
 
@@ -23,11 +26,12 @@ TEST_CASE("BlobRequest move ctor")
 	get_blob.method(http::verb::get);
 	get_blob.target("/view/testuser/d83587387441dbd26616b532fe039fc0e9f4c927");
 
-	BlobRequest subject{get_blob, URLIntent{get_blob.target()}, "sumsum"};
+	BlobRequest subject{get_blob, URLIntent{get_blob.target()}};
 	auto moved{std::move(subject)};
 
 	REQUIRE(moved.blob().has_value());
 	REQUIRE(*moved.blob() == *hex_to_object_id("d83587387441dbd26616b532fe039fc0e9f4c927"));
 	REQUIRE(moved.owner() == "testuser");
-	REQUIRE(moved.requester() == "sumsum");
+	REQUIRE_FALSE(moved.request_by_owner({insecure_random<Authentication::Cookie>(), "sumsum"}));
+	REQUIRE(moved.request_by_owner({insecure_random<Authentication::Cookie>(), "testuser"}));
 }

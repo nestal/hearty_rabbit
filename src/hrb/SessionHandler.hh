@@ -96,8 +96,10 @@ private:
 	void on_logout(const EmptyRequest& req, EmptyResponseSender&& send);
 	void on_upload(UploadRequest&& req, EmptyResponseSender&& send);
 	void unlink(BlobRequest&& req, EmptyResponseSender&& send);
-	void update_blob(BlobRequest&& req, EmptyResponseSender&& send);
-	void update_view(BlobRequest&& req, EmptyResponseSender&& send);
+	void post_blob(BlobRequest&& req, EmptyResponseSender&& send);
+
+	template <class Send>
+	void post_view(BlobRequest&& req, Send&& send);
 
 	template <class Send>
 	void scan_collection(const URLIntent& intent, unsigned version, Send&& send);

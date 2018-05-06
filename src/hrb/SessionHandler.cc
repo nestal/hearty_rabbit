@@ -23,6 +23,7 @@
 
 #include "crypto/Password.hh"
 #include "crypto/Authentication.hh"
+#include "crypto/Authentication.ipp"
 
 #include "net/SplitBuffers.hh"
 #include "net/MMapResponseBody.hh"
@@ -132,7 +133,7 @@ http::response<http::empty_body> SessionHandler::see_other(boost::beast::string_
 void SessionHandler::unlink(BlobRequest&& req, EmptyResponseSender&& send)
 {
 	assert(req.blob());
-	if (!req.request_by_owner())
+	if (!req.request_by_owner(m_auth))
 		return send(http::response<http::empty_body>{http::status::forbidden, req.version()});
 
 	// remove from user's container
@@ -151,79 +152,44 @@ void SessionHandler::unlink(BlobRequest&& req, EmptyResponseSender&& send)
 	);
 }
 
-void SessionHandler::update_view(BlobRequest&& req, EmptyResponseSender&& send)
+void SessionHandler::post_blob(BlobRequest&& req, EmptyResponseSender&& send)
 {
-	if (!req.request_by_owner())
-		return send(http::response<http::empty_body>{http::status::forbidden, req.version()});
-
-	assert(!req.blob());
-	auto[cover] = find_fields(req.body(), "cover");
-
-	if (!cover.empty())
-	{
-		if (auto cover_blob = hex_to_object_id(cover); cover_blob)
-			return Ownership{req.owner()}.set_cover(
-				*m_db,
-				req.collection(),
-				*cover_blob,
-				[send=std::move(send), version=req.version()](bool ok, auto ec)
-				{
-					send(http::response<http::empty_body>{
-						ec ?
-							http::status::internal_server_error :
-							(ok ? http::status::no_content : http::status::bad_request),
-						version
-					});
-				}
-			);
-	}
-
-	send(http::response<http::empty_body>{http::status::bad_request, req.version()});
-}
-
-void SessionHandler::update_blob(BlobRequest&& req, EmptyResponseSender&& send)
-{
-	if (!req.request_by_owner())
+	if (!req.request_by_owner(m_auth))
 		return send(http::response<http::empty_body>{http::status::forbidden, req.version()});
 
 	assert(req.blob());
 	auto [perm_str, move_destination] = find_fields(req.body(), "perm", "move");
 
-	if (!perm_str.empty() || !move_destination.empty())
-	{
-		auto on_complete = [send = std::move(send), version = req.version()](auto&& ec)
-		{
-			send(
-				http::response<http::empty_body>{
-					ec ? http::status::internal_server_error : http::status::no_content,
-					version
-				}
-			);
-		};
+	if (perm_str.empty() && move_destination.empty())
+		return send(http::response<http::empty_body>{http::status::bad_request, req.version()});
 
-		if (!perm_str.empty())
-			Ownership{req.owner()}.set_permission(
-				*m_db,
-				req.collection(),
-				*req.blob(),
-				Permission::from_description(perm_str),
-				std::move(on_complete)
-			);
-		else if (!move_destination.empty())
-		{
-			Ownership{req.owner()}.move_blob(
-				*m_db,
-				req.collection(),
-				move_destination,
-				*req.blob(),
-				std::move(on_complete)
-			);
-		}
-	}
-	else
+	auto on_complete = [send = std::move(send), version = req.version()](auto&& ec)
 	{
-		send(http::response<http::empty_body>{http::status::bad_request, req.version()});
-	}
+		send(
+			http::response<http::empty_body>{
+				ec ? http::status::internal_server_error : http::status::no_content,
+				version
+			}
+		);
+	};
+
+	if (!perm_str.empty())
+		Ownership{req.owner()}.set_permission(
+			*m_db,
+			req.collection(),
+			*req.blob(),
+			Permission::from_description(perm_str),
+			std::move(on_complete)
+		);
+
+	else if (!move_destination.empty())
+		Ownership{req.owner()}.move_blob(
+			*m_db,
+			req.collection(),
+			move_destination,
+			*req.blob(),
+			std::move(on_complete)
+		);
 }
 
 void SessionHandler::on_upload(UploadRequest&& req, EmptyResponseSender&& send)
@@ -309,7 +275,7 @@ bool SessionHandler::renewed_auth() const
 {
 	return m_request_cookie.has_value()      ?  // if request cookie is present, check against the new cookie
 		*m_request_cookie != m_auth.cookie() :  // otherwise, there's no cookie in the original request,
-		m_auth.valid();                         // if we have a valid cookie now, then the session is renewed.
+		(m_auth.valid() && !m_auth.is_guest()); // if we have a valid (non-guest) cookie now, then the session is renewed.
 }
 
 std::string SessionHandler::server_root() const
