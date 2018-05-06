@@ -6,6 +6,7 @@ from PIL import Image, ImageOps, ImageColor
 from io import BytesIO
 import numpy
 import random
+import string
 
 class NormalTestCase(unittest.TestCase):
 	@staticmethod
@@ -486,7 +487,6 @@ class NormalTestCase(unittest.TestCase):
 		)
 		self.assertEqual(slink.status_code, 204)
 		self.assertNotEqual(slink.headers["Location"], "")
-		print(slink.headers["Location"])
 
 		# anonymous user can fetch the shared link
 		view_slink = self.anon.get(("https://localhost:4433" + slink.headers["Location"]).replace("/view", "/api"))
@@ -512,6 +512,44 @@ class NormalTestCase(unittest.TestCase):
 		up2 = self.anon.put("https://localhost:4433/upload/sumsum/new.jpg?auth=" + auth_key, data=self.random_image(1000, 1200))
 		self.assertNotEqual(self.anon.cookies.get("id"), "")
 		self.assertEqual(up2.status_code, 400)
+
+	def test_invalid_auth_key_treat_as_public(self):
+		# upload to album
+		up1 = self.user1.put("https://localhost:4433/upload/sumsum/test_invalid_auth_key/new.jpg", data=self.random_image(1000, 1200))
+		new_blob = self.response_blob(up1)
+
+		# set permission to shared
+		self.assertEqual(
+			self.user1.post(
+				"https://localhost:4433" + up1.headers["Location"],
+				data="perm=shared",
+				headers={"Content-type": "application/x-www-form-urlencoded"}
+			).status_code,
+			204
+		)
+
+		# try to read the album with an invalid key
+		invalid_auth_key = "".join(random.choices(string.hexdigits, k=40))
+		dir_api = self.anon.get("https://localhost:4433/api/sumsum/test_invalid_auth_key/?auth=" + invalid_auth_key)
+		self.assertEqual(dir_api.status_code, 200)
+		self.assertFalse("auth" in dir_api.json())
+		self.assertFalse(new_blob in dir_api.json()["elements"])
+
+		# set permission to public
+		self.assertEqual(
+			self.user1.post(
+				"https://localhost:4433" + up1.headers["Location"],
+				data="perm=public",
+				headers={"Content-type": "application/x-www-form-urlencoded"}
+			).status_code,
+			204
+		)
+
+		# can see public image
+		dir_api2 = self.anon.get("https://localhost:4433/api/sumsum/test_invalid_auth_key/?auth=" + invalid_auth_key)
+		self.assertEqual(dir_api2.status_code, 200)
+		self.assertFalse("auth" in dir_api2.json())
+		self.assertTrue(new_blob in dir_api2.json()["elements"])
 
 if __name__ == '__main__':
 	unittest.main()
