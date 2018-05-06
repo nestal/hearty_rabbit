@@ -152,48 +152,6 @@ void SessionHandler::unlink(BlobRequest&& req, EmptyResponseSender&& send)
 	);
 }
 
-void SessionHandler::post_view(BlobRequest&& req, EmptyResponseSender&& send)
-{
-	if (!req.request_by_owner(m_auth))
-		return send(http::response<http::empty_body>{http::status::forbidden, req.version()});
-
-	assert(!req.blob());
-	auto[cover, share] = find_fields(req.body(), "cover", "share");
-
-	using namespace std::chrono_literals;
-
-	if (auto cover_blob = hex_to_object_id(cover); cover_blob)
-		return Ownership{req.owner()}.set_cover(
-			*m_db,
-			req.collection(),
-			*cover_blob,
-			[send=std::move(send), version=req.version()](bool ok, auto ec)
-			{
-				send(http::response<http::empty_body>{
-					ec ?
-						http::status::internal_server_error :
-						(ok ? http::status::no_content : http::status::bad_request),
-					version
-				});
-			}
-		);
-
-	else if (share == "create")
-		return Authentication::share_resource(req.owner(), req.collection(), 3600s, *m_db, [
-			send=std::move(send),
-			req
-		](auto&& auth, auto ec)
-		{
-			URLIntent location{URLIntent::Action::view, req.owner(), req.collection(), "", "auth=" + to_hex(auth.cookie())};
-
-			http::response<http::empty_body> res{http::status::no_content, req.version()};
-			res.set(http::field::location, location.str());
-			return send(std::move(res));
-		});
-
-	send(http::response<http::empty_body>{http::status::bad_request, req.version()});
-}
-
 void SessionHandler::post_blob(BlobRequest&& req, EmptyResponseSender&& send)
 {
 	if (!req.request_by_owner(m_auth))

@@ -430,4 +430,64 @@ void SessionHandler::query_blob_set(const URLIntent& intent, unsigned version, S
 	);
 }
 
+template <class Send>
+void SessionHandler::post_view(BlobRequest&& req, Send&& send)
+{
+	if (!req.request_by_owner(m_auth))
+		return send(http::response<http::empty_body>{http::status::forbidden, req.version()});
+
+	assert(!req.blob());
+	auto[cover, share] = find_fields(req.body(), "cover", "share");
+
+	using namespace std::chrono_literals;
+
+	if (auto cover_blob = hex_to_object_id(cover); cover_blob)
+		return Ownership{req.owner()}.set_cover(
+			*m_db,
+			req.collection(),
+			*cover_blob,
+			[send=std::move(send), version=req.version()](bool ok, auto ec)
+			{
+				send(http::response<http::empty_body>{
+					ec ?
+						http::status::internal_server_error :
+						(ok ? http::status::no_content : http::status::bad_request),
+					version
+				});
+			}
+		);
+
+	else if (share == "create")
+		return Authentication::share_resource(req.owner(), req.collection(), 3600s, *m_db, [
+			send=std::move(send),
+			req
+		](auto&& auth, auto ec)
+		{
+			URLIntent location{URLIntent::Action::view, req.owner(), req.collection(), "", "auth=" + to_hex(auth.cookie())};
+
+			http::response<http::empty_body> res{http::status::no_content, req.version()};
+			res.set(http::field::location, location.str());
+			return send(std::move(res));
+		});
+	else if (share == "list")
+		return Authentication::list_guests(req.owner(), req.collection(), *m_db, [
+			send=std::move(send), version=req.version()
+		](auto&& guests, auto ec)
+		{
+			auto json = nlohmann::json::array();
+			for (auto&& guest : guests)
+				json.emplace_back(to_hex(guest.cookie()));
+
+			http::response<http::string_body> res{
+				std::piecewise_construct,
+				std::make_tuple(json.dump()),
+				std::make_tuple(http::status::ok, version)
+			};
+			res.set(http::field::content_type, "application/json");
+			return send(std::move(res));
+		});
+
+	send(http::response<http::empty_body>{http::status::bad_request, req.version()});
+}
+
 } // end of namespace
