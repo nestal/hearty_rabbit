@@ -81,9 +81,10 @@ public:
 			if (m_auth.is_guest())
 			{
 				auto auth = "auth=" + to_hex(m_auth.cookie());
-				cover_url.set_option(auth);
-				view_url.set_option(auth);
+				cover_url.add_option(auth);
+				view_url.add_option(auth);
 			}
+			cover_url.add_option("rendition=thumbnail");
 
 			return m_send(m_lib->inject(
 				result,

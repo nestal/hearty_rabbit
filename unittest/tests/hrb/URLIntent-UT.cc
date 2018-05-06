@@ -314,6 +314,10 @@ TEST_CASE("query URLs")
 	REQUIRE(query_question.valid());
 	REQUIRE(query_question.str() == "/query/collection?user=quest?ion");
 
+	query_question.add_option("one=more");
+	REQUIRE(query_question.option() == "user=quest?ion&one=more");
+	REQUIRE(query_question.str() == "/query/collection?user=quest?ion&one=more");
+
 	query_question.set_option("other=option");
 	REQUIRE(query_question.option() == "other=option");
 	REQUIRE(query_question.str() == "/query/collection?other=option");

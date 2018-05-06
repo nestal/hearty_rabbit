@@ -71,6 +71,7 @@ public:
 	QueryTarget query_target() const {return m_query_target;}
 
 	void set_option(std::string_view option) {m_option = option;}
+	void add_option(std::string_view option);
 
 	std::string str() const;
 	bool valid() const;

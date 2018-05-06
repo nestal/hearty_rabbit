@@ -284,4 +284,12 @@ std::string_view URLIntent::to_string(URLIntent::QueryTarget query_target)
 	}
 }
 
+void URLIntent::add_option(std::string_view option)
+{
+	if (!m_option.empty())
+		m_option.push_back('&');
+
+	m_option.append(option);
+}
+
 } // end of namespace hrb
