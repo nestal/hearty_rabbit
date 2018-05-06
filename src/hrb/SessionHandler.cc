@@ -152,7 +152,7 @@ void SessionHandler::unlink(BlobRequest&& req, EmptyResponseSender&& send)
 	);
 }
 
-void SessionHandler::update_view(BlobRequest&& req, EmptyResponseSender&& send)
+void SessionHandler::post_view(BlobRequest&& req, EmptyResponseSender&& send)
 {
 	if (!req.request_by_owner(m_auth))
 		return send(http::response<http::empty_body>{http::status::forbidden, req.version()});
@@ -178,7 +178,7 @@ void SessionHandler::update_view(BlobRequest&& req, EmptyResponseSender&& send)
 			}
 		);
 
-	else if (!share.empty())
+	else if (share == "create_link")
 		return Authentication::share_resource(req.owner(), req.collection(), 3600s, *m_db, [
 			send=std::move(send),
 			req
@@ -194,7 +194,7 @@ void SessionHandler::update_view(BlobRequest&& req, EmptyResponseSender&& send)
 	send(http::response<http::empty_body>{http::status::bad_request, req.version()});
 }
 
-void SessionHandler::update_blob(BlobRequest&& req, EmptyResponseSender&& send)
+void SessionHandler::post_blob(BlobRequest&& req, EmptyResponseSender&& send)
 {
 	if (!req.request_by_owner(m_auth))
 		return send(http::response<http::empty_body>{http::status::forbidden, req.version()});
