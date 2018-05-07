@@ -57,7 +57,7 @@ class NormalTestCase(unittest.TestCase):
 			data="username=sumsum&password=bearbear",
 			headers={"Content-type": "application/x-www-form-urlencoded"}
 		)
-		self.assertEqual(login_response.status_code, 200)
+		self.assertEqual(login_response.status_code, 204)
 		self.assertNotEqual(self.user1.cookies.get("id"), "")
 
 		self.user2 = requests.Session()
@@ -385,7 +385,7 @@ class NormalTestCase(unittest.TestCase):
 			data="username=invalid&password=invalid",
 			headers={"Content-type": "application/x-www-form-urlencoded"}
 		)
-		self.assertEqual(login_response.status_code, 200)
+		self.assertEqual(login_response.status_code, 403)
 		self.assertEqual(session.cookies.get("id"), None)
 		session.close()
 
