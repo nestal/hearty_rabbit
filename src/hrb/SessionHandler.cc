@@ -106,7 +106,7 @@ void SessionHandler::on_logout(const EmptyRequest& req, EmptyResponseSender&& se
 		// Session will set the cookie in the response so no need to set here
 		m_auth = Authentication{};
 
-		auto&& res = see_other("/", version);
+		http::response<http::empty_body> res{http::status::ok, version};
 		res.set(http::field::cache_control, "no-cache, no-store, must-revalidate");
 		res.keep_alive(false);
 		send(std::move(res));
