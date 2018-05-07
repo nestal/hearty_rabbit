@@ -80,18 +80,12 @@ void SessionHandler::on_login(const StringRequest& req, EmptyResponseSender&& se
 				send=std::move(send)
 			](std::error_code ec, auto&& session) mutable
 			{
-//				auto login_incorrect = URLIntent{URLIntent::Action::lib, "", "", "login_incorrect.html"}.str();
-
-				// we want to redirect people to the page they login from. e.g. when they press the
-				// login button from /view/user/collection, we want to redirect them to
-				// /view/user/collection after they login successfully.
-				// Except when they login from /login_incorrect.html: even if they login from that page
-				// we won't redirect them back there, because it would look like the login failed.
-//				if (login_from == login_incorrect)
-//					login_from.clear();
-
-//				auto&& res = see_other(ec ? login_incorrect : (login_from.empty() ? "/" : login_from), version);
-				http::response<http::empty_body> res{ec ? http::status::forbidden : http::status::no_content, version};
+				http::response<http::empty_body> res{
+					ec == Error::login_incorrect ?
+						http::status::forbidden :
+						(ec ? http::status::internal_server_error : http::status::no_content),
+					version
+				};
 				if (!ec)
 					m_auth = std::move(session);
 

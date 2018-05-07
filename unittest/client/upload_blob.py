@@ -62,11 +62,13 @@ class NormalTestCase(unittest.TestCase):
 
 		self.user2 = requests.Session()
 		self.user2.verify = "../../etc/hearty_rabbit/certificate.pem"
-		self.user2.post(
+		login_response = self.user2.post(
 			"https://localhost:4433/login",
 			data="username=siuyung&password=rabbit",
 			headers={"Content-type": "application/x-www-form-urlencoded"}
 		)
+		self.assertEqual(login_response.status_code, 204)
+		self.assertNotEqual(self.user1.cookies.get("id"), "")
 
 		# set up a session without valid credential
 		self.anon = requests.Session()
