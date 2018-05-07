@@ -82,16 +82,16 @@
 	<div class="light-box-button-bar">
 		<i class="close-overlays light-box-button material-icons">close</i>
 	</div>
-	<div class="modal-content dialog-container">
+	<form class="modal-content dialog-container">
 		<h1>Welcome to HeartyRabbit!</h1>
 		<div id="login-message">Please login:</div>
-		<form action="/login" method="post">
-			<input name="username" type="text" placeholder="Username">
-			<input name="password" type="password" placeholder="Password">
-			<input id="login-from" name="login-from" type="hidden">
+		<fieldset>
+			<legend>Please login:</legend>
+			<input id="login-username" type="text" placeholder="Username">
+			<input id="login-password" type="password" placeholder="Password">
 			<button type="submit">Login</button>
-		</form>
-	</div>
+		</fieldset>
+	</form>
 </section>
 
 <section id="create-album-dialog" class="modal">
