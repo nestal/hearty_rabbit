@@ -253,8 +253,8 @@ TEST_CASE("General server tests", "[normal]")
 
 		SECTION("Login Incorrect")
 		{
-			MovedResponseChecker login_incorrect{"/lib/login_incorrect.html"};
-			MovedResponseChecker invalid_login{"/"};
+			GenericStatusChecker login_incorrect{http::status::forbidden};
+			GenericStatusChecker invalid_login{http::status::bad_request};
 
 			req.target("/login");
 			req.method(http::verb::post);

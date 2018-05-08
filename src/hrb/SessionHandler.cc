@@ -67,7 +67,7 @@ void SessionHandler::on_login(const StringRequest& req, EmptyResponseSender&& se
 	auto&& body = req.body();
 	if (req[http::field::content_type] == "application/x-www-form-urlencoded")
 	{
-		auto [username, password, login_from] = find_fields(body, "username", "password", "login-from");
+		auto [username, password] = find_fields(body, "username", "password");
 
 		Authentication::verify_user(
 			username,
@@ -77,21 +77,15 @@ void SessionHandler::on_login(const StringRequest& req, EmptyResponseSender&& se
 			[
 				this,
 				version=req.version(),
-				send=std::move(send),
-				login_from=url_decode(login_from)
+				send=std::move(send)
 			](std::error_code ec, auto&& session) mutable
 			{
-				auto login_incorrect = URLIntent{URLIntent::Action::lib, "", "", "login_incorrect.html"}.str();
-
-				// we want to redirect people to the page they login from. e.g. when they press the
-				// login button from /view/user/collection, we want to redirect them to
-				// /view/user/collection after they login successfully.
-				// Except when they login from /login_incorrect.html: even if they login from that page
-				// we won't redirect them back there, because it would look like the login failed.
-				if (login_from == login_incorrect)
-					login_from.clear();
-
-				auto&& res = see_other(ec ? login_incorrect : (login_from.empty() ? "/" : login_from), version);
+				http::response<http::empty_body> res{
+					ec == Error::login_incorrect ?
+						http::status::forbidden :
+						(ec ? http::status::internal_server_error : http::status::no_content),
+					version
+				};
 				if (!ec)
 					m_auth = std::move(session);
 
@@ -101,7 +95,7 @@ void SessionHandler::on_login(const StringRequest& req, EmptyResponseSender&& se
 		);
 	}
 	else
-		send(see_other("/", req.version()));
+		send(http::response<http::empty_body>{http::status::bad_request, req.version()});
 }
 
 void SessionHandler::on_logout(const EmptyRequest& req, EmptyResponseSender&& send)
@@ -112,7 +106,7 @@ void SessionHandler::on_logout(const EmptyRequest& req, EmptyResponseSender&& se
 		// Session will set the cookie in the response so no need to set here
 		m_auth = Authentication{};
 
-		auto&& res = see_other("/", version);
+		http::response<http::empty_body> res{http::status::ok, version};
 		res.set(http::field::cache_control, "no-cache, no-store, must-revalidate");
 		res.keep_alive(false);
 		send(std::move(res));
