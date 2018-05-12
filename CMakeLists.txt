@@ -15,6 +15,7 @@ find_package(Boost REQUIRED COMPONENTS system filesystem program_options)
 find_package(Threads REQUIRED)
 find_package(PkgConfig REQUIRED)
 find_package(OpenSSL REQUIRED)
+find_package(OpenCV)
 find_package(Doxygen)
 
 # Find libb2
@@ -130,6 +131,10 @@ if (DOXYGEN_FOUND)
 	set_target_properties(doc PROPERTIES EXCLUDE_FROM_ALL TRUE)
 else()
 	message(STATUS "No Doxygen found. Documentation won't be built")
+endif()
+
+if (OPENCV_FOUND)
+	message(STATUS "found OPENCV")
 endif()
 
 # Installation

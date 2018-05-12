@@ -1,15 +1,17 @@
 FROM centos/devtoolset-7-toolchain-centos7:7 as builder
 MAINTAINER [Nestal Wan <me@nestal.net>]
 ENV container docker
+ENV PATH="/opt/bin:${PATH}"
 
 USER 0
 
 # install development tools
 RUN yum install -y deltarpm epel-release \
 	&& rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-EPEL-7 \
-	&& yum install -y --setopt=tsflags=nodocs openssl-devel git make rapidjson-devel hiredis-devel \
+	&& yum update -y \
+	&& yum install -y --setopt=tsflags=nodocs openssl-devel git make hiredis-devel \
 		file-devel libicu-devel zlib-devel bzip2-devel xz-devel libunwind-devel which \
-		autoconf automake libtool exiv2-devel msgpack-devel nasm \
+		autoconf automake libtool exiv2-devel msgpack-devel libpng-devel nasm \
 	&& source scl_source enable devtoolset-7 \
 	&& yum clean all -y \
 	&& mkdir /build
@@ -17,7 +19,9 @@ RUN yum install -y deltarpm epel-release \
 ADD https://github.com/libjpeg-turbo/libjpeg-turbo/archive/1.5.3.tar.gz \
 	https://dl.bintray.com/boostorg/release/1.66.0/source/boost_1_66_0.tar.gz \
 	https://dl.bintray.com/boostorg/release/1.67.0/source/boost_1_67_0.tar.gz \
-	https://cmake.org/files/v3.11/cmake-3.11.0.tar.gz /build/
+	https://cmake.org/files/v3.11/cmake-3.11.0.tar.gz \
+	https://github.com/opencv/opencv/archive/3.4.1.tar.gz \
+		/build/
 
 WORKDIR /build
 
@@ -61,6 +65,13 @@ RUN cd libb2 \
 	&& ./autogen.sh \
 	&& ./configure --prefix=/opt --enable-native=no \
 	&& make install
+
+RUN tar zxvf 3.4.1.tar.gz \
+	&& cd opencv-3.4.1 \
+	&& mkdir build \
+	&& cd build \
+	&& cmake -D CMAKE_BUILD_TYPE=Release -D CMAKE_INSTALL_PREFIX=/opt .. \
+	&& make -j8 install
 
 # TODO: remove rapidjson after completely migrated to nlohmann
 ADD https://github.com/nlohmann/json/releases/download/v3.1.2/json.hpp /opt/include/
