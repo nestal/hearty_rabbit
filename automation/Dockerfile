@@ -17,7 +17,6 @@ RUN yum install -y deltarpm epel-release \
 	&& mkdir /build
 
 ADD https://github.com/libjpeg-turbo/libjpeg-turbo/archive/1.5.3.tar.gz \
-	https://dl.bintray.com/boostorg/release/1.66.0/source/boost_1_66_0.tar.gz \
 	https://dl.bintray.com/boostorg/release/1.67.0/source/boost_1_67_0.tar.gz \
 	https://cmake.org/files/v3.11/cmake-3.11.0.tar.gz \
 	https://github.com/opencv/opencv/archive/3.4.1.tar.gz \
@@ -35,13 +34,6 @@ RUN tar zxf 1.5.3.tar.gz \
 	&& make -j8 install
 
 # build boost (>1.65 to support boost beast)
-RUN tar zxf boost_1_66_0.tar.gz \
-	&& cd boost_1_66_0 \
-	&& ./bootstrap.sh \
-		--with-libraries=program_options,filesystem,system \
-		--prefix=/opt/boost_1_66 \
-	&& (./b2 -j8 install; exit 0) \
-	&& rm -rf /build/boost_1_66_0
 RUN tar zxf boost_1_67_0.tar.gz \
 	&& cd boost_1_67_0 \
 	&& ./bootstrap.sh \
@@ -71,7 +63,8 @@ RUN tar zxvf 3.4.1.tar.gz \
 	&& mkdir build \
 	&& cd build \
 	&& cmake -D CMAKE_BUILD_TYPE=Release -D CMAKE_INSTALL_PREFIX=/opt .. \
-	&& make -j8 install
+	&& make -j8 install \
+	&& cd .. && rm -rf build
 
 # TODO: remove rapidjson after completely migrated to nlohmann
 ADD https://github.com/nlohmann/json/releases/download/v3.1.2/json.hpp /opt/include/

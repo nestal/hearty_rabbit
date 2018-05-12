@@ -15,7 +15,7 @@ find_package(Boost REQUIRED COMPONENTS system filesystem program_options)
 find_package(Threads REQUIRED)
 find_package(PkgConfig REQUIRED)
 find_package(OpenSSL REQUIRED)
-find_package(OpenCV)
+find_package(OpenCV REQUIRED)
 find_package(Doxygen)
 
 # Find libb2
@@ -84,6 +84,7 @@ target_link_libraries(
 	${HIREDIS_LIBRARIES}
 	OpenSSL::SSL
 	OpenSSL::Crypto
+	${OpenCV_LIBS}
 	${LIBUNWIND_STATIC_LIBRARIES}
 	${TURBOJPEG_STATIC_LDFLAGS}        # libjpeg-turbo may not be installed in default paths
 	${LIBB2_LIBRARY}
@@ -131,10 +132,6 @@ if (DOXYGEN_FOUND)
 	set_target_properties(doc PROPERTIES EXCLUDE_FROM_ALL TRUE)
 else()
 	message(STATUS "No Doxygen found. Documentation won't be built")
-endif()
-
-if (OPENCV_FOUND)
-	message(STATUS "found OPENCV")
 endif()
 
 # Installation

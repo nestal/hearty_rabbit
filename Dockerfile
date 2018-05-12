@@ -21,6 +21,8 @@ RUN mkdir /build/docker-build \
 			../src \
 	&& make -j8 install
 
+RUN ldd docker-build/hearty_rabbit
+
 # Copy products to runtime docker image
 FROM scratch
 COPY --from=builder /build/hearty_rabbit/ /
