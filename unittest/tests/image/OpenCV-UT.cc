@@ -43,8 +43,8 @@ std::uint64_t phash(cv::Mat image)
 	for (int i = 0; i<mask.rows; i++)
 		for (int j = 0; j<mask.cols; j++)
 			mask.at<uchar>(i, j) == 0 ?
-			    (hash[i*mask.cols + j] = '0') :
-		        (hash[i*mask.cols + j] = '1');
+			    (hash[i*mask.cols + j] = false) :
+		        (hash[i*mask.cols + j] = true);
 
 	return hash.to_ullong();
 }
@@ -61,6 +61,7 @@ TEST_CASE("open image with opencv", "[normal]")
 	REQUIRE(large.rows == 192*1.5);
 	REQUIRE(large.cols == 160*1.5);
 
+	REQUIRE(phash(mat) != std::numeric_limits<unsigned long long>::max());
 	REQUIRE(phash(mat) == phash(large));
 }
 
