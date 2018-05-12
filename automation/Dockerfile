@@ -51,18 +51,23 @@ RUN tar zxf cmake-3.11.0.tar.gz \
 # build libb2
 # Don't enable native CPU optimization because the build machine may be different from
 # the current one.
-RUN git clone https://github.com/BLAKE2/libb2.git
+RUN git clone --depth 1 -b v0.98 https://github.com/BLAKE2/libb2.git
 RUN cd libb2 \
-	&& git checkout v0.98 \
 	&& ./autogen.sh \
 	&& ./configure --prefix=/opt --enable-native=no \
 	&& make install
 
 RUN tar zxvf 3.4.1.tar.gz \
 	&& cd opencv-3.4.1 \
+	&& git clone --depth 1 -b 3.4.1 https://github.com/opencv/opencv_contrib.git \
 	&& mkdir build \
 	&& cd build \
-	&& cmake -D CMAKE_BUILD_TYPE=Release -D CMAKE_INSTALL_PREFIX=/opt .. \
+	&& cmake \
+		-D CMAKE_BUILD_TYPE=Release \
+		-D CMAKE_INSTALL_PREFIX=/opt \
+		-DOPENCV_EXTRA_MODULES_PATH=../opencv_contrib/modules \
+		-DBUILD_opencv_legacy=OFF \
+			.. \
 	&& make -j8 install \
 	&& cd .. && rm -rf build
 
