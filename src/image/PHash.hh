@@ -25,6 +25,7 @@ class PHash
 {
 public:
 	PHash() = default;
+	explicit PHash(std::uint64_t value) : m_hash{value} {}
 	explicit PHash(cv::OutputArray arr);
 
 	double compare(const PHash& other) const;
