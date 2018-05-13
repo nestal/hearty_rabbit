@@ -15,12 +15,17 @@
 #include "Ownership.hh"
 #include "Permission.hh"
 
+// HeartyRabbit headers
 #include "image/RotateImage.hh"
 #include "image/JPEG.hh"
 #include "util/MMap.hh"
 #include "util/Log.hh"
 #include "util/Magic.hh"
 #include "util/Configuration.hh"
+
+// OpenCV headers
+#include <opencv2/imgcodecs.hpp>
+#include <opencv2/imgproc.hpp>
 
 namespace hrb {
 
@@ -73,8 +78,9 @@ BlobFile BlobFile::upload(
 	// commit result
 	result.m_id     = tmp.ID();
 	result.m_tmp    = std::move(tmp);
+	result.m_phash  = phash(master.buffer());
 	result.m_mmap   = std::move(master);
-	result.m_meta   = CollEntry::create(Permission{}, filename, mime);
+	result.m_coll_entry   = CollEntry::create(Permission{}, filename, mime);
 
 	return result;
 }
@@ -164,7 +170,7 @@ BlobFile::BlobFile(
 
 CollEntry BlobFile::entry() const
 {
-	return CollEntry{m_meta};
+	return CollEntry{m_coll_entry};
 }
 
 TurboBuffer BlobFile::generate_rendition(BufferView master, Size2D dim, int quality, std::error_code& ec)
@@ -185,6 +191,33 @@ TurboBuffer BlobFile::generate_rendition(BufferView master, Size2D dim, int qual
 	}
 
 	return rotated;
+}
+
+std::uint64_t BlobFile::phash(BufferView input)
+{
+	auto image = imdecode(std::vector<unsigned char>(input.begin(), input.end()), cv::IMREAD_GRAYSCALE);
+	if (!image.data)
+		return 0;
+
+	cv::Mat img32;
+	resize(image, img32, {32, 32});
+	img32 = cv::Mat_<double>(img32);
+
+	cv::Mat dst;
+	dct(img32, dst);
+
+	dst = dst({1, 1, 8, 8});
+	auto mean_mat = mean(dst);
+
+	std::bitset<64> hash;
+	cv::Mat mask = (dst >= mean_mat[0]);
+	for (int i = 0; i<mask.rows; i++)
+		for (int j = 0; j<mask.cols; j++)
+			mask.at<uchar>(i, j) == 0 ?
+			    (hash[i*mask.cols + j] = false) :
+		        (hash[i*mask.cols + j] = true);
+
+	return hash.to_ullong();
 }
 
 } // end of namespace hrb

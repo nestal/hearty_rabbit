@@ -52,13 +52,16 @@ public:
 	CollEntry entry() const;
 
 	void save(const fs::path& dir, std::error_code& ec) const;
+	auto phash() const {return m_phash;}
 
 private:
 	static TurboBuffer generate_rendition(BufferView master, Size2D dim, int quality, std::error_code& ec);
+	static std::uint64_t phash(BufferView image);
 
 private:
-	ObjectID    m_id{};
-	std::string m_meta;
+	ObjectID        m_id{};
+	std::string     m_coll_entry;
+	std::uint64_t   m_phash{};
 
 	mutable UploadFile  m_tmp;
 	MMap                m_mmap;
