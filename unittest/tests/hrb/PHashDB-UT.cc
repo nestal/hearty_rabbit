@@ -15,8 +15,11 @@
 #include "crypto/Random.hh"
 #include "hrb/PHashDb.hh"
 #include "image/PHash.hh"
+#include "util/Escape.hh"
 
 #include "net/Redis.hh"
+
+#include <iostream>
 
 using namespace hrb;
 using namespace std::chrono_literals;
@@ -35,8 +38,11 @@ TEST_CASE("find duplicated image in database", "[normal]")
 	auto tested = false;
 
 	subject.add(lena_blob, lena);
-	subject.similar(lena_blob, [&tested](long rank, auto&& err)
+	subject.similar(lena_blob, [&tested](auto&& objs, auto&& err)
 	{
+		for (auto&& obj : objs)
+			std::cout << "similar to " << to_hex(obj) << std::endl;
+
 		REQUIRE_FALSE(err);
 //		REQUIRE(rank == 0);
 		tested = true;
