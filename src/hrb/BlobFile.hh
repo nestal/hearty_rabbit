@@ -56,7 +56,6 @@ public:
 
 private:
 	static TurboBuffer generate_rendition(BufferView master, Size2D dim, int quality, std::error_code& ec);
-	static std::uint64_t phash(BufferView image);
 
 private:
 	ObjectID        m_id{};
