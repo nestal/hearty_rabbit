@@ -18,6 +18,8 @@
 #include "net/Redis.hh"
 #include "util/Log.hh"
 
+#include <boost/range/adaptor/transformed.hpp>
+
 namespace hrb {
 namespace redis {
 class Connection;
@@ -38,7 +40,7 @@ public:
 			local rank = redis.call("ZRANK", KEYS[1], ARGV[1])
 			local start, end_ = rank, rank+1
 			if start > 0 then start = start - 1 end
-			return redis.call("ZRANGE", KEYS[1], start, end_)
+			return redis.call("ZRANGE", KEYS[1], start, end_, "WITHSCORES")
 		)__";
 
 		m_db.command(
@@ -47,12 +49,20 @@ public:
 				if (!reply || err)
 					Log(LOG_WARNING, "similar() script reply %1% %2%", reply.as_error(), err);
 
-				std::vector<ObjectID> objs;
-				for (auto&& r : reply)
-					if (auto oid = raw_to_object_id(r.as_string()); oid)
-						objs.push_back(*oid);
+				struct Entry
+				{
+					ObjectID    id;
+					PHash       phash;
+				};
 
-				comp(std::move(objs), err);
+				auto make_entry = [](auto&& kv)
+				{
+					auto oid = raw_to_object_id(kv.key());
+					return Entry{oid.has_value() ? *oid : ObjectID{}, PHash{}};
+				};
+
+				using namespace boost::adaptors;
+				comp(reply.kv_pairs() | transformed(make_entry), err);
 			},
 			"EVAL %s 1 %b %b",
 			lua,

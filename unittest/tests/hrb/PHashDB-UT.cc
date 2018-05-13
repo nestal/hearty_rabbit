@@ -38,10 +38,10 @@ TEST_CASE("find duplicated image in database", "[normal]")
 	auto tested = false;
 
 	subject.add(lena_blob, lena);
-	subject.similar(lena_blob, [&tested](auto&& objs, auto&& err)
+	subject.similar(lena_blob, [&tested](auto&& matches, auto&& err)
 	{
-		for (auto&& obj : objs)
-			std::cout << "similar to " << to_hex(obj) << std::endl;
+		for (auto&& m : matches)
+			std::cout << "similar to " << to_hex(m.id) << std::endl;
 
 		REQUIRE_FALSE(err);
 //		REQUIRE(rank == 0);
