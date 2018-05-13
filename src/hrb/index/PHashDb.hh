@@ -12,7 +12,7 @@
 
 #pragma once
 
-#include "ObjectID.hh"
+#include "hrb/ObjectID.hh"
 
 #include "image/PHash.hh"
 #include "net/Redis.hh"

@@ -32,7 +32,7 @@
 #include "util/Escape.hh"
 #include "util/FS.hh"
 #include "util/Log.hh"
-#include "PHashDb.hh"
+#include "hrb/index/PHashDb.hh"
 
 #include <boost/beast/http/fields.hpp>
 #include <boost/beast/http/message.hpp>
