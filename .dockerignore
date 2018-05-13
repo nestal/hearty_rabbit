@@ -5,4 +5,3 @@ cmake-build-*
 Dockerfile
 venv
 client
-automation

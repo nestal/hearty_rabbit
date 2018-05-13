@@ -16,7 +16,6 @@
 #include "UploadFile.hh"
 
 #include "image/TurboBuffer.hh"
-#include "image/PHash.hh"
 #include "util/Size2D.hh"
 #include "util/FS.hh"
 #include "util/MMap.hh"
@@ -53,15 +52,13 @@ public:
 	CollEntry entry() const;
 
 	void save(const fs::path& dir, std::error_code& ec) const;
-	auto phash() const {return m_phash;}
 
 private:
 	static TurboBuffer generate_rendition(BufferView master, Size2D dim, int quality, std::error_code& ec);
 
 private:
 	ObjectID    m_id{};
-	std::string m_coll_entry;
-	PHash       m_phash{};
+	std::string m_meta;
 
 	mutable UploadFile  m_tmp;
 	MMap                m_mmap;

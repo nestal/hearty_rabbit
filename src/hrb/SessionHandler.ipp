@@ -470,7 +470,6 @@ void SessionHandler::post_view(BlobRequest&& req, Send&& send)
 			res.set(http::field::location, location.str());
 			return send(std::move(res));
 		});
-
 	else if (share == "list")
 		return Authentication::list_guests(req.owner(), req.collection(), *m_db, [
 			send=std::move(send), version=req.version()

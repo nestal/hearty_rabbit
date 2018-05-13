@@ -15,10 +15,8 @@
 #include "Ownership.hh"
 #include "Permission.hh"
 
-// HeartyRabbit headers
 #include "image/RotateImage.hh"
 #include "image/JPEG.hh"
-#include "image/PHash.hh"
 #include "util/MMap.hh"
 #include "util/Log.hh"
 #include "util/Magic.hh"
@@ -75,9 +73,8 @@ BlobFile BlobFile::upload(
 	// commit result
 	result.m_id     = tmp.ID();
 	result.m_tmp    = std::move(tmp);
-	result.m_phash  = hrb::phash(master.buffer());
 	result.m_mmap   = std::move(master);
-	result.m_coll_entry   = CollEntry::create(Permission{}, filename, mime);
+	result.m_meta   = CollEntry::create(Permission{}, filename, mime);
 
 	return result;
 }
@@ -167,7 +164,7 @@ BlobFile::BlobFile(
 
 CollEntry BlobFile::entry() const
 {
-	return CollEntry{m_coll_entry};
+	return CollEntry{m_meta};
 }
 
 TurboBuffer BlobFile::generate_rendition(BufferView master, Size2D dim, int quality, std::error_code& ec)
