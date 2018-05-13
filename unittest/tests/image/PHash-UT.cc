@@ -23,7 +23,7 @@
 
 using namespace hrb;
 
-TEST_CASE("open image with opencv", "[normal]")
+TEST_CASE("resize 150% up_f_rot90 produce the same phash as original", "[normal]")
 {
 	auto mat = cv::imread((fs::path{__FILE__}.parent_path()/"up_f_rot90.jpg").string(), cv::IMREAD_COLOR);
 	REQUIRE(mat.rows == 192);
@@ -42,8 +42,18 @@ TEST_CASE("open image with opencv", "[normal]")
 TEST_CASE("phash of resized lena should be the same as the original", "[normal]")
 {
 	auto lena = cv::imread((fs::path{__FILE__}.parent_path()/"lena.png").string(), cv::IMREAD_COLOR);
-	cv::Mat large;
 
-	resize(lena, large, {}, 2, 2);
-	REQUIRE(phash(lena) == phash(large));
+	cv::Mat large_2x;
+	resize(lena, large_2x, {}, 2, 2);
+	REQUIRE(phash(lena) == phash(large_2x));
+
+	cv::Mat large_3x;
+	resize(lena, large_3x, {}, 3, 3);
+	REQUIRE(phash(lena) == phash(large_3x));
+}
+
+TEST_CASE("phash of non-image returns 0", "[normal]")
+{
+	BufferView non_img{reinterpret_cast<const unsigned char*>("this is not an image")};
+	REQUIRE(phash(non_img) == 0);
 }
