@@ -12,17 +12,38 @@
 
 #include <catch.hpp>
 
+#include "crypto/Random.hh"
 #include "hrb/PHashDb.hh"
 #include "image/PHash.hh"
 
 #include "net/Redis.hh"
 
 using namespace hrb;
+using namespace std::chrono_literals;
 
 TEST_CASE("find duplicated image in database", "[normal]")
 {
 	boost::asio::io_context ioc;
 	auto redis = redis::connect(ioc);
 
+	PHashDb subject{*redis};
+
+	auto lena = phash(fs::path{__FILE__}.parent_path().parent_path() / "image" / "lena.png");
+	REQUIRE(lena.value() > 0);
+
+	auto lena_blob = insecure_random<ObjectID>();
+	auto tested = false;
+
+	subject.add(lena_blob, lena);
+	subject.similar(lena_blob, [&tested](long rank, auto&& err)
+	{
+		REQUIRE_FALSE(err);
+//		REQUIRE(rank == 0);
+		tested = true;
+	});
+
+	REQUIRE(ioc.run_for(10s) > 0);
+	REQUIRE(tested);
+	ioc.restart();
 
 }
