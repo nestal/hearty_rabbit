@@ -59,13 +59,11 @@ RUN cd libb2 \
 
 RUN tar zxvf 3.4.1.tar.gz \
 	&& cd opencv-3.4.1 \
-	&& git clone --depth 1 -b 3.4.1 https://github.com/opencv/opencv_contrib.git \
 	&& mkdir build \
 	&& cd build \
 	&& cmake \
-		-D CMAKE_BUILD_TYPE=Release \
-		-D CMAKE_INSTALL_PREFIX=/opt \
-		-DOPENCV_EXTRA_MODULES_PATH=../opencv_contrib/modules \
+		-DCMAKE_BUILD_TYPE=Release \
+		-DCMAKE_INSTALL_PREFIX=/opt \
 		-DBUILD_opencv_legacy=OFF \
 			.. \
 	&& make -j8 install \
