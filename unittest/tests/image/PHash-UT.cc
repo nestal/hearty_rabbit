@@ -57,3 +57,9 @@ TEST_CASE("phash of non-image returns 0", "[normal]")
 	BufferView non_img{reinterpret_cast<const unsigned char*>("this is not an image")};
 	REQUIRE(phash(non_img) == PHash{});
 }
+
+TEST_CASE("test PHash ctor", "[normal]")
+{
+	REQUIRE(PHash{1}.value() == 1);
+	REQUIRE(PHash{}.value() == 0);
+}

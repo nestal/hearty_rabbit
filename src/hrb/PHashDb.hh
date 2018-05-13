@@ -58,7 +58,10 @@ public:
 				auto make_entry = [](auto&& kv)
 				{
 					auto oid = raw_to_object_id(kv.key());
-					return Entry{oid.has_value() ? *oid : ObjectID{}, PHash{}};
+					return Entry{
+						oid.has_value() ? *oid : ObjectID{},
+						PHash{static_cast<std::uint64_t>(kv.value().to_int())}
+					};
 				};
 
 				using namespace boost::adaptors;
