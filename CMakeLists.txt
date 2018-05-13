@@ -15,6 +15,7 @@ find_package(Boost REQUIRED COMPONENTS system filesystem program_options)
 find_package(Threads REQUIRED)
 find_package(PkgConfig REQUIRED)
 find_package(OpenSSL REQUIRED)
+find_package(OpenCV REQUIRED core imgproc imgcodecs)
 find_package(Doxygen)
 
 # Find libb2
@@ -83,6 +84,7 @@ target_link_libraries(
 	${HIREDIS_LIBRARIES}
 	OpenSSL::SSL
 	OpenSSL::Crypto
+	${OpenCV_LIBS}
 	${LIBUNWIND_STATIC_LIBRARIES}
 	${TURBOJPEG_STATIC_LDFLAGS}        # libjpeg-turbo may not be installed in default paths
 	${LIBB2_LIBRARY}
