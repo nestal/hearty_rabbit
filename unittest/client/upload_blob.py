@@ -2,7 +2,7 @@
 import os, sys
 import requests
 import unittest
-from PIL import Image, ImageOps, ImageColor
+from PIL import Image, ImageOps, ImageFilter
 from io import BytesIO
 import numpy
 import random
@@ -16,17 +16,16 @@ class NormalTestCase(unittest.TestCase):
 	# without the "test" prefix in the method, it is not treated as a test routine
 	@staticmethod
 	def random_image(width, height, format="jpeg"):
-		border = min(20, int(width/5), int(height/5))
+		lena = Image.open("../tests/image/lena.png").convert("RGBA").resize((width, height), Image.ANTIALIAS)
 
-		imarray = numpy.random.rand(128, 128, 3) * 255
-		img = ImageOps.expand(
-			Image.fromarray(imarray.astype("uint8")).convert("RGB").resize((width - border*2, height - border*2)),
-			border=border,
-			fill="hsl({}, {}%, {}%)".format(random.randint(0,100), random.randint(0,100), random.randint(0,100))
-		)
+		# random noise
+		imarray = numpy.random.rand(128, 128, 4) * 255
+		noise   = Image.fromarray(imarray.astype("uint8")).convert("RGBA").resize((width, height))
+
+		result = Image.blend(lena, noise, random.uniform(0, 0.2)).convert("RGB")
 
 		temp = BytesIO()
-		img.save(temp, format=format, quality=50)
+		result.save(temp, format=format, quality=50)
 		return temp.getvalue()
 
 	def get_collection(self, session, owner, coll):

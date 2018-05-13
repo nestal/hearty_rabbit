@@ -19,13 +19,18 @@ namespace redis {
 class Connection;
 }
 
+class PHash;
+
 /// \brief Encapsulate the redis sorted set for storing phashes
 class PHashDb
 {
 public:
 	explicit PHashDb(redis::Connection& db);
 
-	void add(const ObjectID& blob, std::uint64_t phash);
+	void add(const ObjectID& blob, PHash phash);
+
+private:
+	static const std::string_view m_key;
 
 private:
 	redis::Connection&  m_db;

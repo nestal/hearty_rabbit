@@ -12,10 +12,25 @@
 
 #include "PHashDb.hh"
 
+#include "image/PHash.hh"
+#include "net/Redis.hh"
+
 namespace hrb {
+
+const std::string_view PHashDb::m_key{"phashdb:"};
 
 PHashDb::PHashDb(redis::Connection& db) : m_db{db}
 {
+}
+
+void PHashDb::add(const ObjectID& blob, PHash phash)
+{
+	m_db.command(
+		"ZADD %b %d %b",
+		m_key.data(), m_key.size(),
+		phash.value(),
+		blob.data(), blob.size()
+	);
 }
 
 } // end of namespace hrb

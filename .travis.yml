@@ -15,7 +15,7 @@ before_install:
 
 install:
   - pip install --upgrade pip
-  - pip install requests Pillow numpy redis
+  - pip install requests Pillow numpy redis scipy
 
 script:
   - docker build -t nestal/hearty_rabbit --network="host" --build-arg BUILD_NUMBER=$TRAVIS_BUILD_NUMBER .

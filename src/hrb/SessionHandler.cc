@@ -32,6 +32,7 @@
 #include "util/Escape.hh"
 #include "util/FS.hh"
 #include "util/Log.hh"
+#include "PHashDb.hh"
 
 #include <boost/beast/http/fields.hpp>
 #include <boost/beast/http/message.hpp>
@@ -209,6 +210,10 @@ void SessionHandler::on_upload(UploadRequest&& req, EmptyResponseSender&& send)
 
 	if (ec)
 		return send(http::response<http::empty_body>{http::status::internal_server_error, req.version()});
+
+	// Store the phash of the blob in database
+	if (blob.phash() != PHash{})
+		PHashDb{*m_db}.add(blob.ID(), blob.phash());
 
 	// Add the newly created blob to the user's ownership table.
 	// The user's ownership table contains all the blobs that is owned by the user.
