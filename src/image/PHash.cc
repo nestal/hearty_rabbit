@@ -71,7 +71,7 @@ public:
         }
     }
 
-    double compare(cv::InputArray hashOne, cv::InputArray hashTwo) const
+    static double compare(cv::InputArray hashOne, cv::InputArray hashTwo)
     {
         return cv::norm(hashOne, hashTwo, cv::NORM_HAMMING);
     }
@@ -87,13 +87,13 @@ private:
 
 } // end of local namespace
 
-std::uint64_t phash(BufferView image)
+PHash phash(BufferView image)
 {
 	auto input = imdecode(std::vector<unsigned char>(image.begin(), image.end()), cv::IMREAD_GRAYSCALE);
-	return input.data ? phash(input) : 0;
+	return input.data ? phash(input) : PHash{};
 }
 
-std::uint64_t phash(const cv::Mat& input)
+PHash phash(const cv::Mat& input)
 {
 	PHashImpl hash;
 
@@ -102,19 +102,38 @@ std::uint64_t phash(const cv::Mat& input)
 	assert(out.rows == 1);
 	assert(out.cols == 8);
 
+	return PHash{out};
+}
+
+PHash phash(fs::path file)
+{
+	std::error_code err{};
+	auto mmap = MMap::open(file, err);
+	return err ? PHash{} : phash(mmap.buffer());
+}
+
+PHash::PHash(const cv::_OutputArray& arr)
+{
+	auto out = arr.getMat();
+
 	// convert to little endian
 	boost::endian::little_uint64_buf_t lt_hash{};
 	assert(out.cols == sizeof(lt_hash));
 	std::memcpy(&lt_hash, out.ptr<unsigned char>(0), sizeof(lt_hash));
 
-	return lt_hash.value();
+	m_hash = lt_hash.value();
 }
 
-std::uint64_t phash(fs::path file)
+double PHash::compare(const PHash& other) const
 {
-	std::error_code err{};
-	auto mmap = MMap::open(file, err);
-	return err ? 0 : phash(mmap.buffer());
+	auto hash1 = m_hash;
+	auto hash2 = other.m_hash;
+
+	return cv::norm(
+		cv::Mat{1, sizeof(hash1), CV_8U, reinterpret_cast<void*>(&hash1)},
+		cv::Mat{1, sizeof(hash2), CV_8U, reinterpret_cast<void*>(&hash2)},
+		cv::NORM_HAMMING
+	);
 }
 
 } // end of namespace hrb

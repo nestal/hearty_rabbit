@@ -58,7 +58,6 @@ RUN cd libb2 \
 
 # OpenCV
 RUN \
-#	&& tar zxvf 3.4.1.tar.gz \
 	cd opencv-3.4.1 \
 	&& mkdir build \
 	&& cd build \

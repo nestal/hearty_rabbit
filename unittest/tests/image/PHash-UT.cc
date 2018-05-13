@@ -35,7 +35,7 @@ TEST_CASE("resize 150% up_f_rot90 produce the same phash as original", "[normal]
 	REQUIRE(large.rows == 192*1.5);
 	REQUIRE(large.cols == 160*1.5);
 
-	REQUIRE(phash(mat) != std::numeric_limits<unsigned long long>::max());
+	REQUIRE(phash(mat).value() != std::numeric_limits<unsigned long long>::max());
 	REQUIRE(phash(mat) == phash(large));
 }
 
@@ -55,5 +55,5 @@ TEST_CASE("phash of resized lena should be the same as the original", "[normal]"
 TEST_CASE("phash of non-image returns 0", "[normal]")
 {
 	BufferView non_img{reinterpret_cast<const unsigned char*>("this is not an image")};
-	REQUIRE(phash(non_img) == 0);
+	REQUIRE(phash(non_img) == PHash{});
 }

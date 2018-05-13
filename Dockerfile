@@ -55,9 +55,6 @@ COPY --from=builder \
 	/lib64/libtinfo.so.5  \
 	/lib64/libpng15.so.15 \
 	/opt/lib/libturbojpeg.so.0  \
-#	/opt/lib64/libopencv_core.so.3.4 \
-#	/opt/lib64/libopencv_imgproc.so.3.4 \
-#	/opt/lib64/libopencv_imgcodecs.so.3.4 \
 	/opt/lib/libjpeg.so.62 \
 		/lib64/
 

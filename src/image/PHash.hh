@@ -21,8 +21,28 @@
 
 namespace hrb {
 
-std::uint64_t phash(BufferView image);
-std::uint64_t phash(fs::path file);
-std::uint64_t phash(const cv::Mat& input);
+class PHash
+{
+public:
+	PHash() = default;
+	explicit PHash(cv::OutputArray arr);
+
+	double compare(const PHash& other) const;
+	auto value() const {return m_hash;}
+
+private:
+	std::uint64_t m_hash{};
+};
+
+inline bool operator==(const PHash& p1, const PHash& p2) {return p1.value() == p2.value();}
+inline bool operator!=(const PHash& p1, const PHash& p2) {return p1.value() != p2.value();}
+inline bool operator>=(const PHash& p1, const PHash& p2) {return p1.value() >= p2.value();}
+inline bool operator<=(const PHash& p1, const PHash& p2) {return p1.value() <= p2.value();}
+inline bool operator>(const PHash& p1, const PHash& p2) {return p1.value() > p2.value();}
+inline bool operator<(const PHash& p1, const PHash& p2) {return p1.value() < p2.value();}
+
+PHash phash(BufferView image);
+PHash phash(fs::path file);
+PHash phash(const cv::Mat& input);
 
 } // end of namespace
