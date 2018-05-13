@@ -16,12 +16,31 @@
 #include "net/Redis.hh"
 
 #include <chrono>
+#include <string_view>
 
 namespace hrb {
 
 class TimeIndex
 {
+public:
+	using time_point = std::chrono::system_clock::time_point;
 
+public:
+	explicit TimeIndex(redis::Connection& db);
+
+	template <typename TimePoint>
+	void add(std::string_view user, const ObjectID& blob, TimePoint tp)
+	{
+		add(user, blob, std::chrono::time_point_cast<time_point>(tp));
+	}
+
+	void add(std::string_view user, const ObjectID& blob, time_point tp);
+
+private:
+	static const std::string_view m_key;
+
+private:
+	redis::Connection&  m_db;
 };
 
 } // end of namespace hrb

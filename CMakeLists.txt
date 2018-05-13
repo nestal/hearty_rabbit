@@ -92,7 +92,10 @@ target_link_libraries(
 )
 
 # Unit tests
-file(GLOB UNITTEST_SRC unittest/tests/unittest.cc unittest/tests/*/*.cc unittest/tests/*/*.hh)
+file(GLOB UNITTEST_SRC unittest/tests/unittest.cc
+	unittest/tests/*/*.cc unittest/tests/*/*.hh
+	unittest/tests/*/*/*.cc unittest/tests/*/*/*.hh
+)
 add_executable(unittest ${UNITTEST_SRC})
 target_include_directories(unittest PRIVATE unittest/Catch2/single_include)
 target_link_libraries(

@@ -31,7 +31,7 @@ TEST_CASE("find duplicated image in database", "[normal]")
 
 	PHashDb subject{*redis};
 
-	auto lena = phash(fs::path{__FILE__}.parent_path().parent_path() / "image" / "lena.png");
+	auto lena = phash(fs::path{__FILE__}.parent_path().parent_path().parent_path() / "image" / "lena.png");
 	REQUIRE(lena.value() > 0);
 
 	auto lena_blob = insecure_random<ObjectID>();
