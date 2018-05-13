@@ -17,7 +17,6 @@ RUN yum install -y deltarpm epel-release \
 
 WORKDIR /build
 
-#ADD 3.4.1.tar.gz cmake-3.11.1-Linux-x86_64.tar.gz /build/
 ENV PATH="/build/cmake-3.11.1-Linux-x86_64/bin:/opt/bin:/opt/bin:${PATH}"
 
 # download packages
