@@ -38,20 +38,13 @@ TEST_CASE("find duplicated image in database", "[normal]")
 	auto tested = false;
 
 	subject.add(lena_blob, lena);
-	subject.similar(lena_blob, [&tested](auto&& matches, auto&& err)
+	subject.exact_match(lena, [&tested, lena_blob](auto&& matches, auto&& err)
 	{
-		PHash last;
-		for (auto&& m : matches)
-		{
-			if (last.value() == 0)
-				last = m.phash;
-			else
-				std::cout << "similar to " << to_hex(m.id) << " " << last.compare(m.phash) << std::endl;
-		}
-
 		REQUIRE_FALSE(err);
-//		REQUIRE(rank == 0);
-		tested = true;
+
+		for (auto&& m : matches)
+			if (m == lena_blob)
+				tested = true;
 	});
 
 	REQUIRE(ioc.run_for(10s) > 0);

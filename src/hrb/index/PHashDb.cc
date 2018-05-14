@@ -14,7 +14,7 @@
 
 namespace hrb {
 
-const std::string_view PHashDb::m_key{"phashdb"};
+const std::string_view PHashDb::m_key{"phash-oid"};
 
 PHashDb::PHashDb(redis::Connection& db) : m_db{db}
 {
@@ -23,7 +23,7 @@ PHashDb::PHashDb(redis::Connection& db) : m_db{db}
 void PHashDb::add(const ObjectID& blob, PHash phash)
 {
 	m_db.command(
-		"ZADD %b %d %b",
+		"HSET %b %d %b",
 		m_key.data(), m_key.size(),
 		phash.value(),
 		blob.data(), blob.size()
