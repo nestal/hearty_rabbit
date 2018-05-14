@@ -209,7 +209,14 @@ void SessionHandler::on_upload(UploadRequest&& req, EmptyResponseSender&& send)
 	// Store the phash of the blob in database
 	if (blob.phash() != PHash{})
 	{
-		PHashDb{*m_db}.add(blob.ID(), blob.phash());
+		PHashDb pdb{*m_db};
+		pdb.add(blob.ID(), blob.phash());
+		pdb.exact_match(blob.phash(), [blob=blob.ID()](auto&& matches, auto err)
+		{
+			for (auto&& m : matches)
+				if (m != blob)
+					Log(LOG_INFO, "found exact match %1%", to_hex(m));
+		});
 	}
 
 	// Add the newly created blob to the user's ownership table.
