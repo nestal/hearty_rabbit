@@ -41,6 +41,7 @@ TEST_CASE("find duplicated image in database", "[normal]")
 	subject.exact_match(lena, [&tested, lena_blob](auto&& matches, auto&& err)
 	{
 		REQUIRE_FALSE(err);
+		std::cout << "number of oid in hash = " << matches.size() << std::endl;
 
 		for (auto&& m : matches)
 			if (m == lena_blob)
