@@ -205,9 +205,12 @@ void SessionHandler::on_upload(UploadRequest&& req, EmptyResponseSender&& send)
 	if (ec)
 		return send(http::response<http::empty_body>{http::status::internal_server_error, req.version()});
 
+	Log(LOG_DEBUG, "phash of image %1% is %2%", path_url.filename(), blob.phash().value());
 	// Store the phash of the blob in database
 	if (blob.phash() != PHash{})
+	{
 		PHashDb{*m_db}.add(blob.ID(), blob.phash());
+	}
 
 	// Add the newly created blob to the user's ownership table.
 	// The user's ownership table contains all the blobs that is owned by the user.
