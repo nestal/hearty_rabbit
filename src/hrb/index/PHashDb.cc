@@ -23,19 +23,23 @@ PHashDb::PHashDb(redis::Connection& db) : m_db{db}
 void PHashDb::add(const ObjectID& blob, PHash phash)
 {
 	static const char lua[] = R"__(
-		local str = redis.call('HGET', KEYS[1], ARGV[1])
-		if not str then str = ARGV[2] else
-			local pos = string.find(str, ARGV[2])
-			if pos == nil
+		local oids = redis.call('HGET', KEYS[1], ARGV[1])
+		local pos = 0
+		if not oids then oids = ARGV[2] else
+			pos = string.find(oids, ARGV[2], 1, true) -- use plain text search
+			if not pos
 			then
-				str = str .. ARGV[2]
+				oids = oids .. ARGV[2]
+				pos = -1
 			end
 		end
-		return redis.call('HSET', KEYS[1], ARGV[1], str)
+		redis.call('HSET', KEYS[1], ARGV[1], oids)
+		return oids
 	)__";
 	m_db.command(
 		[](auto&& reply, auto err)
 		{
+			Log(LOG_DEBUG, "add() script reply integer: %1%", reply.as_int());
 			if (!reply)
 				Log(LOG_WARNING, "add() script reply: %1%", reply.as_error());
 		},

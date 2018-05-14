@@ -36,12 +36,14 @@ TEST_CASE("find duplicated image in database", "[normal]")
 
 	auto lena_blob = insecure_random<ObjectID>();
 	auto tested = false;
+	std::size_t count = 0;
 
 	subject.add(lena_blob, lena);
-	subject.exact_match(lena, [&tested, lena_blob](auto&& matches, auto&& err)
+	subject.exact_match(lena, [&tested, lena_blob, &count](auto&& matches, auto&& err)
 	{
 		REQUIRE_FALSE(err);
 
+		count = matches.size();
 		for (auto&& m : matches)
 			if (m == lena_blob)
 				tested = true;
@@ -49,6 +51,17 @@ TEST_CASE("find duplicated image in database", "[normal]")
 
 	REQUIRE(ioc.run_for(10s) > 0);
 	REQUIRE(tested);
+	REQUIRE(count > 0);
 	ioc.restart();
+	tested = false;
 
+	// duplicates won't be added
+	subject.add(lena_blob, lena);
+	subject.exact_match(lena, [&tested, count](auto&& matches, auto&& err)
+	{
+		REQUIRE(matches.size() == count);
+		tested = true;
+	});
+	REQUIRE(ioc.run_for(10s) > 0);
+	REQUIRE(tested);
 }
