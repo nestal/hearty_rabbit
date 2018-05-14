@@ -24,7 +24,13 @@ void PHashDb::add(const ObjectID& blob, PHash phash)
 {
 	static const char lua[] = R"__(
 		local str = redis.call('HGET', KEYS[1], ARGV[1])
-		if not str then str = ARGV[2] else str = str .. ARGV[2] end
+		if not str then str = ARGV[2] else
+			local pos = string.find(str, ARGV[2])
+			if pos == nil
+			then
+				str = str .. ARGV[2]
+			end
+		end
 		return redis.call('HSET', KEYS[1], ARGV[1], str)
 	)__";
 	m_db.command(
