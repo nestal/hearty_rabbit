@@ -41,9 +41,9 @@ void BlobDatabase::prepare_upload(UploadFile& result, std::error_code& ec) const
 		ec.assign(err.value(), err.category());
 }
 
-BlobFile BlobDatabase::save(UploadFile&& tmp, std::string_view filename, std::error_code& ec)
+BlobFile BlobDatabase::save(UploadFile&& tmp, std::error_code& ec)
 {
-	return BlobFile::upload(std::move(tmp), dest(tmp.ID()), m_magic, m_cfg.renditions(), filename, ec);
+	return BlobFile::upload(std::move(tmp), dest(tmp.ID()), m_magic, ec);
 }
 
 fs::path BlobDatabase::dest(const ObjectID& id, std::string_view) const

@@ -11,7 +11,6 @@
 //
 
 #include "BlobFile.hh"
-#include "CollEntry.hh"
 #include "Ownership.hh"
 #include "Permission.hh"
 
@@ -34,8 +33,6 @@ BlobFile BlobFile::upload(
 	UploadFile&& tmp,
 	const fs::path& dir,
 	const Magic& magic,
-	const RenditionSetting& cfg,
-	std::string_view filename,
 	std::error_code& ec
 )
 {
@@ -50,7 +47,7 @@ BlobFile BlobFile::upload(
 	}
 
 	// commit result
-	result.m_coll_entry = CollEntry::create(Permission{}, filename, magic.mime(master.blob()));
+	result.m_mime   = magic.mime(master.blob());
 	result.m_id     = tmp.ID();
 	result.m_dir    = dir;
 	result.m_phash  = hrb::phash(master.buffer());
@@ -92,14 +89,8 @@ void save_blob(const Blob& blob, const fs::path& dest, std::error_code& ec)
 		ec.assign(0, ec.category());
 }
 
-BlobFile::BlobFile(
-	const fs::path& dir,
-	const ObjectID& id
-)  :
-	m_id{id},
-	m_dir{dir}
+BlobFile::BlobFile(const fs::path& dir, const ObjectID& id) : m_id{id}, m_dir{dir}
 {
-
 }
 
 MMap BlobFile::rendition(std::string_view rendition, const RenditionSetting& cfg, std::error_code& ec) const
@@ -111,7 +102,7 @@ MMap BlobFile::rendition(std::string_view rendition, const RenditionSetting& cfg
 	auto rend_path = m_dir/std::string{rendition};
 
 	// generate the rendition if it doesn't exist
-	if (rendition != hrb::master_rendition && !exists(rend_path))
+	if (rendition != hrb::master_rendition && !exists(rend_path) && m_mime == "image/jpeg")
 	{
 		auto master = MMap::open(m_dir/hrb::master_rendition, ec);
 		if (!ec)
@@ -128,11 +119,6 @@ MMap BlobFile::rendition(std::string_view rendition, const RenditionSetting& cfg
 	}
 
 	return MMap::open(exists(rend_path) ? rend_path : m_dir/hrb::master_rendition, ec);
-}
-
-CollEntry BlobFile::entry() const
-{
-	return CollEntry{m_coll_entry};
 }
 
 TurboBuffer BlobFile::generate_rendition_from_jpeg(BufferView jpeg_master, Size2D dim, int quality, std::error_code& ec)

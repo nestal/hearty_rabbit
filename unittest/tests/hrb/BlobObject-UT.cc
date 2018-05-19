@@ -52,17 +52,11 @@ TEST_CASE("upload non-image BlobFile", "[normal]")
 	auto [tmp, src] = upload(__FILE__);
 
 	std::error_code ec;
-	auto subject = BlobFile::upload(std::move(tmp), "/tmp/BlobFile-UT", Magic{}, cfg, "unittest.cc", ec);
+	auto subject = BlobFile::upload(std::move(tmp), "/tmp/BlobFile-UT", Magic{}, ec);
 	REQUIRE(!ec);
 	REQUIRE(subject.ID() != ObjectID{});
-
-	auto meta = subject.entry();
-	REQUIRE(meta.mime() == "text/x-c");
-	REQUIRE(meta.filename() == "unittest.cc");
-
-//	subject.save("/tmp/BlobFile-UT", ec);
-	REQUIRE(!ec);
 	REQUIRE(fs::exists("/tmp/BlobFile-UT/master"));
+	REQUIRE(subject.mime() == "text/x-c");
 
 	auto out = MMap::open("/tmp/BlobFile-UT/master", ec);
 	REQUIRE(!ec);
@@ -95,15 +89,11 @@ TEST_CASE("upload small image BlobFile", "[normal]")
 	auto [tmp, src] = upload(image_path()/"black.jpg");
 
 	std::error_code ec;
-	auto subject = BlobFile::upload(std::move(tmp), "/tmp/BlobFile-UT", Magic{}, RenditionSetting{}, "black.jpeg", ec);
+	auto subject = BlobFile::upload(std::move(tmp), "/tmp/BlobFile-UT", Magic{}, ec);
 	REQUIRE(!ec);
 	REQUIRE(subject.ID() != ObjectID{});
+	REQUIRE(subject.mime() == "image/jpeg");
 
-	auto meta = subject.entry();
-	REQUIRE(meta.mime() == "image/jpeg");
-	REQUIRE(meta.filename() == "black.jpeg");
-
-//	subject.save("/tmp/BlobFile-UT", ec);
 	REQUIRE(!ec);
 	REQUIRE(fs::exists("/tmp/BlobFile-UT/master"));
 
@@ -120,28 +110,22 @@ TEST_CASE("upload big upright image BlobFile", "[normal]")
 
 	auto [tmp, src] = upload(image_path()/"up_f_upright.jpg");
 
-	RenditionSetting cfg;
-	cfg.add("128x128",   {128, 128});
-	cfg.add("thumbnail", {64, 64});
-	cfg.default_rendition("128x128");
-
 	std::error_code ec;
-	auto subject = BlobFile::upload(std::move(tmp), "/tmp/BlobFile-UT", Magic{}, cfg, "upright.jpeg", ec);
+	auto subject = BlobFile::upload(std::move(tmp), "/tmp/BlobFile-UT", Magic{}, ec);
 	REQUIRE(!ec);
 	REQUIRE(subject.ID() != ObjectID{});
-
-	auto meta = subject.entry();
-	REQUIRE(meta.mime() == "image/jpeg");
-	REQUIRE(meta.filename() == "upright.jpeg");
-
-//	subject.save("/tmp/BlobFile-UT", ec);
-	REQUIRE(!ec);
+	REQUIRE(subject.mime() == "image/jpeg");
 	REQUIRE(fs::exists("/tmp/BlobFile-UT/master"));
 
 	auto out = MMap::open("/tmp/BlobFile-UT/master", ec);
 	REQUIRE(!ec);
 	REQUIRE(out.size() == src.size());
 	REQUIRE(std::memcmp(out.data(), src.data(), out.size()) == 0);
+
+	RenditionSetting cfg;
+	cfg.add("128x128",   {128, 128});
+	cfg.add("thumbnail", {64, 64});
+	cfg.default_rendition("128x128");
 
 	auto rend128 = subject.rendition(cfg.default_rendition(), cfg, ec);
 	REQUIRE(!ec);

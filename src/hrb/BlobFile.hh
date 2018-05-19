@@ -25,7 +25,6 @@
 
 namespace hrb {
 
-class CollEntry;
 class EXIF2;
 class Magic;
 class RenditionSetting;
@@ -42,15 +41,13 @@ public:
 		UploadFile&& tmp,
 		const fs::path& dir,
 		const Magic& magic,
-		const RenditionSetting& cfg,
-		std::string_view filename,
 		std::error_code& ec
 	);
 
 	MMap rendition(std::string_view rendition, const RenditionSetting& cfg, std::error_code& ec) const;
 
 	const ObjectID& ID() const {return m_id;}
-	CollEntry entry() const;
+	std::string mime() const {return m_mime;}
 
 	auto phash() const {return m_phash;}
 
@@ -60,7 +57,7 @@ private:
 private:
 	ObjectID    m_id{};
 	fs::path    m_dir;
-	std::string m_coll_entry;
+	std::string m_mime;
 	PHash       m_phash{};
 };
 

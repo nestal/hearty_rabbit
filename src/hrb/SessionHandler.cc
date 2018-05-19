@@ -200,7 +200,7 @@ void SessionHandler::on_upload(UploadRequest&& req, EmptyResponseSender&& send)
 	}
 
 	std::error_code ec;
-	auto blob = m_blob_db.save(std::move(req.body()), path_url.filename(), ec);
+	auto blob = m_blob_db.save(std::move(req.body()), ec);
 
 	if (ec)
 		return send(http::response<http::empty_body>{http::status::internal_server_error, req.version()});
@@ -219,11 +219,13 @@ void SessionHandler::on_upload(UploadRequest&& req, EmptyResponseSender&& send)
 		});
 	}
 
+	std::string entry = CollEntry::create(Permission::private_(), path_url.filename(), blob.mime());
+
 	// Add the newly created blob to the user's ownership table.
 	// The user's ownership table contains all the blobs that is owned by the user.
 	// It will be used for authorizing the user's request on these blob later.
 	Ownership{m_auth.user()}.link(
-		*m_db, path_url.collection(), blob.ID(), blob.entry(), [
+		*m_db, path_url.collection(), blob.ID(), CollEntry{entry}, [
 			location = URLIntent{URLIntent::Action::api, m_auth.user(), path_url.collection(), to_hex(blob.ID())}.str(),
 			send = std::move(send),
 			version = req.version()
