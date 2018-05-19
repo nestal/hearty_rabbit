@@ -98,7 +98,7 @@ MMap BlobFile::rendition(std::string_view rendition, const RenditionSetting& cfg
 	auto rend_path = m_dir/std::string{rendition};
 
 	// generate the rendition if it doesn't exist
-	if (rendition != hrb::master_rendition && !exists(rend_path) && m_mime == "image/jpeg")
+	if (rendition != hrb::master_rendition && !exists(rend_path))
 	{
 		auto master = MMap::open(m_dir/hrb::master_rendition, ec);
 		if (!ec)
