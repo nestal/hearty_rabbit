@@ -15,6 +15,7 @@ find_package(Boost REQUIRED COMPONENTS system filesystem program_options)
 find_package(Threads REQUIRED)
 find_package(PkgConfig REQUIRED)
 find_package(OpenSSL REQUIRED)
+find_package(OpenCV REQUIRED core imgproc imgcodecs)
 find_package(Doxygen)
 
 # Find libb2
@@ -74,7 +75,7 @@ endforeach(fullpath)
 file(APPEND ${WEB_RESOURCE_LIST} "};\n}")
 
 # Put all source code in a library for unit test
-file(GLOB LIB_SRC src/*/*.cc src/*/*.hh src/*/*.ipp)
+file(GLOB LIB_SRC src/*/*.cc src/*/*.hh src/*/*.ipp src/*/*/*.cc src/*/*/*.hh)
 add_library(hrblib ${LIB_SRC} ${CMAKE_CURRENT_BINARY_DIR}/config.hh)
 target_link_libraries(
 	hrblib
@@ -83,6 +84,7 @@ target_link_libraries(
 	${HIREDIS_LIBRARIES}
 	OpenSSL::SSL
 	OpenSSL::Crypto
+	${OpenCV_LIBS}
 	${LIBUNWIND_STATIC_LIBRARIES}
 	${TURBOJPEG_STATIC_LDFLAGS}        # libjpeg-turbo may not be installed in default paths
 	${LIBB2_LIBRARY}
@@ -90,7 +92,10 @@ target_link_libraries(
 )
 
 # Unit tests
-file(GLOB UNITTEST_SRC unittest/tests/unittest.cc unittest/tests/*/*.cc unittest/tests/*/*.hh)
+file(GLOB UNITTEST_SRC unittest/tests/unittest.cc
+	unittest/tests/*/*.cc unittest/tests/*/*.hh
+	unittest/tests/*/*/*.cc unittest/tests/*/*/*.hh
+)
 add_executable(unittest ${UNITTEST_SRC})
 target_include_directories(unittest PRIVATE unittest/Catch2/single_include)
 target_link_libraries(

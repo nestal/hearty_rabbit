@@ -37,6 +37,7 @@ COPY --from=builder \
 	/lib64/libgcc_s.so.1  \
 	/lib64/libc.so.6  \
 	/lib64/libz.so.1  \
+	/lib64/librt.so.1 \
 	/lib64/libgssapi_krb5.so.2  \
 	/lib64/libkrb5.so.3  \
 	/lib64/libcom_err.so.2  \
@@ -50,7 +51,9 @@ COPY --from=builder \
 	/lib64/libpcre.so.1  \
 	/lib64/libunwind.so.8 \
 	/lib64/libtinfo.so.5  \
+	/lib64/libpng15.so.15 \
 	/opt/lib/libturbojpeg.so.0  \
+	/opt/lib/libjpeg.so.62 \
 		/lib64/
 
 # Copy the magic cookie file for libmagic
