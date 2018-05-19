@@ -22,43 +22,52 @@
 
 using namespace hrb;
 
-auto image_path()
+class BlobFileUTFixture
 {
-	return fs::path{__FILE__}.parent_path().parent_path() / "image";
-}
+public:
+	BlobFileUTFixture()
+	{
+		fs::remove_all(m_blob_path);
+		fs::create_directories(m_blob_path);
+	}
 
-auto upload(const fs::path& file)
+protected:
+	auto upload(const fs::path& file)
+	{
+		std::error_code ec;
+		auto mmap = MMap::open(file, ec);
+		REQUIRE(!ec);
+
+		boost::system::error_code bec;
+		UploadFile tmp;
+		tmp.open(m_blob_path, bec);
+		REQUIRE(!bec);
+		tmp.write(mmap.data(), mmap.size(), bec);
+		REQUIRE(!bec);
+
+		return std::make_tuple(std::move(tmp), std::move(mmap));
+	}
+
+
+protected:
+	const Magic     m_magic;
+	const fs::path  m_blob_path{"/tmp/BlobFile-UT"};
+	const fs::path  m_image_path{fs::path{__FILE__}.parent_path().parent_path() / "image"};
+};
+
+TEST_CASE_METHOD(BlobFileUTFixture, "upload non-image BlobFile", "[normal]")
 {
-	std::error_code ec;
-	auto mmap = MMap::open(file, ec);
-	REQUIRE(!ec);
-
-	boost::system::error_code bec;
-	UploadFile tmp;
-	tmp.open("/tmp/BlobFile-UT", bec);
-	REQUIRE(!bec);
-	tmp.write(mmap.data(), mmap.size(), bec);
-	REQUIRE(!bec);
-
-	return std::make_tuple(std::move(tmp), std::move(mmap));
-}
-
-TEST_CASE("upload non-image BlobFile", "[normal]")
-{
-	fs::remove_all("/tmp/BlobFile-UT");
-	fs::create_directories("/tmp/BlobFile-UT");
-
 	RenditionSetting cfg;
 	auto [tmp, src] = upload(__FILE__);
 
 	std::error_code ec;
-	BlobFile subject{std::move(tmp), "/tmp/BlobFile-UT", Magic{}, ec};
+	BlobFile subject{std::move(tmp), m_blob_path, m_magic, ec};
 	REQUIRE(!ec);
 	REQUIRE(subject.ID() != ObjectID{});
-	REQUIRE(fs::exists("/tmp/BlobFile-UT/master"));
-	REQUIRE(subject.mime() == "text/x-c");
+	REQUIRE(subject.mime() == "text/x-c++");
+	REQUIRE(fs::exists(m_blob_path/"master"));
 
-	auto out = MMap::open("/tmp/BlobFile-UT/master", ec);
+	auto out = MMap::open(m_blob_path/"master", ec);
 	REQUIRE(!ec);
 	REQUIRE(out.size() == src.size());
 	REQUIRE(std::memcmp(out.data(), src.data(), out.size()) == 0);
@@ -66,7 +75,7 @@ TEST_CASE("upload non-image BlobFile", "[normal]")
 	SECTION("read back the original")
 	{
 		std::error_code read_ec;
-		BlobFile subject2{"/tmp/BlobFile-UT", subject.ID()};
+		BlobFile subject2{m_blob_path, subject.ID()};
 
 		REQUIRE(out.buffer() == subject2.rendition("master", cfg, read_ec).buffer());
 		REQUIRE(!read_ec);
@@ -74,50 +83,42 @@ TEST_CASE("upload non-image BlobFile", "[normal]")
 	SECTION("read another rendition, but got the original")
 	{
 		std::error_code read_ec;
-		BlobFile subject2{"/tmp/BlobFile-UT", subject.ID()};
+		BlobFile subject2{m_blob_path, subject.ID()};
 
 		REQUIRE(out.buffer() == subject2.rendition("thumbnail", cfg, read_ec).buffer());
 		REQUIRE(!read_ec);
 	}
 }
 
-TEST_CASE("upload small image BlobFile", "[normal]")
+TEST_CASE_METHOD(BlobFileUTFixture, "upload small image BlobFile", "[normal]")
 {
-	fs::remove_all("/tmp/BlobFile-UT");
-	fs::create_directories("/tmp/BlobFile-UT");
-
-	auto [tmp, src] = upload(image_path()/"black.jpg");
+	auto [tmp, src] = upload(m_image_path/"black.jpg");
 
 	std::error_code ec;
-	BlobFile subject{std::move(tmp), "/tmp/BlobFile-UT", Magic{}, ec};
+	BlobFile subject{std::move(tmp), m_blob_path, m_magic, ec};
 	REQUIRE(!ec);
 	REQUIRE(subject.ID() != ObjectID{});
 	REQUIRE(subject.mime() == "image/jpeg");
+	REQUIRE(fs::exists(m_blob_path/"master"));
 
-	REQUIRE(!ec);
-	REQUIRE(fs::exists("/tmp/BlobFile-UT/master"));
-
-	auto out = MMap::open("/tmp/BlobFile-UT/master", ec);
+	auto out = MMap::open(m_blob_path/"master", ec);
 	REQUIRE(!ec);
 	REQUIRE(out.size() == src.size());
 	REQUIRE(std::memcmp(out.data(), src.data(), out.size()) == 0);
 }
 
-TEST_CASE("upload big upright image BlobFile", "[normal]")
+TEST_CASE_METHOD(BlobFileUTFixture, "upload big upright image as BlobFile", "[normal]")
 {
-	fs::remove_all("/tmp/BlobFile-UT");
-	fs::create_directories("/tmp/BlobFile-UT");
-
-	auto [tmp, src] = upload(image_path()/"up_f_upright.jpg");
+	auto [tmp, src] = upload(m_image_path/"up_f_upright.jpg");
 
 	std::error_code ec;
-	BlobFile subject{std::move(tmp), "/tmp/BlobFile-UT", Magic{}, ec};
+	BlobFile subject{std::move(tmp), m_blob_path, m_magic, ec};
 	REQUIRE(!ec);
 	REQUIRE(subject.ID() != ObjectID{});
 	REQUIRE(subject.mime() == "image/jpeg");
-	REQUIRE(fs::exists("/tmp/BlobFile-UT/master"));
+	REQUIRE(fs::exists(m_blob_path/"master"));
 
-	auto out = MMap::open("/tmp/BlobFile-UT/master", ec);
+	auto out = MMap::open(m_blob_path/"master", ec);
 	REQUIRE(!ec);
 	REQUIRE(out.size() == src.size());
 	REQUIRE(std::memcmp(out.data(), src.data(), out.size()) == 0);
@@ -131,18 +132,23 @@ TEST_CASE("upload big upright image BlobFile", "[normal]")
 	REQUIRE(!ec);
 	REQUIRE(rend128.buffer() != src.buffer());
 
-	auto out128 = MMap::open("/tmp/BlobFile-UT/128x128", ec);
+	auto out128 = MMap::open(m_blob_path/"128x128", ec);
 	REQUIRE(!ec);
 	REQUIRE(out128.size() < src.size());
 	REQUIRE(std::memcmp(out128.data(), src.data(), out128.size()) != 0);
 
-	BlobFile gen{"/tmp/BlobFile-UT", subject.ID()};
+	BlobFile gen{m_blob_path, subject.ID()};
 	auto gen_mmap = gen.rendition("thumbnail", cfg, ec);
 	REQUIRE(gen_mmap.size() > 0);
 
 	JPEG gen_jpeg{gen_mmap.buffer().data(), gen_mmap.size(), {64, 64}};
 	REQUIRE(gen_jpeg.size().width() < 64);
 	REQUIRE(gen_jpeg.size().height() < 64);
+}
+
+TEST_CASE_METHOD(BlobFileUTFixture, "upload big rot90 image as BlobFile", "[normal]")
+{
+
 }
 
 TEST_CASE("hex_to_object_id() error cases", "[error]")
