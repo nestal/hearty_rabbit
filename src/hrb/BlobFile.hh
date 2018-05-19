@@ -13,9 +13,7 @@
 #pragma once
 
 #include "ObjectID.hh"
-#include "UploadFile.hh"
 
-#include "image/TurboBuffer.hh"
 #include "image/PHash.hh"
 #include "util/Size2D.hh"
 #include "util/FS.hh"
@@ -45,13 +43,14 @@ public:
 
 	// if the rendition does not exists but it's a valid one, it will be generated dynamically
 	MMap rendition(std::string_view rendition, const RenditionSetting& cfg, std::error_code& ec) const;
+	MMap master(std::error_code& ec) const;
 
 	const ObjectID& ID() const {return m_id;}
 	std::string mime() const {return m_mime;}
 	auto phash() const {return m_phash;}
 
 private:
-	static TurboBuffer generate_rendition_from_jpeg(BufferView jpeg_master, Size2D dim, int quality, std::error_code& ec);
+	void generate_rendition_from_jpeg(const JPEGRenditionSetting& cfg, const fs::path& dest, std::error_code& ec) const;
 
 private:
 	ObjectID    m_id{};

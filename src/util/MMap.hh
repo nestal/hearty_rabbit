@@ -41,6 +41,7 @@ public:
 	void* data() const {return m_mmap;}
 	std::size_t size() const {return m_size;}
 
+	boost::asio::mutable_buffer blob() noexcept {return {m_mmap, m_size};}
 	boost::asio::const_buffer blob() const noexcept {return {m_mmap, m_size};}
 	std::string_view string() const {return {static_cast<const char*>(m_mmap), m_size};}
 	BufferView buffer() const {return {static_cast<const unsigned char*>(m_mmap), m_size};}

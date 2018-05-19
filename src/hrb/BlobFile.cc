@@ -11,17 +11,18 @@
 //
 
 #include "BlobFile.hh"
-#include "Ownership.hh"
-#include "Permission.hh"
+#include "UploadFile.hh"
 
 // HeartyRabbit headers
-#include "image/RotateImage.hh"
-#include "image/JPEG.hh"
 #include "image/PHash.hh"
+#include "image/EXIF2.hh"
 #include "util/MMap.hh"
 #include "util/Log.hh"
 #include "util/Magic.hh"
 #include "util/Configuration.hh"
+
+#include <opencv2/imgcodecs.hpp>
+#include <opencv2/imgproc.hpp>
 
 namespace hrb {
 
@@ -53,13 +54,15 @@ BlobFile::BlobFile(
 	fs::create_directories(dir, bec);
 	if (bec)
 	{
-		Log(LOG_WARNING, "create create directory %1% (%2% %3%)", dir, ec, ec.message());
-		return;
+		Log(LOG_WARNING, "create create directory %1% (%2% %3%)", dir, bec, bec.message());
+		ec.assign(bec.value(), bec.category());
 	}
-
-	// Try moving the temp file to our destination first. If failed, use
-	// deep copy instead.
-	tmp.move(m_dir/hrb::master_rendition, ec);
+	else
+	{
+		// Try moving the temp file to our destination first. If failed, use
+		// deep copy instead.
+		tmp.move(m_dir / hrb::master_rendition, ec);
+	}
 }
 
 template <typename Blob>
@@ -85,7 +88,8 @@ void save_blob(const Blob& blob, const fs::path& dest, std::error_code& ec)
 		ec.assign(0, ec.category());
 }
 
-BlobFile::BlobFile(const fs::path& dir, const ObjectID& id) : m_id{id}, m_dir{dir}
+BlobFile::BlobFile(const fs::path& dir, const ObjectID& id) :
+	m_id{id}, m_dir{dir}, m_mime{Magic{}.mime(dir/hrb::master_rendition)}
 {
 }
 
@@ -99,42 +103,43 @@ MMap BlobFile::rendition(std::string_view rendition, const RenditionSetting& cfg
 
 	// generate the rendition if it doesn't exist
 	if (rendition != hrb::master_rendition && !exists(rend_path))
-	{
-		auto master = MMap::open(m_dir/hrb::master_rendition, ec);
-		if (!ec)
-		{
-			auto tb = generate_rendition_from_jpeg(
-				master.buffer(),
-				cfg.dimension(rendition),
-				cfg.quality(rendition),
-				ec
-			);
-			if (!tb.empty())
-				save_blob(tb, rend_path, ec);
-		}
-	}
+		generate_rendition_from_jpeg(cfg.find(rendition), rend_path, ec);
 
 	return MMap::open(exists(rend_path) ? rend_path : m_dir/hrb::master_rendition, ec);
 }
 
-TurboBuffer BlobFile::generate_rendition_from_jpeg(BufferView jpeg_master, Size2D dim, int quality, std::error_code& ec)
+void BlobFile::generate_rendition_from_jpeg(const JPEGRenditionSetting& cfg, const fs::path& dest, std::error_code& ec) const
 {
-	RotateImage transform;
-	auto rotated = transform.auto_rotate(jpeg_master, ec);
-
-	if (!ec)
+	try
 	{
-		JPEG img{
-			rotated.empty() ? jpeg_master.data() : rotated.data(),
-			rotated.empty() ? jpeg_master.size() : rotated.size(),
-			dim
-		};
+		auto jpeg = cv::imread((m_dir/hrb::master_rendition).string(), cv::IMREAD_ANYCOLOR);
+		if (!jpeg.empty())
+		{
+			auto xratio = cfg.dim.width() / static_cast<double>(jpeg.cols);
+			auto yratio = cfg.dim.height() / static_cast<double>(jpeg.rows);
 
-		if (dim != img.size())
-			rotated = img.compress(quality);
+			cv::Mat out;
+			if (xratio < 1.0 || yratio < 1.0)
+				cv::resize(jpeg, out, {}, std::min(xratio, yratio), std::min(xratio, yratio), cv::INTER_LINEAR);
+			else
+				out = jpeg;
+
+			std::vector<unsigned char> out_buf;
+			cv::imencode(m_mime == "image/png" ? ".png" : ".jpg", out, out_buf, std::vector<int>{cv::IMWRITE_JPEG_QUALITY, cfg.quality});
+
+			Log(LOG_DEBUG, "after resize %1% %2%", out.rows, out.cols);
+
+			save_blob(out_buf, dest, ec);
+		}
 	}
+	catch (...)
+	{
+	}
+}
 
-	return rotated;
+MMap BlobFile::master(std::error_code& ec) const
+{
+	return MMap::open(m_dir/hrb::master_rendition, ec);
 }
 
 } // end of namespace hrb

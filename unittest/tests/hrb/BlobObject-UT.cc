@@ -18,6 +18,7 @@
 #include "util/MMap.hh"
 #include "util/Magic.hh"
 #include "util/Configuration.hh"
+
 #include "image/JPEG.hh"
 
 using namespace hrb;
@@ -77,7 +78,7 @@ TEST_CASE_METHOD(BlobFileUTFixture, "upload non-image BlobFile", "[normal]")
 		std::error_code read_ec;
 		BlobFile subject2{m_blob_path, subject.ID()};
 
-		REQUIRE(out.buffer() == subject2.rendition("master", cfg, read_ec).buffer());
+		REQUIRE(out.buffer() == subject2.master(read_ec).buffer());
 		REQUIRE(!read_ec);
 	}
 	SECTION("read another rendition, but got the original")
@@ -141,9 +142,11 @@ TEST_CASE_METHOD(BlobFileUTFixture, "upload big upright image as BlobFile", "[no
 	auto gen_mmap = gen.rendition("thumbnail", cfg, ec);
 	REQUIRE(gen_mmap.size() > 0);
 
-	JPEG gen_jpeg{gen_mmap.buffer().data(), gen_mmap.size(), {64, 64}};
-	REQUIRE(gen_jpeg.size().width() < 64);
-	REQUIRE(gen_jpeg.size().height() < 64);
+	auto gen_jpeg = load_image(gen_mmap.buffer());
+	REQUIRE(gen_jpeg.data);
+	REQUIRE(!gen_jpeg.empty());
+	REQUIRE(gen_jpeg.cols <= 64);
+	REQUIRE(gen_jpeg.rows <= 64);
 }
 
 TEST_CASE_METHOD(BlobFileUTFixture, "upload big rot90 image as BlobFile", "[normal]")
@@ -161,15 +164,11 @@ TEST_CASE_METHOD(BlobFileUTFixture, "upload big rot90 image as BlobFile", "[norm
 	REQUIRE(!ec);
 	REQUIRE(rotated.buffer() != src.buffer());
 
-	JPEG gen_jpeg{rotated.buffer().data(), rotated.size(), {2048, 2048}};
-	JPEG src_jpeg{src.buffer().data(),     src.size(),     {2048, 2048}};
+	auto gen_jpeg = load_image(rotated.buffer());
+	auto src_jpeg = load_image(src.buffer());
 
-	// make sure we don't accidentally down-smaple the image
-	REQUIRE(gen_jpeg.size().width() < 2048);
-	REQUIRE(gen_jpeg.size().height() < 2048);
-
-	REQUIRE(gen_jpeg.size().width()  == src_jpeg.size().height());
-	REQUIRE(gen_jpeg.size().height() == src_jpeg.size().width());
+	REQUIRE(gen_jpeg.cols == 160);
+	REQUIRE(gen_jpeg.rows == 192);
 }
 
 TEST_CASE("hex_to_object_id() error cases", "[error]")

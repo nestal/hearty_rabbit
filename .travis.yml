@@ -27,8 +27,8 @@ after_success:
     echo "build for master branch $TRAVIS_BRANCH";
     docker tag nestal/hearty_rabbit nestal/hearty_rabbit:$TRAVIS_BUILD_NUMBER;
     fi;
-  - if [ "$TRAVIS_BRANCH" == "develop" ] || [ "$TRAVIS_BRANCH" == "master" ]; then
-    docker tag nestal/hearty_rabbit nestal/hearty_rabbit:$TRAVIS_BRANCH
+  - if [ "$TRAVIS_BRANCH" == "develop" ]; then
+    docker tag nestal/hearty_rabbit nestal/hearty_rabbit:$TRAVIS_BRANCH;
     fi;
   - docker push nestal/hearty_rabbit
   - echo "Pushed docker image to hub"
