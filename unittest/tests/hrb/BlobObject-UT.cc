@@ -52,7 +52,7 @@ TEST_CASE("upload non-image BlobFile", "[normal]")
 	auto [tmp, src] = upload(__FILE__);
 
 	std::error_code ec;
-	auto subject = BlobFile::upload(std::move(tmp), "/tmp/BlobFile-UT", Magic{}, ec);
+	BlobFile subject{std::move(tmp), "/tmp/BlobFile-UT", Magic{}, ec};
 	REQUIRE(!ec);
 	REQUIRE(subject.ID() != ObjectID{});
 	REQUIRE(fs::exists("/tmp/BlobFile-UT/master"));
@@ -89,7 +89,7 @@ TEST_CASE("upload small image BlobFile", "[normal]")
 	auto [tmp, src] = upload(image_path()/"black.jpg");
 
 	std::error_code ec;
-	auto subject = BlobFile::upload(std::move(tmp), "/tmp/BlobFile-UT", Magic{}, ec);
+	BlobFile subject{std::move(tmp), "/tmp/BlobFile-UT", Magic{}, ec};
 	REQUIRE(!ec);
 	REQUIRE(subject.ID() != ObjectID{});
 	REQUIRE(subject.mime() == "image/jpeg");
@@ -111,7 +111,7 @@ TEST_CASE("upload big upright image BlobFile", "[normal]")
 	auto [tmp, src] = upload(image_path()/"up_f_upright.jpg");
 
 	std::error_code ec;
-	auto subject = BlobFile::upload(std::move(tmp), "/tmp/BlobFile-UT", Magic{}, ec);
+	BlobFile subject{std::move(tmp), "/tmp/BlobFile-UT", Magic{}, ec};
 	REQUIRE(!ec);
 	REQUIRE(subject.ID() != ObjectID{});
 	REQUIRE(subject.mime() == "image/jpeg");

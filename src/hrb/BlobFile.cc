@@ -29,41 +29,37 @@ namespace {
 const std::string master_rendition = "master";
 }
 
-BlobFile BlobFile::upload(
+BlobFile::BlobFile(
 	UploadFile&& tmp,
 	const fs::path& dir,
 	const Magic& magic,
 	std::error_code& ec
-)
+) : m_id{tmp.ID()}, m_dir{dir}
 {
 	// Note: closing the file before munmap() is OK: the mapped memory will still be there.
 	// Details: http://pubs.opengroup.org/onlinepubs/7908799/xsh/mmap.html
-	BlobFile result;
 	auto master = MMap::open(tmp.native_handle(), ec);
 	if (ec)
 	{
 		Log(LOG_WARNING, "BlobFile::upload(): cannot mmap temporary file %1% %2%", ec, ec.message());
-		return result;
+		return;
 	}
 
 	// commit result
-	result.m_mime   = magic.mime(master.blob());
-	result.m_id     = tmp.ID();
-	result.m_dir    = dir;
-	result.m_phash  = hrb::phash(master.buffer());
+	m_mime   = magic.mime(master.blob());
+	m_phash  = hrb::phash(master.buffer());
 
 	boost::system::error_code bec;
 	fs::create_directories(dir, bec);
 	if (bec)
 	{
 		Log(LOG_WARNING, "create create directory %1% (%2% %3%)", dir, ec, ec.message());
-		return result;
+		return;
 	}
 
 	// Try moving the temp file to our destination first. If failed, use
 	// deep copy instead.
-	tmp.move(result.m_dir/hrb::master_rendition, ec);
-	return result;
+	tmp.move(m_dir/hrb::master_rendition, ec);
 }
 
 template <typename Blob>

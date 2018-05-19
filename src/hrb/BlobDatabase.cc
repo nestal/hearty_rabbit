@@ -43,7 +43,7 @@ void BlobDatabase::prepare_upload(UploadFile& result, std::error_code& ec) const
 
 BlobFile BlobDatabase::save(UploadFile&& tmp, std::error_code& ec)
 {
-	return BlobFile::upload(std::move(tmp), dest(tmp.ID()), m_magic, ec);
+	return BlobFile{std::move(tmp), dest(tmp.ID()), m_magic, ec};
 }
 
 fs::path BlobDatabase::dest(const ObjectID& id, std::string_view) const
@@ -70,16 +70,13 @@ BlobDatabase::BlobResponse BlobDatabase::response(
 	if (invalid != rendition.end())
 		return http::response<MMapResponseBody>{http::status::bad_request, version};
 
-	auto path = dest(id);
-
 	std::error_code ec;
-	BlobFile blob_obj{path, id};
-
+	BlobFile blob_obj{dest(id), id};
+	auto mmap = blob_obj.rendition(rendition, m_cfg.renditions(), ec);
 	if (ec)
 		return BlobResponse{http::status::not_found, version};
 
 	// Advice the kernel that we only read the memory in one pass
-	auto mmap = blob_obj.rendition(rendition, m_cfg.renditions(), ec);
 	mmap.cache();
 
 	BlobResponse res{

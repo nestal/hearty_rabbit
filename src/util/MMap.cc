@@ -38,6 +38,7 @@ MMap::MMap(int fd)
 
 void MMap::cache() const
 {
+	// ignore error
 	::madvise(m_mmap, m_size, MADV_SEQUENTIAL);
 }
 

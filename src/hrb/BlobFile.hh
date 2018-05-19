@@ -36,8 +36,7 @@ class BlobFile
 public:
 	BlobFile() = default;
 	BlobFile(const fs::path& dir, const ObjectID& id);
-
-	static BlobFile upload(
+	BlobFile(
 		UploadFile&& tmp,
 		const fs::path& dir,
 		const Magic& magic,
