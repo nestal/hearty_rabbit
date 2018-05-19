@@ -11,17 +11,19 @@
 //
 
 #include "BlobFile.hh"
-#include "Ownership.hh"
-#include "Permission.hh"
+#include "UploadFile.hh"
 
 // HeartyRabbit headers
 #include "image/RotateImage.hh"
+#include "image/TurboBuffer.hh"
 #include "image/JPEG.hh"
 #include "image/PHash.hh"
 #include "util/MMap.hh"
 #include "util/Log.hh"
 #include "util/Magic.hh"
 #include "util/Configuration.hh"
+
+#include <opencv2/imgcodecs.hpp>
 
 namespace hrb {
 
@@ -98,43 +100,35 @@ MMap BlobFile::rendition(std::string_view rendition, const RenditionSetting& cfg
 	auto rend_path = m_dir/std::string{rendition};
 
 	// generate the rendition if it doesn't exist
-	if (rendition != hrb::master_rendition && !exists(rend_path) && m_mime == "image/jpeg")
-	{
-		auto master = MMap::open(m_dir/hrb::master_rendition, ec);
-		if (!ec)
-		{
-			auto tb = generate_rendition_from_jpeg(
-				master.buffer(),
-				cfg.dimension(rendition),
-				cfg.quality(rendition),
-				ec
-			);
-			if (!tb.empty())
-				save_blob(tb, rend_path, ec);
-		}
-	}
+	if (rendition != hrb::master_rendition && !exists(rend_path) && std::string_view{m_mime}.substr(0, 5) == "image")
+		generate_rendition_from_jpeg(cfg.find(rendition), rend_path, ec);
 
 	return MMap::open(exists(rend_path) ? rend_path : m_dir/hrb::master_rendition, ec);
 }
 
-TurboBuffer BlobFile::generate_rendition_from_jpeg(BufferView jpeg_master, Size2D dim, int quality, std::error_code& ec)
+void BlobFile::generate_rendition_from_jpeg(const JPEGRenditionSetting& cfg, const fs::path& dest, std::error_code& ec) const
 {
-	RotateImage transform;
-	auto rotated = transform.auto_rotate(jpeg_master, ec);
-
+	auto master = MMap::open(m_dir/hrb::master_rendition, ec);
 	if (!ec)
 	{
-		JPEG img{
-			rotated.empty() ? jpeg_master.data() : rotated.data(),
-			rotated.empty() ? jpeg_master.size() : rotated.size(),
-			dim
-		};
+		RotateImage transform;
+		auto rotated = transform.auto_rotate(master.buffer(), ec);
 
-		if (dim != img.size())
-			rotated = img.compress(quality);
+		if (!ec)
+		{
+			JPEG img{
+				rotated.empty() ? master.data() : rotated.data(),
+				rotated.empty() ? master.size() : rotated.size(),
+				cfg.dim
+			};
+
+			if (cfg.dim != img.size())
+				rotated = img.compress(cfg.quality);
+		}
+
+		if (!rotated.empty())
+			save_blob(rotated, dest, ec);
 	}
-
-	return rotated;
 }
 
 } // end of namespace hrb

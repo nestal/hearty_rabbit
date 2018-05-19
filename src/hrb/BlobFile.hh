@@ -13,9 +13,7 @@
 #pragma once
 
 #include "ObjectID.hh"
-#include "UploadFile.hh"
 
-#include "image/TurboBuffer.hh"
 #include "image/PHash.hh"
 #include "util/Size2D.hh"
 #include "util/FS.hh"
@@ -51,7 +49,7 @@ public:
 	auto phash() const {return m_phash;}
 
 private:
-	static TurboBuffer generate_rendition_from_jpeg(BufferView jpeg_master, Size2D dim, int quality, std::error_code& ec);
+	void generate_rendition_from_jpeg(const JPEGRenditionSetting& cfg, const fs::path& dest, std::error_code& ec) const;
 
 private:
 	ObjectID    m_id{};
