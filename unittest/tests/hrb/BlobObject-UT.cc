@@ -148,7 +148,28 @@ TEST_CASE_METHOD(BlobFileUTFixture, "upload big upright image as BlobFile", "[no
 
 TEST_CASE_METHOD(BlobFileUTFixture, "upload big rot90 image as BlobFile", "[normal]")
 {
+	auto [tmp, src] = upload(m_image_path/"up_f_rot90.jpg");
 
+	std::error_code ec;
+	BlobFile subject{std::move(tmp), m_blob_path, m_magic, ec};
+
+	RenditionSetting cfg;
+	cfg.add("2048x2048",   {2048, 2048});
+	cfg.default_rendition("2048x2048");
+
+	auto rotated = subject.rendition(cfg.default_rendition(), cfg, ec);
+	REQUIRE(!ec);
+	REQUIRE(rotated.buffer() != src.buffer());
+
+	JPEG gen_jpeg{rotated.buffer().data(), rotated.size(), {2048, 2048}};
+	JPEG src_jpeg{src.buffer().data(),     src.size(),     {2048, 2048}};
+
+	// make sure we don't accidentally down-smaple the image
+	REQUIRE(gen_jpeg.size().width() < 2048);
+	REQUIRE(gen_jpeg.size().height() < 2048);
+
+	REQUIRE(gen_jpeg.size().width()  == src_jpeg.size().height());
+	REQUIRE(gen_jpeg.size().height() == src_jpeg.size().width());
 }
 
 TEST_CASE("hex_to_object_id() error cases", "[error]")
