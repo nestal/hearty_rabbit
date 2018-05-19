@@ -135,8 +135,10 @@ MMap BlobFile::rendition(std::string_view rendition, const RenditionSetting& cfg
 	if (!cfg.valid(rendition) && rendition != hrb::master_rendition)
 		rendition = cfg.default_rendition();
 
+	auto rend_path = m_dir/std::string{rendition};
+
 	// generate the rendition if it doesn't exist
-	if (rendition != hrb::master_rendition && !exists(m_dir/std::string{rendition}))
+	if (rendition != hrb::master_rendition && !exists(rend_path))
 	{
 		auto master = MMap::open(m_dir/hrb::master_rendition, ec);
 		if (!ec)
@@ -148,12 +150,11 @@ MMap BlobFile::rendition(std::string_view rendition, const RenditionSetting& cfg
 				ec
 			);
 			if (!tb.empty())
-				save_blob(tb, m_dir / std::string{rendition}, ec);
+				save_blob(tb, rend_path, ec);
 		}
 	}
 
-	auto resized = m_dir/std::string{rendition};
-	return MMap::open(exists(resized) ? resized : m_dir/hrb::master_rendition, ec);
+	return MMap::open(exists(rend_path) ? rend_path : m_dir/hrb::master_rendition, ec);
 }
 
 CollEntry BlobFile::entry() const
