@@ -48,7 +48,7 @@ public:
 		std::error_code& ec
 	);
 
-	void generate_jpeg_rendition(const JPEGRenditionSetting& cfg, std::string_view rendition);
+	void generate_jpeg_rendition(const JPEGRenditionSetting& cfg, std::string_view rendition, std::error_code& err);
 
 	BufferView buffer() const;
 	MMap& mmap() {return m_mmap;}

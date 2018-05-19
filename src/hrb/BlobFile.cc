@@ -49,41 +49,41 @@ BlobFile BlobFile::upload(
 		return result;
 	}
 
-	auto mime = magic.mime(master.blob());
-
-	if (mime == "image/jpeg")
-	{
-		// generate default rendition
-		auto rotated = generate_rendition_from_jpeg(
-			master.buffer(),
-			cfg.dimension(cfg.default_rendition()),
-			cfg.quality(cfg.default_rendition()),
-			ec
-		);
-
-		if (ec)
-		{
-			// just keep the file as-is if we can't auto-rotate it
-			Log(LOG_WARNING, "BlobFile::upload(): cannot rotate image %1% %2%", ec, ec.message());
-			ec.clear();
-		}
-
-		else if (!rotated.empty())
-		{
-			result.m_rend.emplace(cfg.default_rendition(), std::move(rotated));
-		}
-	}
-
 	// commit result
+	result.m_coll_entry = CollEntry::create(Permission{}, filename, magic.mime(master.blob()));
 	result.m_id     = tmp.ID();
 	result.m_phash  = hrb::phash(master.buffer());
 	result.m_mmap   = std::move(master);
-	result.m_coll_entry   = CollEntry::create(Permission{}, filename, mime);
 
+	result.generate_jpeg_rendition(cfg.find(cfg.default_rendition()), cfg.default_rendition(), ec);
 	if (!ec)
 		result.save(tmp, dir, ec);
 
 	return result;
+}
+
+void BlobFile::generate_jpeg_rendition(const JPEGRenditionSetting& cfg, std::string_view rendition, std::error_code& err)
+{
+	auto mime = entry().mime();
+	if (mime == "image/jpeg")
+	{
+		// generate default rendition
+		auto rotated = generate_rendition_from_jpeg(m_mmap.buffer(), cfg.dim, cfg.quality, err);
+
+		if (err)
+		{
+			// just keep the file as-is if we can't auto-rotate it
+			Log(LOG_WARNING, "BlobFile::generate_jpeg_rendition(): cannot rotate image %1% %2%", err, err.message());
+			err.clear();
+		}
+
+		else if (!rotated.empty())
+		{
+			m_rend.emplace(rendition, std::move(rotated));
+		}
+	}
+	else if (!mime.empty())
+		Log(LOG_WARNING, "BlobFile::generate_jpeg_rendition(): cannot generate rendition for %1%", mime);
 }
 
 BufferView BlobFile::buffer() const
