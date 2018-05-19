@@ -36,7 +36,7 @@ class BlobFile
 {
 public:
 	BlobFile() = default;
-	BlobFile(const fs::path& dir, const ObjectID& id, std::string_view rendition, const RenditionSetting& cfg, std::error_code& ec);
+	BlobFile(const fs::path& dir, const ObjectID& id);
 
 	static BlobFile upload(
 		UploadFile&& tmp,
@@ -47,10 +47,7 @@ public:
 		std::error_code& ec
 	);
 
-	void generate_jpeg_rendition(const JPEGRenditionSetting& cfg, std::string_view rendition, const fs::path& dir, std::error_code& err);
-
-	BufferView buffer() const;
-	MMap& mmap() {return m_mmap;}
+	MMap rendition(std::string_view rendition, const RenditionSetting& cfg, std::error_code& ec) const;
 
 	const ObjectID& ID() const {return m_id;}
 	CollEntry entry() const;
@@ -58,13 +55,14 @@ public:
 	auto phash() const {return m_phash;}
 
 private:
+	void generate_jpeg_rendition(BufferView jpeg_master, const JPEGRenditionSetting& cfg, std::string_view rendition, const fs::path& dir, std::error_code& err);
 	static TurboBuffer generate_rendition_from_jpeg(BufferView jpeg_master, Size2D dim, int quality, std::error_code& ec);
 
 private:
 	ObjectID    m_id{};
+	fs::path    m_dir;
 	std::string m_coll_entry;
 	PHash       m_phash{};
-	MMap        m_mmap;
 };
 
 } // end of namespace hrb

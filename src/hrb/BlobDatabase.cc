@@ -73,13 +73,13 @@ BlobDatabase::BlobResponse BlobDatabase::response(
 	auto path = dest(id);
 
 	std::error_code ec;
-	BlobFile blob_obj{path, id, rendition, m_cfg.renditions(), ec};
+	BlobFile blob_obj{path, id};
 
 	if (ec)
 		return BlobResponse{http::status::not_found, version};
 
 	// Advice the kernel that we only read the memory in one pass
-	auto mmap{std::move(blob_obj.mmap())};
+	auto mmap = blob_obj.rendition(rendition, m_cfg.renditions(), ec);
 	mmap.cache();
 
 	BlobResponse res{

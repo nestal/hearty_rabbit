@@ -72,18 +72,18 @@ TEST_CASE("upload non-image BlobFile", "[normal]")
 	SECTION("read back the original")
 	{
 		std::error_code read_ec;
-		BlobFile subject2{"/tmp/BlobFile-UT", subject.ID(), "master", cfg, read_ec};
+		BlobFile subject2{"/tmp/BlobFile-UT", subject.ID()};
 
+		REQUIRE(out.buffer() == subject2.rendition("master", cfg, read_ec).buffer());
 		REQUIRE(!read_ec);
-		REQUIRE(out.buffer() == subject2.buffer());
 	}
 	SECTION("read another rendition, but got the original")
 	{
 		std::error_code read_ec;
-		BlobFile subject2{"/tmp/BlobFile-UT", subject.ID(), "thumbnail", cfg, read_ec};
+		BlobFile subject2{"/tmp/BlobFile-UT", subject.ID()};
 
+		REQUIRE(out.buffer() == subject2.rendition("thumbnail", cfg, read_ec).buffer());
 		REQUIRE(!read_ec);
-		REQUIRE(out.buffer() == subject2.buffer());
 	}
 }
 
@@ -148,8 +148,8 @@ TEST_CASE("upload big upright image BlobFile", "[normal]")
 	REQUIRE(out128.size() < src.size());
 	REQUIRE(std::memcmp(out128.data(), src.data(), out128.size()) != 0);
 
-	BlobFile gen{"/tmp/BlobFile-UT", subject.ID(), "thumbnail", cfg, ec};
-	auto gen_mmap{std::move(gen.mmap())};
+	BlobFile gen{"/tmp/BlobFile-UT", subject.ID()};
+	auto gen_mmap = gen.rendition("thumbnail", cfg, ec);
 	REQUIRE(gen_mmap.size() > 0);
 
 	JPEG gen_jpeg{gen_mmap.buffer().data(), gen_mmap.size(), {64, 64}};

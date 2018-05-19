@@ -53,7 +53,6 @@ BlobFile BlobFile::upload(
 	result.m_coll_entry = CollEntry::create(Permission{}, filename, magic.mime(master.blob()));
 	result.m_id     = tmp.ID();
 	result.m_phash  = hrb::phash(master.buffer());
-	result.m_mmap   = std::move(master);
 
 	boost::system::error_code bec;
 	fs::create_directories(dir, bec);
@@ -67,7 +66,7 @@ BlobFile BlobFile::upload(
 	// deep copy instead.
 	tmp.move(dir/hrb::master_rendition, ec);
 
-	result.generate_jpeg_rendition(cfg.find(cfg.default_rendition()), cfg.default_rendition(), dir, ec);
+	result.generate_jpeg_rendition(master.buffer(), cfg.find(cfg.default_rendition()), cfg.default_rendition(), dir, ec);
 	return result;
 }
 
@@ -94,13 +93,13 @@ void save_blob(const Blob& blob, const fs::path& dest, std::error_code& ec)
 		ec.assign(0, ec.category());
 }
 
-void BlobFile::generate_jpeg_rendition(const JPEGRenditionSetting& cfg, std::string_view rendition, const fs::path& dir, std::error_code& err)
+void BlobFile::generate_jpeg_rendition(BufferView jpeg_master, const JPEGRenditionSetting& cfg, std::string_view rendition, const fs::path& dir, std::error_code& err)
 {
 	auto mime = entry().mime();
 	if (mime == "image/jpeg")
 	{
 		// generate default rendition
-		auto rotated = generate_rendition_from_jpeg(m_mmap.buffer(), cfg.dim, cfg.quality, err);
+		auto rotated = generate_rendition_from_jpeg(jpeg_master, cfg.dim, cfg.quality, err);
 
 		if (err)
 		{
@@ -120,28 +119,26 @@ void BlobFile::generate_jpeg_rendition(const JPEGRenditionSetting& cfg, std::str
 		Log(LOG_WARNING, "BlobFile::generate_jpeg_rendition(): cannot generate rendition for %1%", mime);
 }
 
-BufferView BlobFile::buffer() const
-{
-	return m_mmap.buffer();
-}
-
 BlobFile::BlobFile(
 	const fs::path& dir,
-	const ObjectID& id,
-	std::string_view rendition,
-	const RenditionSetting& cfg,
-	std::error_code& ec
-) :
-	m_id{id}
+	const ObjectID& id
+)  :
+	m_id{id},
+	m_dir{dir}
+{
+
+}
+
+MMap BlobFile::rendition(std::string_view rendition, const RenditionSetting& cfg, std::error_code& ec) const
 {
 	// check if rendition is allowed by config
 	if (!cfg.valid(rendition) && rendition != hrb::master_rendition)
 		rendition = cfg.default_rendition();
 
 	// generate the rendition if it doesn't exist
-	if (rendition != hrb::master_rendition && !exists(dir/std::string{rendition}))
+	if (rendition != hrb::master_rendition && !exists(m_dir/std::string{rendition}))
 	{
-		auto master = MMap::open(dir/hrb::master_rendition, ec);
+		auto master = MMap::open(m_dir/hrb::master_rendition, ec);
 		if (!ec)
 		{
 			auto tb = generate_rendition_from_jpeg(
@@ -151,12 +148,12 @@ BlobFile::BlobFile(
 				ec
 			);
 			if (!tb.empty())
-				save_blob(tb, dir / std::string{rendition}, ec);
+				save_blob(tb, m_dir / std::string{rendition}, ec);
 		}
 	}
 
-	auto resized = dir/std::string{rendition};
-	m_mmap = MMap::open(exists(resized) ? resized : dir/hrb::master_rendition, ec);
+	auto resized = m_dir/std::string{rendition};
+	return MMap::open(exists(resized) ? resized : m_dir/hrb::master_rendition, ec);
 }
 
 CollEntry BlobFile::entry() const
