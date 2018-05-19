@@ -88,8 +88,10 @@ void save_blob(const Blob& blob, const fs::path& dest, std::error_code& ec)
 		ec.assign(0, ec.category());
 }
 
-BlobFile::BlobFile(const fs::path& dir, const ObjectID& id) : m_id{id}, m_dir{dir}
+BlobFile::BlobFile(const fs::path& dir, const ObjectID& id) :
+	m_id{id}, m_dir{dir}, m_mime{Magic{}.mime(dir/hrb::master_rendition)}
 {
+	Log(LOG_DEBUG, "loaded BlobFile @ %1% has mime = %2%", m_dir, m_mime);
 }
 
 MMap BlobFile::rendition(std::string_view rendition, const RenditionSetting& cfg, std::error_code& ec) const
@@ -101,7 +103,7 @@ MMap BlobFile::rendition(std::string_view rendition, const RenditionSetting& cfg
 	auto rend_path = m_dir/std::string{rendition};
 
 	// generate the rendition if it doesn't exist
-	if (rendition != hrb::master_rendition && !exists(rend_path))
+	if (rendition != hrb::master_rendition && !exists(rend_path) && m_mime == "image/jpeg")
 		generate_rendition_from_jpeg(cfg.find(rendition), rend_path, ec);
 
 	return MMap::open(exists(rend_path) ? rend_path : m_dir/hrb::master_rendition, ec);
@@ -118,7 +120,7 @@ void BlobFile::generate_rendition_from_jpeg(const JPEGRenditionSetting& cfg, con
 			auto yratio = cfg.dim.height() / static_cast<double>(jpeg.rows);
 
 			cv::Mat out;
-			if (xratio < 1.0 && yratio < 1.0)
+			if (xratio < 1.0 || yratio < 1.0)
 				cv::resize(jpeg, out, {}, std::min(xratio, yratio), std::min(xratio, yratio), cv::INTER_LINEAR);
 			else
 				out = jpeg;

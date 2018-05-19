@@ -12,6 +12,8 @@
 
 #pragma once
 
+#include "FS.hh"
+
 #include <boost/asio/buffer.hpp>
 #include <boost/beast/core/file.hpp>
 
@@ -31,6 +33,7 @@ public:
 	std::string_view mime(const void *buffer, std::size_t size) const;
 	std::string_view mime(boost::asio::const_buffer buf) const;
 	std::string_view mime(boost::beast::file::native_handle_type fd) const;
+	std::string_view mime(const fs::path& path) const;
 
 private:
 	::magic_t m_cookie;
