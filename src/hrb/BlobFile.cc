@@ -125,10 +125,7 @@ void BlobFile::generate_rendition_from_jpeg(const JPEGRenditionSetting& cfg, con
 				out = jpeg;
 
 			std::vector<unsigned char> out_buf;
-			cv::imencode(m_mime == "image/png" ? ".png" : ".jpg", out, out_buf, std::vector<int>{cv::IMWRITE_JPEG_QUALITY, cfg.quality});
-
-			Log(LOG_DEBUG, "after resize %1% %2%", out.rows, out.cols);
-
+			cv::imencode(m_mime == "image/png" ? ".png" : ".jpg", out, out_buf, {cv::IMWRITE_JPEG_QUALITY, cfg.quality});
 			save_blob(out_buf, dest, ec);
 		}
 	}
