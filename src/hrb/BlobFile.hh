@@ -56,7 +56,7 @@ public:
 	auto phash() const {return m_phash;}
 
 private:
-	static TurboBuffer generate_rendition(BufferView master, Size2D dim, int quality, std::error_code& ec);
+	static TurboBuffer generate_rendition_from_jpeg(BufferView jpeg_master, Size2D dim, int quality, std::error_code& ec);
 
 private:
 	ObjectID    m_id{};

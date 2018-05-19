@@ -52,7 +52,7 @@ BlobFile BlobFile::upload(
 	if (mime == "image/jpeg")
 	{
 		// generate default rendition
-		auto rotated = generate_rendition(
+		auto rotated = generate_rendition_from_jpeg(
 			master.buffer(),
 			cfg.dimension(cfg.default_rendition()),
 			cfg.quality(cfg.default_rendition()),
@@ -155,7 +155,12 @@ BlobFile::BlobFile(
 		auto master = MMap::open(dir/hrb::master_rendition, ec);
 		if (!ec)
 		{
-			auto tb = generate_rendition(master.buffer(), cfg.dimension(rendition), cfg.quality(rendition), ec);
+			auto tb = generate_rendition_from_jpeg(
+				master.buffer(),
+				cfg.dimension(rendition),
+				cfg.quality(rendition),
+				ec
+			);
 			if (!tb.empty())
 				save_blob(tb, dir / std::string{rendition}, ec);
 		}
@@ -170,16 +175,16 @@ CollEntry BlobFile::entry() const
 	return CollEntry{m_coll_entry};
 }
 
-TurboBuffer BlobFile::generate_rendition(BufferView master, Size2D dim, int quality, std::error_code& ec)
+TurboBuffer BlobFile::generate_rendition_from_jpeg(BufferView jpeg_master, Size2D dim, int quality, std::error_code& ec)
 {
 	RotateImage transform;
-	auto rotated = transform.auto_rotate(master, ec);
+	auto rotated = transform.auto_rotate(jpeg_master, ec);
 
 	if (!ec)
 	{
 		JPEG img{
-			rotated.empty() ? master.data() : rotated.data(),
-			rotated.empty() ? master.size() : rotated.size(),
+			rotated.empty() ? jpeg_master.data() : rotated.data(),
+			rotated.empty() ? jpeg_master.size() : rotated.size(),
 			dim
 		};
 
