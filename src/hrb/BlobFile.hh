@@ -21,7 +21,6 @@
 #include "util/FS.hh"
 #include "util/MMap.hh"
 
-#include <unordered_map>
 #include <system_error>
 
 namespace hrb {
@@ -48,7 +47,7 @@ public:
 		std::error_code& ec
 	);
 
-	void generate_jpeg_rendition(const JPEGRenditionSetting& cfg, std::string_view rendition, std::error_code& err);
+	void generate_jpeg_rendition(const JPEGRenditionSetting& cfg, std::string_view rendition, const fs::path& dir, std::error_code& err);
 
 	BufferView buffer() const;
 	MMap& mmap() {return m_mmap;}
@@ -60,15 +59,12 @@ public:
 
 private:
 	static TurboBuffer generate_rendition_from_jpeg(BufferView jpeg_master, Size2D dim, int quality, std::error_code& ec);
-	void save(UploadFile& tmp, const fs::path& dir, std::error_code& ec) const;
 
 private:
 	ObjectID    m_id{};
 	std::string m_coll_entry;
 	PHash       m_phash{};
-
-	MMap                m_mmap;
-	std::unordered_map<std::string, TurboBuffer> m_rend;
+	MMap        m_mmap;
 };
 
 } // end of namespace hrb

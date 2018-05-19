@@ -55,40 +55,20 @@ BlobFile BlobFile::upload(
 	result.m_phash  = hrb::phash(master.buffer());
 	result.m_mmap   = std::move(master);
 
-	result.generate_jpeg_rendition(cfg.find(cfg.default_rendition()), cfg.default_rendition(), ec);
-	if (!ec)
-		result.save(tmp, dir, ec);
-
-	return result;
-}
-
-void BlobFile::generate_jpeg_rendition(const JPEGRenditionSetting& cfg, std::string_view rendition, std::error_code& err)
-{
-	auto mime = entry().mime();
-	if (mime == "image/jpeg")
+	boost::system::error_code bec;
+	fs::create_directories(dir, bec);
+	if (bec)
 	{
-		// generate default rendition
-		auto rotated = generate_rendition_from_jpeg(m_mmap.buffer(), cfg.dim, cfg.quality, err);
-
-		if (err)
-		{
-			// just keep the file as-is if we can't auto-rotate it
-			Log(LOG_WARNING, "BlobFile::generate_jpeg_rendition(): cannot rotate image %1% %2%", err, err.message());
-			err.clear();
-		}
-
-		else if (!rotated.empty())
-		{
-			m_rend.emplace(rendition, std::move(rotated));
-		}
+		Log(LOG_WARNING, "create create directory %1% (%2% %3%)", dir, ec, ec.message());
+		return result;
 	}
-	else if (!mime.empty())
-		Log(LOG_WARNING, "BlobFile::generate_jpeg_rendition(): cannot generate rendition for %1%", mime);
-}
 
-BufferView BlobFile::buffer() const
-{
-	return m_mmap.buffer();
+	// Try moving the temp file to our destination first. If failed, use
+	// deep copy instead.
+	tmp.move(dir/hrb::master_rendition, ec);
+
+	result.generate_jpeg_rendition(cfg.find(cfg.default_rendition()), cfg.default_rendition(), dir, ec);
+	return result;
 }
 
 template <typename Blob>
@@ -114,30 +94,35 @@ void save_blob(const Blob& blob, const fs::path& dest, std::error_code& ec)
 		ec.assign(0, ec.category());
 }
 
-void BlobFile::save(UploadFile& tmp, const fs::path& dir, std::error_code& ec) const
+void BlobFile::generate_jpeg_rendition(const JPEGRenditionSetting& cfg, std::string_view rendition, const fs::path& dir, std::error_code& err)
 {
-	boost::system::error_code bec;
-	fs::create_directories(dir, bec);
-	if (bec)
+	auto mime = entry().mime();
+	if (mime == "image/jpeg")
 	{
-		Log(LOG_WARNING, "create create directory %1% (%2% %3%)", dir, ec, ec.message());
-		return;
-	}
+		// generate default rendition
+		auto rotated = generate_rendition_from_jpeg(m_mmap.buffer(), cfg.dim, cfg.quality, err);
 
-	// Try moving the temp file to our destination first. If failed, use
-	// deep copy instead.
-	tmp.move(dir/hrb::master_rendition, ec);
-
-	// Save the renditions, if any.
-	for (auto&& [name, rend] : m_rend)
-	{
-		save_blob(rend, dir / name, ec);
-		if (ec)
+		if (err)
 		{
-			Log(LOG_WARNING, "cannot save blob rendition %1% (%2% %3%)", name, ec, ec.message());
-			break;
+			// just keep the file as-is if we can't auto-rotate it
+			Log(LOG_WARNING, "BlobFile::generate_jpeg_rendition(): cannot rotate image %1% %2%", err, err.message());
+			err.clear();
+		}
+
+		else if (!rotated.empty())
+		{
+			save_blob(rotated, dir / std::string{rendition}, err);
+			if (err)
+				Log(LOG_WARNING, "cannot save blob rendition %1% (%2% %3%)", rendition, err, err.message());
 		}
 	}
+	else if (!mime.empty())
+		Log(LOG_WARNING, "BlobFile::generate_jpeg_rendition(): cannot generate rendition for %1%", mime);
+}
+
+BufferView BlobFile::buffer() const
+{
+	return m_mmap.buffer();
 }
 
 BlobFile::BlobFile(
