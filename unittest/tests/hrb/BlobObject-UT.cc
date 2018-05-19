@@ -143,6 +143,10 @@ TEST_CASE("upload big upright image BlobFile", "[normal]")
 	REQUIRE(out.size() == src.size());
 	REQUIRE(std::memcmp(out.data(), src.data(), out.size()) == 0);
 
+	auto rend128 = subject.rendition(cfg.default_rendition(), cfg, ec);
+	REQUIRE(!ec);
+	REQUIRE(rend128.buffer() != src.buffer());
+
 	auto out128 = MMap::open("/tmp/BlobFile-UT/128x128", ec);
 	REQUIRE(!ec);
 	REQUIRE(out128.size() < src.size());

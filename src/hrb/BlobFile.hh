@@ -55,7 +55,6 @@ public:
 	auto phash() const {return m_phash;}
 
 private:
-	void generate_jpeg_rendition(BufferView jpeg_master, const JPEGRenditionSetting& cfg, std::string_view rendition, const fs::path& dir, std::error_code& err);
 	static TurboBuffer generate_rendition_from_jpeg(BufferView jpeg_master, Size2D dim, int quality, std::error_code& ec);
 
 private:

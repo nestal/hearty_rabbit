@@ -52,6 +52,7 @@ BlobFile BlobFile::upload(
 	// commit result
 	result.m_coll_entry = CollEntry::create(Permission{}, filename, magic.mime(master.blob()));
 	result.m_id     = tmp.ID();
+	result.m_dir    = dir;
 	result.m_phash  = hrb::phash(master.buffer());
 
 	boost::system::error_code bec;
@@ -64,9 +65,7 @@ BlobFile BlobFile::upload(
 
 	// Try moving the temp file to our destination first. If failed, use
 	// deep copy instead.
-	tmp.move(dir/hrb::master_rendition, ec);
-
-	result.generate_jpeg_rendition(master.buffer(), cfg.find(cfg.default_rendition()), cfg.default_rendition(), dir, ec);
+	tmp.move(result.m_dir/hrb::master_rendition, ec);
 	return result;
 }
 
@@ -91,32 +90,6 @@ void save_blob(const Blob& blob, const fs::path& dest, std::error_code& ec)
 	}
 	else
 		ec.assign(0, ec.category());
-}
-
-void BlobFile::generate_jpeg_rendition(BufferView jpeg_master, const JPEGRenditionSetting& cfg, std::string_view rendition, const fs::path& dir, std::error_code& err)
-{
-	auto mime = entry().mime();
-	if (mime == "image/jpeg")
-	{
-		// generate default rendition
-		auto rotated = generate_rendition_from_jpeg(jpeg_master, cfg.dim, cfg.quality, err);
-
-		if (err)
-		{
-			// just keep the file as-is if we can't auto-rotate it
-			Log(LOG_WARNING, "BlobFile::generate_jpeg_rendition(): cannot rotate image %1% %2%", err, err.message());
-			err.clear();
-		}
-
-		else if (!rotated.empty())
-		{
-			save_blob(rotated, dir / std::string{rendition}, err);
-			if (err)
-				Log(LOG_WARNING, "cannot save blob rendition %1% (%2% %3%)", rendition, err, err.message());
-		}
-	}
-	else if (!mime.empty())
-		Log(LOG_WARNING, "BlobFile::generate_jpeg_rendition(): cannot generate rendition for %1%", mime);
 }
 
 BlobFile::BlobFile(
