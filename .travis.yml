@@ -24,9 +24,11 @@ script:
 after_success:
   - docker login -u "$DOCKER_USER" -p "$DOCKER_PASSWORD"
   - if [ "$TRAVIS_BRANCH" == "master" ]; then
-    echo "build for master branch";
+    echo "build for master branch $TRAVIS_BRANCH";
     docker tag nestal/hearty_rabbit nestal/hearty_rabbit:$TRAVIS_BUILD_NUMBER;
     fi;
-  - docker tag nestal/hearty_rabbit nestal/hearty_rabbit:$TRAVIS_BRANCH
+  - if [ "$TRAVIS_BRANCH" == "develop" ] || [ "$TRAVIS_BRANCH" == "master" ]; then
+    docker tag nestal/hearty_rabbit nestal/hearty_rabbit:$TRAVIS_BRANCH
+    fi;
   - docker push nestal/hearty_rabbit
   - echo "Pushed docker image to hub"
