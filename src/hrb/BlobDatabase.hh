@@ -30,6 +30,7 @@ class MMapResponseBody;
 class Magic;
 class UploadFile;
 
+/// \brief  On-disk database that stores the blobs in files and directories
 class BlobDatabase
 {
 public:

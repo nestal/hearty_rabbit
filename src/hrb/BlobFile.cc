@@ -32,14 +32,16 @@ const std::string master_rendition = "master";
 
 BlobFile BlobFile::upload(
 	UploadFile&& tmp,
+	const fs::path& dir,
 	const Magic& magic,
 	const RenditionSetting& cfg,
 	std::string_view filename,
 	std::error_code& ec
 )
 {
+	// Note: closing the file before munmap() is OK: the mapped memory will still be there.
+	// Details: http://pubs.opengroup.org/onlinepubs/7908799/xsh/mmap.html
 	BlobFile result;
-
 	auto master = MMap::open(tmp.native_handle(), ec);
 	if (ec)
 	{
@@ -78,6 +80,9 @@ BlobFile BlobFile::upload(
 	result.m_phash  = hrb::phash(master.buffer());
 	result.m_mmap   = std::move(master);
 	result.m_coll_entry   = CollEntry::create(Permission{}, filename, mime);
+
+	if (!ec)
+		result.save(dir, ec);
 
 	return result;
 }

@@ -40,6 +40,7 @@ public:
 
 	static BlobFile upload(
 		UploadFile&& tmp,
+		const fs::path& dir,
 		const Magic& magic,
 		const RenditionSetting& cfg,
 		std::string_view filename,
@@ -52,11 +53,11 @@ public:
 	const ObjectID& ID() const {return m_id;}
 	CollEntry entry() const;
 
-	void save(const fs::path& dir, std::error_code& ec) const;
 	auto phash() const {return m_phash;}
 
 private:
 	static TurboBuffer generate_rendition_from_jpeg(BufferView jpeg_master, Size2D dim, int quality, std::error_code& ec);
+	void save(const fs::path& dir, std::error_code& ec) const;
 
 private:
 	ObjectID    m_id{};

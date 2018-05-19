@@ -43,11 +43,7 @@ void BlobDatabase::prepare_upload(UploadFile& result, std::error_code& ec) const
 
 BlobFile BlobDatabase::save(UploadFile&& tmp, std::string_view filename, std::error_code& ec)
 {
-	auto blob_obj = BlobFile::upload(std::move(tmp), m_magic, m_cfg.renditions(), filename, ec);
-	if (!ec)
-		blob_obj.save(dest(blob_obj.ID()), ec);
-
-	return blob_obj;
+	return BlobFile::upload(std::move(tmp), dest(tmp.ID()), m_magic, m_cfg.renditions(), filename, ec);
 }
 
 fs::path BlobDatabase::dest(const ObjectID& id, std::string_view) const

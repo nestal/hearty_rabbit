@@ -52,7 +52,7 @@ TEST_CASE("upload non-image BlobFile", "[normal]")
 	auto [tmp, src] = upload(__FILE__);
 
 	std::error_code ec;
-	auto subject = BlobFile::upload(std::move(tmp), Magic{}, cfg, "unittest.cc", ec);
+	auto subject = BlobFile::upload(std::move(tmp), "/tmp/BlobFile-UT", Magic{}, cfg, "unittest.cc", ec);
 	REQUIRE(!ec);
 	REQUIRE(subject.ID() != ObjectID{});
 
@@ -60,7 +60,7 @@ TEST_CASE("upload non-image BlobFile", "[normal]")
 	REQUIRE(meta.mime() == "text/x-c");
 	REQUIRE(meta.filename() == "unittest.cc");
 
-	subject.save("/tmp/BlobFile-UT", ec);
+//	subject.save("/tmp/BlobFile-UT", ec);
 	REQUIRE(!ec);
 	REQUIRE(fs::exists("/tmp/BlobFile-UT/master"));
 
@@ -95,7 +95,7 @@ TEST_CASE("upload small image BlobFile", "[normal]")
 	auto [tmp, src] = upload(image_path()/"black.jpg");
 
 	std::error_code ec;
-	auto subject = BlobFile::upload(std::move(tmp), Magic{}, RenditionSetting{}, "black.jpeg", ec);
+	auto subject = BlobFile::upload(std::move(tmp), "/tmp/BlobFile-UT", Magic{}, RenditionSetting{}, "black.jpeg", ec);
 	REQUIRE(!ec);
 	REQUIRE(subject.ID() != ObjectID{});
 
@@ -103,7 +103,7 @@ TEST_CASE("upload small image BlobFile", "[normal]")
 	REQUIRE(meta.mime() == "image/jpeg");
 	REQUIRE(meta.filename() == "black.jpeg");
 
-	subject.save("/tmp/BlobFile-UT", ec);
+//	subject.save("/tmp/BlobFile-UT", ec);
 	REQUIRE(!ec);
 	REQUIRE(fs::exists("/tmp/BlobFile-UT/master"));
 
@@ -126,7 +126,7 @@ TEST_CASE("upload big upright image BlobFile", "[normal]")
 	cfg.default_rendition("128x128");
 
 	std::error_code ec;
-	auto subject = BlobFile::upload(std::move(tmp), Magic{}, cfg, "upright.jpeg", ec);
+	auto subject = BlobFile::upload(std::move(tmp), "/tmp/BlobFile-UT", Magic{}, cfg, "upright.jpeg", ec);
 	REQUIRE(!ec);
 	REQUIRE(subject.ID() != ObjectID{});
 
@@ -134,7 +134,7 @@ TEST_CASE("upload big upright image BlobFile", "[normal]")
 	REQUIRE(meta.mime() == "image/jpeg");
 	REQUIRE(meta.filename() == "upright.jpeg");
 
-	subject.save("/tmp/BlobFile-UT", ec);
+//	subject.save("/tmp/BlobFile-UT", ec);
 	REQUIRE(!ec);
 	REQUIRE(fs::exists("/tmp/BlobFile-UT/master"));
 
