@@ -77,7 +77,7 @@ TEST_CASE_METHOD(BlobFileUTFixture, "upload non-image BlobFile", "[normal]")
 		std::error_code read_ec;
 		BlobFile subject2{m_blob_path, subject.ID()};
 
-		REQUIRE(out.buffer() == subject2.rendition("master", cfg, read_ec).buffer());
+		REQUIRE(out.buffer() == subject2.master(read_ec).buffer());
 		REQUIRE(!read_ec);
 	}
 	SECTION("read another rendition, but got the original")

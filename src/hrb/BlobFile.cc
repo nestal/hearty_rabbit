@@ -55,13 +55,15 @@ BlobFile::BlobFile(
 	fs::create_directories(dir, bec);
 	if (bec)
 	{
-		Log(LOG_WARNING, "create create directory %1% (%2% %3%)", dir, ec, ec.message());
-		return;
+		Log(LOG_WARNING, "create create directory %1% (%2% %3%)", dir, bec, bec.message());
+		ec.assign(bec.value(), bec.category());
 	}
-
-	// Try moving the temp file to our destination first. If failed, use
-	// deep copy instead.
-	tmp.move(m_dir/hrb::master_rendition, ec);
+	else
+	{
+		// Try moving the temp file to our destination first. If failed, use
+		// deep copy instead.
+		tmp.move(m_dir / hrb::master_rendition, ec);
+	}
 }
 
 template <typename Blob>
@@ -100,7 +102,7 @@ MMap BlobFile::rendition(std::string_view rendition, const RenditionSetting& cfg
 	auto rend_path = m_dir/std::string{rendition};
 
 	// generate the rendition if it doesn't exist
-	if (rendition != hrb::master_rendition && !exists(rend_path) && std::string_view{m_mime}.substr(0, 5) == "image")
+	if (rendition != hrb::master_rendition && !exists(rend_path))
 		generate_rendition_from_jpeg(cfg.find(rendition), rend_path, ec);
 
 	return MMap::open(exists(rend_path) ? rend_path : m_dir/hrb::master_rendition, ec);
@@ -129,6 +131,11 @@ void BlobFile::generate_rendition_from_jpeg(const JPEGRenditionSetting& cfg, con
 		if (!rotated.empty())
 			save_blob(rotated, dest, ec);
 	}
+}
+
+MMap BlobFile::master(std::error_code& ec) const
+{
+	return MMap::open(m_dir/hrb::master_rendition, ec);
 }
 
 } // end of namespace hrb
