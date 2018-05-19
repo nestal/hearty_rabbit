@@ -76,13 +76,12 @@ BlobFile BlobFile::upload(
 
 	// commit result
 	result.m_id     = tmp.ID();
-	result.m_tmp    = std::move(tmp);
 	result.m_phash  = hrb::phash(master.buffer());
 	result.m_mmap   = std::move(master);
 	result.m_coll_entry   = CollEntry::create(Permission{}, filename, mime);
 
 	if (!ec)
-		result.save(dir, ec);
+		result.save(tmp, dir, ec);
 
 	return result;
 }
@@ -115,7 +114,7 @@ void save_blob(const Blob& blob, const fs::path& dest, std::error_code& ec)
 		ec.assign(0, ec.category());
 }
 
-void BlobFile::save(const fs::path& dir, std::error_code& ec) const
+void BlobFile::save(UploadFile& tmp, const fs::path& dir, std::error_code& ec) const
 {
 	boost::system::error_code bec;
 	fs::create_directories(dir, bec);
@@ -127,7 +126,7 @@ void BlobFile::save(const fs::path& dir, std::error_code& ec) const
 
 	// Try moving the temp file to our destination first. If failed, use
 	// deep copy instead.
-	m_tmp.move(dir/hrb::master_rendition, ec);
+	tmp.move(dir/hrb::master_rendition, ec);
 
 	// Save the renditions, if any.
 	for (auto&& [name, rend] : m_rend)

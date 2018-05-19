@@ -60,14 +60,13 @@ public:
 
 private:
 	static TurboBuffer generate_rendition_from_jpeg(BufferView jpeg_master, Size2D dim, int quality, std::error_code& ec);
-	void save(const fs::path& dir, std::error_code& ec) const;
+	void save(UploadFile& tmp, const fs::path& dir, std::error_code& ec) const;
 
 private:
 	ObjectID    m_id{};
 	std::string m_coll_entry;
 	PHash       m_phash{};
 
-	mutable UploadFile  m_tmp;
 	MMap                m_mmap;
 	std::unordered_map<std::string, TurboBuffer> m_rend;
 };
