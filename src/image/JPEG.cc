@@ -15,10 +15,21 @@
 
 #include "util/Log.hh"
 
+#include <opencv2/imgcodecs.hpp>
+
 #include <turbojpeg.h>
 #include <memory>
 
 namespace hrb {
+
+cv::Mat load_image(BufferView raw)
+{
+	return cv::imdecode(
+		cv::Mat{1, static_cast<int>(raw.size()), CV_8U, const_cast<unsigned char*>(raw.data())},
+		cv::IMREAD_ANYCOLOR | cv::IMREAD_ANYDEPTH
+	);
+}
+
 namespace {
 const int yuv_pad = 4;
 }

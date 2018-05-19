@@ -13,12 +13,16 @@
 #pragma once
 
 #include "util/Size2D.hh"
+#include "util/BufferView.hh"
 
+#include <opencv2/core.hpp>
 #include <exception>
 #include <string_view>
 #include <vector>
 
 namespace hrb {
+
+cv::Mat load_image(BufferView raw);
 
 class TurboBuffer;
 

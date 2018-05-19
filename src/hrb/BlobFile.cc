@@ -14,17 +14,14 @@
 #include "UploadFile.hh"
 
 // HeartyRabbit headers
-#include "image/RotateImage.hh"
-#include "image/TurboBuffer.hh"
-#include "image/JPEG.hh"
 #include "image/PHash.hh"
+#include "image/EXIF2.hh"
 #include "util/MMap.hh"
 #include "util/Log.hh"
 #include "util/Magic.hh"
 #include "util/Configuration.hh"
 
 #include <opencv2/imgcodecs.hpp>
-#include <image/EXIF2.hh>
 #include <opencv2/imgproc.hpp>
 
 namespace hrb {
@@ -117,17 +114,19 @@ void BlobFile::generate_rendition_from_jpeg(const JPEGRenditionSetting& cfg, con
 		auto jpeg = cv::imread((m_dir/hrb::master_rendition).string(), cv::IMREAD_ANYCOLOR);
 		if (!jpeg.empty())
 		{
-			auto xratio = static_cast<double>(jpeg.cols) / cfg.dim.width();
-			auto yratio = static_cast<double>(jpeg.rows) / cfg.dim.height();
+			auto xratio = cfg.dim.width() / static_cast<double>(jpeg.cols);
+			auto yratio = cfg.dim.height() / static_cast<double>(jpeg.rows);
 
 			cv::Mat out;
-			if (xratio > 1.0 || yratio > 1.0)
+			if (xratio < 1.0 && yratio < 1.0)
 				cv::resize(jpeg, out, {}, std::min(xratio, yratio), std::min(xratio, yratio), cv::INTER_LINEAR);
 			else
 				out = jpeg;
 
 			std::vector<unsigned char> out_buf;
 			cv::imencode(".jpg", out, out_buf, std::vector<int>{cv::IMWRITE_JPEG_QUALITY, cfg.quality});
+
+			Log(LOG_DEBUG, "after resize %1% %2%", out.rows, out.cols);
 
 			save_blob(out_buf, dest, ec);
 		}
