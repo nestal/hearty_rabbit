@@ -41,13 +41,9 @@ void BlobDatabase::prepare_upload(UploadFile& result, std::error_code& ec) const
 		ec.assign(err.value(), err.category());
 }
 
-BlobFile BlobDatabase::save(UploadFile&& tmp, std::string_view filename, std::error_code& ec)
+BlobFile BlobDatabase::save(UploadFile&& tmp, std::error_code& ec)
 {
-	auto blob_obj = BlobFile::upload(std::move(tmp), m_magic, m_cfg.renditions(), filename, ec);
-	if (!ec)
-		blob_obj.save(dest(blob_obj.ID()), ec);
-
-	return blob_obj;
+	return BlobFile{std::move(tmp), dest(tmp.ID()), m_magic, ec};
 }
 
 fs::path BlobDatabase::dest(const ObjectID& id, std::string_view) const
@@ -74,16 +70,13 @@ BlobDatabase::BlobResponse BlobDatabase::response(
 	if (invalid != rendition.end())
 		return http::response<MMapResponseBody>{http::status::bad_request, version};
 
-	auto path = dest(id);
-
 	std::error_code ec;
-	BlobFile blob_obj{path, id, rendition, m_cfg.renditions(), ec};
-
+	BlobFile blob_obj{dest(id), id};
+	auto mmap = blob_obj.rendition(rendition, m_cfg.renditions(), ec);
 	if (ec)
 		return BlobResponse{http::status::not_found, version};
 
 	// Advice the kernel that we only read the memory in one pass
-	auto mmap{std::move(blob_obj.mmap())};
 	mmap.cache();
 
 	BlobResponse res{

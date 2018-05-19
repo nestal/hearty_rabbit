@@ -13,7 +13,8 @@
 #pragma once
 
 #include "util/BufferView.hh"
-#include <cstddef>
+#include <boost/asio/buffer.hpp>
+#include <memory>
 
 namespace hrb {
 

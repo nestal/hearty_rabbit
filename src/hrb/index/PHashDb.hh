@@ -18,8 +18,6 @@
 #include "net/Redis.hh"
 #include "util/Log.hh"
 
-#include <boost/range/adaptor/transformed.hpp>
-
 namespace hrb {
 namespace redis {
 class Connection;
@@ -50,7 +48,6 @@ public:
 					oids.remove_prefix(ObjectID{}.size());
 				}
 
-				using namespace boost::adaptors;
 				comp(std::move(result), err);
 			},
 			"HGET %b %d",

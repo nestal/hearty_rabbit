@@ -21,51 +21,43 @@
 #include "util/FS.hh"
 #include "util/MMap.hh"
 
-#include <unordered_map>
 #include <system_error>
 
 namespace hrb {
 
-class CollEntry;
 class EXIF2;
 class Magic;
 class RenditionSetting;
+class JPEGRenditionSetting;
 class UploadFile;
 
 class BlobFile
 {
 public:
 	BlobFile() = default;
-	BlobFile(const fs::path& dir, const ObjectID& id, std::string_view rendition, const RenditionSetting& cfg, std::error_code& ec);
-
-	static BlobFile upload(
+	BlobFile(const fs::path& dir, const ObjectID& id);
+	BlobFile(
 		UploadFile&& tmp,
+		const fs::path& dir,
 		const Magic& magic,
-		const RenditionSetting& cfg,
-		std::string_view filename,
 		std::error_code& ec
 	);
 
-	BufferView buffer() const;
-	MMap& mmap() {return m_mmap;}
+	// if the rendition does not exists but it's a valid one, it will be generated dynamically
+	MMap rendition(std::string_view rendition, const RenditionSetting& cfg, std::error_code& ec) const;
 
 	const ObjectID& ID() const {return m_id;}
-	CollEntry entry() const;
-
-	void save(const fs::path& dir, std::error_code& ec) const;
+	std::string mime() const {return m_mime;}
 	auto phash() const {return m_phash;}
 
 private:
-	static TurboBuffer generate_rendition(BufferView master, Size2D dim, int quality, std::error_code& ec);
+	static TurboBuffer generate_rendition_from_jpeg(BufferView jpeg_master, Size2D dim, int quality, std::error_code& ec);
 
 private:
 	ObjectID    m_id{};
-	std::string m_coll_entry;
+	fs::path    m_dir;
+	std::string m_mime;
 	PHash       m_phash{};
-
-	mutable UploadFile  m_tmp;
-	MMap                m_mmap;
-	std::unordered_map<std::string, TurboBuffer> m_rend;
 };
 
 } // end of namespace hrb

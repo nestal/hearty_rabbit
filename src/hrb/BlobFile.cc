@@ -11,7 +11,6 @@
 //
 
 #include "BlobFile.hh"
-#include "CollEntry.hh"
 #include "Ownership.hh"
 #include "Permission.hh"
 
@@ -30,61 +29,37 @@ namespace {
 const std::string master_rendition = "master";
 }
 
-BlobFile BlobFile::upload(
+BlobFile::BlobFile(
 	UploadFile&& tmp,
+	const fs::path& dir,
 	const Magic& magic,
-	const RenditionSetting& cfg,
-	std::string_view filename,
 	std::error_code& ec
-)
+) : m_id{tmp.ID()}, m_dir{dir}
 {
-	BlobFile result;
-
+	// Note: closing the file before munmap() is OK: the mapped memory will still be there.
+	// Details: http://pubs.opengroup.org/onlinepubs/7908799/xsh/mmap.html
 	auto master = MMap::open(tmp.native_handle(), ec);
 	if (ec)
 	{
 		Log(LOG_WARNING, "BlobFile::upload(): cannot mmap temporary file %1% %2%", ec, ec.message());
-		return result;
-	}
-
-	auto mime = magic.mime(master.blob());
-
-	if (mime == "image/jpeg")
-	{
-		// generate default rendition
-		auto rotated = generate_rendition(
-			master.buffer(),
-			cfg.dimension(cfg.default_rendition()),
-			cfg.quality(cfg.default_rendition()),
-			ec
-		);
-
-		if (ec)
-		{
-			// just keep the file as-is if we can't auto-rotate it
-			Log(LOG_WARNING, "BlobFile::upload(): cannot rotate image %1% %2%", ec, ec.message());
-			ec.clear();
-		}
-
-		else if (!rotated.empty())
-		{
-			result.m_rend.emplace(cfg.default_rendition(), std::move(rotated));
-		}
+		return;
 	}
 
 	// commit result
-	result.m_id     = tmp.ID();
-	result.m_tmp    = std::move(tmp);
-	result.m_phash  = hrb::phash(master.buffer());
-	result.m_mmap   = std::move(master);
-	result.m_coll_entry   = CollEntry::create(Permission{}, filename, mime);
+	m_mime   = magic.mime(master.blob());
+	m_phash  = hrb::phash(master.buffer());
 
-	return result;
-}
+	boost::system::error_code bec;
+	fs::create_directories(dir, bec);
+	if (bec)
+	{
+		Log(LOG_WARNING, "create create directory %1% (%2% %3%)", dir, ec, ec.message());
+		return;
+	}
 
-BufferView BlobFile::buffer() const
-{
-	return m_mmap.buffer();
+	// Try moving the temp file to our destination first. If failed, use
+	// deep copy instead.
+	tmp.move(m_dir/hrb::master_rendition, ec);
 }
 
 template <typename Blob>
@@ -110,76 +85,48 @@ void save_blob(const Blob& blob, const fs::path& dest, std::error_code& ec)
 		ec.assign(0, ec.category());
 }
 
-void BlobFile::save(const fs::path& dir, std::error_code& ec) const
+BlobFile::BlobFile(const fs::path& dir, const ObjectID& id) : m_id{id}, m_dir{dir}
 {
-	boost::system::error_code bec;
-	fs::create_directories(dir, bec);
-	if (bec)
-	{
-		Log(LOG_WARNING, "create create directory %1% (%2% %3%)", dir, ec, ec.message());
-		return;
-	}
-
-	// Try moving the temp file to our destination first. If failed, use
-	// deep copy instead.
-	m_tmp.move(dir/hrb::master_rendition, ec);
-
-	// Save the renditions, if any.
-	for (auto&& [name, rend] : m_rend)
-	{
-		save_blob(rend, dir / name, ec);
-		if (ec)
-		{
-			Log(LOG_WARNING, "cannot save blob rendition %1% (%2% %3%)", name, ec, ec.message());
-			break;
-		}
-	}
 }
 
-BlobFile::BlobFile(
-	const fs::path& dir,
-	const ObjectID& id,
-	std::string_view rendition,
-	const RenditionSetting& cfg,
-	std::error_code& ec
-) :
-	m_id{id}
+MMap BlobFile::rendition(std::string_view rendition, const RenditionSetting& cfg, std::error_code& ec) const
 {
 	// check if rendition is allowed by config
 	if (!cfg.valid(rendition) && rendition != hrb::master_rendition)
 		rendition = cfg.default_rendition();
 
+	auto rend_path = m_dir/std::string{rendition};
+
 	// generate the rendition if it doesn't exist
-	if (rendition != hrb::master_rendition && !exists(dir/std::string{rendition}))
+	if (rendition != hrb::master_rendition && !exists(rend_path))
 	{
-		auto master = MMap::open(dir/hrb::master_rendition, ec);
+		auto master = MMap::open(m_dir/hrb::master_rendition, ec);
 		if (!ec)
 		{
-			auto tb = generate_rendition(master.buffer(), cfg.dimension(rendition), cfg.quality(rendition), ec);
+			auto tb = generate_rendition_from_jpeg(
+				master.buffer(),
+				cfg.dimension(rendition),
+				cfg.quality(rendition),
+				ec
+			);
 			if (!tb.empty())
-				save_blob(tb, dir / std::string{rendition}, ec);
+				save_blob(tb, rend_path, ec);
 		}
 	}
 
-	auto resized = dir/std::string{rendition};
-	m_mmap = MMap::open(exists(resized) ? resized : dir/hrb::master_rendition, ec);
+	return MMap::open(exists(rend_path) ? rend_path : m_dir/hrb::master_rendition, ec);
 }
 
-CollEntry BlobFile::entry() const
-{
-	return CollEntry{m_coll_entry};
-}
-
-TurboBuffer BlobFile::generate_rendition(BufferView master, Size2D dim, int quality, std::error_code& ec)
+TurboBuffer BlobFile::generate_rendition_from_jpeg(BufferView jpeg_master, Size2D dim, int quality, std::error_code& ec)
 {
 	RotateImage transform;
-	auto rotated = transform.auto_rotate(master, ec);
+	auto rotated = transform.auto_rotate(jpeg_master, ec);
 
 	if (!ec)
 	{
 		JPEG img{
-			rotated.empty() ? master.data() : rotated.data(),
-			rotated.empty() ? master.size() : rotated.size(),
+			rotated.empty() ? jpeg_master.data() : rotated.data(),
+			rotated.empty() ? jpeg_master.size() : rotated.size(),
 			dim
 		};
 
