@@ -29,7 +29,6 @@ message(STATUS "found nlohmann/json at ${NLOHMANN_INCLUDE}")
 
 pkg_check_modules(HIREDIS REQUIRED hiredis)
 pkg_check_modules(LIBUNWIND libunwind)
-pkg_check_modules(TURBOJPEG REQUIRED libturbojpeg)
 pkg_check_modules(EXIV2 exiv2)
 
 set(CMAKE_CXX_STANDARD 17)
@@ -42,7 +41,6 @@ include_directories(
 	${Boost_INCLUDE_DIR}
 	${HIREDIS_INCLUDE_DIRS}
 	${LIBUNWIND_INCLUDE_DIRS}
-	${TURBOJPEG_INCLUDE_DIRS}
 	${EXIV2_INCLUDE_DIRS}
 	${LIBB2_INCLUDE}
 	${NLOHMANN_INCLUDE}
@@ -86,7 +84,6 @@ target_link_libraries(
 	OpenSSL::Crypto
 	${OpenCV_LIBS}
 	${LIBUNWIND_STATIC_LIBRARIES}
-	${TURBOJPEG_STATIC_LDFLAGS}        # libjpeg-turbo may not be installed in default paths
 	${LIBB2_LIBRARY}
 	${CMAKE_THREAD_LIBS_INIT}
 )

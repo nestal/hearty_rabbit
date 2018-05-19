@@ -23,7 +23,7 @@
 namespace hrb {
 
 cv::Mat load_image(BufferView raw);
-
+/*
 class TurboBuffer;
 
 class JPEG
@@ -61,5 +61,5 @@ private:
 	int m_subsample{};
 	int m_colorspace{};
 };
-
+*/
 } // end of namespace hrb

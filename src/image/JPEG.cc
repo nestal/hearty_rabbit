@@ -11,14 +11,14 @@
 //
 
 #include "JPEG.hh"
-#include "TurboBuffer.hh"
+//#include "TurboBuffer.hh"
 
 #include "util/Log.hh"
 
 #include <opencv2/imgcodecs.hpp>
 
-#include <turbojpeg.h>
-#include <memory>
+//#include <turbojpeg.h>
+//#include <memory>
 
 namespace hrb {
 
@@ -29,7 +29,7 @@ cv::Mat load_image(BufferView raw)
 		cv::IMREAD_ANYCOLOR | cv::IMREAD_ANYDEPTH
 	);
 }
-
+/*
 namespace {
 const int yuv_pad = 4;
 }
@@ -132,5 +132,5 @@ JPEG& JPEG::operator=(JPEG&& src) noexcept
 
 	return *this;
 }
-
+*/
 } // end of namespace hrb
