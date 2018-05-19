@@ -91,7 +91,6 @@ void save_blob(const Blob& blob, const fs::path& dest, std::error_code& ec)
 BlobFile::BlobFile(const fs::path& dir, const ObjectID& id) :
 	m_id{id}, m_dir{dir}, m_mime{Magic{}.mime(dir/hrb::master_rendition)}
 {
-	Log(LOG_DEBUG, "loaded BlobFile @ %1% has mime = %2%", m_dir, m_mime);
 }
 
 MMap BlobFile::rendition(std::string_view rendition, const RenditionSetting& cfg, std::error_code& ec) const
