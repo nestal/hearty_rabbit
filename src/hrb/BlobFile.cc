@@ -89,11 +89,11 @@ void save_blob(const Blob& blob, const fs::path& dest, std::error_code& ec)
 }
 
 BlobFile::BlobFile(const fs::path& dir, const ObjectID& id) :
-	m_id{id}, m_dir{dir}, m_mime{Magic{}.mime(dir/hrb::master_rendition)}
+	m_id{id}, m_dir{dir}
 {
 }
 
-MMap BlobFile::rendition(std::string_view rendition, const RenditionSetting& cfg, std::error_code& ec) const
+MMap BlobFile::rendition(std::string_view rendition, const RenditionSetting& cfg, std::error_code& ec)
 {
 	// check if rendition is allowed by config
 	if (!cfg.valid(rendition) && rendition != hrb::master_rendition)
@@ -103,12 +103,18 @@ MMap BlobFile::rendition(std::string_view rendition, const RenditionSetting& cfg
 
 	// generate the rendition if it doesn't exist
 	if (rendition != hrb::master_rendition && !exists(rend_path))
-		generate_rendition_from_jpeg(cfg.find(rendition), rend_path, ec);
+	{
+		if (m_mime.empty())
+			m_mime = Magic{}.mime(m_dir/hrb::master_rendition);
+
+		if (!m_mime.empty() && m_mime.substr(0, 5) == "image")
+			generate_rendition_from_image(cfg.find(rendition), rend_path, ec);
+	}
 
 	return MMap::open(exists(rend_path) ? rend_path : m_dir/hrb::master_rendition, ec);
 }
 
-void BlobFile::generate_rendition_from_jpeg(const JPEGRenditionSetting& cfg, const fs::path& dest, std::error_code& ec) const
+void BlobFile::generate_rendition_from_image(const JPEGRenditionSetting& cfg, const fs::path& dest, std::error_code& ec) const
 {
 	try
 	{
