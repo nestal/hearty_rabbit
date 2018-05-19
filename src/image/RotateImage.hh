@@ -36,7 +36,6 @@ public:
 	RotateImage& operator=(const RotateImage&) = delete;
 
 	TurboBuffer rotate(long orientation, BufferView blob, std::error_code& ec);
-
 	TurboBuffer auto_rotate(BufferView jpeg, std::error_code& ec);
 	TurboBuffer auto_rotate(BufferView jpeg, const EXIF2& exif2, std::error_code& ec);
 
@@ -46,5 +45,6 @@ private:
 private:
 	tjhandle m_transform{tjInitTransform()};
 };
+
 
 } // end of namespace hrb

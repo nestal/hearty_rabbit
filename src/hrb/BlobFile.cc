@@ -24,6 +24,8 @@
 #include "util/Configuration.hh"
 
 #include <opencv2/imgcodecs.hpp>
+#include <image/EXIF2.hh>
+#include <opencv2/imgproc.hpp>
 
 namespace hrb {
 
@@ -110,26 +112,28 @@ MMap BlobFile::rendition(std::string_view rendition, const RenditionSetting& cfg
 
 void BlobFile::generate_rendition_from_jpeg(const JPEGRenditionSetting& cfg, const fs::path& dest, std::error_code& ec) const
 {
-	auto master = MMap::open(m_dir/hrb::master_rendition, ec);
-	if (!ec)
+	try
 	{
-		RotateImage transform;
-		auto rotated = transform.auto_rotate(master.buffer(), ec);
-
-		if (!ec)
+		auto jpeg = cv::imread((m_dir/hrb::master_rendition).string(), cv::IMREAD_ANYCOLOR);
+		if (!jpeg.empty())
 		{
-			JPEG img{
-				rotated.empty() ? master.data() : rotated.data(),
-				rotated.empty() ? master.size() : rotated.size(),
-				cfg.dim
-			};
+			auto xratio = static_cast<double>(jpeg.cols) / cfg.dim.width();
+			auto yratio = static_cast<double>(jpeg.rows) / cfg.dim.height();
 
-			if (cfg.dim != img.size())
-				rotated = img.compress(cfg.quality);
+			cv::Mat out;
+			if (xratio > 1.0 || yratio > 1.0)
+				cv::resize(jpeg, out, {}, std::min(xratio, yratio), std::min(xratio, yratio), cv::INTER_LINEAR);
+			else
+				out = jpeg;
+
+			std::vector<unsigned char> out_buf;
+			cv::imencode(".jpg", out, out_buf, std::vector<int>{cv::IMWRITE_JPEG_QUALITY, cfg.quality});
+
+			save_blob(out_buf, dest, ec);
 		}
-
-		if (!rotated.empty())
-			save_blob(rotated, dest, ec);
+	}
+	catch (...)
+	{
 	}
 }
 

@@ -87,6 +87,15 @@ private:
 
 } // end of local namespace
 
+PHash phash(void *buf, std::size_t size)
+{
+	if (size > static_cast<decltype(size)>(std::numeric_limits<int>::max()))
+		throw std::out_of_range("buffer too big");
+
+	auto input = imdecode(cv::Mat{1, static_cast<int>(size), CV_8U, buf}, cv::IMREAD_GRAYSCALE);
+	return input.data ? phash(input) : PHash{};
+}
+
 PHash phash(BufferView image)
 {
 	auto input = imdecode(std::vector<unsigned char>(image.begin(), image.end()), cv::IMREAD_GRAYSCALE);

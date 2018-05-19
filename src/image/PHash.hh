@@ -16,7 +16,6 @@
 #include "util/FS.hh"
 
 #include <opencv2/core.hpp>
-
 #include <cstdint>
 
 namespace hrb {
@@ -43,6 +42,7 @@ inline bool operator>(const PHash& p1, const PHash& p2) {return p1.value() > p2.
 inline bool operator<(const PHash& p1, const PHash& p2) {return p1.value() < p2.value();}
 
 PHash phash(BufferView image);
+PHash phash(void *buf, std::size_t size);
 PHash phash(fs::path file);
 PHash phash(const cv::Mat& input);
 

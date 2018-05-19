@@ -16,8 +16,6 @@
 
 #include "util/Log.hh"
 
-#include <boost/beast/core/file.hpp>
-
 namespace hrb {
 
 RotateImage::~RotateImage()
