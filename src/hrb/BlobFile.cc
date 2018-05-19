@@ -103,7 +103,7 @@ MMap BlobFile::rendition(std::string_view rendition, const RenditionSetting& cfg
 	auto rend_path = m_dir/std::string{rendition};
 
 	// generate the rendition if it doesn't exist
-	if (rendition != hrb::master_rendition && !exists(rend_path) && m_mime == "image/jpeg")
+	if (rendition != hrb::master_rendition && !exists(rend_path))
 		generate_rendition_from_jpeg(cfg.find(rendition), rend_path, ec);
 
 	return MMap::open(exists(rend_path) ? rend_path : m_dir/hrb::master_rendition, ec);
@@ -126,7 +126,7 @@ void BlobFile::generate_rendition_from_jpeg(const JPEGRenditionSetting& cfg, con
 				out = jpeg;
 
 			std::vector<unsigned char> out_buf;
-			cv::imencode(".jpg", out, out_buf, std::vector<int>{cv::IMWRITE_JPEG_QUALITY, cfg.quality});
+			cv::imencode(m_mime == "image/png" ? ".png" : ".jpg", out, out_buf, std::vector<int>{cv::IMWRITE_JPEG_QUALITY, cfg.quality});
 
 			Log(LOG_DEBUG, "after resize %1% %2%", out.rows, out.cols);
 
