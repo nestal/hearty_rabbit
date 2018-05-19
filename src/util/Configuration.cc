@@ -144,7 +144,7 @@ std::string Configuration::https_root() const
 		+ (listen_https().port() == 443 ? ""s : (":"s + std::to_string(listen_https().port())));
 }
 
-const RenditionSetting::Setting& RenditionSetting::find(std::string_view rend) const
+const JPEGRenditionSetting& RenditionSetting::find(std::string_view rend) const
 {
 	assert(m_renditions.find(std::string{m_default}) != m_renditions.end());
 
@@ -172,7 +172,7 @@ bool RenditionSetting::valid(std::string_view rend) const
 
 void RenditionSetting::add(std::string_view rend, Size2D dim, int quality)
 {
-	m_renditions.insert_or_assign(std::string{rend}, Setting{dim, quality});
+	m_renditions.insert_or_assign(std::string{rend}, JPEGRenditionSetting{dim, quality});
 }
 
 } // end of namespace

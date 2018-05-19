@@ -26,6 +26,12 @@
 
 namespace hrb {
 
+struct JPEGRenditionSetting
+{
+	Size2D  dim;
+	int     quality;
+};
+
 class RenditionSetting
 {
 public:
@@ -34,6 +40,8 @@ public:
 	Size2D dimension(std::string_view rend = {}) const;
 	int quality(std::string_view rend = {}) const;
 
+	const JPEGRenditionSetting& find(std::string_view rend) const;
+
 	bool valid(std::string_view rend) const;
 	const std::string& default_rendition() const {return m_default;}
 	void default_rendition(std::string_view rend) {m_default = rend;}
@@ -41,16 +49,10 @@ public:
 	void add(std::string_view rend, Size2D dim, int quality=70);
 
 private:
-	struct Setting
-	{
-		Size2D  dim;
-		int     quality;
-	};
-
-	const Setting& find(std::string_view rend) const;
-
 	std::string m_default{"2048x2048"};
-	std::unordered_map<std::string, Setting> m_renditions{{m_default, Setting{{2048, 2048}, 70}}};
+	std::unordered_map<std::string, JPEGRenditionSetting> m_renditions{
+		{m_default, JPEGRenditionSetting{{2048, 2048}, 70}}
+	};
 };
 
 /// \brief  Parsing command line options and configuration file

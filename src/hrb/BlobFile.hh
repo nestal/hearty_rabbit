@@ -30,6 +30,7 @@ class CollEntry;
 class EXIF2;
 class Magic;
 class RenditionSetting;
+class JPEGRenditionSetting;
 class UploadFile;
 
 class BlobFile
@@ -46,6 +47,8 @@ public:
 		std::string_view filename,
 		std::error_code& ec
 	);
+
+	void generate_jpeg_rendition(const JPEGRenditionSetting& cfg, std::string_view rendition);
 
 	BufferView buffer() const;
 	MMap& mmap() {return m_mmap;}
