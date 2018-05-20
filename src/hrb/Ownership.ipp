@@ -332,12 +332,22 @@ void Ownership::Collection::list(
 			if (!reply || ec)
 				Log(LOG_WARNING, "list() reply %1% %2%", reply.as_error(), ec);
 
-			std::vector<ObjectID> blobs;
-			for (auto&& r : reply)
-				if (auto oid = raw_to_object_id(r.as_string()); oid.has_value())
-					blobs.push_back(*oid);
+			auto to_object_id = [](const redis::Reply& reply)
+			{
+				return raw_to_object_id(reply.as_string());
+			};
+			auto filter_oid = [](const std::optional<ObjectID>& oid)
+			{
+				return oid.has_value();
+			};
+			auto indirect_optional = [](const std::optional<ObjectID>& oid)
+			{
+				assert(oid.has_value());
+				return *oid;
+			};
 
-			comp(std::move(blobs), ec);
+			using namespace boost::adaptors;
+			comp(reply | transformed(to_object_id) | filtered(filter_oid) | transformed(indirect_optional), ec);
 		},
 		"HKEYS %b%b:%b",
 		m_dir_prefix.data(), m_dir_prefix.size(),
