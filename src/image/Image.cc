@@ -10,7 +10,7 @@
 // Created by nestal on 2/28/18.
 //
 
-#include "JPEG.hh"
+#include "Image.hh"
 
 #include <opencv2/imgcodecs.hpp>
 namespace hrb {

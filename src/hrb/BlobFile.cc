@@ -21,6 +21,10 @@
 #include "util/Magic.hh"
 #include "util/Configuration.hh"
 
+// JSON for saving meta data
+#include <json.hpp>
+
+// OpenCV for calculating phash
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/imgproc.hpp>
 
@@ -30,11 +34,13 @@ namespace {
 const std::string master_rendition = "master";
 }
 
-BlobFile::BlobFile(
-	UploadFile&& tmp,
-	const fs::path& dir,
-	std::error_code& ec
-) : m_id{tmp.ID()}, m_dir{dir}
+/// \brief Open an existing blob in its directory
+BlobFile::BlobFile(const fs::path& dir, const ObjectID& id) : m_id{id}, m_dir{dir}
+{
+}
+
+/// \brief Creates a new blob from a uploaded file
+BlobFile::BlobFile(UploadFile&& tmp, const fs::path& dir, std::error_code& ec)  : m_id{tmp.ID()}, m_dir{dir}
 {
 	// Note: closing the file before munmap() is OK: the mapped memory will still be there.
 	// Details: http://pubs.opengroup.org/onlinepubs/7908799/xsh/mmap.html
@@ -62,6 +68,15 @@ BlobFile::BlobFile(
 		// Try moving the temp file to our destination first. If failed, use
 		// deep copy instead.
 		tmp.move(m_dir / hrb::master_rendition, ec);
+
+		nlohmann::json meta{
+			{"mime", m_mime}
+		};
+		if (m_phash)
+			meta.emplace("phash", m_phash->value());
+
+		std::ofstream meta_file{(m_dir/"meta.json").string()};
+		meta_file << meta;
 	}
 }
 
@@ -86,10 +101,6 @@ void save_blob(const Blob& blob, const fs::path& dest, std::error_code& ec)
 	}
 	else
 		ec.assign(0, ec.category());
-}
-
-BlobFile::BlobFile(const fs::path& dir, const ObjectID& id) : m_id{id}, m_dir{dir}
-{
 }
 
 MMap BlobFile::rendition(std::string_view rendition, const RenditionSetting& cfg, std::error_code& ec) const

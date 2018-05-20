@@ -19,7 +19,7 @@
 #include "util/Magic.hh"
 #include "util/Configuration.hh"
 
-#include "image/JPEG.hh"
+#include "image/Image.hh"
 
 using namespace hrb;
 
@@ -66,6 +66,7 @@ TEST_CASE_METHOD(BlobFileUTFixture, "upload non-image BlobFile", "[normal]")
 	REQUIRE(subject.ID() != ObjectID{});
 	REQUIRE(subject.mime() == "text/x-c++");
 	REQUIRE(fs::exists(m_blob_path/"master"));
+	REQUIRE(fs::exists(m_blob_path/"meta.json"));
 
 	auto out = MMap::open(m_blob_path/"master", ec);
 	REQUIRE(!ec);
@@ -117,6 +118,7 @@ TEST_CASE_METHOD(BlobFileUTFixture, "upload big upright image as BlobFile", "[no
 	REQUIRE(subject.ID() != ObjectID{});
 	REQUIRE(subject.mime() == "image/jpeg");
 	REQUIRE(fs::exists(m_blob_path/"master"));
+	REQUIRE(fs::exists(m_blob_path/"meta.json"));
 
 	auto out = MMap::open(m_blob_path/"master", ec);
 	REQUIRE(!ec);
