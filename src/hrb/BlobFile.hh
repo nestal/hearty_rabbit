@@ -55,6 +55,7 @@ public:
 	std::optional<PHash> phash() const;
 
 	bool is_image() const;
+	double compare(const BlobFile& other) const;
 
 private:
 	static bool is_image(std::string_view mime);

@@ -28,6 +28,8 @@
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/imgproc.hpp>
 
+#include <limits>
+
 namespace hrb {
 
 namespace {
@@ -223,6 +225,13 @@ void BlobFile::deduce_meta(BufferView master) const
 
 	std::ofstream meta_file{(m_dir/"meta.json").string()};
 	meta_file << meta;
+}
+
+double BlobFile::compare(const BlobFile& other) const
+{
+	return phash() && other.phash() ?
+		phash()->compare(*other.phash()) :
+		std::numeric_limits<double>::max();
 }
 
 } // end of namespace hrb

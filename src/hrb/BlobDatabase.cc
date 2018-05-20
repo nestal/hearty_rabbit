@@ -100,9 +100,16 @@ void BlobDatabase::set_cache_control(BlobResponse& res, const ObjectID& id)
 	res.set(http::field::etag, to_quoted_hex(id));
 }
 
-BlobFile BlobDatabase::find(const ObjectID& id)
+BlobFile BlobDatabase::find(const ObjectID& id) const
 {
 	return {dest(id), id};
+}
+
+double BlobDatabase::compare(const ObjectID& id1, const ObjectID& id2) const
+{
+	auto bf1 = find(id1);
+	auto bf2 = find(id2);
+	return bf1.compare(bf2);
 }
 
 } // end of namespace hrb

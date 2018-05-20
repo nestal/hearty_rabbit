@@ -16,7 +16,6 @@
 
 #include "BlobRequest.hh"
 #include "BlobDatabase.hh"
-#include "BlobFile.hh"
 #include "Ownership.ipp"
 #include "UploadFile.hh"
 #include "URLIntent.hh"
@@ -453,32 +452,18 @@ void SessionHandler::query_blob_set(const URLIntent& intent, unsigned version, S
 			](auto&& oids, auto ec) mutable
 			{
 				auto matches = nlohmann::json::array();
-				// this is n^2 -> bad!
-				for (auto&& id1 : oids)
+				auto similar = m_blob_db.find_similar(oids.begin(), oids.end(), 10);
+
+				for (auto&& match : similar)
 				{
-					for (auto&& id2 : oids)
-					{
-						if (id1 != id2)
-						{
-							auto b1 = m_blob_db.find(id1);
-							auto b2 = m_blob_db.find(id2);
-							if (b1.phash() && b2.phash())
-							{
-								Log(LOG_DEBUG, "id1 = %1% id2 = %2% comp = %3%", to_hex(id1), to_hex(id2), b1.phash()->compare(*b2.phash()));
-								if (b1.phash()->compare(*b2.phash()) < 10)
-								{
-									nlohmann::json mat{
-										{"id1", to_hex(id1)},
-										{"id2", to_hex(id2)},
-										{"phash1", b1.phash()->value()},
-										{"phash2", b2.phash()->value()},
-										{"ham", b1.phash()->compare(*b2.phash())}
-									};
-									matches.push_back(std::move(mat));
-								}
-							}
-						}
-					}
+					auto [id1, id2, norm] = match;
+					Log(LOG_DEBUG, "id1 = %1% id2 = %2% comp = %3%", to_hex(id1), to_hex(id2), norm);
+					nlohmann::json mat{
+						{"id1", to_hex(id1)},
+						{"id2", to_hex(id2)},
+						{"ham", norm}
+					};
+					matches.push_back(std::move(mat));
 				}
 
 				auto result = nlohmann::json::object();

@@ -40,7 +40,7 @@ public:
 
 	void prepare_upload(UploadFile& result, std::error_code& ec) const;
 	BlobFile save(UploadFile&& tmp, std::error_code& ec);
-	BlobFile find(const ObjectID& id);
+	BlobFile find(const ObjectID& id) const;
 
 	fs::path dest(const ObjectID& id, std::string_view rendition = {}) const;
 
@@ -51,8 +51,27 @@ public:
 		std::string_view rendition = {}
 	) const;
 
+	template <class FwdIt>
+	auto find_similar(FwdIt first, FwdIt last, double threshold)
+	{
+		std::vector<std::tuple<ObjectID, ObjectID, double>> result;
+		for (auto it1 = first; it1 != last; ++it1)
+		{
+			auto it2 = it1;
+			for (it2++; it2 != last; ++it2)
+			{
+				auto norm = compare(*it1, *it2);
+				if (norm < threshold)
+					result.emplace_back(*it1, *it2, norm);
+			}
+		}
+
+		return result;
+	}
+
 private:
 	static void set_cache_control(BlobResponse& res, const ObjectID& id);
+	double compare(const ObjectID& id1, const ObjectID& id2) const;
 
 private:
 	const Configuration&    m_cfg;
