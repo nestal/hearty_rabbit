@@ -15,11 +15,11 @@
 
 // HeartyRabbit headers
 #include "image/PHash.hh"
-#include "image/EXIF2.hh"
-#include "util/MMap.hh"
+#include "util/Configuration.hh"
+#include "util/Escape.hh"
 #include "util/Log.hh"
 #include "util/Magic.hh"
-#include "util/Configuration.hh"
+#include "util/MMap.hh"
 
 // JSON for saving meta data
 #include <json.hpp>
@@ -51,11 +51,6 @@ BlobFile::BlobFile(UploadFile&& tmp, const fs::path& dir, std::error_code& ec)  
 		return;
 	}
 
-	// commit result
-	m_mime   = Magic::instance().mime(master.blob());
-	if (is_image())
-		m_phash  = hrb::phash(master.buffer());
-
 	boost::system::error_code bec;
 	fs::create_directories(dir, bec);
 	if (bec)
@@ -69,14 +64,8 @@ BlobFile::BlobFile(UploadFile&& tmp, const fs::path& dir, std::error_code& ec)  
 		// deep copy instead.
 		tmp.move(m_dir / hrb::master_rendition, ec);
 
-		nlohmann::json meta{
-			{"mime", m_mime}
-		};
-		if (m_phash)
-			meta.emplace("phash", m_phash->value());
-
-		std::ofstream meta_file{(m_dir/"meta.json").string()};
-		meta_file << meta;
+		// deduce meta data from the uploaded file
+		deduce_meta(master.buffer());
 	}
 }
 
@@ -152,13 +141,77 @@ MMap BlobFile::master(std::error_code& ec) const
 	return MMap::open(m_dir/hrb::master_rendition, ec);
 }
 
+bool BlobFile::is_image(std::string_view mime)
+{
+	std::string_view image{"image"};
+	return !mime.empty() && mime.substr(0, image.size()) == image;
+}
+
 bool BlobFile::is_image() const
 {
-	if (m_mime.empty())
-		m_mime = Magic::instance().mime(m_dir/hrb::master_rendition);
+	// Must update meta before using the meta data
+	update_meta();
+	return is_image(m_mime);
+}
 
-	std::string_view image{"image"};
-	return !m_mime.empty() && std::string_view{m_mime}.substr(0, image.size()) == image;
+std::optional<PHash> BlobFile::phash() const
+{
+	update_meta();
+	return m_phash;
+}
+
+std::string_view BlobFile::mime() const
+{
+	update_meta();
+	return m_mime;
+}
+
+void BlobFile::update_meta() const
+{
+	// m_mime is empty means the meta data is missing.
+	// if we don't know what the mime type, it will be application/octets-stream
+	if (m_mime.empty())
+	{
+		// try to load it from meta.json
+		std::ifstream meta_file{(m_dir/"meta.json").string()};
+		nlohmann::json meta;
+		if (meta_file >> meta)
+		{
+			m_mime = meta["mime"];
+			if (meta.find("phash") != meta.end())
+				m_phash = PHash{meta["phash"].get<std::uint64_t>()};
+			else
+				m_phash = std::nullopt;
+		}
+
+		// json file missing, we need to deduce the meta
+		else
+		{
+			std::error_code ec;
+			auto master = this->master(ec);
+			if (ec)
+				Log(LOG_WARNING, "cannot load master rendition from blob %1%", to_hex(m_id));
+			else
+				deduce_meta(master.buffer());
+		}
+	}
+}
+
+void BlobFile::deduce_meta(BufferView master) const
+{
+	m_mime = Magic::instance().mime(master);
+	if (is_image(m_mime))
+		m_phash  = hrb::phash(master);
+
+	// save the meta data to file
+	nlohmann::json meta{
+		{"mime", m_mime}
+	};
+	if (m_phash)
+		meta.emplace("phash", m_phash->value());
+
+	std::ofstream meta_file{(m_dir/"meta.json").string()};
+	meta_file << meta;
 }
 
 } // end of namespace hrb

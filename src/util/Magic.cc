@@ -50,4 +50,9 @@ const Magic& Magic::instance()
 	return inst;
 }
 
+std::string_view Magic::mime(BufferView buf) const
+{
+	return mime(buf.data(), buf.size());
+}
+
 } // end of namespace
