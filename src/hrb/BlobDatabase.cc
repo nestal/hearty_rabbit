@@ -11,15 +11,18 @@
 //
 
 #include "BlobDatabase.hh"
-#include "UploadFile.hh"
-#include "CollEntry.hh"
+
+// Other dependencies in the same module
 #include "BlobFile.hh"
+#include "CollEntry.hh"
+#include "UploadFile.hh"
 
+// Other modules in hearty rabbit
 #include "net/MMapResponseBody.hh"
-#include "util/Escape.hh"
-
-#include "util/Log.hh"
 #include "util/Configuration.hh"
+#include "util/Escape.hh"
+#include "util/Log.hh"
+#include "util/Magic.hh"
 
 namespace hrb {
 
@@ -57,7 +60,6 @@ fs::path BlobDatabase::dest(const ObjectID& id, std::string_view) const
 BlobDatabase::BlobResponse BlobDatabase::response(
 	ObjectID id,
 	unsigned version,
-	std::string_view mime,
 	std::string_view etag,
 	std::string_view rendition
 ) const
@@ -75,6 +77,8 @@ BlobDatabase::BlobResponse BlobDatabase::response(
 	auto mmap = blob_obj.rendition(rendition, m_cfg.renditions(), ec);
 	if (ec)
 		return BlobResponse{http::status::not_found, version};
+
+	auto mime = Magic::instance().mime(mmap.blob());
 
 	// Advice the kernel that we only read the memory in one pass
 	mmap.cache();

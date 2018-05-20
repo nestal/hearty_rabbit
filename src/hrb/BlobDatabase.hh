@@ -46,7 +46,6 @@ public:
 	BlobResponse response(
 		ObjectID id,
 		unsigned version,
-		std::string_view mine,
 		std::string_view etag,
 		std::string_view rendition = {}
 	) const;
