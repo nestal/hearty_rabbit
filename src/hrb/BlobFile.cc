@@ -47,7 +47,8 @@ BlobFile::BlobFile(
 
 	// commit result
 	m_mime   = Magic::instance().mime(master.blob());
-	m_phash  = hrb::phash(master.buffer());
+	if (is_image())
+		m_phash  = hrb::phash(master.buffer());
 
 	boost::system::error_code bec;
 	fs::create_directories(dir, bec);
@@ -92,7 +93,7 @@ BlobFile::BlobFile(const fs::path& dir, const ObjectID& id) :
 {
 }
 
-MMap BlobFile::rendition(std::string_view rendition, const RenditionSetting& cfg, std::error_code& ec)
+MMap BlobFile::rendition(std::string_view rendition, const RenditionSetting& cfg, std::error_code& ec) const
 {
 	if (rendition == hrb::master_rendition)
 		return master(ec);
@@ -104,19 +105,13 @@ MMap BlobFile::rendition(std::string_view rendition, const RenditionSetting& cfg
 	auto rend_path = m_dir/std::string{rendition};
 
 	// generate the rendition if it doesn't exist
-	if (!exists(rend_path))
-	{
-		if (m_mime.empty())
-			m_mime = Magic::instance().mime(m_dir/hrb::master_rendition);
-
-		if (!m_mime.empty() && m_mime.substr(0, 5) == "image")
-			generate_rendition_from_image(cfg.find(rendition), rend_path, ec);
-	}
+	if (!exists(rend_path) && is_image())
+		generate_image_rendition(cfg.find(rendition), rend_path, ec);
 
 	return exists(rend_path) ? MMap::open(rend_path, ec) : master(ec);
 }
 
-void BlobFile::generate_rendition_from_image(const JPEGRenditionSetting& cfg, const fs::path& dest, std::error_code& ec) const
+void BlobFile::generate_image_rendition(const JPEGRenditionSetting& cfg, const fs::path& dest, std::error_code& ec) const
 {
 	try
 	{
@@ -145,6 +140,15 @@ void BlobFile::generate_rendition_from_image(const JPEGRenditionSetting& cfg, co
 MMap BlobFile::master(std::error_code& ec) const
 {
 	return MMap::open(m_dir/hrb::master_rendition, ec);
+}
+
+bool BlobFile::is_image() const
+{
+	if (m_mime.empty())
+		m_mime = Magic::instance().mime(m_dir/hrb::master_rendition);
+
+	std::string_view image{"image"};
+	return !m_mime.empty() && std::string_view{m_mime}.substr(0, image.size()) == image;
 }
 
 } // end of namespace hrb

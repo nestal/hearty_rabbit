@@ -40,21 +40,23 @@ public:
 	);
 
 	// if the rendition does not exists but it's a valid one, it will be generated dynamically
-	MMap rendition(std::string_view rendition, const RenditionSetting& cfg, std::error_code& ec);
+	MMap rendition(std::string_view rendition, const RenditionSetting& cfg, std::error_code& ec) const;
 	MMap master(std::error_code& ec) const;
 
 	const ObjectID& ID() const {return m_id;}
 	std::string mime() const {return m_mime;}
 	auto phash() const {return m_phash;}
 
-private:
-	void generate_rendition_from_image(const JPEGRenditionSetting& cfg, const fs::path& dest, std::error_code& ec) const;
+	bool is_image() const;
 
 private:
-	ObjectID    m_id{};
-	fs::path    m_dir;
-	std::string m_mime;
-	PHash       m_phash{};
+	void generate_image_rendition(const JPEGRenditionSetting& cfg, const fs::path& dest, std::error_code& ec) const;
+
+private:
+	ObjectID    m_id{};     //!< ID of the blob
+	fs::path    m_dir;      //!< The directory in file system that stores all renditions of the blob
+	mutable std::string  m_mime;     //!< Mime type of the master rendition
+	std::optional<PHash> m_phash;
 };
 
 } // end of namespace hrb

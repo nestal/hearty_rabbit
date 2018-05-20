@@ -20,6 +20,7 @@
 #include "UploadFile.hh"
 #include "URLIntent.hh"
 #include "WebResources.hh"
+#include "index/PHashDb.hh"
 
 #include "crypto/Authentication.hh"
 #include "crypto/Authentication.ipp"
@@ -424,12 +425,26 @@ void SessionHandler::query_blob(const BlobRequest& req, Send&& send)
 template <class Send>
 void SessionHandler::query_blob_set(const URLIntent& intent, unsigned version, Send&& send)
 {
-	auto [pub, json] = find_optional_fields(intent.option(), "public", "json");
+	auto [pub, dup_blob, json] = find_optional_fields(intent.option(), "public", "dup_blob", "json");
 
-	Ownership{m_auth.user()}.list_public_blobs(
-		*m_db,
-		SendJSON{std::forward<Send>(send), m_auth, version, std::nullopt, server_root(), !json.has_value() ? &m_lib : nullptr}
-	);
+	if (pub.has_value())
+	{
+		Ownership{m_auth.user()}.list_public_blobs(
+			*m_db,
+			SendJSON{
+				std::forward<Send>(send),
+				    m_auth, version, std::nullopt, server_root(),
+				!json.has_value() ? &m_lib : nullptr
+			}
+		);
+	}
+	else if (dup_blob.has_value())
+	{
+		// How to find the phash of a blob?
+//		PHashDb{m_db}.exact_match();
+	}
+	else
+		return send(bad_request("invalid query", version));
 }
 
 template <class Send>
