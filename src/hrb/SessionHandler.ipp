@@ -59,6 +59,8 @@ public:
 
 	auto operator()(nlohmann::json&& json, std::error_code ec) const
 	{
+		assert(json.is_object());
+
 		if (!m_auth.is_guest() && m_auth.valid())
 			json.emplace("username", m_auth.user());
 		if (m_auth.is_guest())
@@ -449,7 +451,7 @@ void SessionHandler::query_blob_set(const URLIntent& intent, unsigned version, S
 			[
 				send=std::forward<Send>(send),
 			    this, version,
-				lib=(json.has_value() ? &m_lib : nullptr)
+				lib=(json.has_value() ? nullptr : &m_lib)
 			](auto&& oids, auto ec) mutable
 			{
 				auto matches = nlohmann::json::array();
@@ -458,15 +460,23 @@ void SessionHandler::query_blob_set(const URLIntent& intent, unsigned version, S
 					for (auto&& id2 : oids)
 						if (id1 != id2)
 						{
+							Log(LOG_DEBUG, "id1 = %1% id2 = %2%", to_hex(id1), to_hex(id2));
 							auto b1 = m_blob_db.find(id1);
 							auto b2 = m_blob_db.find(id2);
 							if (b1.phash() && b2.phash())
 							{
-								if (b1.phash()->compare(*b2.phash()) == 1.0)
-									matches.push_back(nlohmann::json{to_hex(id1), to_hex(id2)});
+								nlohmann::json mat{
+									{"id1", to_hex(id1)},
+									{"id2", to_hex(id2)},
+									{"ham", b1.phash()->compare(*b2.phash())}
+								};
+								matches.push_back(std::move(mat));
 							}
 						}
-				SendJSON{std::move(send), m_auth, version, std::nullopt, server_root(), lib}(std::move(matches), ec);
+
+				auto result = nlohmann::json::object();
+				result.emplace("dups", std::move(matches));
+				SendJSON{std::move(send), m_auth, version, std::nullopt, server_root(), lib}(std::move(result), ec);
 			}
 		);
 	}
