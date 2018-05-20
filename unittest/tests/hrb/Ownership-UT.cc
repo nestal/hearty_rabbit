@@ -124,6 +124,18 @@ TEST_CASE("add blob to Ownership", "[normal]")
 	REQUIRE(tested == 1);
 	ioc.restart();
 
+	subject.list(*redis, "/", [&tested, blobid](auto&& blobs, std::error_code ec)
+	{
+		REQUIRE_FALSE(ec);
+		auto it = std::find(blobs.begin(), blobs.end(), blobid);
+		REQUIRE(it != blobs.end());
+		tested++;
+	});
+
+	REQUIRE(ioc.run_for(10s) > 0);
+	REQUIRE(tested == 2);
+	ioc.restart();
+
 	// owner access is allowed
 	subject.find(*redis, "/", blobid, [&tested](auto&&, std::error_code ec)
 	{
@@ -132,7 +144,7 @@ TEST_CASE("add blob to Ownership", "[normal]")
 	});
 
 	REQUIRE(ioc.run_for(10s) > 0);
-	REQUIRE(tested == 2);
+	REQUIRE(tested == 3);
 	ioc.restart();
 
 	// anonymous access is not allowed
@@ -144,7 +156,7 @@ TEST_CASE("add blob to Ownership", "[normal]")
 	});
 
 	REQUIRE(ioc.run_for(10s) > 0);
-	REQUIRE(tested == 3);
+	REQUIRE(tested == 4);
 	ioc.restart();
 
 	// set permission to public
@@ -155,7 +167,7 @@ TEST_CASE("add blob to Ownership", "[normal]")
 	});
 
 	REQUIRE(ioc.run_for(10s) > 0);
-	REQUIRE(tested == 4);
+	REQUIRE(tested == 5);
 	ioc.restart();
 
 	// verify that the newly added blob is in the public list
@@ -183,7 +195,7 @@ TEST_CASE("add blob to Ownership", "[normal]")
 	});
 
 	REQUIRE(ioc.run_for(10s) > 0);
-	REQUIRE(tested == 5);
+	REQUIRE(tested == 6);
 	ioc.restart();
 
 	// move to another new collection
@@ -194,7 +206,7 @@ TEST_CASE("add blob to Ownership", "[normal]")
 	});
 
 	REQUIRE(ioc.run_for(10s) > 0);
-	REQUIRE(tested == 6);
+	REQUIRE(tested == 7);
 	ioc.restart();
 
 	// check if it is in the new collection
@@ -206,7 +218,7 @@ TEST_CASE("add blob to Ownership", "[normal]")
 	});
 
 	REQUIRE(ioc.run_for(10s) > 0);
-	REQUIRE(tested == 7);
+	REQUIRE(tested == 8);
 }
 
 TEST_CASE("Load 3 images in json", "[normal]")

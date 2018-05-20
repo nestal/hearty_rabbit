@@ -78,6 +78,12 @@ public:
 	void find(redis::Connection& db, const ObjectID& blob, Complete&& complete) const;
 
 	template <typename Complete>
+	void list(
+		redis::Connection& db,
+		Complete&& complete
+	) const;
+
+	template <typename Complete>
 	void serialize(
 		redis::Connection& db,
 		const Authentication& requester,
@@ -313,6 +319,34 @@ void Ownership::Collection::set_cover(redis::Connection& db, const ObjectID& cov
 }
 
 template <typename Complete>
+void Ownership::Collection::list(
+	redis::Connection& db,
+	Complete&& complete
+) const
+{
+	db.command(
+		[
+			comp=std::forward<Complete>(complete)
+		](auto&& reply, std::error_code&& ec) mutable
+		{
+			if (!reply || ec)
+				Log(LOG_WARNING, "list() reply %1% %2%", reply.as_error(), ec);
+
+			std::vector<ObjectID> blobs;
+			for (auto&& r : reply)
+				if (auto oid = raw_to_object_id(r.as_string()); oid.has_value())
+					blobs.push_back(*oid);
+
+			comp(std::move(blobs), ec);
+		},
+		"HKEYS %b%b:%b",
+		m_dir_prefix.data(), m_dir_prefix.size(),
+		m_user.data(), m_user.size(),
+		m_path.data(), m_path.size()
+	);
+}
+
+template <typename Complete>
 void Ownership::Collection::serialize(
 	redis::Connection& db,
 	const Authentication& requester,
@@ -419,6 +453,16 @@ void Ownership::serialize(
 ) const
 {
 	return Collection{m_user, coll}.serialize(db, requester, std::forward<Complete>(complete));
+}
+
+template <typename Complete>
+void Ownership::list(
+	redis::Connection& db,
+	std::string_view coll,
+	Complete&& complete
+) const
+{
+	return Collection{m_user, coll}.list(db, std::forward<Complete>(complete));
 }
 
 template <typename Complete>

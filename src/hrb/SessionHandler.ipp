@@ -425,7 +425,7 @@ void SessionHandler::query_blob(const BlobRequest& req, Send&& send)
 template <class Send>
 void SessionHandler::query_blob_set(const URLIntent& intent, unsigned version, Send&& send)
 {
-	auto [pub, dup_blob, json] = find_optional_fields(intent.option(), "public", "dup_blob", "json");
+	auto [pub, dup_coll, json] = find_optional_fields(intent.option(), "public", "detect_dup", "json");
 
 	if (pub.has_value())
 	{
@@ -438,10 +438,18 @@ void SessionHandler::query_blob_set(const URLIntent& intent, unsigned version, S
 			}
 		);
 	}
-	else if (dup_blob.has_value())
+	else if (dup_coll.has_value())
 	{
 		// How to find the phash of a blob?
 //		PHashDb{m_db}.exact_match();
+		Ownership{m_auth.user()}.list(
+			*m_db,
+			*dup_coll,
+			[send=std::forward<Send>(send)](auto&& json, auto ec)
+			{
+
+			}
+		);
 	}
 	else
 		return send(bad_request("invalid query", version));

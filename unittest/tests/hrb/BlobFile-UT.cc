@@ -15,6 +15,7 @@
 #include "hrb/BlobFile.hh"
 #include "hrb/CollEntry.hh"
 #include "hrb/UploadFile.hh"
+
 #include "util/MMap.hh"
 #include "util/Magic.hh"
 #include "util/Configuration.hh"
