@@ -11,15 +11,18 @@
 //
 
 #include "BlobDatabase.hh"
-#include "UploadFile.hh"
-#include "CollEntry.hh"
+
+// Other dependencies in the same module
 #include "BlobFile.hh"
+#include "CollEntry.hh"
+#include "UploadFile.hh"
 
+// Other modules in hearty rabbit
 #include "net/MMapResponseBody.hh"
-#include "util/Escape.hh"
-
-#include "util/Log.hh"
 #include "util/Configuration.hh"
+#include "util/Escape.hh"
+#include "util/Log.hh"
+#include "util/Magic.hh"
 
 namespace hrb {
 
@@ -43,7 +46,7 @@ void BlobDatabase::prepare_upload(UploadFile& result, std::error_code& ec) const
 
 BlobFile BlobDatabase::save(UploadFile&& tmp, std::error_code& ec)
 {
-	return BlobFile{std::move(tmp), dest(tmp.ID()), m_magic, ec};
+	return BlobFile{std::move(tmp), dest(tmp.ID()), ec};
 }
 
 fs::path BlobDatabase::dest(const ObjectID& id, std::string_view) const
@@ -57,7 +60,6 @@ fs::path BlobDatabase::dest(const ObjectID& id, std::string_view) const
 BlobDatabase::BlobResponse BlobDatabase::response(
 	ObjectID id,
 	unsigned version,
-	std::string_view mime,
 	std::string_view etag,
 	std::string_view rendition
 ) const
@@ -75,6 +77,8 @@ BlobDatabase::BlobResponse BlobDatabase::response(
 	auto mmap = blob_obj.rendition(rendition, m_cfg.renditions(), ec);
 	if (ec)
 		return BlobResponse{http::status::not_found, version};
+
+	auto mime = Magic::instance().mime(mmap.blob());
 
 	// Advice the kernel that we only read the memory in one pass
 	mmap.cache();
@@ -94,6 +98,18 @@ void BlobDatabase::set_cache_control(BlobResponse& res, const ObjectID& id)
 {
 	res.set(http::field::cache_control, "private, max-age=31536000, immutable");
 	res.set(http::field::etag, to_quoted_hex(id));
+}
+
+BlobFile BlobDatabase::find(const ObjectID& id) const
+{
+	return {dest(id), id};
+}
+
+double BlobDatabase::compare(const ObjectID& id1, const ObjectID& id2) const
+{
+	auto bf1 = find(id1);
+	auto bf2 = find(id2);
+	return bf1.compare(bf2);
 }
 
 } // end of namespace hrb

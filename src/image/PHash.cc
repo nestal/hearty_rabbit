@@ -128,6 +128,7 @@ PHash::PHash(const cv::_OutputArray& arr)
 	// convert to little endian
 	boost::endian::little_uint64_buf_t lt_hash{};
 	assert(out.cols == sizeof(lt_hash));
+	assert(out.rows == 1);
 	std::memcpy(&lt_hash, out.ptr<unsigned char>(0), sizeof(lt_hash));
 
 	m_hash = lt_hash.value();

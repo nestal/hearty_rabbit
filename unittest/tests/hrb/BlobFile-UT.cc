@@ -15,11 +15,12 @@
 #include "hrb/BlobFile.hh"
 #include "hrb/CollEntry.hh"
 #include "hrb/UploadFile.hh"
+
 #include "util/MMap.hh"
 #include "util/Magic.hh"
 #include "util/Configuration.hh"
 
-#include "image/JPEG.hh"
+#include "image/Image.hh"
 
 using namespace hrb;
 
@@ -51,7 +52,6 @@ protected:
 
 
 protected:
-	const Magic     m_magic;
 	const fs::path  m_blob_path{"/tmp/BlobFile-UT"};
 	const fs::path  m_image_path{fs::path{__FILE__}.parent_path().parent_path() / "image"};
 };
@@ -62,11 +62,14 @@ TEST_CASE_METHOD(BlobFileUTFixture, "upload non-image BlobFile", "[normal]")
 	auto [tmp, src] = upload(__FILE__);
 
 	std::error_code ec;
-	BlobFile subject{std::move(tmp), m_blob_path, m_magic, ec};
+	BlobFile subject{std::move(tmp), m_blob_path, ec};
 	REQUIRE(!ec);
 	REQUIRE(subject.ID() != ObjectID{});
 	REQUIRE(subject.mime() == "text/x-c++");
+	REQUIRE_FALSE(subject.phash().has_value());
+	REQUIRE_FALSE(subject.is_image());
 	REQUIRE(fs::exists(m_blob_path/"master"));
+	REQUIRE(fs::exists(m_blob_path/"meta.json"));
 
 	auto out = MMap::open(m_blob_path/"master", ec);
 	REQUIRE(!ec);
@@ -80,6 +83,9 @@ TEST_CASE_METHOD(BlobFileUTFixture, "upload non-image BlobFile", "[normal]")
 
 		REQUIRE(out.buffer() == subject2.master(read_ec).buffer());
 		REQUIRE(!read_ec);
+		REQUIRE(subject2.mime() == "text/x-c++");
+		REQUIRE_FALSE(subject2.phash().has_value());
+		REQUIRE_FALSE(subject2.is_image());
 	}
 	SECTION("read another rendition, but got the original")
 	{
@@ -88,6 +94,9 @@ TEST_CASE_METHOD(BlobFileUTFixture, "upload non-image BlobFile", "[normal]")
 
 		REQUIRE(out.buffer() == subject2.rendition("thumbnail", cfg, read_ec).buffer());
 		REQUIRE(!read_ec);
+		REQUIRE(subject2.mime() == "text/x-c++");
+		REQUIRE_FALSE(subject2.phash().has_value());
+		REQUIRE_FALSE(subject2.is_image());
 	}
 }
 
@@ -96,10 +105,11 @@ TEST_CASE_METHOD(BlobFileUTFixture, "upload small image BlobFile", "[normal]")
 	auto [tmp, src] = upload(m_image_path/"black.jpg");
 
 	std::error_code ec;
-	BlobFile subject{std::move(tmp), m_blob_path, m_magic, ec};
+	BlobFile subject{std::move(tmp), m_blob_path, ec};
 	REQUIRE(!ec);
 	REQUIRE(subject.ID() != ObjectID{});
 	REQUIRE(subject.mime() == "image/jpeg");
+	REQUIRE(subject.is_image());
 	REQUIRE(fs::exists(m_blob_path/"master"));
 
 	auto out = MMap::open(m_blob_path/"master", ec);
@@ -113,11 +123,12 @@ TEST_CASE_METHOD(BlobFileUTFixture, "upload big upright image as BlobFile", "[no
 	auto [tmp, src] = upload(m_image_path/"up_f_upright.jpg");
 
 	std::error_code ec;
-	BlobFile subject{std::move(tmp), m_blob_path, m_magic, ec};
+	BlobFile subject{std::move(tmp), m_blob_path, ec};
 	REQUIRE(!ec);
 	REQUIRE(subject.ID() != ObjectID{});
 	REQUIRE(subject.mime() == "image/jpeg");
 	REQUIRE(fs::exists(m_blob_path/"master"));
+	REQUIRE(fs::exists(m_blob_path/"meta.json"));
 
 	auto out = MMap::open(m_blob_path/"master", ec);
 	REQUIRE(!ec);
@@ -154,14 +165,14 @@ TEST_CASE_METHOD(BlobFileUTFixture, "upload big rot90 image as BlobFile", "[norm
 	auto [tmp, src] = upload(m_image_path/"up_f_rot90.jpg");
 
 	std::error_code ec;
-	BlobFile subject{std::move(tmp), m_blob_path, m_magic, ec};
+	BlobFile subject{std::move(tmp), m_blob_path, ec};
 
 	RenditionSetting cfg;
 	cfg.add("2048x2048",   {2048, 2048});
 	cfg.default_rendition("2048x2048");
 
 	auto rotated = subject.rendition(cfg.default_rendition(), cfg, ec);
-	REQUIRE(!ec);
+	REQUIRE_FALSE(ec);
 	REQUIRE(rotated.buffer() != src.buffer());
 
 	auto gen_jpeg = load_image(rotated.buffer());
@@ -169,6 +180,33 @@ TEST_CASE_METHOD(BlobFileUTFixture, "upload big rot90 image as BlobFile", "[norm
 
 	REQUIRE(gen_jpeg.cols == 160);
 	REQUIRE(gen_jpeg.rows == 192);
+}
+
+TEST_CASE_METHOD(BlobFileUTFixture, "upload lena.png as BlobFile", "[normal]")
+{
+	auto [tmp, src] = upload(m_image_path/"lena.png");
+
+	std::error_code ec;
+	BlobFile subject{std::move(tmp), m_blob_path, ec};
+	REQUIRE_FALSE(ec);
+	REQUIRE(subject.mime() == "image/png");
+	REQUIRE(subject.is_image());
+	REQUIRE(subject.phash().has_value());
+
+	// open the blob using another object and compare meta data
+	BlobFile subject2{m_blob_path, subject.ID()};
+	REQUIRE(subject2.mime() == subject.mime());
+	REQUIRE(subject2.phash() == subject.phash());
+
+	// generate smaller rendition
+	RenditionSetting cfg;
+	cfg.add("256x256",   {256, 256});
+	cfg.default_rendition("256x256");
+	auto rend = subject2.rendition("256x256", cfg, ec);
+	auto rend_mat = load_image(rend.buffer());
+	REQUIRE(phash(rend_mat).compare(*subject2.phash()) == 1.0);
+	REQUIRE(rend_mat.rows == 256);
+	REQUIRE(rend_mat.cols == 256);
 }
 
 TEST_CASE("hex_to_object_id() error cases", "[error]")

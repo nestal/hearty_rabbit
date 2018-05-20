@@ -44,4 +44,15 @@ std::string_view Magic::mime(const boost::filesystem::path& path) const
 	return ::magic_file(m_cookie, path.string().c_str());
 }
 
+const Magic& Magic::instance()
+{
+	static thread_local Magic inst;
+	return inst;
+}
+
+std::string_view Magic::mime(BufferView buf) const
+{
+	return mime(buf.data(), buf.size());
+}
+
 } // end of namespace

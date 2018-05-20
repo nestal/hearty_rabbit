@@ -15,14 +15,20 @@
 
 // HeartyRabbit headers
 #include "image/PHash.hh"
-#include "image/EXIF2.hh"
-#include "util/MMap.hh"
+#include "util/Configuration.hh"
+#include "util/Escape.hh"
 #include "util/Log.hh"
 #include "util/Magic.hh"
-#include "util/Configuration.hh"
+#include "util/MMap.hh"
 
+// JSON for saving meta data
+#include <json.hpp>
+
+// OpenCV for calculating phash
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/imgproc.hpp>
+
+#include <limits>
 
 namespace hrb {
 
@@ -30,12 +36,13 @@ namespace {
 const std::string master_rendition = "master";
 }
 
-BlobFile::BlobFile(
-	UploadFile&& tmp,
-	const fs::path& dir,
-	const Magic& magic,
-	std::error_code& ec
-) : m_id{tmp.ID()}, m_dir{dir}
+/// \brief Open an existing blob in its directory
+BlobFile::BlobFile(const fs::path& dir, const ObjectID& id) : m_id{id}, m_dir{dir}
+{
+}
+
+/// \brief Creates a new blob from a uploaded file
+BlobFile::BlobFile(UploadFile&& tmp, const fs::path& dir, std::error_code& ec)  : m_id{tmp.ID()}, m_dir{dir}
 {
 	// Note: closing the file before munmap() is OK: the mapped memory will still be there.
 	// Details: http://pubs.opengroup.org/onlinepubs/7908799/xsh/mmap.html
@@ -45,10 +52,6 @@ BlobFile::BlobFile(
 		Log(LOG_WARNING, "BlobFile::upload(): cannot mmap temporary file %1% %2%", ec, ec.message());
 		return;
 	}
-
-	// commit result
-	m_mime   = magic.mime(master.blob());
-	m_phash  = hrb::phash(master.buffer());
 
 	boost::system::error_code bec;
 	fs::create_directories(dir, bec);
@@ -62,6 +65,9 @@ BlobFile::BlobFile(
 		// Try moving the temp file to our destination first. If failed, use
 		// deep copy instead.
 		tmp.move(m_dir / hrb::master_rendition, ec);
+
+		// deduce meta data from the uploaded file
+		deduce_meta(master.buffer());
 	}
 }
 
@@ -88,27 +94,25 @@ void save_blob(const Blob& blob, const fs::path& dest, std::error_code& ec)
 		ec.assign(0, ec.category());
 }
 
-BlobFile::BlobFile(const fs::path& dir, const ObjectID& id) :
-	m_id{id}, m_dir{dir}, m_mime{Magic{}.mime(dir/hrb::master_rendition)}
-{
-}
-
 MMap BlobFile::rendition(std::string_view rendition, const RenditionSetting& cfg, std::error_code& ec) const
 {
+	if (rendition == hrb::master_rendition)
+		return master(ec);
+
 	// check if rendition is allowed by config
-	if (!cfg.valid(rendition) && rendition != hrb::master_rendition)
+	if (!cfg.valid(rendition))
 		rendition = cfg.default_rendition();
 
 	auto rend_path = m_dir/std::string{rendition};
 
 	// generate the rendition if it doesn't exist
-	if (rendition != hrb::master_rendition && !exists(rend_path))
-		generate_rendition_from_jpeg(cfg.find(rendition), rend_path, ec);
+	if (!exists(rend_path) && is_image())
+		generate_image_rendition(cfg.find(rendition), rend_path, ec);
 
-	return MMap::open(exists(rend_path) ? rend_path : m_dir/hrb::master_rendition, ec);
+	return exists(rend_path) ? MMap::open(rend_path, ec) : master(ec);
 }
 
-void BlobFile::generate_rendition_from_jpeg(const JPEGRenditionSetting& cfg, const fs::path& dest, std::error_code& ec) const
+void BlobFile::generate_image_rendition(const JPEGRenditionSetting& cfg, const fs::path& dest, std::error_code& ec) const
 {
 	try
 	{
@@ -125,10 +129,7 @@ void BlobFile::generate_rendition_from_jpeg(const JPEGRenditionSetting& cfg, con
 				out = jpeg;
 
 			std::vector<unsigned char> out_buf;
-			cv::imencode(m_mime == "image/png" ? ".png" : ".jpg", out, out_buf, std::vector<int>{cv::IMWRITE_JPEG_QUALITY, cfg.quality});
-
-			Log(LOG_DEBUG, "after resize %1% %2%", out.rows, out.cols);
-
+			cv::imencode(m_mime == "image/png" ? ".png" : ".jpg", out, out_buf, {cv::IMWRITE_JPEG_QUALITY, cfg.quality});
 			save_blob(out_buf, dest, ec);
 		}
 	}
@@ -140,6 +141,97 @@ void BlobFile::generate_rendition_from_jpeg(const JPEGRenditionSetting& cfg, con
 MMap BlobFile::master(std::error_code& ec) const
 {
 	return MMap::open(m_dir/hrb::master_rendition, ec);
+}
+
+bool BlobFile::is_image(std::string_view mime)
+{
+	std::string_view image{"image"};
+	return !mime.empty() && mime.substr(0, image.size()) == image;
+}
+
+bool BlobFile::is_image() const
+{
+	// Must update meta before using the meta data
+	update_meta();
+	return is_image(m_mime);
+}
+
+std::optional<PHash> BlobFile::phash() const
+{
+	update_meta();
+	return m_phash;
+}
+
+std::string_view BlobFile::mime() const
+{
+	update_meta();
+	return m_mime;
+}
+
+void BlobFile::update_meta() const
+{
+	// m_mime is empty means the meta data is missing.
+	// if we don't know what the mime type, it will be application/octets-stream
+	if (m_mime.empty())
+	{
+		// try to load it from meta.json
+		std::ifstream meta_file{(m_dir/"meta.json").string()};
+		nlohmann::json meta;
+
+		try
+		{
+			if (meta_file)
+				meta_file >> meta;
+		}
+		catch (nlohmann::json::exception& e)
+		{
+			Log(LOG_WARNING, "json parse error @ file %1%: %2%", m_dir, e.what());
+			meta_file.setstate(std::ios::failbit);
+		}
+
+		if (meta_file)
+		{
+			m_mime = meta["mime"];
+			if (meta.find("phash") != meta.end())
+				m_phash = PHash{meta["phash"].get<std::uint64_t>()};
+			else
+				m_phash = std::nullopt;
+		}
+		// json file missing, we need to deduce the meta
+		else
+		{
+			std::error_code ec;
+			auto master = this->master(ec);
+			if (ec)
+				Log(LOG_WARNING, "cannot load master rendition of blob %1% from %2% (%3%)", to_hex(m_id), m_dir, ec.message());
+			else
+				deduce_meta(master.buffer());
+		}
+	}
+}
+
+void BlobFile::deduce_meta(BufferView master) const
+{
+	m_mime = Magic::instance().mime(master);
+	if (is_image(m_mime))
+		m_phash  = hrb::phash(master);
+
+	// save the meta data to file
+	nlohmann::json meta{
+		{"mime", m_mime}
+	};
+	if (m_phash)
+		meta.emplace("phash", m_phash->value());
+
+	std::ofstream meta_file{(m_dir/"meta.json").string()};
+	meta_file << meta;
+}
+
+double BlobFile::compare(const BlobFile& other) const
+{
+	return phash() && other.phash() ?
+		phash()->compare(*other.phash()) :
+		std::numeric_limits<double>::max();
 }
 
 } // end of namespace hrb

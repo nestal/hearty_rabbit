@@ -52,6 +52,13 @@ TEST_CASE("phash of resized lena should be the same as the original", "[normal]"
 	REQUIRE(phash(lena) == phash(large_3x));
 }
 
+TEST_CASE("max phash difference", "[normal]")
+{
+	PHash min{0ULL}, max{~0ULL};
+	INFO("norm is " << min.compare(max));
+	REQUIRE(min.compare(max) == 64);
+}
+
 TEST_CASE("phash of non-image returns 0", "[normal]")
 {
 	BufferView non_img{reinterpret_cast<const unsigned char*>("this is not an image")};

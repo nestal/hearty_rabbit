@@ -20,6 +20,7 @@
 #include "UploadFile.hh"
 #include "URLIntent.hh"
 #include "WebResources.hh"
+#include "index/PHashDb.hh"
 
 #include "crypto/Authentication.hh"
 #include "crypto/Authentication.ipp"
@@ -57,6 +58,8 @@ public:
 
 	auto operator()(nlohmann::json&& json, std::error_code ec) const
 	{
+		assert(json.is_object());
+
 		if (!m_auth.is_guest() && m_auth.valid())
 			json.emplace("username", m_auth.user());
 		if (m_auth.is_guest())
@@ -317,6 +320,8 @@ void SessionHandler::get_blob(const BlobRequest& req, Send&& send)
 {
 	assert(req.blob());
 
+	// Return 304 if the etag is the same as the blob ID.
+	// No need to check permission because we don't need to provide anything.
 	if (req.etag() == to_quoted_hex(*req.blob()))
 	{
 		http::response<http::empty_body> res{http::status::not_modified, req.version()};
@@ -326,8 +331,8 @@ void SessionHandler::get_blob(const BlobRequest& req, Send&& send)
 	}
 
 	// Check if the user owns the blob
-	// Note: the arguments of find() uses req, so we can't move req into the lambda.
-	// Otherwise, req will become dangled.
+	// Note: do not move-construct "req" to the lambda because the arguments of find() uses it.
+	// Otherwise, "req" will become dangled.
 	Ownership{req.owner()}.find(
 		*m_db, req.collection(), *req.blob(),
 		[
@@ -350,8 +355,7 @@ void SessionHandler::get_blob(const BlobRequest& req, Send&& send)
 				return send(http::response<http::empty_body>{http::status::forbidden, req.version()});
 
 			auto [rendition] = find_fields(req.option(), "rendition");
-
-			return send(m_blob_db.response(*req.blob(), req.version(), entry.mime(), req.etag(), rendition));
+			return send(m_blob_db.response(*req.blob(), req.version(), req.etag(), rendition));
 		}
 	);
 }
@@ -413,7 +417,7 @@ void SessionHandler::query_blob(const BlobRequest& req, Send&& send)
 				return send(server_error("internal server error", req.version()));
 
 			for (auto&& en : range)
-				return send(m_blob_db.response(blobid, req.version(), en.entry.mime(), req.etag(), rendition));
+				return send(m_blob_db.response(blobid, req.version(), req.etag(), rendition));
 
 			return send(not_found("blob not found", req.version()));
 		}
@@ -423,12 +427,53 @@ void SessionHandler::query_blob(const BlobRequest& req, Send&& send)
 template <class Send>
 void SessionHandler::query_blob_set(const URLIntent& intent, unsigned version, Send&& send)
 {
-	auto [pub, json] = find_optional_fields(intent.option(), "public", "json");
+	auto [pub, dup_coll, json] = find_optional_fields(intent.option(), "public", "detect_dup", "json");
 
-	Ownership{m_auth.user()}.list_public_blobs(
-		*m_db,
-		SendJSON{std::forward<Send>(send), m_auth, version, std::nullopt, server_root(), !json.has_value() ? &m_lib : nullptr}
-	);
+	if (pub.has_value())
+	{
+		Ownership{m_auth.user()}.list_public_blobs(
+			*m_db,
+			SendJSON{
+				std::forward<Send>(send),
+				    m_auth, version, std::nullopt, server_root(),
+				!json.has_value() ? &m_lib : nullptr
+			}
+		);
+	}
+	else if (dup_coll.has_value())
+	{
+		Ownership{m_auth.user()}.list(
+			*m_db,
+			*dup_coll,
+			[
+				send=std::forward<Send>(send),
+			    this, version,
+				lib=(json.has_value() ? nullptr : &m_lib)
+			](auto&& oids, auto ec) mutable
+			{
+				auto matches = nlohmann::json::array();
+				auto similar = m_blob_db.find_similar(oids.begin(), oids.end(), 10);
+
+				for (auto&& match : similar)
+				{
+					auto [id1, id2, norm] = match;
+					Log(LOG_DEBUG, "id1 = %1% id2 = %2% comp = %3%", to_hex(id1), to_hex(id2), norm);
+					nlohmann::json mat{
+						{"id1", to_hex(id1)},
+						{"id2", to_hex(id2)},
+						{"ham", norm}
+					};
+					matches.push_back(std::move(mat));
+				}
+
+				auto result = nlohmann::json::object();
+				result.emplace("dups", std::move(matches));
+				SendJSON{std::move(send), m_auth, version, std::nullopt, server_root(), lib}(std::move(result), ec);
+			}
+		);
+	}
+	else
+		return send(bad_request("invalid query", version));
 }
 
 template <class Send>

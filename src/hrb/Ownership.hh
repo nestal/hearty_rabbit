@@ -73,6 +73,13 @@ public:
 	) const;
 
 	template <typename Complete>
+	void list(
+		redis::Connection& db,
+		std::string_view coll,
+		Complete&& complete
+	) const;
+
+	template <typename Complete>
 	void move_blob(
 		redis::Connection& db,
 		std::string_view src_coll,
