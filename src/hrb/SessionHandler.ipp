@@ -457,7 +457,10 @@ void SessionHandler::query_blob_set(const URLIntent& intent, unsigned version, S
 				auto matches = nlohmann::json::array();
 				// this is n^2 -> bad!
 				for (auto&& id1 : oids)
+				{
+					Log(LOG_DEBUG, "id1 = %1%", to_hex(id1));
 					for (auto&& id2 : oids)
+					{
 						if (id1 != id2)
 						{
 							Log(LOG_DEBUG, "id1 = %1% id2 = %2%", to_hex(id1), to_hex(id2));
@@ -473,6 +476,8 @@ void SessionHandler::query_blob_set(const URLIntent& intent, unsigned version, S
 								matches.push_back(std::move(mat));
 							}
 						}
+					}
+				}
 
 				auto result = nlohmann::json::object();
 				result.emplace("dups", std::move(matches));

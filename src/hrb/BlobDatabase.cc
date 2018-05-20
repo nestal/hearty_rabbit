@@ -102,7 +102,7 @@ void BlobDatabase::set_cache_control(BlobResponse& res, const ObjectID& id)
 
 BlobFile BlobDatabase::find(const ObjectID& id)
 {
-	return {m_cfg.blob_path(), id};
+	return {dest(id), id};
 }
 
 } // end of namespace hrb

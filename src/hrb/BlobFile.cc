@@ -201,7 +201,7 @@ void BlobFile::update_meta() const
 			std::error_code ec;
 			auto master = this->master(ec);
 			if (ec)
-				Log(LOG_WARNING, "cannot load master rendition from blob %1%", to_hex(m_id));
+				Log(LOG_WARNING, "cannot load master rendition of blob %1% from %2% (%3%)", to_hex(m_id), m_dir, ec.message());
 			else
 				deduce_meta(master.buffer());
 		}
@@ -220,8 +220,6 @@ void BlobFile::deduce_meta(BufferView master) const
 	};
 	if (m_phash)
 		meta.emplace("phash", m_phash->value());
-
-	Log(LOG_WARNING, "writing meta to file %1%", m_dir);
 
 	std::ofstream meta_file{(m_dir/"meta.json").string()};
 	meta_file << meta;
