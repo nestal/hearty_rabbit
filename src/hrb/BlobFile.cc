@@ -175,7 +175,19 @@ void BlobFile::update_meta() const
 		// try to load it from meta.json
 		std::ifstream meta_file{(m_dir/"meta.json").string()};
 		nlohmann::json meta;
-		if (meta_file >> meta)
+
+		try
+		{
+			if (meta_file)
+				meta_file >> meta;
+		}
+		catch (nlohmann::json::exception& e)
+		{
+			Log(LOG_WARNING, "json parse error @ file %1%: %2%", m_dir, e.what());
+			meta_file.setstate(std::ios::failbit);
+		}
+
+		if (meta_file)
 		{
 			m_mime = meta["mime"];
 			if (meta.find("phash") != meta.end())
@@ -183,7 +195,6 @@ void BlobFile::update_meta() const
 			else
 				m_phash = std::nullopt;
 		}
-
 		// json file missing, we need to deduce the meta
 		else
 		{
@@ -209,6 +220,8 @@ void BlobFile::deduce_meta(BufferView master) const
 	};
 	if (m_phash)
 		meta.emplace("phash", m_phash->value());
+
+	Log(LOG_WARNING, "writing meta to file %1%", m_dir);
 
 	std::ofstream meta_file{(m_dir/"meta.json").string()};
 	meta_file << meta;

@@ -100,4 +100,9 @@ void BlobDatabase::set_cache_control(BlobResponse& res, const ObjectID& id)
 	res.set(http::field::etag, to_quoted_hex(id));
 }
 
+BlobFile BlobDatabase::find(const ObjectID& id)
+{
+	return {m_cfg.blob_path(), id};
+}
+
 } // end of namespace hrb

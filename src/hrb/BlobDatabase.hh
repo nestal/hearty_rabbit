@@ -40,6 +40,7 @@ public:
 
 	void prepare_upload(UploadFile& result, std::error_code& ec) const;
 	BlobFile save(UploadFile&& tmp, std::error_code& ec);
+	BlobFile find(const ObjectID& id);
 
 	fs::path dest(const ObjectID& id, std::string_view rendition = {}) const;
 

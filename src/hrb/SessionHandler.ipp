@@ -16,6 +16,7 @@
 
 #include "BlobRequest.hh"
 #include "BlobDatabase.hh"
+#include "BlobFile.hh"
 #include "Ownership.ipp"
 #include "UploadFile.hh"
 #include "URLIntent.hh"
@@ -445,9 +446,27 @@ void SessionHandler::query_blob_set(const URLIntent& intent, unsigned version, S
 		Ownership{m_auth.user()}.list(
 			*m_db,
 			*dup_coll,
-			[send=std::forward<Send>(send)](auto&& json, auto ec)
+			[
+				send=std::forward<Send>(send),
+			    this, version,
+				lib=(json.has_value() ? &m_lib : nullptr)
+			](auto&& oids, auto ec) mutable
 			{
-
+				auto matches = nlohmann::json::array();
+				// this is n^2 -> bad!
+				for (auto&& id1 : oids)
+					for (auto&& id2 : oids)
+						if (id1 != id2)
+						{
+							auto b1 = m_blob_db.find(id1);
+							auto b2 = m_blob_db.find(id2);
+							if (b1.phash() && b2.phash())
+							{
+								if (b1.phash()->compare(*b2.phash()) == 1.0)
+									matches.push_back(nlohmann::json{to_hex(id1), to_hex(id2)});
+							}
+						}
+				SendJSON{std::move(send), m_auth, version, std::nullopt, server_root(), lib}(std::move(matches), ec);
 			}
 		);
 	}
