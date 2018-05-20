@@ -88,8 +88,7 @@ void save_blob(const Blob& blob, const fs::path& dest, std::error_code& ec)
 		ec.assign(0, ec.category());
 }
 
-BlobFile::BlobFile(const fs::path& dir, const ObjectID& id) :
-	m_id{id}, m_dir{dir}
+BlobFile::BlobFile(const fs::path& dir, const ObjectID& id) : m_id{id}, m_dir{dir}
 {
 }
 

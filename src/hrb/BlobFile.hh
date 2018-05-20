@@ -28,16 +28,23 @@ class RenditionSetting;
 class JPEGRenditionSetting;
 class UploadFile;
 
+/// \brief  On-disk representation of a blob
+/// A blob is an object that is stored in hearty rabbit. BlobFile represents how it
+/// is stored in the file system. This class does not care about how blobs are stored
+/// in redis. It only cares about the file system.
+///
+/// Each blob is stored in its own directory. BlobFile does not know how to find that
+/// directory by the blob ID. It is given a directory during construction. BlobFile
+/// is responsible for managing this directory. It generates the renditions when they
+/// are required and save them in the directory.
+///
+/// BlobDatabase is responsible for assigning different directories to different blobs.
 class BlobFile
 {
 public:
 	BlobFile() = default;
 	BlobFile(const fs::path& dir, const ObjectID& id);
-	BlobFile(
-		UploadFile&& tmp,
-		const fs::path& dir,
-		std::error_code& ec
-	);
+	BlobFile(UploadFile&& tmp, const fs::path& dir, std::error_code& ec);
 
 	// if the rendition does not exists but it's a valid one, it will be generated dynamically
 	MMap rendition(std::string_view rendition, const RenditionSetting& cfg, std::error_code& ec) const;
@@ -53,9 +60,9 @@ private:
 	void generate_image_rendition(const JPEGRenditionSetting& cfg, const fs::path& dest, std::error_code& ec) const;
 
 private:
-	ObjectID    m_id{};     //!< ID of the blob
-	fs::path    m_dir;      //!< The directory in file system that stores all renditions of the blob
-	mutable std::string  m_mime;     //!< Mime type of the master rendition
+	ObjectID    m_id{};				//!< ID of the blob
+	fs::path    m_dir;				//!< The directory in file system that stores all renditions of the blob
+	mutable std::string  m_mime;    //!< Mime type of the master rendition
 	std::optional<PHash> m_phash;
 };
 
