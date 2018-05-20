@@ -14,7 +14,6 @@
 
 #include "ObjectID.hh"
 #include "util/FS.hh"
-#include "util/Magic.hh"
 #include "util/Size2D.hh"
 
 #include <boost/beast/http/message.hpp>
@@ -56,7 +55,6 @@ private:
 	static void set_cache_control(BlobResponse& res, const ObjectID& id);
 
 private:
-	Magic                   m_magic;
 	const Configuration&    m_cfg;
 };
 

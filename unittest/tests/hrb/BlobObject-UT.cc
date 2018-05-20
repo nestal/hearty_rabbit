@@ -51,7 +51,6 @@ protected:
 
 
 protected:
-	const Magic     m_magic;
 	const fs::path  m_blob_path{"/tmp/BlobFile-UT"};
 	const fs::path  m_image_path{fs::path{__FILE__}.parent_path().parent_path() / "image"};
 };
@@ -62,7 +61,7 @@ TEST_CASE_METHOD(BlobFileUTFixture, "upload non-image BlobFile", "[normal]")
 	auto [tmp, src] = upload(__FILE__);
 
 	std::error_code ec;
-	BlobFile subject{std::move(tmp), m_blob_path, m_magic, ec};
+	BlobFile subject{std::move(tmp), m_blob_path, ec};
 	REQUIRE(!ec);
 	REQUIRE(subject.ID() != ObjectID{});
 	REQUIRE(subject.mime() == "text/x-c++");
@@ -96,7 +95,7 @@ TEST_CASE_METHOD(BlobFileUTFixture, "upload small image BlobFile", "[normal]")
 	auto [tmp, src] = upload(m_image_path/"black.jpg");
 
 	std::error_code ec;
-	BlobFile subject{std::move(tmp), m_blob_path, m_magic, ec};
+	BlobFile subject{std::move(tmp), m_blob_path, ec};
 	REQUIRE(!ec);
 	REQUIRE(subject.ID() != ObjectID{});
 	REQUIRE(subject.mime() == "image/jpeg");
@@ -113,7 +112,7 @@ TEST_CASE_METHOD(BlobFileUTFixture, "upload big upright image as BlobFile", "[no
 	auto [tmp, src] = upload(m_image_path/"up_f_upright.jpg");
 
 	std::error_code ec;
-	BlobFile subject{std::move(tmp), m_blob_path, m_magic, ec};
+	BlobFile subject{std::move(tmp), m_blob_path, ec};
 	REQUIRE(!ec);
 	REQUIRE(subject.ID() != ObjectID{});
 	REQUIRE(subject.mime() == "image/jpeg");
@@ -154,7 +153,7 @@ TEST_CASE_METHOD(BlobFileUTFixture, "upload big rot90 image as BlobFile", "[norm
 	auto [tmp, src] = upload(m_image_path/"up_f_rot90.jpg");
 
 	std::error_code ec;
-	BlobFile subject{std::move(tmp), m_blob_path, m_magic, ec};
+	BlobFile subject{std::move(tmp), m_blob_path, ec};
 
 	RenditionSetting cfg;
 	cfg.add("2048x2048",   {2048, 2048});

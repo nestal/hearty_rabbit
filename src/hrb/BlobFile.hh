@@ -24,7 +24,6 @@
 namespace hrb {
 
 class EXIF2;
-class Magic;
 class RenditionSetting;
 class JPEGRenditionSetting;
 class UploadFile;
@@ -37,7 +36,6 @@ public:
 	BlobFile(
 		UploadFile&& tmp,
 		const fs::path& dir,
-		const Magic& magic,
 		std::error_code& ec
 	);
 

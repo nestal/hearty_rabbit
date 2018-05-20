@@ -33,7 +33,6 @@ const std::string master_rendition = "master";
 BlobFile::BlobFile(
 	UploadFile&& tmp,
 	const fs::path& dir,
-	const Magic& magic,
 	std::error_code& ec
 ) : m_id{tmp.ID()}, m_dir{dir}
 {
@@ -47,7 +46,7 @@ BlobFile::BlobFile(
 	}
 
 	// commit result
-	m_mime   = magic.mime(master.blob());
+	m_mime   = Magic::instance().mime(master.blob());
 	m_phash  = hrb::phash(master.buffer());
 
 	boost::system::error_code bec;
@@ -108,7 +107,7 @@ MMap BlobFile::rendition(std::string_view rendition, const RenditionSetting& cfg
 	if (!exists(rend_path))
 	{
 		if (m_mime.empty())
-			m_mime = Magic{}.mime(m_dir/hrb::master_rendition);
+			m_mime = Magic::instance().mime(m_dir/hrb::master_rendition);
 
 		if (!m_mime.empty() && m_mime.substr(0, 5) == "image")
 			generate_rendition_from_image(cfg.find(rendition), rend_path, ec);
