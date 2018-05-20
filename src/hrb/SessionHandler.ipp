@@ -443,8 +443,6 @@ void SessionHandler::query_blob_set(const URLIntent& intent, unsigned version, S
 	}
 	else if (dup_coll.has_value())
 	{
-		// How to find the phash of a blob?
-//		PHashDb{m_db}.exact_match();
 		Ownership{m_auth.user()}.list(
 			*m_db,
 			*dup_coll,
@@ -458,22 +456,26 @@ void SessionHandler::query_blob_set(const URLIntent& intent, unsigned version, S
 				// this is n^2 -> bad!
 				for (auto&& id1 : oids)
 				{
-					Log(LOG_DEBUG, "id1 = %1%", to_hex(id1));
 					for (auto&& id2 : oids)
 					{
 						if (id1 != id2)
 						{
-							Log(LOG_DEBUG, "id1 = %1% id2 = %2%", to_hex(id1), to_hex(id2));
 							auto b1 = m_blob_db.find(id1);
 							auto b2 = m_blob_db.find(id2);
 							if (b1.phash() && b2.phash())
 							{
-								nlohmann::json mat{
-									{"id1", to_hex(id1)},
-									{"id2", to_hex(id2)},
-									{"ham", b1.phash()->compare(*b2.phash())}
-								};
-								matches.push_back(std::move(mat));
+								Log(LOG_DEBUG, "id1 = %1% id2 = %2% comp = %3%", to_hex(id1), to_hex(id2), b1.phash()->compare(*b2.phash()));
+								if (b1.phash()->compare(*b2.phash()) < 10)
+								{
+									nlohmann::json mat{
+										{"id1", to_hex(id1)},
+										{"id2", to_hex(id2)},
+										{"phash1", b1.phash()->value()},
+										{"phash2", b2.phash()->value()},
+										{"ham", b1.phash()->compare(*b2.phash())}
+									};
+									matches.push_back(std::move(mat));
+								}
 							}
 						}
 					}
