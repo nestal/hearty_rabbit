@@ -52,17 +52,6 @@ body {
 	 opacity: 0.8;
 }
 
-/* Refer to: https://css-tricks.com/seamless-responsive-photo-grid/ */
-#hrb-entry-root {
-	line-height: 0;
-	-webkit-column-count: 5;
-	-webkit-column-gap: 0;
-	-moz-column-count: 5;
-	-moz-column-gap: 0;
-	column-count: 5;
-	column-gap: 0;
-}
-
 #hrb-entry-root img {
 	/* Just in case there are inline attributes */
 	width: 100%;
@@ -102,11 +91,23 @@ body {
 
 	line-height: normal;
 	border-radius: 10px;
+
+	-webkit-touch-callout: none; /* iOS Safari */
+	-webkit-user-select: none; /* Safari */
+	 -khtml-user-select: none; /* Konqueror HTML */
+	   -moz-user-select: none; /* Firefox */
+	    -ms-user-select: none; /* Internet Explorer/Edge */
+	        user-select: none; /* Non-prefixed version, currently
+                                  supported by Chrome and Opera */
 }
 
 #hrb-entry-root .hrb-entry:hover,
 #hrb-entry-root .hrb-entry:focus {
 	cursor: pointer;
+}
+
+#hrb-entry-root .hrb-entry.selected-entry img {
+	opacity: 0.5;
 }
 
 #hrb-entry-root .hrb-entry:hover span.text-overlay-box,
@@ -118,7 +119,26 @@ body {
 	display: none;
 }
 
+/* Refer to: https://css-tricks.com/seamless-responsive-photo-grid/ */
+#hrb-entry-root {
+	line-height: 0;
+	-webkit-column-count: 6;
+	-webkit-column-gap: 0;
+	-moz-column-count: 6;
+	-moz-column-gap: 0;
+	column-count: 6;
+	column-gap: 0;
+}
+
 @media (max-width: 1280px) {
+	#hrb-entry-root {
+		-moz-column-count: 5;
+		-webkit-column-count: 5;
+		column-count: 5;
+	}
+}
+
+@media (max-width: 1000px) {
 	#hrb-entry-root {
 		-moz-column-count: 4;
 		-webkit-column-count: 4;
@@ -126,7 +146,7 @@ body {
 	}
 }
 
-@media (max-width: 1000px) {
+@media (max-width: 800px) {
 	#hrb-entry-root {
 		-moz-column-count: 3;
 		-webkit-column-count: 3;
@@ -134,19 +154,11 @@ body {
 	}
 }
 
-@media (max-width: 800px) {
+@media (max-width: 500px) {
 	#hrb-entry-root {
 		-moz-column-count: 2;
 		-webkit-column-count: 2;
 		column-count: 2;
-	}
-}
-
-@media (max-width: 500px) {
-	#hrb-entry-root {
-		-moz-column-count: 1;
-		-webkit-column-count: 1;
-		column-count: 1;
 	}
 }
 
