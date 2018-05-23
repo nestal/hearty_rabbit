@@ -11,18 +11,24 @@
 //
 
 #include "BlobFile.hh"
-#include "CollEntry.hh"
-#include "Ownership.hh"
-#include "Permission.hh"
+#include "UploadFile.hh"
 
 // HeartyRabbit headers
-#include "image/RotateImage.hh"
-#include "image/JPEG.hh"
 #include "image/PHash.hh"
-#include "util/MMap.hh"
+#include "util/Configuration.hh"
+#include "util/Escape.hh"
 #include "util/Log.hh"
 #include "util/Magic.hh"
-#include "util/Configuration.hh"
+#include "util/MMap.hh"
+
+// JSON for saving meta data
+#include <json.hpp>
+
+// OpenCV for calculating phash
+#include <opencv2/imgcodecs.hpp>
+#include <opencv2/imgproc.hpp>
+
+#include <limits>
 
 namespace hrb {
 
@@ -30,61 +36,39 @@ namespace {
 const std::string master_rendition = "master";
 }
 
-BlobFile BlobFile::upload(
-	UploadFile&& tmp,
-	const Magic& magic,
-	const RenditionSetting& cfg,
-	std::string_view filename,
-	std::error_code& ec
-)
+/// \brief Open an existing blob in its directory
+BlobFile::BlobFile(const fs::path& dir, const ObjectID& id) : m_id{id}, m_dir{dir}
 {
-	BlobFile result;
+}
 
+/// \brief Creates a new blob from a uploaded file
+BlobFile::BlobFile(UploadFile&& tmp, const fs::path& dir, std::error_code& ec)  : m_id{tmp.ID()}, m_dir{dir}
+{
+	// Note: closing the file before munmap() is OK: the mapped memory will still be there.
+	// Details: http://pubs.opengroup.org/onlinepubs/7908799/xsh/mmap.html
 	auto master = MMap::open(tmp.native_handle(), ec);
 	if (ec)
 	{
 		Log(LOG_WARNING, "BlobFile::upload(): cannot mmap temporary file %1% %2%", ec, ec.message());
-		return result;
+		return;
 	}
 
-	auto mime = magic.mime(master.blob());
-
-	if (mime == "image/jpeg")
+	boost::system::error_code bec;
+	fs::create_directories(dir, bec);
+	if (bec)
 	{
-		// generate default rendition
-		auto rotated = generate_rendition(
-			master.buffer(),
-			cfg.dimension(cfg.default_rendition()),
-			cfg.quality(cfg.default_rendition()),
-			ec
-		);
-
-		if (ec)
-		{
-			// just keep the file as-is if we can't auto-rotate it
-			Log(LOG_WARNING, "BlobFile::upload(): cannot rotate image %1% %2%", ec, ec.message());
-			ec.clear();
-		}
-
-		else if (!rotated.empty())
-		{
-			result.m_rend.emplace(cfg.default_rendition(), std::move(rotated));
-		}
+		Log(LOG_WARNING, "create create directory %1% (%2% %3%)", dir, bec, bec.message());
+		ec.assign(bec.value(), bec.category());
 	}
+	else
+	{
+		// Try moving the temp file to our destination first. If failed, use
+		// deep copy instead.
+		tmp.move(m_dir / hrb::master_rendition, ec);
 
-	// commit result
-	result.m_id     = tmp.ID();
-	result.m_tmp    = std::move(tmp);
-	result.m_phash  = hrb::phash(master.buffer());
-	result.m_mmap   = std::move(master);
-	result.m_coll_entry   = CollEntry::create(Permission{}, filename, mime);
-
-	return result;
-}
-
-BufferView BlobFile::buffer() const
-{
-	return m_mmap.buffer();
+		// deduce meta data from the uploaded file
+		deduce_meta(master.buffer());
+	}
 }
 
 template <typename Blob>
@@ -110,84 +94,144 @@ void save_blob(const Blob& blob, const fs::path& dest, std::error_code& ec)
 		ec.assign(0, ec.category());
 }
 
-void BlobFile::save(const fs::path& dir, std::error_code& ec) const
+MMap BlobFile::rendition(std::string_view rendition, const RenditionSetting& cfg, std::error_code& ec) const
 {
-	boost::system::error_code bec;
-	fs::create_directories(dir, bec);
-	if (bec)
-	{
-		Log(LOG_WARNING, "create create directory %1% (%2% %3%)", dir, ec, ec.message());
-		return;
-	}
+	if (rendition == hrb::master_rendition)
+		return master(ec);
 
-	// Try moving the temp file to our destination first. If failed, use
-	// deep copy instead.
-	m_tmp.move(dir/hrb::master_rendition, ec);
-
-	// Save the renditions, if any.
-	for (auto&& [name, rend] : m_rend)
-	{
-		save_blob(rend, dir / name, ec);
-		if (ec)
-		{
-			Log(LOG_WARNING, "cannot save blob rendition %1% (%2% %3%)", name, ec, ec.message());
-			break;
-		}
-	}
-}
-
-BlobFile::BlobFile(
-	const fs::path& dir,
-	const ObjectID& id,
-	std::string_view rendition,
-	const RenditionSetting& cfg,
-	std::error_code& ec
-) :
-	m_id{id}
-{
 	// check if rendition is allowed by config
-	if (!cfg.valid(rendition) && rendition != hrb::master_rendition)
+	if (!cfg.valid(rendition))
 		rendition = cfg.default_rendition();
 
+	auto rend_path = m_dir/std::string{rendition};
+
 	// generate the rendition if it doesn't exist
-	if (rendition != hrb::master_rendition && !exists(dir/std::string{rendition}))
+	if (!exists(rend_path) && is_image())
+		generate_image_rendition(cfg.find(rendition), rend_path, ec);
+
+	return exists(rend_path) ? MMap::open(rend_path, ec) : master(ec);
+}
+
+void BlobFile::generate_image_rendition(const JPEGRenditionSetting& cfg, const fs::path& dest, std::error_code& ec) const
+{
+	try
 	{
-		auto master = MMap::open(dir/hrb::master_rendition, ec);
-		if (!ec)
+		auto jpeg = cv::imread((m_dir/hrb::master_rendition).string(), cv::IMREAD_ANYCOLOR);
+		if (!jpeg.empty())
 		{
-			auto tb = generate_rendition(master.buffer(), cfg.dimension(rendition), cfg.quality(rendition), ec);
-			if (!tb.empty())
-				save_blob(tb, dir / std::string{rendition}, ec);
+			auto xratio = cfg.dim.width() / static_cast<double>(jpeg.cols);
+			auto yratio = cfg.dim.height() / static_cast<double>(jpeg.rows);
+
+			cv::Mat out;
+			if (xratio < 1.0 || yratio < 1.0)
+				cv::resize(jpeg, out, {}, std::min(xratio, yratio), std::min(xratio, yratio), cv::INTER_LINEAR);
+			else
+				out = jpeg;
+
+			std::vector<unsigned char> out_buf;
+			cv::imencode(m_mime == "image/png" ? ".png" : ".jpg", out, out_buf, {cv::IMWRITE_JPEG_QUALITY, cfg.quality});
+			save_blob(out_buf, dest, ec);
 		}
 	}
-
-	auto resized = dir/std::string{rendition};
-	m_mmap = MMap::open(exists(resized) ? resized : dir/hrb::master_rendition, ec);
-}
-
-CollEntry BlobFile::entry() const
-{
-	return CollEntry{m_coll_entry};
-}
-
-TurboBuffer BlobFile::generate_rendition(BufferView master, Size2D dim, int quality, std::error_code& ec)
-{
-	RotateImage transform;
-	auto rotated = transform.auto_rotate(master, ec);
-
-	if (!ec)
+	catch (...)
 	{
-		JPEG img{
-			rotated.empty() ? master.data() : rotated.data(),
-			rotated.empty() ? master.size() : rotated.size(),
-			dim
-		};
-
-		if (dim != img.size())
-			rotated = img.compress(quality);
 	}
+}
 
-	return rotated;
+MMap BlobFile::master(std::error_code& ec) const
+{
+	return MMap::open(m_dir/hrb::master_rendition, ec);
+}
+
+bool BlobFile::is_image(std::string_view mime)
+{
+	std::string_view image{"image"};
+	return !mime.empty() && mime.substr(0, image.size()) == image;
+}
+
+bool BlobFile::is_image() const
+{
+	// Must update meta before using the meta data
+	update_meta();
+	return is_image(m_mime);
+}
+
+std::optional<PHash> BlobFile::phash() const
+{
+	update_meta();
+	return m_phash;
+}
+
+std::string_view BlobFile::mime() const
+{
+	update_meta();
+	return m_mime;
+}
+
+void BlobFile::update_meta() const
+{
+	// m_mime is empty means the meta data is missing.
+	// if we don't know what the mime type, it will be application/octets-stream
+	if (m_mime.empty())
+	{
+		// try to load it from meta.json
+		std::ifstream meta_file{(m_dir/"meta.json").string()};
+		nlohmann::json meta;
+
+		try
+		{
+			if (meta_file)
+				meta_file >> meta;
+		}
+		catch (nlohmann::json::exception& e)
+		{
+			Log(LOG_WARNING, "json parse error @ file %1%: %2%", m_dir, e.what());
+			meta_file.setstate(std::ios::failbit);
+		}
+
+		if (meta_file)
+		{
+			m_mime = meta["mime"];
+			if (meta.find("phash") != meta.end())
+				m_phash = PHash{meta["phash"].get<std::uint64_t>()};
+			else
+				m_phash = std::nullopt;
+		}
+		// json file missing, we need to deduce the meta
+		else
+		{
+			std::error_code ec;
+			auto master = this->master(ec);
+			if (ec)
+				Log(LOG_WARNING, "cannot load master rendition of blob %1% from %2% (%3%)", to_hex(m_id), m_dir, ec.message());
+			else
+				deduce_meta(master.buffer());
+		}
+	}
+}
+
+void BlobFile::deduce_meta(BufferView master) const
+{
+	m_mime = Magic::instance().mime(master);
+	if (is_image(m_mime))
+		m_phash  = hrb::phash(master);
+
+	// save the meta data to file
+	nlohmann::json meta{
+		{"mime", m_mime}
+	};
+	if (m_phash)
+		meta.emplace("phash", m_phash->value());
+
+	std::ofstream meta_file{(m_dir/"meta.json").string()};
+	meta_file << meta;
+}
+
+double BlobFile::compare(const BlobFile& other) const
+{
+	return phash() && other.phash() ?
+		phash()->compare(*other.phash()) :
+		std::numeric_limits<double>::max();
 }
 
 } // end of namespace hrb

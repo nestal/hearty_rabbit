@@ -13,59 +13,61 @@
 #pragma once
 
 #include "ObjectID.hh"
-#include "UploadFile.hh"
 
-#include "image/TurboBuffer.hh"
 #include "image/PHash.hh"
 #include "util/Size2D.hh"
 #include "util/FS.hh"
 #include "util/MMap.hh"
 
-#include <unordered_map>
 #include <system_error>
 
 namespace hrb {
 
-class CollEntry;
 class EXIF2;
-class Magic;
 class RenditionSetting;
+class JPEGRenditionSetting;
 class UploadFile;
 
+/// \brief  On-disk representation of a blob
+/// A blob is an object that is stored in hearty rabbit. BlobFile represents how it
+/// is stored in the file system. This class does not care about how blobs are stored
+/// in redis. It only cares about the file system.
+///
+/// Each blob is stored in its own directory. BlobFile does not know how to find that
+/// directory by the blob ID. It is given a directory during construction. BlobFile
+/// is responsible for managing this directory. It generates the renditions when they
+/// are required and save them in the directory.
+///
+/// BlobDatabase is responsible for assigning different directories to different blobs.
 class BlobFile
 {
 public:
 	BlobFile() = default;
-	BlobFile(const fs::path& dir, const ObjectID& id, std::string_view rendition, const RenditionSetting& cfg, std::error_code& ec);
+	BlobFile(const fs::path& dir, const ObjectID& id);
+	BlobFile(UploadFile&& tmp, const fs::path& dir, std::error_code& ec);
 
-	static BlobFile upload(
-		UploadFile&& tmp,
-		const Magic& magic,
-		const RenditionSetting& cfg,
-		std::string_view filename,
-		std::error_code& ec
-	);
-
-	BufferView buffer() const;
-	MMap& mmap() {return m_mmap;}
+	// if the rendition does not exists but it's a valid one, it will be generated dynamically
+	MMap rendition(std::string_view rendition, const RenditionSetting& cfg, std::error_code& ec) const;
+	MMap master(std::error_code& ec) const;
 
 	const ObjectID& ID() const {return m_id;}
-	CollEntry entry() const;
+	std::string_view mime() const;
+	std::optional<PHash> phash() const;
 
-	void save(const fs::path& dir, std::error_code& ec) const;
-	auto phash() const {return m_phash;}
-
-private:
-	static TurboBuffer generate_rendition(BufferView master, Size2D dim, int quality, std::error_code& ec);
+	bool is_image() const;
+	double compare(const BlobFile& other) const;
 
 private:
-	ObjectID    m_id{};
-	std::string m_coll_entry;
-	PHash       m_phash{};
+	static bool is_image(std::string_view mime);
+	void generate_image_rendition(const JPEGRenditionSetting& cfg, const fs::path& dest, std::error_code& ec) const;
+	void update_meta() const;
+	void deduce_meta(BufferView master) const;
 
-	mutable UploadFile  m_tmp;
-	MMap                m_mmap;
-	std::unordered_map<std::string, TurboBuffer> m_rend;
+private:
+	ObjectID    m_id{};				//!< ID of the blob
+	fs::path    m_dir;				//!< The directory in file system that stores all renditions of the blob
+	mutable std::string             m_mime;    //!< Mime type of the master rendition
+	mutable std::optional<PHash>    m_phash;
 };
 
 } // end of namespace hrb

@@ -11,15 +11,18 @@
 //
 
 #include "BlobDatabase.hh"
-#include "UploadFile.hh"
-#include "CollEntry.hh"
+
+// Other dependencies in the same module
 #include "BlobFile.hh"
+#include "CollEntry.hh"
+#include "UploadFile.hh"
 
+// Other modules in hearty rabbit
 #include "net/MMapResponseBody.hh"
-#include "util/Escape.hh"
-
-#include "util/Log.hh"
 #include "util/Configuration.hh"
+#include "util/Escape.hh"
+#include "util/Log.hh"
+#include "util/Magic.hh"
 
 namespace hrb {
 
@@ -41,13 +44,9 @@ void BlobDatabase::prepare_upload(UploadFile& result, std::error_code& ec) const
 		ec.assign(err.value(), err.category());
 }
 
-BlobFile BlobDatabase::save(UploadFile&& tmp, std::string_view filename, std::error_code& ec)
+BlobFile BlobDatabase::save(UploadFile&& tmp, std::error_code& ec)
 {
-	auto blob_obj = BlobFile::upload(std::move(tmp), m_magic, m_cfg.renditions(), filename, ec);
-	if (!ec)
-		blob_obj.save(dest(blob_obj.ID()), ec);
-
-	return blob_obj;
+	return BlobFile{std::move(tmp), dest(tmp.ID()), ec};
 }
 
 fs::path BlobDatabase::dest(const ObjectID& id, std::string_view) const
@@ -61,7 +60,6 @@ fs::path BlobDatabase::dest(const ObjectID& id, std::string_view) const
 BlobDatabase::BlobResponse BlobDatabase::response(
 	ObjectID id,
 	unsigned version,
-	std::string_view mime,
 	std::string_view etag,
 	std::string_view rendition
 ) const
@@ -74,16 +72,15 @@ BlobDatabase::BlobResponse BlobDatabase::response(
 	if (invalid != rendition.end())
 		return http::response<MMapResponseBody>{http::status::bad_request, version};
 
-	auto path = dest(id);
-
 	std::error_code ec;
-	BlobFile blob_obj{path, id, rendition, m_cfg.renditions(), ec};
-
+	BlobFile blob_obj{dest(id), id};
+	auto mmap = blob_obj.rendition(rendition, m_cfg.renditions(), ec);
 	if (ec)
 		return BlobResponse{http::status::not_found, version};
 
+	auto mime = Magic::instance().mime(mmap.blob());
+
 	// Advice the kernel that we only read the memory in one pass
-	auto mmap{std::move(blob_obj.mmap())};
 	mmap.cache();
 
 	BlobResponse res{
@@ -101,6 +98,18 @@ void BlobDatabase::set_cache_control(BlobResponse& res, const ObjectID& id)
 {
 	res.set(http::field::cache_control, "private, max-age=31536000, immutable");
 	res.set(http::field::etag, to_quoted_hex(id));
+}
+
+BlobFile BlobDatabase::find(const ObjectID& id) const
+{
+	return {dest(id), id};
+}
+
+double BlobDatabase::compare(const ObjectID& id1, const ObjectID& id2) const
+{
+	auto bf1 = find(id1);
+	auto bf2 = find(id2);
+	return bf1.compare(bf2);
 }
 
 } // end of namespace hrb

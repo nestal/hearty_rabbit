@@ -78,6 +78,12 @@ public:
 	void find(redis::Connection& db, const ObjectID& blob, Complete&& complete) const;
 
 	template <typename Complete>
+	void list(
+		redis::Connection& db,
+		Complete&& complete
+	) const;
+
+	template <typename Complete>
 	void serialize(
 		redis::Connection& db,
 		const Authentication& requester,
@@ -313,6 +319,44 @@ void Ownership::Collection::set_cover(redis::Connection& db, const ObjectID& cov
 }
 
 template <typename Complete>
+void Ownership::Collection::list(
+	redis::Connection& db,
+	Complete&& complete
+) const
+{
+	db.command(
+		[
+			comp=std::forward<Complete>(complete)
+		](auto&& reply, std::error_code&& ec) mutable
+		{
+			if (!reply || ec)
+				Log(LOG_WARNING, "list() reply %1% %2%", reply.as_error(), ec);
+
+			auto to_object_id = [](const redis::Reply& reply)
+			{
+				return raw_to_object_id(reply.as_string());
+			};
+			auto filter_oid = [](const std::optional<ObjectID>& oid)
+			{
+				return oid.has_value();
+			};
+			auto indirect_optional = [](const std::optional<ObjectID>& oid)
+			{
+				assert(oid.has_value());
+				return *oid;
+			};
+
+			using namespace boost::adaptors;
+			comp(reply | transformed(to_object_id) | filtered(filter_oid) | transformed(indirect_optional), ec);
+		},
+		"HKEYS %b%b:%b",
+		m_dir_prefix.data(), m_dir_prefix.size(),
+		m_user.data(), m_user.size(),
+		m_path.data(), m_path.size()
+	);
+}
+
+template <typename Complete>
 void Ownership::Collection::serialize(
 	redis::Connection& db,
 	const Authentication& requester,
@@ -419,6 +463,16 @@ void Ownership::serialize(
 ) const
 {
 	return Collection{m_user, coll}.serialize(db, requester, std::forward<Complete>(complete));
+}
+
+template <typename Complete>
+void Ownership::list(
+	redis::Connection& db,
+	std::string_view coll,
+	Complete&& complete
+) const
+{
+	return Collection{m_user, coll}.list(db, std::forward<Complete>(complete));
 }
 
 template <typename Complete>

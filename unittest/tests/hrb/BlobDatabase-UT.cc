@@ -54,7 +54,7 @@ TEST_CASE("Open temp file", "[normal]")
 	REQUIRE(tmpid != ObjectID{});
 	REQUIRE(tmpid == tmp.ID());
 
-	auto dest = subject.dest(subject.save(std::move(tmp), "testfile", sec).ID());
+	auto dest = subject.dest(subject.save(std::move(tmp), sec).ID());
 	INFO("save() error_code = " << sec << " " << sec.message());
 	REQUIRE(!sec);
 	REQUIRE(exists(dest/"master"));
@@ -83,6 +83,8 @@ TEST_CASE("Upload JPEG file to BlobDatabase", "[normal]")
 	tmp.write(black.data(), black.size(), bec);
 	REQUIRE(!bec);
 
-	auto id = subject.save(std::move(tmp), "black.jpg", ec).ID();
+	auto up_id = tmp.ID();
+	auto bb_id = subject.save(std::move(tmp), ec).ID();
 	REQUIRE(!ec);
+	REQUIRE(bb_id == up_id);
 }

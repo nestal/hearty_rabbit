@@ -200,30 +200,31 @@ void SessionHandler::on_upload(UploadRequest&& req, EmptyResponseSender&& send)
 	}
 
 	std::error_code ec;
-	auto blob = m_blob_db.save(std::move(req.body()), path_url.filename(), ec);
+	auto blob = m_blob_db.save(std::move(req.body()), ec);
 
 	if (ec)
 		return send(http::response<http::empty_body>{http::status::internal_server_error, req.version()});
 
-	Log(LOG_DEBUG, "phash of image %1% is %2%", path_url.filename(), blob.phash().value());
 	// Store the phash of the blob in database
-	if (blob.phash() != PHash{})
+	if (blob.phash().has_value())
 	{
 		PHashDb pdb{*m_db};
-		pdb.add(blob.ID(), blob.phash());
-		pdb.exact_match(blob.phash(), [blob=blob.ID()](auto&& matches, auto err)
+		pdb.add(blob.ID(), *blob.phash());
+/*		pdb.exact_match(phash=*blob.phash(), [blob=blob.ID()](auto&& matches, auto err)
 		{
 			for (auto&& m : matches)
 				if (m != blob)
 					Log(LOG_INFO, "found exact match %1%", to_hex(m));
-		});
+		});*/
 	}
+
+	std::string entry = CollEntry::create(Permission::private_(), path_url.filename(), blob.mime());
 
 	// Add the newly created blob to the user's ownership table.
 	// The user's ownership table contains all the blobs that is owned by the user.
 	// It will be used for authorizing the user's request on these blob later.
 	Ownership{m_auth.user()}.link(
-		*m_db, path_url.collection(), blob.ID(), blob.entry(), [
+		*m_db, path_url.collection(), blob.ID(), CollEntry{entry}, [
 			location = URLIntent{URLIntent::Action::api, m_auth.user(), path_url.collection(), to_hex(blob.ID())}.str(),
 			send = std::move(send),
 			version = req.version()

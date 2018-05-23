@@ -14,7 +14,6 @@
 
 #include "ObjectID.hh"
 #include "util/FS.hh"
-#include "util/Magic.hh"
 #include "util/Size2D.hh"
 
 #include <boost/beast/http/message.hpp>
@@ -30,6 +29,7 @@ class MMapResponseBody;
 class Magic;
 class UploadFile;
 
+/// \brief  On-disk database that stores the blobs in files and directories
 class BlobDatabase
 {
 public:
@@ -39,23 +39,41 @@ public:
 	explicit BlobDatabase(const Configuration& cfg);
 
 	void prepare_upload(UploadFile& result, std::error_code& ec) const;
-	BlobFile save(UploadFile&& tmp, std::string_view filename, std::error_code& ec);
+	BlobFile save(UploadFile&& tmp, std::error_code& ec);
+	BlobFile find(const ObjectID& id) const;
 
 	fs::path dest(const ObjectID& id, std::string_view rendition = {}) const;
 
 	BlobResponse response(
 		ObjectID id,
 		unsigned version,
-		std::string_view mine,
 		std::string_view etag,
 		std::string_view rendition = {}
 	) const;
 
-private:
-	static void set_cache_control(BlobResponse& res, const ObjectID& id);
+	template <class FwdIt>
+	auto find_similar(FwdIt first, FwdIt last, double threshold)
+	{
+		std::vector<std::tuple<ObjectID, ObjectID, double>> result;
+		for (auto it1 = first; it1 != last; ++it1)
+		{
+			auto it2 = it1;
+			for (it2++; it2 != last; ++it2)
+			{
+				auto norm = compare(*it1, *it2);
+				if (norm < threshold)
+					result.emplace_back(*it1, *it2, norm);
+			}
+		}
+
+		return result;
+	}
 
 private:
-	Magic                   m_magic;
+	static void set_cache_control(BlobResponse& res, const ObjectID& id);
+	double compare(const ObjectID& id1, const ObjectID& id2) const;
+
+private:
 	const Configuration&    m_cfg;
 };
 
