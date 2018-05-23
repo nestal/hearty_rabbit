@@ -14,6 +14,7 @@
 #include "UploadFile.hh"
 
 // HeartyRabbit headers
+#include "image/EXIF2.hh"
 #include "image/PHash.hh"
 #include "util/Configuration.hh"
 #include "util/Escape.hh"
@@ -214,11 +215,26 @@ void BlobFile::deduce_meta(BufferView master) const
 {
 	m_mime = Magic::instance().mime(master);
 	if (is_image(m_mime))
-		m_phash  = hrb::phash(master);
+		m_phash = hrb::phash(master);
+
+	// deduce original time from EXIF2
+	m_original = std::chrono::system_clock::now();
+	if (m_mime == "image/jpeg")
+	{
+		std::error_code ec;
+		EXIF2 exif{master, ec};
+		if (!ec)
+		{
+			auto field = exif.get(master, EXIF2::Tag::date_time);
+			if (field.has_value())
+				m_original = EXIF2::parse_datetime(exif.get_value(master, *field));
+		}
+	}
 
 	// save the meta data to file
 	nlohmann::json meta{
-		{"mime", m_mime}
+		{"mime", m_mime},
+		{"original_datetime", m_original.time_since_epoch().count()}
 	};
 	if (m_phash)
 		meta.emplace("phash", m_phash->value());
