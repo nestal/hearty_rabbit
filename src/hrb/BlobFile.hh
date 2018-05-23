@@ -54,6 +54,9 @@ public:
 	std::string_view mime() const;
 	std::optional<PHash> phash() const;
 
+	using TimePoint = std::chrono::system_clock::time_point;
+	TimePoint original_datetime() const;
+
 	bool is_image() const;
 	double compare(const BlobFile& other) const;
 
@@ -68,8 +71,8 @@ private:
 	fs::path    m_dir;				//!< The directory in file system that stores all renditions of the blob
 	mutable std::string             m_mime;    //!< Mime type of the master rendition
 	mutable std::optional<PHash>    m_phash;
-	mutable std::chrono::system_clock::time_point m_original;
-	mutable std::chrono::system_clock::time_point m_uploaded;
+	mutable TimePoint m_original;
+	mutable TimePoint m_uploaded;
 };
 
 } // end of namespace hrb

@@ -192,7 +192,9 @@ void BlobFile::update_meta() const
 
 		if (meta_file)
 		{
-			m_mime = meta["mime"];
+			using namespace std::chrono;
+			m_mime     = meta["mime"];
+			m_original = TimePoint{milliseconds{meta["original_datetime"].get<std::uint64_t>()}};
 			if (meta.find("phash") != meta.end())
 				m_phash = PHash{meta["phash"].get<std::uint64_t>()};
 			else
@@ -232,15 +234,22 @@ void BlobFile::deduce_meta(BufferView master) const
 	}
 
 	// save the meta data to file
+	using namespace std::chrono;
 	nlohmann::json meta{
 		{"mime", m_mime},
-		{"original_datetime", m_original.time_since_epoch().count()}
+		{"original_datetime", duration_cast<milliseconds>(m_original.time_since_epoch()).count()}
 	};
 	if (m_phash)
 		meta.emplace("phash", m_phash->value());
 
 	std::ofstream meta_file{(m_dir/"meta.json").string()};
 	meta_file << meta;
+}
+
+BlobFile::TimePoint BlobFile::original_datetime() const
+{
+	update_meta();
+	return m_original;
 }
 
 double BlobFile::compare(const BlobFile& other) const
