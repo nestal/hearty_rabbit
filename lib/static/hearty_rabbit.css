@@ -185,12 +185,6 @@ body {
 	margin: auto 0;
 }
 
-.topnav .nav-level1 a {
-	color: inherit;
-	text-decoration: none;
-	display: block;
-}
-
 .topnav .nav-level1 .nav-icons {
 	font-size: 2em;
 	vertical-align: middle;
