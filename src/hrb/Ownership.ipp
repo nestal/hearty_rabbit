@@ -239,8 +239,8 @@ void Ownership::Collection::set_permission(
 		local msgpack = cmsgpack.pack(user, coll, blob)
 		if perm == '*' then
 			redis.call('LREM', KEYS[1], 0, msgpack)
-			if redis.call('LPUSH', KEYS[1], msgpack) > 100 then
-				redis.call('RPOP', KEYS[1])
+			if redis.call('RPUSH', KEYS[1], msgpack) > 100 then
+				redis.call('LPOP', KEYS[1])
 			end
 		else
 			redis.call('LREM', KEYS[1], 0, msgpack)
