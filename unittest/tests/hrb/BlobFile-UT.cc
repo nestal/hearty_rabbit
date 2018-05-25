@@ -98,6 +98,7 @@ TEST_CASE_METHOD(BlobFileUTFixture, "upload non-image BlobFile", "[normal]")
 		REQUIRE(subject2.mime() == "text/x-c++");
 		REQUIRE_FALSE(subject2.phash().has_value());
 		REQUIRE_FALSE(subject2.is_image());
+		REQUIRE(subject2.original_datetime() != BlobFile::TimePoint{});
 	}
 }
 
@@ -111,6 +112,7 @@ TEST_CASE_METHOD(BlobFileUTFixture, "upload small image BlobFile", "[normal]")
 	REQUIRE(subject.ID() != ObjectID{});
 	REQUIRE(subject.mime() == "image/jpeg");
 	REQUIRE(subject.is_image());
+	REQUIRE(subject.original_datetime() != BlobFile::TimePoint{});
 	REQUIRE(fs::exists(m_blob_path/"master"));
 
 	auto out = MMap::open(m_blob_path/"master", ec);
@@ -128,6 +130,7 @@ TEST_CASE_METHOD(BlobFileUTFixture, "upload big upright image as BlobFile", "[no
 	REQUIRE(!ec);
 	REQUIRE(subject.ID() != ObjectID{});
 	REQUIRE(subject.mime() == "image/jpeg");
+	REQUIRE(subject.original_datetime() != BlobFile::TimePoint{});
 	REQUIRE(fs::exists(m_blob_path/"master"));
 	REQUIRE(fs::exists(m_blob_path/"meta.json"));
 
@@ -167,6 +170,7 @@ TEST_CASE_METHOD(BlobFileUTFixture, "upload big rot90 image as BlobFile", "[norm
 
 	std::error_code ec;
 	BlobFile subject{std::move(tmp), m_blob_path, ec};
+	REQUIRE(subject.is_image());
 
 	RenditionSetting cfg;
 	cfg.add("2048x2048",   {2048, 2048});
@@ -193,6 +197,7 @@ TEST_CASE_METHOD(BlobFileUTFixture, "upload lena.png as BlobFile", "[normal]")
 	REQUIRE(subject.mime() == "image/png");
 	REQUIRE(subject.is_image());
 	REQUIRE(subject.phash().has_value());
+	REQUIRE(subject.original_datetime() != BlobFile::TimePoint{});
 
 	// open the blob using another object and compare meta data
 	BlobFile subject2{m_blob_path, subject.ID()};
