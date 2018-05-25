@@ -69,10 +69,14 @@ private:
 private:
 	ObjectID    m_id{};				//!< ID of the blob
 	fs::path    m_dir;				//!< The directory in file system that stores all renditions of the blob
-	mutable std::string             m_mime;    //!< Mime type of the master rendition
-	mutable std::optional<PHash>    m_phash;
-	mutable TimePoint m_original;
-	mutable TimePoint m_uploaded;
+	struct Meta
+	{
+		std::string	mime;						//!< Mime type of the master rendition
+		std::optional<PHash> 		phash;		//!< Phash of the master rendition (for images only)
+		std::optional<TimePoint>	original;	//!< Date time stored inside the master rendition (e.g. EXIF2)
+		TimePoint	uploaded;
+	};
+	mutable std::optional<Meta>	m_meta;
 };
 
 } // end of namespace hrb

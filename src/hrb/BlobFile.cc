@@ -130,7 +130,7 @@ void BlobFile::generate_image_rendition(const JPEGRenditionSetting& cfg, const f
 				out = jpeg;
 
 			std::vector<unsigned char> out_buf;
-			cv::imencode(m_mime == "image/png" ? ".png" : ".jpg", out, out_buf, {cv::IMWRITE_JPEG_QUALITY, cfg.quality});
+			cv::imencode(mime() == "image/png" ? ".png" : ".jpg", out, out_buf, {cv::IMWRITE_JPEG_QUALITY, cfg.quality});
 			save_blob(out_buf, dest, ec);
 		}
 	}
@@ -154,26 +154,24 @@ bool BlobFile::is_image() const
 {
 	// Must update meta before using the meta data
 	update_meta();
-	return is_image(m_mime);
+	return is_image(m_meta->mime);
 }
 
 std::optional<PHash> BlobFile::phash() const
 {
 	update_meta();
-	return m_phash;
+	return m_meta->phash;
 }
 
 std::string_view BlobFile::mime() const
 {
 	update_meta();
-	return m_mime;
+	return m_meta->mime;
 }
 
 void BlobFile::update_meta() const
 {
-	// m_mime is empty means the meta data is missing.
-	// if we don't know what the mime type, it will be application/octets-stream
-	if (m_mime.empty())
+	if (!m_meta.has_value())
 	{
 		// try to load it from meta.json
 		std::ifstream meta_file{(m_dir/"meta.json").string()};
@@ -190,15 +188,20 @@ void BlobFile::update_meta() const
 			meta_file.setstate(std::ios::failbit);
 		}
 
-		if (meta_file)
+		if (meta_file && meta.is_object())
 		{
+			m_meta.emplace();
+
 			using namespace std::chrono;
-			m_mime     = meta["mime"];
-			m_original = TimePoint{milliseconds{meta["original_datetime"].get<std::uint64_t>()}};
-			if (meta.find("phash") != meta.end())
-				m_phash = PHash{meta["phash"].get<std::uint64_t>()};
+			m_meta->mime     = meta["mime"];
+			if (meta.find("original_datetime") != meta.end())
+				m_meta->original = TimePoint{milliseconds{meta["original_datetime"].get<std::uint64_t>()}};
 			else
-				m_phash = std::nullopt;
+				m_meta->original = std::nullopt;
+			if (meta.find("phash") != meta.end())
+				m_meta->phash = PHash{meta["phash"].get<std::uint64_t>()};
+			else
+				m_meta->phash = std::nullopt;
 		}
 		// json file missing, we need to deduce the meta
 		else
@@ -215,13 +218,16 @@ void BlobFile::update_meta() const
 
 void BlobFile::deduce_meta(BufferView master) const
 {
-	m_mime = Magic::instance().mime(master);
-	if (is_image(m_mime))
-		m_phash = hrb::phash(master);
+	if (!m_meta.has_value())
+		m_meta.emplace();
+
+	m_meta->mime = Magic::instance().mime(master);
+	if (is_image(m_meta->mime))
+		m_meta->phash = hrb::phash(master);
 
 	// deduce original time from EXIF2
-	m_original = std::chrono::system_clock::now();
-	if (m_mime == "image/jpeg")
+	m_meta->uploaded = std::chrono::system_clock::now();
+	if (m_meta->mime == "image/jpeg")
 	{
 		std::error_code ec;
 		EXIF2 exif{master, ec};
@@ -229,18 +235,19 @@ void BlobFile::deduce_meta(BufferView master) const
 		{
 			auto field = exif.get(master, EXIF2::Tag::date_time);
 			if (field.has_value())
-				m_original = EXIF2::parse_datetime(exif.get_value(master, *field));
+				m_meta->original = EXIF2::parse_datetime(exif.get_value(master, *field));
 		}
 	}
 
 	// save the meta data to file
 	using namespace std::chrono;
 	nlohmann::json meta{
-		{"mime", m_mime},
-		{"original_datetime", duration_cast<milliseconds>(m_original.time_since_epoch()).count()}
+		{"mime", m_meta->mime}
 	};
-	if (m_phash)
-		meta.emplace("phash", m_phash->value());
+	if (m_meta->original)
+		meta.emplace("original_datetime", duration_cast<milliseconds>(m_meta->original->time_since_epoch()).count());
+	if (m_meta->phash)
+		meta.emplace("phash", m_meta->phash->value());
 
 	std::ofstream meta_file{(m_dir/"meta.json").string()};
 	meta_file << meta;
@@ -249,7 +256,7 @@ void BlobFile::deduce_meta(BufferView master) const
 BlobFile::TimePoint BlobFile::original_datetime() const
 {
 	update_meta();
-	return m_original;
+	return m_meta->original.has_value() ? *m_meta->original : m_meta->uploaded;
 }
 
 double BlobFile::compare(const BlobFile& other) const

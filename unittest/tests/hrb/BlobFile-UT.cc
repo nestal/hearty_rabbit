@@ -86,6 +86,7 @@ TEST_CASE_METHOD(BlobFileUTFixture, "upload non-image BlobFile", "[normal]")
 		REQUIRE(subject2.mime() == "text/x-c++");
 		REQUIRE_FALSE(subject2.phash().has_value());
 		REQUIRE_FALSE(subject2.is_image());
+//		REQUIRE(subject2.original_datetime() != BlobFile::TimePoint{});
 	}
 	SECTION("read another rendition, but got the original")
 	{
