@@ -64,7 +64,12 @@ private:
 	static bool is_image(std::string_view mime);
 	void generate_image_rendition(const JPEGRenditionSetting& cfg, const fs::path& dest, std::error_code& ec) const;
 	void update_meta() const;
-	void deduce_meta(BufferView master) const;
+	MMap deduce_meta(MMap&& master) const;
+	MMap deduce_mime(MMap&& master) const;
+	MMap deduce_phash(MMap&& master) const;
+	MMap deduce_original(MMap&& master) const;
+	MMap deduce_uploaded(MMap&& master) const;
+	MMap master(MMap&& master) const;
 
 private:
 	ObjectID    m_id{};				//!< ID of the blob

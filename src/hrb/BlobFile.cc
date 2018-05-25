@@ -68,7 +68,7 @@ BlobFile::BlobFile(UploadFile&& tmp, const fs::path& dir, std::error_code& ec)  
 		tmp.move(m_dir / hrb::master_rendition, ec);
 
 		// deduce meta data from the uploaded file
-		deduce_meta(master.buffer());
+		deduce_meta(std::move(master));
 	}
 }
 
@@ -203,41 +203,21 @@ void BlobFile::update_meta() const
 			else
 				m_meta->phash = std::nullopt;
 		}
-		// json file missing, we need to deduce the meta
-		else
-		{
-			std::error_code ec;
-			auto master = this->master(ec);
-			if (ec)
-				Log(LOG_WARNING, "cannot load master rendition of blob %1% from %2% (%3%)", to_hex(m_id), m_dir, ec.message());
-			else
-				deduce_meta(master.buffer());
-		}
+
+		// some meta field is still missing, we need to deduce the meta
+		deduce_meta({});
 	}
 }
 
-void BlobFile::deduce_meta(BufferView master) const
+MMap BlobFile::deduce_meta(MMap&& master) const
 {
 	if (!m_meta.has_value())
 		m_meta.emplace();
 
-	m_meta->mime = Magic::instance().mime(master);
-	if (is_image(m_meta->mime))
-		m_meta->phash = hrb::phash(master);
-
-	// deduce original time from EXIF2
-	m_meta->uploaded = std::chrono::system_clock::now();
-	if (m_meta->mime == "image/jpeg")
-	{
-		std::error_code ec;
-		EXIF2 exif{master, ec};
-		if (!ec)
-		{
-			auto field = exif.get(master, EXIF2::Tag::date_time);
-			if (field.has_value())
-				m_meta->original = EXIF2::parse_datetime(exif.get_value(master, *field));
-		}
-	}
+	master = deduce_mime(std::move(master));
+	master = deduce_phash(std::move(master));
+	master = deduce_original(std::move(master));
+	master = deduce_uploaded(std::move(master));
 
 	// save the meta data to file
 	using namespace std::chrono;
@@ -251,6 +231,48 @@ void BlobFile::deduce_meta(BufferView master) const
 
 	std::ofstream meta_file{(m_dir/"meta.json").string()};
 	meta_file << meta;
+
+	return std::move(master);
+}
+
+MMap BlobFile::deduce_mime(MMap&& master) const
+{
+	if (m_meta->mime.empty())
+	{
+		master = this->master(std::move(master));
+		m_meta->mime = Magic::instance().mime(master.buffer());
+	}
+	return std::move(master);
+}
+
+MMap BlobFile::deduce_phash(MMap&& master) const
+{
+	if (!m_meta->phash.has_value() && is_image(m_meta->mime))
+	{
+		master = this->master(std::move(master));
+		m_meta->phash = hrb::phash(master.buffer());
+	}
+	return std::move(master);
+}
+
+MMap BlobFile::deduce_original(MMap&& master) const
+{
+	// deduce original time from EXIF2
+	if (!m_meta->original.has_value() && m_meta->mime == "image/jpeg")
+	{
+		master = this->master(std::move(master));
+
+		std::error_code ec;
+		EXIF2 exif{master.buffer(), ec};
+		if (!ec)
+		{
+			auto field = exif.get(master.buffer(), EXIF2::Tag::date_time);
+			if (field.has_value())
+				m_meta->original = EXIF2::parse_datetime(exif.get_value(master.buffer(), *field));
+		}
+	}
+
+	return std::move(master);
 }
 
 BlobFile::TimePoint BlobFile::original_datetime() const
@@ -264,6 +286,25 @@ double BlobFile::compare(const BlobFile& other) const
 	return phash() && other.phash() ?
 		phash()->compare(*other.phash()) :
 		std::numeric_limits<double>::max();
+}
+
+MMap BlobFile::master(MMap&& master) const
+{
+	std::error_code ec;
+	if (!master.is_opened())
+	{
+		master = this->master(ec);
+		if (ec)
+			Log(LOG_WARNING, "cannot load master rendition of blob %1% from %2% (%3%)", to_hex(m_id), m_dir, ec.message());
+	}
+	return std::move(master);
+}
+
+MMap BlobFile::deduce_uploaded(MMap&& master) const
+{
+	if (m_meta->uploaded == TimePoint{})
+		m_meta->uploaded = TimePoint::clock::now();
+	return std::move(master);
 }
 
 } // end of namespace hrb
