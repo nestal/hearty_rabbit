@@ -136,14 +136,23 @@ void Ownership::Collection::unlink(redis::Connection& db, const ObjectID& id)
 	// Also, remove the 'cover' field in the dirs:<user> hash table if the cover
 	// image is the one being removed.
 	static const char cmd[] = R"__(
-		redis.call('HDEL', KEYS[1], ARGV[1])
+		local blob, coll, hex_id = ARGV[1], ARGV[2], ARGV[3]
+
+		-- delete the CollEntry in the collection hash
+		redis.call('HDEL', KEYS[1], blob)
+
+		-- if the collection has no more entries, delete the collection in the
+		-- user's list of collections
 		if redis.call('EXISTS', KEYS[1]) == 0 then
-			redis.call('HDEL', KEYS[2], ARGV[2])
+			redis.call('HDEL', KEYS[2], coll)
+
+		-- if the collection still exists, check if the blob we are removing
+		-- is the cover of the collection
 		else
-			local album = cjson.decode(redis.call('HGET', KEYS[2], ARGV[2]))
-			if album['cover'] == ARGV[3] then
+			local album = cjson.decode(redis.call('HGET', KEYS[2], coll))
+			if album['cover'] == hex_id then
 				album['cover'] = nil
-				redis.call('HSET', KEYS[2], ARGV[2], cjson.encode(album))
+				redis.call('HSET', KEYS[2], coll, cjson.encode(album))
 			end
 		end
 	)__";
