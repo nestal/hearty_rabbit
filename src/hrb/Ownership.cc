@@ -136,7 +136,13 @@ void Ownership::Collection::unlink(redis::Connection& db, const ObjectID& id)
 	// Also, remove the 'cover' field in the dirs:<user> hash table if the cover
 	// image is the one being removed.
 	static const char cmd[] = R"__(
-		local blob, coll, hex_id = ARGV[1], ARGV[2], ARGV[3]
+		local tohex = function(str)
+			return (str:gsub('.', function (c)
+				return string.format('%02X', string.byte(c))
+			end))
+		end
+
+		local blob, coll = ARGV[1], ARGV[2]
 
 		-- delete the CollEntry in the collection hash
 		redis.call('HDEL', KEYS[1], blob)
@@ -150,22 +156,26 @@ void Ownership::Collection::unlink(redis::Connection& db, const ObjectID& id)
 		-- is the cover of the collection
 		else
 			local album = cjson.decode(redis.call('HGET', KEYS[2], coll))
-			if album['cover'] == hex_id then
-				album['cover'] = nil
+
+			-- tohex() return upper case, so need to convert album[cover] to upper
+			-- case before comparing
+			if string.gsub(album['cover'], '.', string.upper) == tohex(blob) then
+				album['cover'] = tohex(redis.call('HKEYS', KEYS[1])[1])
 				redis.call('HSET', KEYS[2], coll, cjson.encode(album))
 			end
 		end
+		return tohex(blob)
 	)__";
-
-	auto hex_id = to_hex(id);
 
 	db.command(
 		[](auto&& reply, auto ec)
 		{
 			if (!reply || ec)
 				Log(LOG_WARNING, "Collection::unlink() lua script failure: %1% (%2%)", reply.as_error(), ec);
+
+			Log(LOG_DEBUG, "script return tohex(%1%)", reply.as_string());
 		},
-		"EVAL %s 2 %b%b:%b %b%b %b %b %b",
+		"EVAL %s 2 %b%b:%b %b%b %b %b",
 
 		cmd,
 
@@ -182,10 +192,7 @@ void Ownership::Collection::unlink(redis::Connection& db, const ObjectID& id)
 		id.data(), id.size(),
 
 		// ARGV[2] (collection name)
-		m_path.data(), m_path.size(),
-
-		// ARGV[3] (hex of blob ID)
-		hex_id.data(), hex_id.size()
+		m_path.data(), m_path.size()
 	);
 }
 

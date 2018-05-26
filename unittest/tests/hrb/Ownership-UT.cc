@@ -511,7 +511,9 @@ TEST_CASE("setting and remove the cover of collection", "[normal]")
 			{
 				if (it.key() == "/" )
 				{
-					REQUIRE(it.value().find("cover") == it.value().end());
+					auto cover = it.value().find("cover");
+					REQUIRE(cover  != it.value().end());
+					REQUIRE(*cover != to_hex(cover_blob));
 					updated = true;
 				}
 			}
