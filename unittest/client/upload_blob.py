@@ -457,6 +457,7 @@ class NormalTestCase(unittest.TestCase):
 			data=self.random_image(700, 700)
 		)
 		self.assertEqual(r3.status_code, 201)
+		second_image = self.response_blob(r3)
 		r4 = self.user1.get("https://localhost:4433/query/collection?user=sumsum&json")
 		self.assertEqual(r4.status_code, 200)
 		self.assertEqual(cover_id, r4.json()["colls"]["🙇"]["cover"])
@@ -465,11 +466,11 @@ class NormalTestCase(unittest.TestCase):
 		# delete the cover
 		self.assertEqual(self.user1.delete("https://localhost:4433/api/sumsum/%F0%9F%99%87/" + cover_id).status_code, 204)
 
-		# the cover will be missing
+		# the cover will become the second image
 		r5 = self.user1.get("https://localhost:4433/query/collection?user=sumsum&json")
 		self.assertEqual(r5.status_code, 200)
 		self.assertTrue("🙇" in r5.json()["colls"])
-		self.assertFalse("cover" in r5.json()["colls"]["🙇"])
+		self.assertEqual(second_image.lower(), r5.json()["colls"]["🙇"]["cover"].lower())
 
 		# delete the other image as well
 		self.assertEqual(self.user1.delete("https://localhost:4433" + r3.headers["Location"]).status_code, 204)
