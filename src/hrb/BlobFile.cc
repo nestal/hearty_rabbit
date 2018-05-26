@@ -14,6 +14,7 @@
 #include "UploadFile.hh"
 
 // HeartyRabbit headers
+#include "image/EXIF2.hh"
 #include "image/PHash.hh"
 #include "util/Configuration.hh"
 #include "util/Escape.hh"
@@ -191,7 +192,9 @@ void BlobFile::update_meta() const
 
 		if (meta_file)
 		{
-			m_mime = meta["mime"];
+			using namespace std::chrono;
+			m_mime     = meta["mime"];
+			m_original = TimePoint{milliseconds{meta["original_datetime"].get<std::uint64_t>()}};
 			if (meta.find("phash") != meta.end())
 				m_phash = PHash{meta["phash"].get<std::uint64_t>()};
 			else
@@ -214,17 +217,39 @@ void BlobFile::deduce_meta(BufferView master) const
 {
 	m_mime = Magic::instance().mime(master);
 	if (is_image(m_mime))
-		m_phash  = hrb::phash(master);
+		m_phash = hrb::phash(master);
+
+	// deduce original time from EXIF2
+	m_original = std::chrono::system_clock::now();
+	if (m_mime == "image/jpeg")
+	{
+		std::error_code ec;
+		EXIF2 exif{master, ec};
+		if (!ec)
+		{
+			auto field = exif.get(master, EXIF2::Tag::date_time);
+			if (field.has_value())
+				m_original = EXIF2::parse_datetime(exif.get_value(master, *field));
+		}
+	}
 
 	// save the meta data to file
+	using namespace std::chrono;
 	nlohmann::json meta{
-		{"mime", m_mime}
+		{"mime", m_mime},
+		{"original_datetime", duration_cast<milliseconds>(m_original.time_since_epoch()).count()}
 	};
 	if (m_phash)
 		meta.emplace("phash", m_phash->value());
 
 	std::ofstream meta_file{(m_dir/"meta.json").string()};
 	meta_file << meta;
+}
+
+BlobFile::TimePoint BlobFile::original_datetime() const
+{
+	update_meta();
+	return m_original;
 }
 
 double BlobFile::compare(const BlobFile& other) const

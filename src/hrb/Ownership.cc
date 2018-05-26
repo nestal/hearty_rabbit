@@ -136,19 +136,36 @@ void Ownership::Collection::unlink(redis::Connection& db, const ObjectID& id)
 	// Also, remove the 'cover' field in the dirs:<user> hash table if the cover
 	// image is the one being removed.
 	static const char cmd[] = R"__(
-		redis.call('HDEL', KEYS[1], ARGV[1])
+		-- convert binary to lowercase hex string
+		local tohex = function(str)
+			return (str:gsub('.', function (c)
+				return string.format('%02x', string.byte(c))
+			end))
+		end
+
+		local blob, coll = ARGV[1], ARGV[2]
+
+		-- delete the CollEntry in the collection hash
+		redis.call('HDEL', KEYS[1], blob)
+
+		-- if the collection has no more entries, delete the collection in the
+		-- user's list of collections
 		if redis.call('EXISTS', KEYS[1]) == 0 then
-			redis.call('HDEL', KEYS[2], ARGV[2])
+			redis.call('HDEL', KEYS[2], coll)
+
+		-- if the collection still exists, check if the blob we are removing
+		-- is the cover of the collection
 		else
-			local album = cjson.decode(redis.call('HGET', KEYS[2], ARGV[2]))
-			if album['cover'] == ARGV[3] then
-				album['cover'] = nil
-				redis.call('HSET', KEYS[2], ARGV[2], cjson.encode(album))
+			local album = cjson.decode(redis.call('HGET', KEYS[2], coll))
+
+			-- tohex() return upper case, so need to convert album[cover] to upper
+			-- case before comparing
+			if album['cover'] == tohex(blob) then
+				album['cover'] = tohex(redis.call('HKEYS', KEYS[1])[1])
+				redis.call('HSET', KEYS[2], coll, cjson.encode(album))
 			end
 		end
 	)__";
-
-	auto hex_id = to_hex(id);
 
 	db.command(
 		[](auto&& reply, auto ec)
@@ -156,7 +173,7 @@ void Ownership::Collection::unlink(redis::Connection& db, const ObjectID& id)
 			if (!reply || ec)
 				Log(LOG_WARNING, "Collection::unlink() lua script failure: %1% (%2%)", reply.as_error(), ec);
 		},
-		"EVAL %s 2 %b%b:%b %b%b %b %b %b",
+		"EVAL %s 2 %b%b:%b %b%b %b %b",
 
 		cmd,
 
@@ -173,10 +190,7 @@ void Ownership::Collection::unlink(redis::Connection& db, const ObjectID& id)
 		id.data(), id.size(),
 
 		// ARGV[2] (collection name)
-		m_path.data(), m_path.size(),
-
-		// ARGV[3] (hex of blob ID)
-		hex_id.data(), hex_id.size()
+		m_path.data(), m_path.size()
 	);
 }
 
