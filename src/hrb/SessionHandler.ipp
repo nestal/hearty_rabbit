@@ -65,12 +65,14 @@ public:
 			json.emplace("auth", to_hex(m_parent.m_auth.cookie()));
 		if (m_blob)
 			json.emplace("blob", to_hex(*m_blob));
-/*		if (m_on_header != high_resolution_clock::time_point{})
+		if (m_parent.m_on_header != high_resolution_clock::time_point{})
 			json.emplace(
 				"elapse",
-				duration_cast<microseconds>(high_resolution_clock::now() - m_on)
+				duration_cast<
+				    duration<double, microseconds::period>
+				>(high_resolution_clock::now() - m_parent.m_on_header).count()
 			);
-*/
+
 		auto result = ec ? http::status::internal_server_error : http::status::ok;
 		if (m_lib)
 		{

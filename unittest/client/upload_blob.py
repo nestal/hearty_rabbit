@@ -7,6 +7,7 @@ from io import BytesIO
 import numpy
 import random
 import string
+import time
 
 class NormalTestCase(unittest.TestCase):
 	@staticmethod
@@ -32,7 +33,13 @@ class NormalTestCase(unittest.TestCase):
 		return temp.getvalue()
 
 	def get_collection(self, session, owner, coll):
+		time_start = time.time()
 		response = session.get("https://localhost:4433/api/" + owner + "/" + coll + "/")
+		external_elapse = (time.time()-time_start) * 1000000
+		internal_elapse = response.json()["elapse"]
+
+		print("elapse time = {0}us / {1}us".format(response.json()["elapse"], external_elapse))
+		self.assertLessEqual(internal_elapse, external_elapse)
 		self.assertEqual(response.status_code, 200)
 		self.assertEqual(response.headers["Content-type"], "application/json")
 		self.assertEqual(response.json()["collection"], coll)
