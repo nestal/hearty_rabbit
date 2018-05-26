@@ -136,6 +136,7 @@ void Ownership::Collection::unlink(redis::Connection& db, const ObjectID& id)
 	// Also, remove the 'cover' field in the dirs:<user> hash table if the cover
 	// image is the one being removed.
 	static const char cmd[] = R"__(
+		-- convert binary to hex
 		local tohex = function(str)
 			return (str:gsub('.', function (c)
 				return string.format('%02X', string.byte(c))
@@ -164,7 +165,6 @@ void Ownership::Collection::unlink(redis::Connection& db, const ObjectID& id)
 				redis.call('HSET', KEYS[2], coll, cjson.encode(album))
 			end
 		end
-		return tohex(blob)
 	)__";
 
 	db.command(
@@ -172,8 +172,6 @@ void Ownership::Collection::unlink(redis::Connection& db, const ObjectID& id)
 		{
 			if (!reply || ec)
 				Log(LOG_WARNING, "Collection::unlink() lua script failure: %1% (%2%)", reply.as_error(), ec);
-
-			Log(LOG_DEBUG, "script return tohex(%1%)", reply.as_string());
 		},
 		"EVAL %s 2 %b%b:%b %b%b %b %b",
 
