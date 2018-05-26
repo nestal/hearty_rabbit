@@ -41,17 +41,15 @@ class SessionHandler::SendJSON
 public:
 	SendJSON(
 		Send&& send,
-		const Authentication& auth,
 		unsigned version,
 		std::optional<ObjectID> blob,
-		std::string&& server_root,
+		SessionHandler& parent,
 		const WebResources *lib = nullptr
 	) :
 		m_send{std::move(send)},
-		m_auth{auth},
 		m_version{version},
 		m_blob{blob},
-		m_server_root{std::move(server_root)},
+		m_parent{parent},
 		m_lib{lib}
 	{
 	}
@@ -59,14 +57,20 @@ public:
 	auto operator()(nlohmann::json&& json, std::error_code ec) const
 	{
 		assert(json.is_object());
+		using namespace std::chrono;
 
-		if (!m_auth.is_guest() && m_auth.valid())
-			json.emplace("username", m_auth.user());
-		if (m_auth.is_guest())
-			json.emplace("auth", to_hex(m_auth.cookie()));
+		if (!m_parent.m_auth.is_guest() && m_parent.m_auth.valid())
+			json.emplace("username", m_parent.m_auth.user());
+		if (m_parent.m_auth.is_guest())
+			json.emplace("auth", to_hex(m_parent.m_auth.cookie()));
 		if (m_blob)
 			json.emplace("blob", to_hex(*m_blob));
-
+/*		if (m_on_header != high_resolution_clock::time_point{})
+			json.emplace(
+				"elapse",
+				duration_cast<microseconds>(high_resolution_clock::now() - m_on)
+			);
+*/
 		auto result = ec ? http::status::internal_server_error : http::status::ok;
 		if (m_lib)
 		{
@@ -81,9 +85,9 @@ public:
 	)"};
 			URLIntent cover_url{URLIntent::Action::api, owner, coll, cover};
 			URLIntent view_url{URLIntent::Action::view, owner, coll, "Hearty Rabbit"};
-			if (m_auth.is_guest())
+			if (m_parent.m_auth.is_guest())
 			{
-				auto auth = "auth=" + to_hex(m_auth.cookie());
+				auto auth = "auth=" + to_hex(m_parent.m_auth.cookie());
 				cover_url.add_option(auth);
 				view_url.add_option(auth);
 			}
@@ -93,7 +97,7 @@ public:
 				result,
 				json.dump(),
 				(
-					boost::format{fmt} % m_server_root %
+					boost::format{fmt} % m_parent.server_root() %
 					cover_url.str() %
 					view_url.str() %
 					coll
@@ -114,10 +118,9 @@ public:
 	}
 private:
 	mutable Send    m_send;
-	Authentication  m_auth;
 	unsigned        m_version;
 	std::optional<ObjectID> m_blob;
-	std::string     m_server_root;
+	SessionHandler& m_parent;
 	const WebResources *m_lib;
 };
 
@@ -131,6 +134,7 @@ void SessionHandler::on_request_header(
 	Complete&& complete
 )
 {
+	m_on_header = std::chrono::high_resolution_clock::now();
 	URLIntent intent{header.target()};
 
 	// Use StringRequestParser to parser login requests.
@@ -235,11 +239,11 @@ void SessionHandler::on_request_body(Request&& req, Send&& send)
 			return m_auth.valid() ?
 				Ownership{m_auth.user()}.scan_all_collections(
 					*m_db,
-					SendJSON{std::move(send), m_auth, req.version(), std::nullopt, server_root(), &m_lib}
+					SendJSON{std::move(send), req.version(), std::nullopt, *this, &m_lib}
 				) :
 				Ownership{m_auth.user()}.list_public_blobs(
 					*m_db,
-					SendJSON{std::move(send), m_auth, req.version(), std::nullopt, server_root(), &m_lib}
+					SendJSON{std::move(send), req.version(), std::nullopt, *this, &m_lib}
 				);
 
 		if (intent.action() == URLIntent::Action::query)
@@ -277,7 +281,7 @@ void SessionHandler::on_request_api(Request&& req, URLIntent&& intent, Send&& se
 				*m_db,
 				m_auth,
 				breq.collection(),
-				SendJSON{std::move(send), m_auth, req.version(), std::nullopt, server_root()}
+				SendJSON{std::move(send), req.version(), std::nullopt, *this}
 			);
 	}
 	else if (req.method() == http::verb::post)
@@ -305,7 +309,7 @@ void SessionHandler::on_request_view(Request&& req, URLIntent&& intent, Send&& s
 			*m_db,
 			m_auth,
 			breq.collection(),
-			SendJSON{std::move(send), m_auth, breq.version(), breq.blob(), server_root(), &m_lib}
+			SendJSON{std::move(send), breq.version(), breq.blob(), *this, &m_lib}
 		);
 	}
 	else
@@ -393,7 +397,7 @@ void SessionHandler::scan_collection(const URLIntent& intent, unsigned version, 
 
 	Ownership{*user}.scan_all_collections(
 		*m_db,
-		SendJSON{std::move(send), m_auth, version, std::nullopt, server_root(), json.has_value() ? nullptr : &m_lib}
+		SendJSON{std::move(send), version, std::nullopt, *this, json.has_value() ? nullptr : &m_lib}
 	);
 }
 
@@ -435,7 +439,7 @@ void SessionHandler::query_blob_set(const URLIntent& intent, unsigned version, S
 			*m_db,
 			SendJSON{
 				std::forward<Send>(send),
-				    m_auth, version, std::nullopt, server_root(),
+				version, std::nullopt, *this,
 				!json.has_value() ? &m_lib : nullptr
 			}
 		);
@@ -468,7 +472,7 @@ void SessionHandler::query_blob_set(const URLIntent& intent, unsigned version, S
 
 				auto result = nlohmann::json::object();
 				result.emplace("dups", std::move(matches));
-				SendJSON{std::move(send), m_auth, version, std::nullopt, server_root(), lib}(std::move(result), ec);
+				SendJSON{std::move(send), version, std::nullopt, *this, lib}(std::move(result), ec);
 			}
 		);
 	}
