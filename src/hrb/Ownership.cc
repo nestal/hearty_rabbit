@@ -227,4 +227,53 @@ nlohmann::json Ownership::Collection::serialize(const redis::Reply& reply, const
 	return jdoc;
 }
 
+/// \brief  Called after a blob is deleted.
+/// This function will remove all references to the blob from all the indexes in the database
+/// after a blob is unlinked. These references are weak references so they don't need to be
+/// kept up-to-date at all times. Therefore it is not absolutely need to be updated atomically
+/// at the same time as unlinking them from the collection.
+void Ownership::Collection::post_unlink(redis::Connection& db, const ObjectID& blob)
+{
+	static const char lua[] = R"__(
+		local user, coll, blob = ARGV[1], ARGV[2], ARGV[3]
+
+		-- must check if the blob is really unlinked from the collection before
+		-- removing the references, because it may be possible that the same blob
+		-- is re-linked to the same collection again
+		if redis.call('HEXISTS', KEYS[1], blob) == 1 then
+
+			-- remove the blob from the public list
+			redis.call('LREM', KEYS[2], 0, cmsgpack.pack(user, coll, blob))
+		end
+	)__";
+	db.command(
+		[](auto&& reply, auto ec)
+		{
+			if (!reply || ec)
+				Log(LOG_WARNING, "Collection::unlink() lua script failure: %1% (%2%)", reply.as_error(), ec);
+		},
+		"EVAL %s 2 %b%b:%b %b %b %b %b",
+
+		lua,
+
+		// KEYS[1] (hash table that stores the blob in a collection)
+		m_dir_prefix.data(), m_dir_prefix.size(),
+		m_user.data(), m_user.size(),
+		m_path.data(), m_path.size(),
+
+		// KEYS[2] (list that stores public blobs)
+		m_public_blobs.data(), m_public_blobs.size(),
+		m_user.data(), m_user.size(),
+
+		// ARGV[1] (user name)
+		m_user.data(), m_user.size(),
+
+		// ARGV[2] (collection name)
+		m_path.data(), m_path.size(),
+
+		// ARGV[3] (blob ID)
+		blob.data(), blob.size()
+	);
+}
+
 } // end of namespace hrb
