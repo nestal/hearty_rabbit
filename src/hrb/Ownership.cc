@@ -136,10 +136,10 @@ void Ownership::Collection::unlink(redis::Connection& db, const ObjectID& id)
 	// Also, remove the 'cover' field in the dirs:<user> hash table if the cover
 	// image is the one being removed.
 	static const char cmd[] = R"__(
-		-- convert binary to hex
+		-- convert binary to lowercase hex string
 		local tohex = function(str)
 			return (str:gsub('.', function (c)
-				return string.format('%02X', string.byte(c))
+				return string.format('%02x', string.byte(c))
 			end))
 		end
 
@@ -160,7 +160,7 @@ void Ownership::Collection::unlink(redis::Connection& db, const ObjectID& id)
 
 			-- tohex() return upper case, so need to convert album[cover] to upper
 			-- case before comparing
-			if string.gsub(album['cover'], '.', string.upper) == tohex(blob) then
+			if album['cover'] == tohex(blob) then
 				album['cover'] = tohex(redis.call('HKEYS', KEYS[1])[1])
 				redis.call('HSET', KEYS[2], coll, cjson.encode(album))
 			end
