@@ -108,6 +108,8 @@ public:
 		std::string_view owner
 	);
 
+	void post_unlink(redis::Connection& db, const ObjectID& blob);
+
 private:
 	std::string m_user;
 	std::string m_path;
@@ -452,6 +454,8 @@ void Ownership::unlink(
 		assert(reply.array_size() == 3);
 		comp(ec);
 	}, "EXEC");
+
+	coll.post_unlink(db, blob.blob());
 }
 
 template <typename Complete>

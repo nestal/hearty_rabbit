@@ -19,10 +19,11 @@
 #include "hrb/Permission.hh"
 #include "crypto/Random.hh"
 
-#include <iostream>
+#include <boost/algorithm/string.hpp>
 
 using namespace hrb;
 using namespace std::chrono_literals;
+using namespace boost::algorithm;
 
 TEST_CASE("list of collection owned by user", "[normal]")
 {
@@ -75,6 +76,8 @@ TEST_CASE("list of collection owned by user", "[normal]")
 		for (auto&& blob : jdoc["elements"].items())
 		{
 			INFO("blob = " << blob.key());
+			REQUIRE(all(blob.key(), is_xdigit() && !is_upper()));
+
 			Ownership{"owner"}.unlink(*redis, "/", *hex_to_object_id(blob.key()), [](auto&& ec)
 			{
 				REQUIRE(!ec);
@@ -127,8 +130,7 @@ TEST_CASE("add blob to Ownership", "[normal]")
 	subject.list(*redis, "/", [&tested, blobid](auto&& blobs, std::error_code ec)
 	{
 		REQUIRE_FALSE(ec);
-		auto it = std::find(blobs.begin(), blobs.end(), blobid);
-		REQUIRE(it != blobs.end());
+		REQUIRE(std::find(blobs.begin(), blobs.end(), blobid) != blobs.end());
 		tested++;
 	});
 
@@ -511,7 +513,9 @@ TEST_CASE("setting and remove the cover of collection", "[normal]")
 			{
 				if (it.key() == "/" )
 				{
-					REQUIRE(it.value().find("cover") == it.value().end());
+					auto cover = it.value().find("cover");
+					REQUIRE(cover  != it.value().end());
+					REQUIRE(*cover != to_hex(cover_blob));
 					updated = true;
 				}
 			}

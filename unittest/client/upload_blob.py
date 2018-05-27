@@ -7,6 +7,7 @@ from io import BytesIO
 import numpy
 import random
 import string
+import time
 
 class NormalTestCase(unittest.TestCase):
 	@staticmethod
@@ -19,8 +20,8 @@ class NormalTestCase(unittest.TestCase):
 		lena = Image.open("../tests/image/lena.png").convert("RGBA").resize((width, height), Image.ANTIALIAS)
 
 		# random noise
-		imarray = numpy.random.rand(128, 128, 4) * 255
-		noise = Image.fromarray(imarray.astype("uint8")).convert("RGBA").resize((width, height))
+		random_array = numpy.random.rand(128, 128, 4) * 255
+		noise = Image.fromarray(random_array.astype("uint8")).convert("RGBA").resize((width, height))
 		noise = noise.filter(ImageFilter.GaussianBlur(4))
 
 		# blend original image with noise
@@ -32,7 +33,13 @@ class NormalTestCase(unittest.TestCase):
 		return temp.getvalue()
 
 	def get_collection(self, session, owner, coll):
+		time_start = time.time()
 		response = session.get("https://localhost:4433/api/" + owner + "/" + coll + "/")
+		external_elapse = (time.time()-time_start) * 1000000
+		internal_elapse = response.json()["elapse"]
+
+		print("elapse time = {0}us / {1}us".format(response.json()["elapse"], external_elapse))
+		self.assertLessEqual(internal_elapse, external_elapse)
 		self.assertEqual(response.status_code, 200)
 		self.assertEqual(response.headers["Content-type"], "application/json")
 		self.assertEqual(response.json()["collection"], coll)
@@ -436,6 +443,7 @@ class NormalTestCase(unittest.TestCase):
 		)
 		self.assertEqual(r1.status_code, 201)
 		cover_id = self.response_blob(r1)
+		self.assertEqual(cover_id, cover_id.lower())
 
 		# verify the first image will become the cover of the album
 		r2 = self.user1.get("https://localhost:4433/query/collection?user=sumsum&json")
@@ -450,19 +458,23 @@ class NormalTestCase(unittest.TestCase):
 			data=self.random_image(700, 700)
 		)
 		self.assertEqual(r3.status_code, 201)
+		second_image = self.response_blob(r3)
+		self.assertEqual(second_image, second_image.lower())
+
+		# verify that the cover will stay the same
 		r4 = self.user1.get("https://localhost:4433/query/collection?user=sumsum&json")
 		self.assertEqual(r4.status_code, 200)
 		self.assertEqual(cover_id, r4.json()["colls"]["🙇"]["cover"])
 		self.assertEqual("sumsum", r4.json()["username"])
 
-		# delete the cover
+		# delete the cover image
 		self.assertEqual(self.user1.delete("https://localhost:4433/api/sumsum/%F0%9F%99%87/" + cover_id).status_code, 204)
 
-		# the cover will be missing
+		# the cover will become the second image
 		r5 = self.user1.get("https://localhost:4433/query/collection?user=sumsum&json")
 		self.assertEqual(r5.status_code, 200)
 		self.assertTrue("🙇" in r5.json()["colls"])
-		self.assertFalse("cover" in r5.json()["colls"]["🙇"])
+		self.assertEqual(second_image, r5.json()["colls"]["🙇"]["cover"])
 
 		# delete the other image as well
 		self.assertEqual(self.user1.delete("https://localhost:4433" + r3.headers["Location"]).status_code, 204)

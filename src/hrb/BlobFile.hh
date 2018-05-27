@@ -13,6 +13,7 @@
 #pragma once
 
 #include "ObjectID.hh"
+#include "Timestamp.hh"
 
 #include "image/PHash.hh"
 #include "util/Size2D.hh"
@@ -54,8 +55,7 @@ public:
 	std::string_view mime() const;
 	std::optional<PHash> phash() const;
 
-	using TimePoint = std::chrono::system_clock::time_point;
-	TimePoint original_datetime() const;
+	Timestamp original_datetime() const;
 
 	bool is_image() const;
 	double compare(const BlobFile& other) const;
@@ -64,15 +64,24 @@ private:
 	static bool is_image(std::string_view mime);
 	void generate_image_rendition(const JPEGRenditionSetting& cfg, const fs::path& dest, std::error_code& ec) const;
 	void update_meta() const;
-	void deduce_meta(BufferView master) const;
+	MMap deduce_meta(MMap&& master) const;
+	MMap deduce_mime(MMap&& master) const;
+	MMap deduce_phash(MMap&& master) const;
+	MMap deduce_original(MMap&& master) const;
+	MMap deduce_uploaded(MMap&& master) const;
+	MMap master(MMap&& master) const;
 
 private:
 	ObjectID    m_id{};				//!< ID of the blob
 	fs::path    m_dir;				//!< The directory in file system that stores all renditions of the blob
-	mutable std::string             m_mime;    //!< Mime type of the master rendition
-	mutable std::optional<PHash>    m_phash;
-	mutable TimePoint m_original;
-	mutable TimePoint m_uploaded;
+	struct Meta
+	{
+		std::string	mime;						//!< Mime type of the master rendition
+		std::optional<PHash> 		phash;		//!< Phash of the master rendition (for images only)
+		std::optional<Timestamp>	original;	//!< Date time stored inside the master rendition (e.g. EXIF2)
+		Timestamp	uploaded;
+	};
+	mutable std::optional<Meta>	m_meta;
 };
 
 } // end of namespace hrb
