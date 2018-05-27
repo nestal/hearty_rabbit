@@ -18,10 +18,17 @@
 
 namespace hrb {
 
-struct Timestamp : std::chrono::system_clock::time_point
+using TimePointBase = std::chrono::time_point<
+    std::chrono::system_clock,
+	std::chrono::milliseconds
+>;
+
+/// \brief  The unit of timestamp stored in database.
+/// It is currently the number of miniseconds since the unix epoch
+struct Timestamp : TimePointBase
 {
 	using time_point::time_point;
-	Timestamp(std::chrono::system_clock::time_point tp) : Timestamp{tp.time_since_epoch()} {}
+	Timestamp(TimePointBase tp) : Timestamp{tp.time_since_epoch()} {}
 };
 
 void to_json(nlohmann::json& json, const Timestamp& input);

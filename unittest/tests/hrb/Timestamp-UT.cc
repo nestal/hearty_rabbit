@@ -20,10 +20,10 @@ using namespace std::chrono;
 
 TEST_CASE("read and write timestamps from JSON", "[normal]")
 {
-	Timestamp subject{milliseconds{1000}};
+	auto subject = time_point_cast<Timestamp::duration>(Timestamp::clock::now());
 	json j;
 	to_json(j, subject);
 	Timestamp out;
 	from_json(j, out);
-	REQUIRE_THAT((out - subject).count(), Catch::Matchers::WithinAbs(1., 1));
+	REQUIRE(out == subject);
 }
