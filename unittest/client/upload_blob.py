@@ -56,6 +56,13 @@ class NormalTestCase(unittest.TestCase):
 		self.assertTrue("elements" in response.json())
 		return response.json()
 
+	def delete_collection(self, coll):
+		# delete all images in "coll"
+		coll_response = self.user1.get("https://localhost:4433/api/sumsum/" + coll + "/")
+		self.assertEqual(coll_response.status_code, 200)
+		for blob in coll_response.json()["elements"].keys():
+			self.assertEqual(self.user1.delete("https://localhost:4433/api/sumsum/" + coll + "/" + blob).status_code, 204)
+
 	def setUp(self):
 		# set up a session with valid credential
 		self.user1 = requests.Session()
@@ -437,10 +444,7 @@ class NormalTestCase(unittest.TestCase):
 
 	def test_remove_cover(self):
 		# delete all images in test_cover_album
-		r0 = self.user1.get("https://localhost:4433/api/sumsum/%F0%9F%99%87/")
-		self.assertEqual(r0.status_code, 200)
-		for blob in r0.json()["elements"].keys():
-			self.assertEqual(self.user1.delete("https://localhost:4433/api/sumsum/%F0%9F%99%87/" + blob).status_code, 204)
+		self.delete_collection("%F0%9F%99%87")
 
 		# upload one image, and it will become the cover of the album
 		r1 = self.user1.put(
