@@ -13,9 +13,9 @@
 #pragma once
 
 #include "Permission.hh"
+#include "Timestamp.hh"
 
 #include <string>
-#include <string_view>
 
 namespace hrb {
 
@@ -25,10 +25,14 @@ public:
 	CollEntry() = default;
 	explicit CollEntry(std::string_view redis_reply);
 
-	static std::string create(Permission perm, std::string_view filename, std::string_view mime);
+	static std::string create(
+		Permission perm, std::string_view filename, std::string_view mime,
+		Timestamp timestamp
+	);
 
 	std::string filename() const;
 	std::string mime() 	const;
+	Timestamp timestamp() const;
 
 	std::string_view json() const;
 	Permission permission() const;

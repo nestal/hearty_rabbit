@@ -193,9 +193,9 @@ void BlobFile::update_meta() const
 			m_meta.emplace();
 
 			using namespace std::chrono;
-			m_meta->mime     = meta["mime"];
+			m_meta->mime = meta["mime"];
 			if (meta.find("original_datetime") != meta.end())
-				m_meta->original = TimePoint{milliseconds{meta["original_datetime"].get<std::uint64_t>()}};
+				m_meta->original = meta["original_datetime"].get<Timestamp>();
 			else
 				m_meta->original = std::nullopt;
 			if (meta.find("phash") != meta.end())
@@ -225,7 +225,7 @@ MMap BlobFile::deduce_meta(MMap&& master) const
 		{"mime", m_meta->mime}
 	};
 	if (m_meta->original)
-		meta.emplace("original_datetime", duration_cast<milliseconds>(m_meta->original->time_since_epoch()).count());
+		meta.emplace("original_datetime", *m_meta->original);
 	if (m_meta->phash)
 		meta.emplace("phash", m_meta->phash->value());
 
@@ -268,14 +268,14 @@ MMap BlobFile::deduce_original(MMap&& master) const
 		{
 			auto field = exif.get(master.buffer(), EXIF2::Tag::date_time);
 			if (field.has_value())
-				m_meta->original = EXIF2::parse_datetime(exif.get_value(master.buffer(), *field));
+				m_meta->original = std::chrono::time_point_cast<Timestamp::duration>(EXIF2::parse_datetime(exif.get_value(master.buffer(), *field)));
 		}
 	}
 
 	return std::move(master);
 }
 
-BlobFile::TimePoint BlobFile::original_datetime() const
+Timestamp BlobFile::original_datetime() const
 {
 	update_meta();
 	return m_meta->original.has_value() ? *m_meta->original : m_meta->uploaded;
@@ -302,8 +302,8 @@ MMap BlobFile::master(MMap&& master) const
 
 MMap BlobFile::deduce_uploaded(MMap&& master) const
 {
-	if (m_meta->uploaded == TimePoint{})
-		m_meta->uploaded = TimePoint::clock::now();
+	if (m_meta->uploaded == Timestamp{})
+		m_meta->uploaded = std::chrono::time_point_cast<Timestamp::duration>(Timestamp::clock::now());
 	return std::move(master);
 }
 

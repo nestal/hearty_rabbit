@@ -13,6 +13,7 @@
 #pragma once
 
 #include "ObjectID.hh"
+#include "Timestamp.hh"
 
 #include "image/PHash.hh"
 #include "util/Size2D.hh"
@@ -54,8 +55,7 @@ public:
 	std::string_view mime() const;
 	std::optional<PHash> phash() const;
 
-	using TimePoint = std::chrono::system_clock::time_point;
-	TimePoint original_datetime() const;
+	Timestamp original_datetime() const;
 
 	bool is_image() const;
 	double compare(const BlobFile& other) const;
@@ -78,8 +78,8 @@ private:
 	{
 		std::string	mime;						//!< Mime type of the master rendition
 		std::optional<PHash> 		phash;		//!< Phash of the master rendition (for images only)
-		std::optional<TimePoint>	original;	//!< Date time stored inside the master rendition (e.g. EXIF2)
-		TimePoint	uploaded;
+		std::optional<Timestamp>	original;	//!< Date time stored inside the master rendition (e.g. EXIF2)
+		Timestamp	uploaded;
 	};
 	mutable std::optional<Meta>	m_meta;
 };

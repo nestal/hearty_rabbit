@@ -188,10 +188,13 @@ class NormalTestCase(unittest.TestCase):
 
 
 	def test_lib(self):
-		# resource not exist
 		self.assertEqual(self.user1.get("https://localhost:4433/lib/logo.svg").status_code, 200)
 		self.assertEqual(self.anon.get("https://localhost:4433/lib/hearty_rabbit.css").status_code, 200)
 		self.assertEqual(self.user2.get("https://localhost:4433/lib/hearty_rabbit.js").status_code, 200)
+
+		# resource not exist
+		self.assertEqual(self.user1.get("https://localhost:4433/lib/index.html").status_code, 404)
+		self.assertEqual(self.anon.get("https://localhost:4433/lib/login.html").status_code, 404)
 
 	def test_not_found(self):
 		# resource not exist
@@ -235,6 +238,7 @@ class NormalTestCase(unittest.TestCase):
 		self.assertEqual(r2.status_code, 200)
 		self.assertEqual(r2.json()["elements"][blob_id]["filename"], "abc.jpg")
 		self.assertEqual(r2.json()["elements"][blob_id]["mime"], "image/jpeg")
+		self.assertTrue("timestamp" in r2.json()["elements"][blob_id])
 
 		blob_url = "https://localhost:4433" + r1.headers["Location"]
 
@@ -424,8 +428,10 @@ class NormalTestCase(unittest.TestCase):
 		# should find it in the new collection
 		r2 = self.user1.get("https://localhost:4433/api/sumsum/%E3%83%8F%E3%82%A4%E3%83%AA%E3%82%A2%E3%81%AE%E7%9B%BE/?json")
 		self.assertEqual(r2.status_code, 200)
+		self.assertTrue("elapse" in r2.json())
 		self.assertEqual(r2.json()["elements"][blob_id]["filename"], "食哂啲甘荀?_carrot.jpg")
 		self.assertEqual(r2.json()["elements"][blob_id]["mime"], "image/jpeg")
+		self.assertTrue("timestamp" in r2.json()["elements"][blob_id])
 		self.assertEqual("sumsum", r2.json()["username"])
 		self.assertEqual("ハイリアの盾", r2.json()["collection"])
 
@@ -503,14 +509,14 @@ class NormalTestCase(unittest.TestCase):
 		)
 		self.assertEqual(slink.status_code, 204)
 		self.assertNotEqual(slink.headers["Location"], "")
+		auth_key = slink.headers["Location"][-32:]
 
 		# list all shared links
 		slist = self.user1.post("https://localhost:4433/api/sumsum/", data="share=list",
 			headers={"Content-type": "application/x-www-form-urlencoded"}
 		)
 		self.assertEqual(slist.status_code, 200)
-#		self.assertTrue(auth_key in slist.json())
-		print(slist.json())
+		self.assertTrue(auth_key in slist.json())
 
 		# anonymous user can fetch the shared link
 		view_slink = self.anon.get(("https://localhost:4433" + slink.headers["Location"]).replace("/view", "/api"))
@@ -574,6 +580,8 @@ class NormalTestCase(unittest.TestCase):
 		self.assertEqual(dir_api2.status_code, 200)
 		self.assertFalse("auth" in dir_api2.json())
 		self.assertTrue(new_blob in dir_api2.json()["elements"])
+		self.assertTrue("elapse" in dir_api2.json())
+		self.assertTrue("timestamp" in dir_api2.json()["elements"][new_blob])
 
 if __name__ == '__main__':
 	unittest.main()
