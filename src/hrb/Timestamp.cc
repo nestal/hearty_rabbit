@@ -22,12 +22,12 @@ using DoubleMS = duration<double, milliseconds::period>;
 
 void to_json(nlohmann::json& json, const Timestamp& input)
 {
-	json = duration_cast<DoubleMS>(input.time_since_epoch()).count();
+	json = input.time_since_epoch().count();
 }
 
 void from_json(const nlohmann::json& json, Timestamp& output)
 {
-	output = Timestamp{duration_cast<Timestamp::duration>(DoubleMS{json.get<double>()})};
+	output = Timestamp{Timestamp::duration{json.get<Timestamp::duration::rep>()}};
 }
 
 std::ostream& operator<<(std::ostream& os, Timestamp tp)
