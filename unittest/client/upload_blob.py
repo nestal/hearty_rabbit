@@ -509,14 +509,14 @@ class NormalTestCase(unittest.TestCase):
 		)
 		self.assertEqual(slink.status_code, 204)
 		self.assertNotEqual(slink.headers["Location"], "")
+		auth_key = slink.headers["Location"][-32:]
 
 		# list all shared links
 		slist = self.user1.post("https://localhost:4433/api/sumsum/", data="share=list",
 			headers={"Content-type": "application/x-www-form-urlencoded"}
 		)
 		self.assertEqual(slist.status_code, 200)
-#		self.assertTrue(auth_key in slist.json())
-		print(slist.json())
+		self.assertTrue(auth_key in slist.json())
 
 		# anonymous user can fetch the shared link
 		view_slink = self.anon.get(("https://localhost:4433" + slink.headers["Location"]).replace("/view", "/api"))
