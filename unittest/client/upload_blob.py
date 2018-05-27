@@ -7,6 +7,7 @@ from io import BytesIO
 import numpy
 import random
 import string
+import time
 
 class NormalTestCase(unittest.TestCase):
 	@staticmethod
@@ -19,8 +20,8 @@ class NormalTestCase(unittest.TestCase):
 		lena = Image.open("../tests/image/lena.png").convert("RGBA").resize((width, height), Image.ANTIALIAS)
 
 		# random noise
-		imarray = numpy.random.rand(128, 128, 4) * 255
-		noise = Image.fromarray(imarray.astype("uint8")).convert("RGBA").resize((width, height))
+		random_array = numpy.random.rand(128, 128, 4) * 255
+		noise = Image.fromarray(random_array.astype("uint8")).convert("RGBA").resize((width, height))
 		noise = noise.filter(ImageFilter.GaussianBlur(4))
 
 		# blend original image with noise
@@ -32,7 +33,13 @@ class NormalTestCase(unittest.TestCase):
 		return temp.getvalue()
 
 	def get_collection(self, session, owner, coll):
+		time_start = time.time()
 		response = session.get("https://localhost:4433/api/" + owner + "/" + coll + "/")
+		external_elapse = (time.time()-time_start) * 1000000
+		internal_elapse = response.json()["elapse"]
+
+		print("elapse time = {0}us / {1}us".format(response.json()["elapse"], external_elapse))
+		self.assertLessEqual(internal_elapse, external_elapse)
 		self.assertEqual(response.status_code, 200)
 		self.assertEqual(response.headers["Content-type"], "application/json")
 		self.assertEqual(response.json()["collection"], coll)
@@ -181,10 +188,13 @@ class NormalTestCase(unittest.TestCase):
 
 
 	def test_lib(self):
-		# resource not exist
 		self.assertEqual(self.user1.get("https://localhost:4433/lib/logo.svg").status_code, 200)
 		self.assertEqual(self.anon.get("https://localhost:4433/lib/hearty_rabbit.css").status_code, 200)
 		self.assertEqual(self.user2.get("https://localhost:4433/lib/hearty_rabbit.js").status_code, 200)
+
+		# resource not exist
+		self.assertEqual(self.user1.get("https://localhost:4433/lib/index.html").status_code, 404)
+		self.assertEqual(self.anon.get("https://localhost:4433/lib/login.html").status_code, 404)
 
 	def test_not_found(self):
 		# resource not exist
@@ -228,6 +238,7 @@ class NormalTestCase(unittest.TestCase):
 		self.assertEqual(r2.status_code, 200)
 		self.assertEqual(r2.json()["elements"][blob_id]["filename"], "abc.jpg")
 		self.assertEqual(r2.json()["elements"][blob_id]["mime"], "image/jpeg")
+		self.assertTrue("timestamp" in r2.json()["elements"][blob_id])
 
 		blob_url = "https://localhost:4433" + r1.headers["Location"]
 
@@ -417,8 +428,10 @@ class NormalTestCase(unittest.TestCase):
 		# should find it in the new collection
 		r2 = self.user1.get("https://localhost:4433/api/sumsum/%E3%83%8F%E3%82%A4%E3%83%AA%E3%82%A2%E3%81%AE%E7%9B%BE/?json")
 		self.assertEqual(r2.status_code, 200)
+		self.assertTrue("elapse" in r2.json())
 		self.assertEqual(r2.json()["elements"][blob_id]["filename"], "食哂啲甘荀?_carrot.jpg")
 		self.assertEqual(r2.json()["elements"][blob_id]["mime"], "image/jpeg")
+		self.assertTrue("timestamp" in r2.json()["elements"][blob_id])
 		self.assertEqual("sumsum", r2.json()["username"])
 		self.assertEqual("ハイリアの盾", r2.json()["collection"])
 
@@ -436,6 +449,7 @@ class NormalTestCase(unittest.TestCase):
 		)
 		self.assertEqual(r1.status_code, 201)
 		cover_id = self.response_blob(r1)
+		self.assertEqual(cover_id, cover_id.lower())
 
 		# verify the first image will become the cover of the album
 		r2 = self.user1.get("https://localhost:4433/query/collection?user=sumsum&json")
@@ -450,19 +464,23 @@ class NormalTestCase(unittest.TestCase):
 			data=self.random_image(700, 700)
 		)
 		self.assertEqual(r3.status_code, 201)
+		second_image = self.response_blob(r3)
+		self.assertEqual(second_image, second_image.lower())
+
+		# verify that the cover will stay the same
 		r4 = self.user1.get("https://localhost:4433/query/collection?user=sumsum&json")
 		self.assertEqual(r4.status_code, 200)
 		self.assertEqual(cover_id, r4.json()["colls"]["🙇"]["cover"])
 		self.assertEqual("sumsum", r4.json()["username"])
 
-		# delete the cover
+		# delete the cover image
 		self.assertEqual(self.user1.delete("https://localhost:4433/api/sumsum/%F0%9F%99%87/" + cover_id).status_code, 204)
 
-		# the cover will be missing
+		# the cover will become the second image
 		r5 = self.user1.get("https://localhost:4433/query/collection?user=sumsum&json")
 		self.assertEqual(r5.status_code, 200)
 		self.assertTrue("🙇" in r5.json()["colls"])
-		self.assertFalse("cover" in r5.json()["colls"]["🙇"])
+		self.assertEqual(second_image, r5.json()["colls"]["🙇"]["cover"])
 
 		# delete the other image as well
 		self.assertEqual(self.user1.delete("https://localhost:4433" + r3.headers["Location"]).status_code, 204)
@@ -491,14 +509,14 @@ class NormalTestCase(unittest.TestCase):
 		)
 		self.assertEqual(slink.status_code, 204)
 		self.assertNotEqual(slink.headers["Location"], "")
+		auth_key = slink.headers["Location"][-32:]
 
 		# list all shared links
 		slist = self.user1.post("https://localhost:4433/api/sumsum/", data="share=list",
 			headers={"Content-type": "application/x-www-form-urlencoded"}
 		)
 		self.assertEqual(slist.status_code, 200)
-#		self.assertTrue(auth_key in slist.json())
-		print(slist.json())
+		self.assertTrue(auth_key in slist.json())
 
 		# anonymous user can fetch the shared link
 		view_slink = self.anon.get(("https://localhost:4433" + slink.headers["Location"]).replace("/view", "/api"))
@@ -562,6 +580,8 @@ class NormalTestCase(unittest.TestCase):
 		self.assertEqual(dir_api2.status_code, 200)
 		self.assertFalse("auth" in dir_api2.json())
 		self.assertTrue(new_blob in dir_api2.json()["elements"])
+		self.assertTrue("elapse" in dir_api2.json())
+		self.assertTrue("timestamp" in dir_api2.json()["elements"][new_blob])
 
 if __name__ == '__main__':
 	unittest.main()

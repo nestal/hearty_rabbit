@@ -23,10 +23,14 @@ CollEntry::CollEntry(std::string_view redis_reply) : m_raw{redis_reply}
 {
 }
 
-std::string CollEntry::create(Permission perm, std::string_view filename, std::string_view mime)
+std::string CollEntry::create(
+	Permission perm, std::string_view filename, std::string_view mime,
+	Timestamp timestamp
+)
 {
 	auto json = nlohmann::json::object();
 	json.emplace("mime", std::string{mime});
+	json.emplace("timestamp", timestamp);
 
 	if (!filename.empty())
 		json.emplace("filename", std::string{filename});
@@ -52,6 +56,12 @@ std::string CollEntry::mime() const
 {
 	auto doc = nlohmann::json::parse(CollEntry::json(), nullptr, false);
 	return doc.is_discarded() ? "" : doc.value(nlohmann::json::json_pointer{"/mime"}, "");
+}
+
+Timestamp CollEntry::timestamp() const
+{
+	auto doc = nlohmann::json::parse(CollEntry::json(), nullptr, false);
+	return doc.is_discarded() ? Timestamp{} : doc.value(nlohmann::json::json_pointer{"/timestamp"}, Timestamp{});
 }
 
 Permission CollEntry::permission() const

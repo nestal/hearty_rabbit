@@ -108,6 +108,8 @@ public:
 		std::string_view owner
 	);
 
+	void post_unlink(redis::Connection& db, const ObjectID& blob);
+
 private:
 	std::string m_user;
 	std::string m_path;
@@ -239,8 +241,8 @@ void Ownership::Collection::set_permission(
 		local msgpack = cmsgpack.pack(user, coll, blob)
 		if perm == '*' then
 			redis.call('LREM', KEYS[1], 0, msgpack)
-			if redis.call('LPUSH', KEYS[1], msgpack) > 100 then
-				redis.call('RPOP', KEYS[1])
+			if redis.call('RPUSH', KEYS[1], msgpack) > 100 then
+				redis.call('LPOP', KEYS[1])
 			end
 		else
 			redis.call('LREM', KEYS[1], 0, msgpack)
@@ -452,6 +454,8 @@ void Ownership::unlink(
 		assert(reply.array_size() == 3);
 		comp(ec);
 	}, "EXEC");
+
+	coll.post_unlink(db, blob.blob());
 }
 
 template <typename Complete>

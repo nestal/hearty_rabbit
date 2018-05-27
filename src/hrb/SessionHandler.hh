@@ -16,8 +16,11 @@
 #include "net/Redis.hh"
 #include "net/Request.hh"
 
+// JSON library
 #include <json.hpp>
 
+// standard library
+#include <chrono>
 #include <functional>
 #include <optional>
 #include <system_error>
@@ -125,8 +128,10 @@ private:
 	std::string server_root() const;
 
 private:
-	std::shared_ptr<redis::Connection>     m_db;
-	std::optional<Authentication::Cookie>  m_request_cookie;
+	std::shared_ptr<redis::Connection>              m_db;
+	std::optional<Authentication::Cookie>           m_request_cookie;
+	std::chrono::high_resolution_clock::time_point  m_on_header;
+
 	Authentication          m_auth;
 	WebResources&           m_lib;
 	BlobDatabase&           m_blob_db;
