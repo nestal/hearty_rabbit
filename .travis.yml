@@ -22,8 +22,8 @@ script:
   - ./automation/start_tests
 
 after_success:
-  - docker login -u "$DOCKER_USER" -p "$DOCKER_PASSWORD"
   - if [ "$TRAVIS_PULL_REQUEST" == "false" ]; then
+      docker login -u "$DOCKER_USER" -p "$DOCKER_PASSWORD"
       if [ "$TRAVIS_BRANCH" == "master" ]; then
         echo "build for master branch $TRAVIS_BRANCH";
         docker tag nestal/hearty_rabbit nestal/hearty_rabbit:$TRAVIS_BUILD_NUMBER;
@@ -31,6 +31,6 @@ after_success:
       if [ "$TRAVIS_BRANCH" == "develop" ] || [ "$TRAVIS_BRANCH" == "master" ]; then
         docker tag nestal/hearty_rabbit nestal/hearty_rabbit:$TRAVIS_BRANCH;
       fi;
+      docker push nestal/hearty_rabbit;
+      echo "Pushed docker image to hub";
     fi;
-  - docker push nestal/hearty_rabbit
-  - echo "Pushed docker image to hub"
