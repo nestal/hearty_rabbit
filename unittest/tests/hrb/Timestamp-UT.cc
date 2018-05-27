@@ -18,12 +18,20 @@ using namespace hrb;
 using nlohmann::json;
 using namespace std::chrono;
 
-TEST_CASE("read and write timestamps from JSON", "[normal]")
+TEST_CASE("read and write round-trip timestamps from JSON", "[normal]")
 {
 	auto subject = Timestamp::now();
 	json j;
 	to_json(j, subject);
+
 	Timestamp out;
 	from_json(j, out);
 	REQUIRE(out == subject);
+}
+
+TEST_CASE("automatically convert timestamps from/to JSON", "[normal]")
+{
+	auto subject = Timestamp::now();
+	json json = subject;
+	REQUIRE(json.get<Timestamp>() == subject);
 }

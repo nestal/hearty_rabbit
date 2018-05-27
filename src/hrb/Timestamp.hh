@@ -24,7 +24,7 @@ using TimePointBase = std::chrono::time_point<
 >;
 
 /// \brief  The unit of timestamp stored in database.
-/// It is currently the number of miniseconds since the unix epoch
+/// It is currently the number of miniseconds since the unix epoch.
 struct Timestamp : TimePointBase
 {
 	using time_point::time_point;
