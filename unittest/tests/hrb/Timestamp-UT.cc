@@ -20,7 +20,7 @@ using namespace std::chrono;
 
 TEST_CASE("read and write timestamps from JSON", "[normal]")
 {
-	auto subject = time_point_cast<Timestamp::duration>(Timestamp::clock::now());
+	auto subject = Timestamp::now();
 	json j;
 	to_json(j, subject);
 	Timestamp out;

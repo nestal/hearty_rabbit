@@ -29,6 +29,8 @@ struct Timestamp : TimePointBase
 {
 	using time_point::time_point;
 	Timestamp(TimePointBase tp) : Timestamp{tp.time_since_epoch()} {}
+
+	static Timestamp now();
 };
 
 void to_json(nlohmann::json& json, const Timestamp& input);

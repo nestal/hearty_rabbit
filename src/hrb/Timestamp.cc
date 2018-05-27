@@ -35,4 +35,9 @@ std::ostream& operator<<(std::ostream& os, Timestamp tp)
 	return os << tp.time_since_epoch().count();
 }
 
+Timestamp Timestamp::now()
+{
+	return time_point_cast<Timestamp::duration>(Timestamp::clock::now());
+}
+
 } // end of namespace hrb

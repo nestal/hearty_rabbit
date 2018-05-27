@@ -13,8 +13,8 @@
 #pragma once
 
 #include "Permission.hh"
+#include "Timestamp.hh"
 
-#include <chrono>
 #include <string>
 
 namespace hrb {
@@ -27,11 +27,12 @@ public:
 
 	static std::string create(
 		Permission perm, std::string_view filename, std::string_view mime,
-		std::chrono::system_clock::time_point timestamp = {}
+		Timestamp timestamp
 	);
 
 	std::string filename() const;
 	std::string mime() 	const;
+	Timestamp timestamp() const;
 
 	std::string_view json() const;
 	Permission permission() const;

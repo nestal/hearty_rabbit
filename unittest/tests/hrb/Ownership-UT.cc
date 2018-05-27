@@ -236,7 +236,7 @@ TEST_CASE("Load 3 images in json", "[normal]")
 
 	for (auto&& blobid : blobids)
 	{
-		auto s = CollEntry::create(Permission::private_(), "file.jpg", "image/jpeg");
+		auto s = CollEntry::create(Permission::private_(), "file.jpg", "image/jpeg", Timestamp::now());
 		subject.link(
 			*redis, "some/collection", blobid, CollEntry{s}, [&added](auto ec)
 			{
@@ -307,7 +307,7 @@ TEST_CASE("Query blob of testuser")
 
 	auto blobid = insecure_random<ObjectID>();
 
-	auto ce_str = CollEntry::create(Permission::public_(), "haha.jpeg", "image/jpeg");
+	auto ce_str = CollEntry::create(Permission::public_(), "haha.jpeg", "image/jpeg", Timestamp::now());
 
 	int tested = 0;
 	subject.link(
@@ -528,7 +528,7 @@ TEST_CASE("setting and remove the cover of collection", "[normal]")
 
 TEST_CASE("collection entry", "[normal]")
 {
-	auto s = CollEntry::create({}, "somepic.jpeg", "image/jpeg");
+	auto s = CollEntry::create({}, "somepic.jpeg", "image/jpeg", Timestamp::now());
 	CollEntry subject{s};
 	INFO("entry JSON = " << subject.json());
 
