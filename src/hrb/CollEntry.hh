@@ -15,6 +15,7 @@
 #include "Permission.hh"
 #include "Timestamp.hh"
 
+#include <json.hpp>
 #include <string>
 
 namespace hrb {
@@ -29,6 +30,7 @@ public:
 		Permission perm, std::string_view filename, std::string_view mime,
 		Timestamp timestamp
 	);
+	static std::string create(Permission perm, const nlohmann::json& json);
 
 	std::string filename() const;
 	std::string mime() 	const;

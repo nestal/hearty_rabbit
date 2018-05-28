@@ -251,6 +251,11 @@ TEST_CASE("Load 3 images in json", "[normal]")
 
 	ioc.restart();
 
+	// update CollEntry of the blobs
+	auto en_str = CollEntry::create(Permission::public_(), "another_file.jpg", "application/json", Timestamp{std::chrono::milliseconds{100}});
+	for (auto&& blobid : blobids)
+		subject.update(*redis, "some/collection", blobid, CollEntry{en_str});
+
 	bool tested = false;
 	subject.serialize(*redis, {{},"testuser"}, "some/collection", [&tested, &blobids](auto&& doc, auto ec)
 	{
@@ -270,13 +275,16 @@ TEST_CASE("Load 3 images in json", "[normal]")
 		for (auto&& blobid : blobids)
 		{
 			REQUIRE(
-				doc.value(json::json_pointer{"/elements/" + to_hex(blobid) + "/perm"}, "") == "private"
+				doc.value(json::json_pointer{"/elements/" + to_hex(blobid) + "/perm"}, "") == "public"
 			);
 			REQUIRE(
-				doc.value(json::json_pointer{"/elements/" + to_hex(blobid) + "/filename"}, "") == "file.jpg"
+				doc.value(json::json_pointer{"/elements/" + to_hex(blobid) + "/filename"}, "") == "another_file.jpg"
 			);
 			REQUIRE(
-				doc.value(json::json_pointer{"/elements/" + to_hex(blobid) + "/mime"}, "") == "image/jpeg"
+				doc.value(json::json_pointer{"/elements/" + to_hex(blobid) + "/mime"}, "") == "application/json"
+			);
+			REQUIRE(
+				doc.value(json::json_pointer{"/elements/" + to_hex(blobid) + "/timestamp"}, 0) == 100
 			);
 		}
 
@@ -287,6 +295,7 @@ TEST_CASE("Load 3 images in json", "[normal]")
 
 	ioc.restart();
 
+	// delete all 3 image blobs
 	for (auto&& blobid : blobids)
 		subject.unlink(*redis, "some/collection", blobid, [&added](auto ec)
 		{
@@ -528,20 +537,31 @@ TEST_CASE("setting and remove the cover of collection", "[normal]")
 
 TEST_CASE("collection entry", "[normal]")
 {
+	Authentication yung{insecure_random<Authentication::Cookie>(), "yungyung"};
+	Authentication sum{insecure_random<Authentication::Cookie>(), "sumsum"};
+
 	auto s = CollEntry::create({}, "somepic.jpeg", "image/jpeg", Timestamp::now());
 	CollEntry subject{s};
 	INFO("entry JSON = " << subject.json());
 
 	REQUIRE(subject.filename() == "somepic.jpeg");
 	REQUIRE(subject.mime() == "image/jpeg");
-	REQUIRE_FALSE(subject.permission().allow({{}, "sumsum"}, "yungyung"));
+	REQUIRE_FALSE(subject.permission().allow(sum, yung.user()));
 	REQUIRE(subject.raw() == s);
 
 	CollEntry same{subject.raw()};
 	REQUIRE(same.filename() == "somepic.jpeg");
 	REQUIRE(same.mime() == "image/jpeg");
-	REQUIRE_FALSE(same.permission().allow({{}, "yungyung"}, "sumsum"));
+	REQUIRE_FALSE(same.permission().allow(yung, sum.user()));
 	REQUIRE(same.raw() == subject.raw());
+
+	auto s2 = CollEntry::create(Permission::shared(), nlohmann::json::parse(same.json()));
+	CollEntry same2{s2};
+	REQUIRE(same2.filename() == "somepic.jpeg");
+	REQUIRE(same2.mime() == "image/jpeg");
+	REQUIRE(same2.permission().allow(yung, sum.user()));
+	REQUIRE(same2.raw().substr(1) == subject.raw().substr(1));
+
 }
 
 TEST_CASE("Collection ctor", "[normal]")

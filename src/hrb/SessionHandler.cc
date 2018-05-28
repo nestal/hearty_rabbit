@@ -297,4 +297,26 @@ std::string SessionHandler::server_root() const
 	return m_cfg.https_root();
 }
 
+void SessionHandler::validate_collection_json(nlohmann::json& json)
+{
+	for (auto& element : json["elements"].items())
+	{
+		auto&& hex_id = element.key();
+		auto&& meta   = element.value();
+
+		if (meta.find("timestamp") == meta.end())
+		{
+			Log(LOG_WARNING, "%1% has no timestamp in collection entry: loading from disk", hex_id);
+			auto blob_id = hex_to_object_id(hex_id);
+			if (blob_id.has_value())
+			{
+				auto blob_file = m_blob_db.find(*blob_id);
+				meta.emplace("timestamp", blob_file.original_datetime());
+
+				Ownership{m_auth.user()}.update(*m_db, json["collection"].get<std::string>(), *blob_id, meta);
+			}
+		}
+	}
+}
+
 } // end of namespace hrb

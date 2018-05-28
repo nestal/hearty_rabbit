@@ -126,6 +126,7 @@ private:
 	void query_blob_set(const URLIntent& intent, unsigned version, Send&& send);
 
 	std::string server_root() const;
+	void validate_collection_json(nlohmann::json& json);
 
 private:
 	std::shared_ptr<redis::Connection>              m_db;

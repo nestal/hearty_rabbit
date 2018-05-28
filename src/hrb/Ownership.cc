@@ -276,4 +276,68 @@ void Ownership::Collection::post_unlink(redis::Connection& db, const ObjectID& b
 	);
 }
 
+void Ownership::update(
+	redis::Connection& db,
+	std::string_view coll,
+	const ObjectID& blobid,
+	const CollEntry& entry
+)
+{
+	// assume the blob is already in the collection, so there is no need to update
+	// blob backlink
+	Collection{m_user, coll}.update(db, blobid, entry);
+}
+
+void Ownership::update(
+	redis::Connection& db,
+	std::string_view coll,
+	const ObjectID& blobid,
+	const nlohmann::json& entry
+)
+{
+	// assume the blob is already in the collection, so there is no need to update
+	// blob backlink
+	Collection{m_user, coll}.update(db, blobid, entry);
+}
+
+void Ownership::Collection::update(
+	redis::Connection& db,
+	const ObjectID& id,
+	const CollEntry& entry
+)
+{
+	static const char hsetex[] = R"__(
+		if redis.call('HEXISTS', KEYS[1], ARGV[1]) then
+			redis.call('HSET', KEYS[1], ARGV[1], ARGV[2])
+		end
+	)__";
+	db.command(
+		[](auto&& reply, auto ec)
+		{
+			if (!reply || ec)
+				Log(LOG_WARNING, "Collection::update() lua script failure: %1% (%2%)", reply.as_error(), ec);
+		},
+		"EVAL %s 1 %b%b:%b %b %b",
+		hsetex,
+
+		// KEYS[1] (hash table that stores the blob in a collection)
+		m_dir_prefix.data(), m_dir_prefix.size(),
+		m_user.data(), m_user.size(),
+		m_path.data(), m_path.size(),
+
+		id.data(), id.size(), // ARGV[1]
+		entry.data(),  entry.size()   // ARGV[2]
+	);
+}
+
+void Ownership::Collection::update(
+	redis::Connection& db,
+	const ObjectID& id,
+	const nlohmann::json& entry
+)
+{
+	auto en_str = CollEntry::create(Permission::from_description(entry["perm"].get<std::string>()), entry);
+	update(db, id, CollEntry{en_str});
+}
+
 } // end of namespace hrb

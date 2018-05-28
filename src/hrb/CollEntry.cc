@@ -12,10 +12,14 @@
 
 #include "CollEntry.hh"
 
-#include <json.hpp>
-
 #include <cassert>
 #include <sstream>
+
+namespace {
+	nlohmann::json::json_pointer filename_pointer{"/filename"};
+	nlohmann::json::json_pointer mime_pointer{"/mime"};
+	nlohmann::json::json_pointer timestamp_pointer{"/timestamp"};
+}
 
 namespace hrb {
 
@@ -49,24 +53,34 @@ std::string_view CollEntry::json() const
 std::string CollEntry::filename() const
 {
 	auto doc = nlohmann::json::parse(CollEntry::json(), nullptr, false);
-	return doc.is_discarded() ? "" : doc.value(nlohmann::json::json_pointer{"/filename"}, "");
+	return doc.is_discarded() ? "" : doc.value(filename_pointer, "");
 }
 
 std::string CollEntry::mime() const
 {
 	auto doc = nlohmann::json::parse(CollEntry::json(), nullptr, false);
-	return doc.is_discarded() ? "" : doc.value(nlohmann::json::json_pointer{"/mime"}, "");
+	return doc.is_discarded() ? "" : doc.value(mime_pointer, "");
 }
 
 Timestamp CollEntry::timestamp() const
 {
 	auto doc = nlohmann::json::parse(CollEntry::json(), nullptr, false);
-	return doc.is_discarded() ? Timestamp{} : doc.value(nlohmann::json::json_pointer{"/timestamp"}, Timestamp{});
+	return doc.is_discarded() ? Timestamp{} : doc.value(timestamp_pointer, Timestamp{});
 }
 
 Permission CollEntry::permission() const
 {
 	return m_raw.empty() ? Permission{} : Permission{m_raw.front()} ;
+}
+
+std::string CollEntry::create(Permission perm, const nlohmann::json& json)
+{
+	return create(
+		perm,
+		json.value(filename_pointer, ""),
+		json.value(mime_pointer, ""),
+		json.value(timestamp_pointer, Timestamp{})
+	);
 }
 
 } // end of namespace hrb
