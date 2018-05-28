@@ -47,6 +47,13 @@ public:
 		Complete&& complete
 	);
 
+	void update(
+		redis::Connection& db,
+		std::string_view coll,
+		const ObjectID& blobid,
+		const CollEntry& entry
+	);
+
 	template <typename Complete>
 	void unlink(
 		redis::Connection& db,

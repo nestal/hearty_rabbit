@@ -67,6 +67,7 @@ public:
 	void link(redis::Connection& db, const ObjectID& id, const CollEntry& entry);
 	void unlink(redis::Connection& db, const ObjectID& id);
 	std::string redis_key() const;
+	void update(redis::Connection& db, const ObjectID& id, const CollEntry& entry);
 
 	template <typename Complete>
 	void set_cover(redis::Connection& db, const ObjectID& cover, Complete&& complete);
