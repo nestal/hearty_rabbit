@@ -83,4 +83,20 @@ std::string CollEntry::create(Permission perm, const nlohmann::json& json)
 	);
 }
 
+CollEntryFields CollEntry::fields() const
+{
+	auto json = nlohmann::json::parse(CollEntry::json(), nullptr, false);
+	return {
+		permission(),
+		json.value(filename_pointer, ""),
+		json.value(mime_pointer, ""),
+		json.value(timestamp_pointer, Timestamp{})
+	};
+}
+
+std::string CollEntry::create(const CollEntryFields& fields)
+{
+	return create(fields.perm, fields.filename, fields.mime, fields.timestamp);
+}
+
 } // end of namespace hrb
