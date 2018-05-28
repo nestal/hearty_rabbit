@@ -537,20 +537,31 @@ TEST_CASE("setting and remove the cover of collection", "[normal]")
 
 TEST_CASE("collection entry", "[normal]")
 {
+	Authentication yung{insecure_random<Authentication::Cookie>(), "yungyung"};
+	Authentication sum{insecure_random<Authentication::Cookie>(), "sumsum"};
+
 	auto s = CollEntry::create({}, "somepic.jpeg", "image/jpeg", Timestamp::now());
 	CollEntry subject{s};
 	INFO("entry JSON = " << subject.json());
 
 	REQUIRE(subject.filename() == "somepic.jpeg");
 	REQUIRE(subject.mime() == "image/jpeg");
-	REQUIRE_FALSE(subject.permission().allow({{}, "sumsum"}, "yungyung"));
+	REQUIRE_FALSE(subject.permission().allow(sum, yung.user()));
 	REQUIRE(subject.raw() == s);
 
 	CollEntry same{subject.raw()};
 	REQUIRE(same.filename() == "somepic.jpeg");
 	REQUIRE(same.mime() == "image/jpeg");
-	REQUIRE_FALSE(same.permission().allow({{}, "yungyung"}, "sumsum"));
+	REQUIRE_FALSE(same.permission().allow(yung, sum.user()));
 	REQUIRE(same.raw() == subject.raw());
+
+	auto s2 = CollEntry::create(Permission::shared(), nlohmann::json::parse(same.json()));
+	CollEntry same2{s2};
+	REQUIRE(same2.filename() == "somepic.jpeg");
+	REQUIRE(same2.mime() == "image/jpeg");
+	REQUIRE(same2.permission().allow(yung, sum.user()));
+	REQUIRE(same2.raw().substr(1) == subject.raw().substr(1));
+
 }
 
 TEST_CASE("Collection ctor", "[normal]")

@@ -312,13 +312,8 @@ void SessionHandler::validate_collection_json(nlohmann::json& json)
 			{
 				auto blob_file = m_blob_db.find(*blob_id);
 				meta.emplace("timestamp", blob_file.original_datetime());
-/*
-				auto en_str = CollEntry::create(
-					Permission::from_description(meta["perm"].get<std::string>()),
-					meta[]
-				);
 
-				Ownership{m_auth.user()}.update(*m_db, json["collection"].get<std::string>(), *blob_id, );*/
+				Ownership{m_auth.user()}.update(*m_db, json["collection"].get<std::string>(), *blob_id, meta);
 			}
 		}
 	}

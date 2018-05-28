@@ -288,9 +288,21 @@ void Ownership::update(
 	Collection{m_user, coll}.update(db, blobid, entry);
 }
 
+void Ownership::update(
+	redis::Connection& db,
+	std::string_view coll,
+	const ObjectID& blobid,
+	const nlohmann::json& entry
+)
+{
+	// assume the blob is already in the collection, so there is no need to update
+	// blob backlink
+	Collection{m_user, coll}.update(db, blobid, entry);
+}
+
 void Ownership::Collection::update(
 	redis::Connection& db,
-	const ObjectID& blobid,
+	const ObjectID& id,
 	const CollEntry& entry
 )
 {
@@ -313,9 +325,19 @@ void Ownership::Collection::update(
 		m_user.data(), m_user.size(),
 		m_path.data(), m_path.size(),
 
-		blobid.data(), blobid.size(), // ARGV[1]
+		id.data(), id.size(), // ARGV[1]
 		entry.data(),  entry.size()   // ARGV[2]
 	);
+}
+
+void Ownership::Collection::update(
+	redis::Connection& db,
+	const ObjectID& id,
+	const nlohmann::json& entry
+)
+{
+	auto en_str = CollEntry::create(Permission::from_description(entry["perm"].get<std::string>()), entry);
+	update(db, id, CollEntry{en_str});
 }
 
 } // end of namespace hrb

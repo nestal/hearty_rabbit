@@ -54,6 +54,13 @@ public:
 		const CollEntry& entry
 	);
 
+	void update(
+		redis::Connection& db,
+		std::string_view coll,
+		const ObjectID& blobid,
+		const nlohmann::json& entry
+	);
+
 	template <typename Complete>
 	void unlink(
 		redis::Connection& db,
