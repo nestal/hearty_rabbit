@@ -283,7 +283,13 @@ void SessionHandler::on_request_api(Request&& req, URLIntent&& intent, Send&& se
 				*m_db,
 				m_auth,
 				breq.collection(),
-				SendJSON{std::move(send), req.version(), std::nullopt, *this}
+				[
+					send=SendJSON{std::move(send), req.version(), std::nullopt, *this}, this
+				](auto&& json, std::error_code ec) mutable
+				{
+					validate_collection_json(json);
+					send(std::move(json), ec);
+				}
 			);
 	}
 	else if (req.method() == http::verb::post)
@@ -439,11 +445,7 @@ void SessionHandler::query_blob_set(const URLIntent& intent, unsigned version, S
 	{
 		Ownership{m_auth.user()}.list_public_blobs(
 			*m_db,
-			SendJSON{
-				std::forward<Send>(send),
-				version, std::nullopt, *this,
-				!json.has_value() ? &m_lib : nullptr
-			}
+			SendJSON{std::forward<Send>(send), version, std::nullopt, *this, !json.has_value() ? &m_lib : nullptr}
 		);
 	}
 	else if (dup_coll.has_value())
