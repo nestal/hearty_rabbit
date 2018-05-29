@@ -13,7 +13,7 @@
 #pragma once
 
 #include "ObjectID.hh"
-#include "CollEntry.hh"
+#include "CollEntryDB.hh"
 
 #include "net/Redis.hh"
 

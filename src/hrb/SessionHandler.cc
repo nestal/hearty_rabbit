@@ -222,13 +222,13 @@ void SessionHandler::on_upload(UploadRequest&& req, EmptyResponseSender&& send)
 		});*/
 	}
 
-	std::string entry = CollEntry::create(Permission::private_(), path_url.filename(), blob.mime(), blob.original_datetime());
+	CollEntry entry{Permission::private_(), std::string{path_url.filename()}, std::string{blob.mime()}, blob.original_datetime()};
 
 	// Add the newly created blob to the user's ownership table.
 	// The user's ownership table contains all the blobs that is owned by the user.
 	// It will be used for authorizing the user's request on these blob later.
 	Ownership{m_auth.user()}.link(
-		*m_db, path_url.collection(), blob.ID(), CollEntry{entry}, [
+		*m_db, path_url.collection(), blob.ID(), entry, [
 			location = URLIntent{URLIntent::Action::api, m_auth.user(), path_url.collection(), to_hex(blob.ID())}.str(),
 			send = std::move(send),
 			version = req.version()

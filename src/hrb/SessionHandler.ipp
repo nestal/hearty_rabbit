@@ -350,7 +350,7 @@ void SessionHandler::get_blob(const BlobRequest& req, Send&& send)
 		[
 			req, this,
 			send=std::move(send)
-		](CollEntry entry, auto ec) mutable
+		](CollEntryDB entry, auto ec) mutable
 		{
 			// Only allow the owner to know whether an object exists or not.
 			// Always reply forbidden for everyone else.

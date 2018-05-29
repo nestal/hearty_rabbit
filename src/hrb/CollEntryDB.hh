@@ -50,7 +50,7 @@ namespace hrb {
 // to_json(json&, CollEntryFields) should transform in-memory format to JSON format.
 // Database format uses JSON, which is slow to parse and waste space, but it's extensible.
 
-struct CollEntryFields
+struct CollEntry
 {
 	Permission  perm;
 	std::string filename;
@@ -61,23 +61,23 @@ struct CollEntryFields
 // along with from_json(CollEntryFields) and to_json(CollEntryFields), CollEntryFields should
 // be moved to a separate header
 
-class CollEntry
+class CollEntryDB
 {
 public:
-	CollEntry() = default;
-	explicit CollEntry(std::string_view redis_reply);
+	CollEntryDB() = default;
+	explicit CollEntryDB(std::string_view redis_reply);
 
 	static std::string create(
 		Permission perm, std::string_view filename, std::string_view mime,
 		Timestamp timestamp
 	);
 	static std::string create(Permission perm, const nlohmann::json& json);
-	static std::string create(const CollEntryFields& fields);
+	static std::string create(const CollEntry& fields);
 
 	std::string filename() const;
 	std::string mime() 	const;
 	Timestamp timestamp() const;
-	CollEntryFields fields() const;
+	CollEntry fields() const;
 
 	std::string_view json() const;
 	Permission permission() const;

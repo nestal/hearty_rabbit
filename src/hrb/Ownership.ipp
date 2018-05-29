@@ -12,7 +12,7 @@
 
 #include "Ownership.hh"
 #include "Permission.hh"
-#include "CollEntry.hh"
+#include "CollEntryDB.hh"
 
 #include "crypto/Authentication.hh"
 #include "util/Error.hh"
@@ -64,10 +64,10 @@ public:
 	Collection(std::string_view user, std::string_view path);
 	explicit Collection(std::string_view redis_key);
 
-	void link(redis::Connection& db, const ObjectID& id, const CollEntry& entry);
+	void link(redis::Connection& db, const ObjectID& id, const CollEntryDB& entry);
 	void unlink(redis::Connection& db, const ObjectID& id);
 	std::string redis_key() const;
-	void update(redis::Connection& db, const ObjectID& id, const CollEntry& entry);
+	void update(redis::Connection& db, const ObjectID& id, const CollEntryDB& entry);
 	void update(redis::Connection& db, const ObjectID& id, const nlohmann::json& entry);
 
 	template <typename Complete>
@@ -210,7 +210,7 @@ void Ownership::Collection::find(
 				ec = Error::object_not_exist;
 
 			comp(
-				CollEntry{entry.as_string()},
+				CollEntryDB{entry.as_string()},
 				std::move(ec)
 			);
 		},
@@ -423,9 +423,11 @@ void Ownership::link(
 	BlobBackLink blob{m_user, coll_name, blobid};
 	Collection   coll{m_user, coll_name};
 
+	auto en_str = CollEntryDB::create(entry);
+
 	db.command("MULTI");
 	blob.link(db);
-	coll.link(db, blob.blob(), entry);
+	coll.link(db, blob.blob(), CollEntryDB{en_str});
 	db.command([comp=std::forward<Complete>(complete)](auto&&, std::error_code ec)
 	{
 		comp(ec);
@@ -543,7 +545,7 @@ void Ownership::move_blob(
 			dest=Collection{m_user, dest_coll},
 			src=Collection{m_user, src_coll},
 			comp=std::forward<Complete>(complete)
-		](CollEntry&& entry, auto ec) mutable
+		](CollEntryDB&& entry, auto ec) mutable
 		{
 			if (!ec)
 			{
@@ -595,7 +597,7 @@ void Ownership::list_public_blobs(
 					continue;
 
 				auto blob_id = raw_to_object_id(blob.as_string());
-				CollEntry entry{perm.as_string()};
+				CollEntryDB entry{perm.as_string()};
 
 				// filter by "user" if it is not empty: that means we want all public blobs from all users
 				// if "user" is empty string.
@@ -649,13 +651,13 @@ void Ownership::query_blob(redis::Connection& db, const ObjectID& blob, Complete
 			{
 				std::string user;
 				std::string coll;
-				CollEntry   entry;
+				CollEntryDB entry;
 			};
 
 			auto kv2blob = [](auto&& kv)
 			{
 				Collection coll{kv.key()};
-				return Blob{coll.user(), coll.path(), CollEntry{kv.value().as_string()}};
+				return Blob{coll.user(), coll.path(), CollEntryDB{kv.value().as_string()}};
 			};
 			auto owned = [&user](const Blob& blob)
 			{
