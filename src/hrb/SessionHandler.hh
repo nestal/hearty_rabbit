@@ -125,6 +125,9 @@ private:
 	template <class Send>
 	void query_blob_set(const URLIntent& intent, unsigned version, Send&& send);
 
+	template <class Send>
+	void list_public_blobs(bool is_json, unsigned version, Send&& send);
+
 	std::string server_root() const;
 	void validate_collection_json(nlohmann::json& json);
 

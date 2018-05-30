@@ -573,67 +573,34 @@ void Ownership::list_public_blobs(
 	)__";
 
 	db.command(
-		[user=m_user, comp=std::forward<Complete>(complete)](auto&& reply, auto ec)
+		[user=m_user, comp=std::forward<Complete>(complete)](auto&& reply, auto ec) mutable
 		{
 			if (!reply)
 				Log(LOG_WARNING, "list_public_blobs() script return %1%", reply.as_error());
-/*
-			struct ObjectReference
-			{
-				ObjectID    blob;
-				std::string owner;
-				std::string collection;
-				CollEntry   entry;
-			};
 
-			auto reply_object_ref = [](const redis::Reply& row)
-			{
-				auto [owner, coll, blob, entry_str] = row.as_tuple<4>(ec);
-
-				std::optional<ObjectReference> result;
-				if (auto blob_id = raw_to_object_id(blob.as_string()); blob_id.has_value())
-					result = ObjectReference{
-						*blob_id,
-						owner.as_string(),
-						coll.as_string(),
-						CollEntryDB{entry_str}.fields()
-                    };
-
-				return result;
-			};
 			using namespace boost::adaptors;
-			comp(reply | transformed(reply_object_ref) | filtered(filter_))
-*/
-			auto jdoc = nlohmann::json::object();
-
-			auto elements = nlohmann::json::object();
-			for (const redis::Reply& row : reply)
-			{
-				auto [owner, coll, blob, entry_str] = row.as_tuple<4>(ec);
-
-				auto blob_id = raw_to_object_id(blob.as_string());
-				CollEntryDB entry{entry_str.as_string()};
-
-				// filter by "user" if it is not empty: that means we want all public blobs from all users
-				// if "user" is empty string.
-				if (blob_id && (user.empty() || user == owner.as_string()) && entry.permission() == Permission::public_())
+			comp(
+				reply |
+				transformed([](const redis::Reply& row)
 				{
-					try
-					{
-						auto entry_jdoc = nlohmann::json::parse(entry.json());
-						entry_jdoc.emplace("perm",  std::string{entry.permission().description()});
-						entry_jdoc.emplace("owner", std::string{owner.as_string()});
-						entry_jdoc.emplace("collection", std::string{coll.as_string()});
-						elements.emplace(to_hex(*blob_id), std::move(entry_jdoc));
-					}
-					catch (std::exception& e)
-					{
-						Log(LOG_WARNING, "exception thrown when parsing CollEntry::json(): %1% %2%", e.what(), entry.json());
-					}
-				}
-			};
-			jdoc.emplace("elements", std::move(elements));
-			comp(std::move(jdoc), ec);
+					std::error_code err;
+					auto [owner, coll, blob, entry_str] = row.as_tuple<4>(err);
+
+					std::optional<BlobRef> result;
+					if (auto blob_id = raw_to_object_id(blob.as_string()); !err && blob_id.has_value())
+						result = BlobRef{
+							std::string{owner.as_string()},
+							std::string{coll.as_string()},
+							*blob_id,
+							CollEntryDB{entry_str.as_string()}
+	                    };
+
+					return result;
+				}) |
+				filtered([](auto&& opt){return opt.has_value();}) |
+				transformed([](auto&& opt){return *opt;}),
+				ec
+			);
 		},
 		"EVAL %s 1 %b",
 		lua,
