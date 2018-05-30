@@ -12,6 +12,7 @@
 
 #include "Ownership.hh"
 #include "Permission.hh"
+#include "CollEntry.hh"
 #include "CollEntryDB.hh"
 
 #include "crypto/Authentication.hh"
