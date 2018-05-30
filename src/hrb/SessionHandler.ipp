@@ -544,13 +544,12 @@ void SessionHandler::list_public_blobs(bool is_json, unsigned version, Send&& se
 {
 	Ownership{m_auth.user()}.list_public_blobs(
 		*m_db,
-//		SendJSON{std::forward<Send>(send), version, std::nullopt, *this, !json.has_value() ? &m_lib : nullptr}
 		[send=std::forward<Send>(send), version, this, is_json](auto&& blob_refs, auto ec) mutable
 		{
 			auto jdoc = nlohmann::json::object();
 
 			auto elements = nlohmann::json::object();
-			for (const Ownership::BlobRef& bref : blob_refs)
+			for (auto&& bref : blob_refs)
 			{
 				// filter by "user" if it is not empty: that means we want all public blobs from all users
 				// if "user" is empty string.

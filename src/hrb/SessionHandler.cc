@@ -15,7 +15,7 @@
 #include "BlobDatabase.hh"
 #include "BlobFile.hh"
 #include "BlobRequest.hh"
-#include "CollEntry.hh"
+#include "hrb/common/CollEntry.hh"
 #include "Ownership.hh"
 #include "Ownership.ipp"
 #include "UploadFile.hh"
