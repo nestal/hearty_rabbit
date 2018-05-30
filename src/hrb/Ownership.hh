@@ -35,6 +35,17 @@ public:
 	/// A set of blob objects represented by a redis set.
 	class Collection;
 
+	/// \brief  A structure to store information about a blob in the database
+	/// The memory pointed by the CollEntryDB will be freed after the callback
+	/// function returns.
+	struct BlobRef
+	{
+		std::string user;
+		std::string coll;
+		ObjectID    blob;
+		CollEntryDB entry;
+	};
+
 public:
 	explicit Ownership(std::string_view name);
 
