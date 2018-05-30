@@ -16,6 +16,7 @@
 #include "CollEntryDB.hh"
 
 #include <string>
+#include <json.hpp>
 
 namespace hrb {
 
@@ -29,5 +30,7 @@ struct BlobRef
 	ObjectID    blob;
 	CollEntryDB entry;
 };
+
+void to_json(nlohmann::json& dest, const BlobRef& src);
 
 } // end of namespace
