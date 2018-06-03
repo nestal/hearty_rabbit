@@ -13,7 +13,6 @@
 #include "ObjectID.hh"
 
 #include "Blake2.hh"
-#include "util/Error.hh"
 #include "Escape.hh"
 
 #include <boost/algorithm/hex.hpp>

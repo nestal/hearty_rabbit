@@ -11,7 +11,7 @@
 //
 
 #include "Permission.hh"
-#include "crypto/Authentication.hh"
+#include "../server/crypto/Authentication.hh"
 
 namespace hrb {
 

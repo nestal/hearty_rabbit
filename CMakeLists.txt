@@ -10,10 +10,6 @@ if (NOT BUILD_NUMBER)
 endif()
 message(STATUS "Building HeartyRabbit ${VERSION}.${BUILD_NUMBER}")
 
-if (BUILD_CLIENT)
-	add_subdirectory(client/qt)
-endif()
-
 set(Boost_USE_STATIC_LIBS  ON)
 find_package(Boost REQUIRED COMPONENTS system filesystem program_options)
 find_package(Threads REQUIRED)
@@ -45,16 +41,18 @@ include_directories(
 	${Boost_INCLUDE_DIR}
 	${HIREDIS_INCLUDE_DIRS}
 	${LIBUNWIND_INCLUDE_DIRS}
-	${EXIV2_INCLUDE_DIRS}
 	${LIBB2_INCLUDE}
 	${NLOHMANN_INCLUDE}
 	${CMAKE_BINARY_DIR}
 	${PROJECT_SOURCE_DIR}/src
-	${PROJECT_SOURCE_DIR}/src/server
 )
 
 # Post-processing
 configure_file(config.hh.in config.hh)
+
+###################################################################################################
+# Generating the server resource list
+###################################################################################################
 
 # Static files served by HTTP
 file(GLOB STATIC_RESOURCES  lib/static/*)
@@ -77,11 +75,30 @@ foreach(fullpath ${DYNAMIC_RESOURCES})
 endforeach(fullpath)
 file(APPEND ${WEB_RESOURCE_LIST} "};\n}")
 
-# Put all source code in a library for unit test
-file(GLOB_RECURSE LIB_SRC src/*/*.cc src/*.hh src/*/*.ipp)
-add_library(hrblib ${LIB_SRC} ${CMAKE_CURRENT_BINARY_DIR}/config.hh)
+###################################################################################################
+# common library
+###################################################################################################
+
+# common code for both server and client
+file(GLOB_RECURSE COMMON_SRC src/common/*.cc src/common/*.hh src/common/*.ipp)
+add_library(hrbcommon ${COMMON_SRC})
 target_link_libraries(
-	hrblib
+	hrbcommon
+	${Boost_LIBRARIES}
+	${LIBB2_LIBRARY}
+	${CMAKE_THREAD_LIBS_INIT}
+)
+
+###################################################################################################
+# server library
+# all server side codes are built as a library for unit test
+###################################################################################################
+
+file(GLOB_RECURSE SERVER_SRC src/server/*.cc src/server/*.hh src/server/*.ipp)
+add_library(hrbsrv ${SERVER_SRC} ${CMAKE_CURRENT_BINARY_DIR}/config.hh)
+target_link_libraries(
+	hrbsrv
+	hrbcommon
 	magic
 	${Boost_LIBRARIES}
 	${HIREDIS_LIBRARIES}
@@ -89,19 +106,30 @@ target_link_libraries(
 	OpenSSL::Crypto
 	${OpenCV_LIBS}
 	${LIBUNWIND_STATIC_LIBRARIES}
-	${LIBB2_LIBRARY}
 	${CMAKE_THREAD_LIBS_INIT}
 )
+target_include_directories(
+	hrbsrv PUBLIC
+	${PROJECT_SOURCE_DIR}/src/server
+)
 
-# Unit tests
+###################################################################################################
+# unit tests
+###################################################################################################
+
 file(GLOB_RECURSE UNITTEST_SRC unittest/tests/unittest.cc
 	unittest/tests/*.cc unittest/tests/*/*.hh
 )
 add_executable(unittest ${UNITTEST_SRC})
-target_include_directories(unittest PRIVATE unittest/Catch2/single_include)
+target_include_directories(
+	unittest PRIVATE
+	unittest/Catch2/single_include
+	${PROJECT_SOURCE_DIR}/src/server
+	${EXIV2_INCLUDE_DIRS}
+)
 target_link_libraries(
 	unittest
-	hrblib
+	hrbsrv
 	${EXIV2_LIBRARIES}		# exiv2 is used to verify the EXIF decoder
 )
 
@@ -117,13 +145,24 @@ add_custom_command(
 	COMMAND unittest
 )
 
-# StartServer executable
+###################################################################################################
+# Main server executable
+###################################################################################################
+
 add_executable(hearty_rabbit src/server/main.cc)
 target_link_libraries(
 	hearty_rabbit
-	hrblib
+	hrbsrv
 )
 add_dependencies(hearty_rabbit unittest)
+
+if (BUILD_CLIENT)
+	add_subdirectory(client/qt)
+endif()
+
+###################################################################################################
+# Doxygen
+###################################################################################################
 
 if (DOXYGEN_FOUND)
 	configure_file(doc/Doxyfile.in Doxyfile @ONLY)
@@ -138,7 +177,10 @@ else()
 	message(STATUS "No Doxygen found. Documentation won't be built")
 endif()
 
+###################################################################################################
 # Installation
+###################################################################################################
+
 install(TARGETS hearty_rabbit DESTINATION bin)
 install(DIRECTORY lib/ DESTINATION lib)
 
