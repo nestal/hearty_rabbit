@@ -13,7 +13,7 @@
 #include <catch.hpp>
 
 #include "common/URLIntent.hh"
-#include "util/Escape.hh"
+#include "common/Escape.hh"
 
 using namespace hrb;
 

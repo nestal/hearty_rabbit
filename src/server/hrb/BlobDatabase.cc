@@ -20,7 +20,7 @@
 // Other modules in hearty rabbit
 #include "net/MMapResponseBody.hh"
 #include "util/Configuration.hh"
-#include "util/Escape.hh"
+#include "common/Escape.hh"
 #include "util/Log.hh"
 #include "util/Magic.hh"
 

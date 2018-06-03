@@ -12,9 +12,9 @@
 
 #include "ObjectID.hh"
 
-#include "crypto/Blake2.hh"
+#include "Blake2.hh"
 #include "util/Error.hh"
-#include "util/Escape.hh"
+#include "Escape.hh"
 
 #include <boost/algorithm/hex.hpp>
 #include <openssl/evp.h>

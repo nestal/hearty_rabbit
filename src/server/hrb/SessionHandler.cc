@@ -31,7 +31,7 @@
 #include "net/MMapResponseBody.hh"
 
 #include "util/Configuration.hh"
-#include "util/Escape.hh"
+#include "common/Escape.hh"
 #include "util/FS.hh"
 #include "util/Log.hh"
 #include "hrb/index/PHashDb.hh"

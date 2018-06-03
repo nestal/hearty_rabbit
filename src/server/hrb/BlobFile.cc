@@ -17,7 +17,7 @@
 #include "image/EXIF2.hh"
 #include "image/PHash.hh"
 #include "util/Configuration.hh"
-#include "util/Escape.hh"
+#include "common/Escape.hh"
 #include "util/Log.hh"
 #include "util/Magic.hh"
 #include "util/MMap.hh"

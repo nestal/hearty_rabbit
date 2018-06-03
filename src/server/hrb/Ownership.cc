@@ -15,7 +15,7 @@
 #include "BlobDatabase.hh"
 
 #include "util/Log.hh"
-#include "util/Escape.hh"
+#include "common/Escape.hh"
 
 #include <json.hpp>
 #include <sstream>

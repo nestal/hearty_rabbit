@@ -15,8 +15,8 @@
 #include "ObjectID.hh"
 #include "server/hrb/CollEntryDB.hh"
 
-#include "../../../../../../usr/include/c++/8/string"
-#include "../../../nlohmann/include/json.hpp"
+#include <string>
+#include <json.hpp>
 
 namespace hrb {
 

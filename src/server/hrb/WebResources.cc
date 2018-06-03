@@ -14,8 +14,8 @@
 
 #include "common/ObjectID.hh"
 #include "ResourcesList.hh"
-#include "crypto/Blake2.hh"
-#include "util/Escape.hh"
+#include "common/Blake2.hh"
+#include "common/Escape.hh"
 
 #include <boost/exception/info.hpp>
 

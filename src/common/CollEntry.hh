@@ -15,7 +15,7 @@
 #include "Permission.hh"
 #include "Timestamp.hh"
 
-#include "../../../nlohmann/include/json.hpp"
+#include <json.hpp>
 
 namespace hrb {
 

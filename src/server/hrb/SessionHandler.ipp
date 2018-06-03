@@ -26,7 +26,7 @@
 #include "crypto/Authentication.ipp"
 #include "net/MMapResponseBody.hh"
 #include "util/Log.hh"
-#include "util/Escape.hh"
+#include "common/Escape.hh"
 
 #include <boost/beast/http/fields.hpp>
 #include <boost/beast/http/message.hpp>

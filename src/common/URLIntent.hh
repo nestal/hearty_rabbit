@@ -12,11 +12,11 @@
 
 #pragma once
 
-#include "../../../boost_1_67_0/include/boost/utility/string_view.hpp"
+#include <boost/utility/string_view.hpp>
 
-#include "../../../../../../usr/include/c++/8/array"
-#include "../../../../../../usr/include/c++/8/string_view"
-#include "../../../../../../usr/include/c++/8/vector"
+#include <array>
+#include <string_view>
+#include <vector>
 
 namespace hrb {
 

@@ -16,7 +16,7 @@
 #include "crypto/Random.hh"
 #include "net/Redis.hh"
 #include "util/Error.hh"
-#include "util/Escape.hh"
+#include "common/Escape.hh"
 #include "util/Log.hh"
 
 #include <boost/algorithm/hex.hpp>
