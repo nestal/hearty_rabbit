@@ -49,6 +49,7 @@ include_directories(
 	${LIBB2_INCLUDE}
 	${NLOHMANN_INCLUDE}
 	${CMAKE_BINARY_DIR}
+	${PROJECT_SOURCE_DIR}/src
 	${PROJECT_SOURCE_DIR}/src/server
 )
 

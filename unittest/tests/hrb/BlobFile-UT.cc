@@ -13,7 +13,7 @@
 #include <catch.hpp>
 
 #include "hrb/BlobFile.hh"
-#include "hrb/common/CollEntryDB.hh"
+#include "hrb/CollEntryDB.hh"
 #include "hrb/UploadFile.hh"
 
 #include "util/MMap.hh"

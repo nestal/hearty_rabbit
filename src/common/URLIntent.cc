@@ -11,9 +11,9 @@
 //
 
 #include "URLIntent.hh"
+#include "ObjectID.hh"
 
 #include "util/Escape.hh"
-#include "hrb/common/ObjectID.hh"
 
 #include <sstream>
 #include <cassert>

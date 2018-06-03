@@ -12,8 +12,8 @@
 
 #pragma once
 
-#include "hrb/common/ObjectID.hh"
-#include "URLIntent.hh"
+#include "common/ObjectID.hh"
+#include "common/URLIntent.hh"
 #include "net/Request.hh"
 
 #include <string_view>

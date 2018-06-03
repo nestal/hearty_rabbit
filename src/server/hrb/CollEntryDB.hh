@@ -12,8 +12,8 @@
 
 #pragma once
 
-#include "Permission.hh"
-#include "Timestamp.hh"
+#include "common/Permission.hh"
+#include "common/Timestamp.hh"
 
 #include <json.hpp>
 #include <string>

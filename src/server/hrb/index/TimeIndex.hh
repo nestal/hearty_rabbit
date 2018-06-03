@@ -12,7 +12,7 @@
 
 #pragma once
 
-#include "hrb/common/ObjectID.hh"
+#include "common/ObjectID.hh"
 #include "net/Redis.hh"
 
 #include <chrono>

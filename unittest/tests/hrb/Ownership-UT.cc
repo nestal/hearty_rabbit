@@ -16,7 +16,7 @@
 #include "hrb/Ownership.ipp"
 #include "hrb/BlobDatabase.hh"
 #include "hrb/UploadFile.hh"
-#include "hrb/common/Permission.hh"
+#include "common/Permission.hh"
 #include "crypto/Random.hh"
 
 #include <boost/algorithm/string.hpp>

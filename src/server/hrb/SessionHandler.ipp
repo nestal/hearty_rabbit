@@ -18,7 +18,7 @@
 #include "BlobDatabase.hh"
 #include "Ownership.ipp"
 #include "UploadFile.hh"
-#include "URLIntent.hh"
+#include "../../common/URLIntent.hh"
 #include "WebResources.hh"
 #include "index/PHashDb.hh"
 

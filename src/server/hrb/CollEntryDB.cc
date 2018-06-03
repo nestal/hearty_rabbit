@@ -11,7 +11,7 @@
 //
 
 #include "CollEntryDB.hh"
-#include "hrb/common/CollEntry.hh"
+#include "common/CollEntry.hh"
 
 #include <cassert>
 #include <sstream>

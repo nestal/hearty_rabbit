@@ -14,7 +14,7 @@
 
 #include "Request.hh"
 #include "hrb/UploadFile.hh"
-#include "hrb/URLIntent.hh"
+#include "../../common/URLIntent.hh"
 #include "hrb/SessionHandler.hh"
 
 #include <boost/beast/core.hpp>

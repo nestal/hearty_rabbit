@@ -15,12 +15,13 @@
 #include "BlobDatabase.hh"
 #include "BlobFile.hh"
 #include "BlobRequest.hh"
-#include "hrb/common/CollEntry.hh"
 #include "Ownership.hh"
 #include "Ownership.ipp"
 #include "UploadFile.hh"
-#include "URLIntent.hh"
 #include "WebResources.hh"
+
+#include "common/CollEntry.hh"
+#include "common/URLIntent.hh"
 
 #include "crypto/Password.hh"
 #include "crypto/Authentication.hh"

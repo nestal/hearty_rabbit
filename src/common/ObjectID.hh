@@ -12,7 +12,7 @@
 
 #pragma once
 
-#include "crypto/Blake2.hh"
+#include "../server/crypto/Blake2.hh"
 
 #include <array>
 #include <iosfwd>
