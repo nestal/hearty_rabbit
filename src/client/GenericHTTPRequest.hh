@@ -42,19 +42,23 @@ class GenericHTTPRequest : public std::enable_shared_from_this<
 {
 public:
 	// Resolver and stream require an io_context
-	template <typename Comp>
-	explicit GenericHTTPRequest(boost::asio::io_context& ioc, ssl::context& ctx, Comp&& comp) :
-		m_resolver(ioc), m_stream(ioc, ctx), m_comp{std::forward<Comp>(comp)}
+	explicit GenericHTTPRequest(boost::asio::io_context& ioc, ssl::context& ctx) :
+		m_resolver(ioc), m_stream(ioc, ctx)
 	{
 	}
 
 	auto& response() {return m_res;}
+	auto& request() {return m_req;}
+
+	template <typename Comp>
+	void on_load(Comp&& comp) {m_comp = std::forward<Comp>(comp);}
 
 	// Start the asynchronous operation
 	void run(
 		std::string_view host,
 		std::string_view port,
 		std::string_view target,
+		http::verb method,
 		int version
 	)
 	{
@@ -67,7 +71,7 @@ public:
 
 		// Set up an HTTP GET request message
 		m_req.version(version);
-		m_req.method(http::verb::get);
+		m_req.method(method);
 		m_req.target(std::string{target});
 		m_req.set(http::field::host, host);
 		m_req.set(http::field::user_agent, BOOST_BEAST_VERSION_STRING);
@@ -160,7 +164,7 @@ private:
 		if (ec)
 			return fail(ec, "read");
 
-		m_comp(*this);
+		m_comp(ec, *this);
 
 		// Gracefully close the stream
 		m_stream.async_shutdown(
@@ -192,7 +196,7 @@ private:
 	http::request<RequestBody> m_req;
 	http::response<ResponseBody> m_res;
 
-	std::function<void(GenericHTTPRequest&)> m_comp;
+	std::function<void(std::error_code, GenericHTTPRequest&)> m_comp;
 };
 
 } // end of namespace hrb

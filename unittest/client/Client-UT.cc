@@ -31,10 +31,12 @@ TEST_CASE("simple client test", "[normal]")
 	ssl::context ctx{ssl::context::sslv23_client};
 
 	// Launch the asynchronous operation
-	std::make_shared<GenericHTTPRequest<http::empty_body, http::string_body>>(ioc, ctx, [](auto& req)
+	auto req = std::make_shared<GenericHTTPRequest<http::empty_body, http::string_body>>(ioc, ctx);
+	req->on_load([](auto ec, auto& req)
 	{
-		std::cout << req.response() << std::endl;
-	})->run(host, port, target, version);
+		std::cout << ec << " " << req.response() << std::endl;
+	});
+	req->run(host, port, target, http::verb::get, version);
 
 	// Run the I/O service. The call will return when
 	// the get operation is complete.
