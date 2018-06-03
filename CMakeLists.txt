@@ -17,6 +17,7 @@ find_package(PkgConfig REQUIRED)
 find_package(OpenSSL REQUIRED)
 find_package(OpenCV REQUIRED core imgproc imgcodecs)
 find_package(Doxygen)
+find_package(CURL)
 
 # Find libb2
 find_library(LIBB2_LIBRARY libb2.a b2 PATHS lib)
@@ -112,6 +113,32 @@ target_include_directories(
 	hrbsrv PUBLIC
 	${PROJECT_SOURCE_DIR}/src/server
 )
+
+###################################################################################################
+# client library
+###################################################################################################
+
+if (CURL_FOUND)
+	message(STATUS "building client library")
+	file(GLOB_RECURSE CLIENT_SRC src/client/*.cc src/client/*.hh src/client/*.ipp)
+	add_library(hrbclient ${CLIENT_SRC})
+	target_link_libraries(
+		hrbclient
+		hrbcommon
+		${Boost_LIBRARIES}
+		OpenSSL::SSL
+		OpenSSL::Crypto
+		${OpenCV_LIBS}
+		${LIBUNWIND_STATIC_LIBRARIES}
+		${CURL_LIBRARIES}
+		${CMAKE_THREAD_LIBS_INIT}
+	)
+	target_include_directories(
+		hrbsrv PUBLIC
+		${PROJECT_SOURCE_DIR}/src/client
+		${CURL_INCLUDE_DIRS}
+	)
+endif()
 
 ###################################################################################################
 # unit tests
