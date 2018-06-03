@@ -6,7 +6,7 @@ import urllib.parse
 
 # download all images from nestal.net to local
 source_site = "https://www.nestal.net"
-dest_site = "https://localhost:4433"
+dest_site = "https://beta.nestal.net"
 user = sys.argv[1]
 
 # connect to the source site
@@ -16,19 +16,19 @@ login_response = source.post(
 	data="username=" + user + "&password=" + sys.argv[2],
 	headers={"Content-type": "application/x-www-form-urlencoded"}
 )
-if login_response.status_code != 200 or source.cookies.get("id") == "":
+if login_response.status_code != 204 or source.cookies.get("id") == "":
 	print("source site login incorrect")
 	exit(-1)
 
 # connect to the destination site
 dest = requests.Session()
-dest.verify = "../../etc/hearty_rabbit/certificate.pem"
+#dest.verify = "../../etc/hearty_rabbit/certificate.pem"
 login_response = dest.post(
 	dest_site + "/login",
 	data="username=" + user + "&password=" + sys.argv[2],
 	headers={"Content-type": "application/x-www-form-urlencoded"}
 )
-if login_response.status_code != 200 or source.cookies.get("id") == "":
+if login_response.status_code != 204 or source.cookies.get("id") == "":
 	print("destination site login incorrect")
 	exit(-1)
 
@@ -40,12 +40,12 @@ if album_list.status_code != 200:
 for album_name in album_list.json()["colls"].keys():
 	print(album_name)
 
-	album = source.get(source_site + "/view/" + user + "/" + album_name + "?json")
+	album = source.get(source_site + "/api/" + user + "/" + album_name + "?json")
 	print(album.json()["elements"])
 
 	for blobid, coll_entry in album.json()["elements"].items():
 		print(blobid + "-> " + coll_entry["filename"])
-		source_url = source_site + "/view/" + user + "/" + urllib.parse.quote_plus(album_name) + "/" + blobid + "?master"
+		source_url = source_site + "/api/" + user + "/" + urllib.parse.quote_plus(album_name) + "/" + blobid + "?master"
 		dest_url = dest_site + "/upload/" + user + "/" + urllib.parse.quote_plus(album_name) + "/" + urllib.parse.quote_plus(coll_entry["filename"])
 		permission = coll_entry["perm"]
 
