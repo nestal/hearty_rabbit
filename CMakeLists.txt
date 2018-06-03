@@ -49,7 +49,7 @@ include_directories(
 	${LIBB2_INCLUDE}
 	${NLOHMANN_INCLUDE}
 	${CMAKE_BINARY_DIR}
-	${PROJECT_SOURCE_DIR}/src
+	${PROJECT_SOURCE_DIR}/src/server
 )
 
 # Post-processing
@@ -77,7 +77,7 @@ endforeach(fullpath)
 file(APPEND ${WEB_RESOURCE_LIST} "};\n}")
 
 # Put all source code in a library for unit test
-file(GLOB_RECURSE LIB_SRC src/*.cc src/*.hh src/*.ipp)
+file(GLOB_RECURSE LIB_SRC src/*/*.cc src/*.hh src/*/*.ipp)
 add_library(hrblib ${LIB_SRC} ${CMAKE_CURRENT_BINARY_DIR}/config.hh)
 target_link_libraries(
 	hrblib
@@ -117,7 +117,7 @@ add_custom_command(
 )
 
 # StartServer executable
-add_executable(hearty_rabbit src/main.cc)
+add_executable(hearty_rabbit src/server/main.cc)
 target_link_libraries(
 	hearty_rabbit
 	hrblib
