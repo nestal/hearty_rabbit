@@ -212,7 +212,7 @@ nlohmann::json Ownership::Collection::serialize(const redis::Reply& reply, const
 		CollEntryDB entry{perm.as_string()};
 
 		// check permission: allow allow owner (i.e. m_user)
-		if (blob_id && entry.permission().allow(requester, owner))
+		if (blob_id && entry.permission().allow(requester.id(), owner))
 		{
 			auto entry_jdoc = nlohmann::json::parse(entry.json(), nullptr, false);
 			if (!entry_jdoc.is_discarded())

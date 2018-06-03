@@ -360,7 +360,7 @@ void SessionHandler::get_blob(const BlobRequest& req, Send&& send)
 			if (ec)
 				return send(http::response<http::empty_body>{http::status::internal_server_error, req.version()});
 
-			if (!entry.permission().allow(m_auth, req.owner()))
+			if (!entry.permission().allow(m_auth.id(), req.owner()))
 				return send(http::response<http::empty_body>{http::status::forbidden, req.version()});
 
 			auto [rendition] = find_fields(req.option(), "rendition");

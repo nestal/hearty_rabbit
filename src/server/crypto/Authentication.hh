@@ -98,6 +98,7 @@ public:
 	// TODO: update UT so that we don't need a default argument
 	std::string set_cookie(std::chrono::seconds session_length = std::chrono::seconds{3600}) const;
 
+	const UserID& id() const {return m_uid;}
 	const Cookie& cookie() const {return m_uid.cookie();}
 	const std::string& user() const {return m_uid.user();}
 	bool is_guest() const {return m_uid.is_guest();}

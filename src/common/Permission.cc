@@ -11,7 +11,7 @@
 //
 
 #include "Permission.hh"
-#include "../server/crypto/Authentication.hh"
+#include "UserID.hh"
 
 namespace hrb {
 
@@ -19,7 +19,7 @@ Permission::Permission(char perm) : m_perm{perm}
 {
 }
 
-bool Permission::allow(const Authentication& requester, std::string_view owner)
+bool Permission::allow(const UserID& requester, std::string_view owner)
 {
 	switch (m_perm)
 	{

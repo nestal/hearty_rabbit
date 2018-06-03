@@ -16,7 +16,7 @@
 
 namespace hrb {
 
-class Authentication;
+class UserID;
 
 class Permission
 {
@@ -30,7 +30,7 @@ public:
 	static Permission public_();
 	static Permission private_();
 
-	bool allow(const Authentication& requester, std::string_view owner);
+	bool allow(const UserID& requester, std::string_view owner);
 
 	std::string_view str() const {return {&m_perm, 1};}
 	std::string_view description() const;
