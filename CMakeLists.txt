@@ -17,7 +17,6 @@ find_package(PkgConfig REQUIRED)
 find_package(OpenSSL REQUIRED)
 find_package(OpenCV REQUIRED core imgproc imgcodecs)
 find_package(Doxygen)
-find_package(CURL)
 
 # Find libb2
 find_library(LIBB2_LIBRARY libb2.a b2 PATHS lib)
@@ -136,24 +135,21 @@ target_include_directories(
 )
 
 ###################################################################################################
-# unit tests
+# server-side unit tests: test cases for the server-side code
+# Server will fail to built if any of these test cases failed.
 ###################################################################################################
 
-file(GLOB_RECURSE UNITTEST_SRC unittest/tests/unittest.cc
-	unittest/tests/*.cc unittest/tests/*/*.hh
-)
-add_executable(unittest ${UNITTEST_SRC})
+file(GLOB_RECURSE SRV_UT_SRC unittest/tests/*.cc unittest/tests/*/*.hh)
+add_executable(unittest ${SRV_UT_SRC})
 target_include_directories(
 	unittest PRIVATE
 	unittest/Catch2/single_include
 	${PROJECT_SOURCE_DIR}/src/server
-	${PROJECT_SOURCE_DIR}/src/client
 	${EXIV2_INCLUDE_DIRS}
 )
 target_link_libraries(
 	unittest
 	hrbsrv
-	hrbclient
 	${EXIV2_LIBRARIES}		# exiv2 is used to verify the EXIF decoder
 )
 
@@ -167,6 +163,23 @@ add_custom_command(
 	POST_BUILD
 	WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
 	COMMAND unittest
+)
+
+###################################################################################################
+# client-side unit tests: test cases for the client-side code
+# These test cases requires the server to be running.
+###################################################################################################
+
+file(GLOB_RECURSE CLIENT_UT_SRC unittest/client/*.cc unittest/client/*/*.hh)
+add_executable(clienttest ${CLIENT_UT_SRC})
+target_include_directories(
+	clienttest PRIVATE
+	unittest/Catch2/single_include
+	${PROJECT_SOURCE_DIR}/src/client
+)
+target_link_libraries(
+	clienttest
+	hrbclient
 )
 
 ###################################################################################################
