@@ -118,27 +118,22 @@ target_include_directories(
 # client library
 ###################################################################################################
 
-if (CURL_FOUND)
-	message(STATUS "building client library")
-	file(GLOB_RECURSE CLIENT_SRC src/client/*.cc src/client/*.hh src/client/*.ipp)
-	add_library(hrbclient ${CLIENT_SRC})
-	target_link_libraries(
-		hrbclient
-		hrbcommon
-		${Boost_LIBRARIES}
-		OpenSSL::SSL
-		OpenSSL::Crypto
-		${OpenCV_LIBS}
-		${LIBUNWIND_STATIC_LIBRARIES}
-		${CURL_LIBRARIES}
-		${CMAKE_THREAD_LIBS_INIT}
-	)
-	target_include_directories(
-		hrbsrv PUBLIC
-		${PROJECT_SOURCE_DIR}/src/client
-		${CURL_INCLUDE_DIRS}
-	)
-endif()
+file(GLOB_RECURSE CLIENT_SRC src/client/*.cc src/client/*.hh src/client/*.ipp)
+add_library(hrbclient ${CLIENT_SRC})
+target_link_libraries(
+	hrbclient
+	hrbcommon
+	${Boost_LIBRARIES}
+	OpenSSL::SSL
+	OpenSSL::Crypto
+	${OpenCV_LIBS}
+	${LIBUNWIND_STATIC_LIBRARIES}
+	${CMAKE_THREAD_LIBS_INIT}
+)
+target_include_directories(
+	hrbclient PUBLIC
+	${PROJECT_SOURCE_DIR}/src/client
+)
 
 ###################################################################################################
 # unit tests
@@ -152,11 +147,13 @@ target_include_directories(
 	unittest PRIVATE
 	unittest/Catch2/single_include
 	${PROJECT_SOURCE_DIR}/src/server
+	${PROJECT_SOURCE_DIR}/src/client
 	${EXIV2_INCLUDE_DIRS}
 )
 target_link_libraries(
 	unittest
 	hrbsrv
+	hrbclient
 	${EXIV2_LIBRARIES}		# exiv2 is used to verify the EXIF decoder
 )
 
