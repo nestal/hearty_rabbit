@@ -24,7 +24,7 @@ docker run -t --detach --rm \
     nestal/hearty_rabbit
 
 # Run python unit tests
-pushd unittest/client
+pushd unittest/python
 python3 upload_blob.py || { echo "auto system test failed!"; docker stop hb_test; exit 1;}
 popd
 

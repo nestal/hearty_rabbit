@@ -10,7 +10,7 @@
 // Created by nestal on 1/22/18.
 //
 
-#include "util/Escape.hh"
+#include "common/Escape.hh"
 
 #include <catch.hpp>
 #include <optional>

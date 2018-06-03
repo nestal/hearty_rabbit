@@ -41,7 +41,6 @@ include_directories(
 	${Boost_INCLUDE_DIR}
 	${HIREDIS_INCLUDE_DIRS}
 	${LIBUNWIND_INCLUDE_DIRS}
-	${EXIV2_INCLUDE_DIRS}
 	${LIBB2_INCLUDE}
 	${NLOHMANN_INCLUDE}
 	${CMAKE_BINARY_DIR}
@@ -50,6 +49,10 @@ include_directories(
 
 # Post-processing
 configure_file(config.hh.in config.hh)
+
+###################################################################################################
+# Generating the server resource list
+###################################################################################################
 
 # Static files served by HTTP
 file(GLOB STATIC_RESOURCES  lib/static/*)
@@ -72,11 +75,30 @@ foreach(fullpath ${DYNAMIC_RESOURCES})
 endforeach(fullpath)
 file(APPEND ${WEB_RESOURCE_LIST} "};\n}")
 
-# Put all source code in a library for unit test
-file(GLOB LIB_SRC src/*/*.cc src/*/*.hh src/*/*.ipp src/*/*/*.cc src/*/*/*.hh)
-add_library(hrblib ${LIB_SRC} ${CMAKE_CURRENT_BINARY_DIR}/config.hh)
+###################################################################################################
+# common library
+###################################################################################################
+
+# common code for both server and client
+file(GLOB_RECURSE COMMON_SRC src/common/*.cc src/common/*.hh src/common/*.ipp)
+add_library(hrbcommon ${COMMON_SRC})
 target_link_libraries(
-	hrblib
+	hrbcommon
+	${Boost_LIBRARIES}
+	${LIBB2_LIBRARY}
+	${CMAKE_THREAD_LIBS_INIT}
+)
+
+###################################################################################################
+# server library
+# all server side codes are built as a library for unit test
+###################################################################################################
+
+file(GLOB_RECURSE SERVER_SRC src/server/*.cc src/server/*.hh src/server/*.ipp)
+add_library(hrbsrv ${SERVER_SRC} ${CMAKE_CURRENT_BINARY_DIR}/config.hh)
+target_link_libraries(
+	hrbsrv
+	hrbcommon
 	magic
 	${Boost_LIBRARIES}
 	${HIREDIS_LIBRARIES}
@@ -84,20 +106,50 @@ target_link_libraries(
 	OpenSSL::Crypto
 	${OpenCV_LIBS}
 	${LIBUNWIND_STATIC_LIBRARIES}
-	${LIBB2_LIBRARY}
 	${CMAKE_THREAD_LIBS_INIT}
 )
-
-# Unit tests
-file(GLOB UNITTEST_SRC unittest/tests/unittest.cc
-	unittest/tests/*/*.cc unittest/tests/*/*.hh
-	unittest/tests/*/*/*.cc unittest/tests/*/*/*.hh
+target_include_directories(
+	hrbsrv PUBLIC
+	${PROJECT_SOURCE_DIR}/src/server
 )
-add_executable(unittest ${UNITTEST_SRC})
-target_include_directories(unittest PRIVATE unittest/Catch2/single_include)
+
+###################################################################################################
+# client library
+###################################################################################################
+
+file(GLOB_RECURSE CLIENT_SRC src/client/*.cc src/client/*.hh src/client/*.ipp)
+add_library(hrbclient ${CLIENT_SRC})
+target_link_libraries(
+	hrbclient
+	hrbcommon
+	${Boost_LIBRARIES}
+	OpenSSL::SSL
+	OpenSSL::Crypto
+	${OpenCV_LIBS}
+	${LIBUNWIND_STATIC_LIBRARIES}
+	${CMAKE_THREAD_LIBS_INIT}
+)
+target_include_directories(
+	hrbclient PUBLIC
+	${PROJECT_SOURCE_DIR}/src/client
+)
+
+###################################################################################################
+# server-side unit tests: test cases for the server-side code
+# Server will fail to built if any of these test cases failed.
+###################################################################################################
+
+file(GLOB_RECURSE SRV_UT_SRC unittest/tests/*.cc unittest/tests/*/*.hh)
+add_executable(unittest ${SRV_UT_SRC})
+target_include_directories(
+	unittest PRIVATE
+	unittest/Catch2/single_include
+	${PROJECT_SOURCE_DIR}/src/server
+	${EXIV2_INCLUDE_DIRS}
+)
 target_link_libraries(
 	unittest
-	hrblib
+	hrbsrv
 	${EXIV2_LIBRARIES}		# exiv2 is used to verify the EXIF decoder
 )
 
@@ -113,13 +165,41 @@ add_custom_command(
 	COMMAND unittest
 )
 
-# StartServer executable
-add_executable(hearty_rabbit src/main.cc)
+###################################################################################################
+# client-side unit tests: test cases for the client-side code
+# These test cases requires the server to be running.
+###################################################################################################
+
+file(GLOB_RECURSE CLIENT_UT_SRC unittest/client/*.cc unittest/client/*/*.hh)
+add_executable(clienttest ${CLIENT_UT_SRC})
+target_include_directories(
+	clienttest PRIVATE
+	unittest/Catch2/single_include
+	${PROJECT_SOURCE_DIR}/src/client
+)
+target_link_libraries(
+	clienttest
+	hrbclient
+)
+
+###################################################################################################
+# Main server executable
+###################################################################################################
+
+add_executable(hearty_rabbit src/server/main.cc)
 target_link_libraries(
 	hearty_rabbit
-	hrblib
+	hrbsrv
 )
 add_dependencies(hearty_rabbit unittest)
+
+if (BUILD_CLIENT)
+	add_subdirectory(client/qt)
+endif()
+
+###################################################################################################
+# Doxygen
+###################################################################################################
 
 if (DOXYGEN_FOUND)
 	configure_file(doc/Doxyfile.in Doxyfile @ONLY)
@@ -134,7 +214,10 @@ else()
 	message(STATUS "No Doxygen found. Documentation won't be built")
 endif()
 
+###################################################################################################
 # Installation
+###################################################################################################
+
 install(TARGETS hearty_rabbit DESTINATION bin)
 install(DIRECTORY lib/ DESTINATION lib)
 

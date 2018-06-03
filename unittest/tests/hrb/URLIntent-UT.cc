@@ -12,8 +12,8 @@
 
 #include <catch.hpp>
 
-#include "hrb/URLIntent.hh"
-#include "util/Escape.hh"
+#include "common/URLIntent.hh"
+#include "common/Escape.hh"
 
 using namespace hrb;
 
