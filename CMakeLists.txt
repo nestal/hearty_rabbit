@@ -77,7 +77,7 @@ endforeach(fullpath)
 file(APPEND ${WEB_RESOURCE_LIST} "};\n}")
 
 # Put all source code in a library for unit test
-file(GLOB LIB_SRC src/*/*.cc src/*/*.hh src/*/*.ipp src/*/*/*.cc src/*/*/*.hh)
+file(GLOB_RECURSE LIB_SRC src/*.cc src/*.hh src/*.ipp)
 add_library(hrblib ${LIB_SRC} ${CMAKE_CURRENT_BINARY_DIR}/config.hh)
 target_link_libraries(
 	hrblib
@@ -93,9 +93,8 @@ target_link_libraries(
 )
 
 # Unit tests
-file(GLOB UNITTEST_SRC unittest/tests/unittest.cc
-	unittest/tests/*/*.cc unittest/tests/*/*.hh
-	unittest/tests/*/*/*.cc unittest/tests/*/*/*.hh
+file(GLOB_RECURSE UNITTEST_SRC unittest/tests/unittest.cc
+	unittest/tests/*.cc unittest/tests/*/*.hh
 )
 add_executable(unittest ${UNITTEST_SRC})
 target_include_directories(unittest PRIVATE unittest/Catch2/single_include)
