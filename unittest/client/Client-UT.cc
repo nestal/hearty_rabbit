@@ -11,9 +11,10 @@
 //
 
 #include <catch.hpp>
-#include <iostream>
 
 #include "client/GenericHTTPRequest.hh"
+#include "client/HRBClient.hh"
+#include <iostream>
 
 using namespace hrb;
 
@@ -36,9 +37,26 @@ TEST_CASE("simple client test", "[normal]")
 	{
 		std::cout << ec << " " << req.response() << std::endl;
 	});
-	req->run(host, port, target, http::verb::get, version);
+	req->init(host, port, target, http::verb::get, version);
+	req->run();
 
 	// Run the I/O service. The call will return when
 	// the get operation is complete.
+	ioc.run();
+}
+
+TEST_CASE("simple client login", "[normal]")
+{
+	boost::asio::io_context ioc;
+	ssl::context ctx{ssl::context::sslv23_client};
+
+	HRBClient subject{ioc, ctx, "localhost", "4433"};
+	auto req = subject.login("sumsum", "bearbear");
+	req->on_load([](auto ec, auto& req)
+	{
+		std::cout << ec << " " << req.response() << std::endl;
+	});
+	req->run();
+
 	ioc.run();
 }

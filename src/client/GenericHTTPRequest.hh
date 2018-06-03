@@ -54,12 +54,12 @@ public:
 	void on_load(Comp&& comp) {m_comp = std::forward<Comp>(comp);}
 
 	// Start the asynchronous operation
-	void run(
+	void init(
 		std::string_view host,
 		std::string_view port,
 		std::string_view target,
 		http::verb method,
-		int version
+		int version = 11
 	)
 	{
 		// Set SNI Hostname (many hosts need this to handshake successfully)
@@ -69,17 +69,23 @@ public:
 			return fail(ec, "SSL_set_tlsext_host_name");
 		}
 
+		m_host = host;
+		m_port = port;
+
 		// Set up an HTTP GET request message
 		m_req.version(version);
 		m_req.method(method);
 		m_req.target(std::string{target});
 		m_req.set(http::field::host, host);
 		m_req.set(http::field::user_agent, BOOST_BEAST_VERSION_STRING);
+	}
 
+	void run()
+	{
 		// Look up the domain name
 		m_resolver.async_resolve(
-			host,
-			port,
+			m_host,
+			m_port,
 			[self=this->shared_from_this()](auto ec, auto&& results){self->on_resolve(ec, std::move(results));}
 		);
 	}
@@ -123,6 +129,9 @@ private:
 	{
 		if (ec)
 			return fail(ec, "handshake");
+
+		m_req.prepare_payload();
+//		std::cout << "request = " << m_req << std::endl;
 
 		// Send the HTTP request to the remote host
 		http::async_write(
@@ -197,6 +206,7 @@ private:
 	http::response<ResponseBody> m_res;
 
 	std::function<void(std::error_code, GenericHTTPRequest&)> m_comp;
+	std::string m_host, m_port;
 };
 
 } // end of namespace hrb

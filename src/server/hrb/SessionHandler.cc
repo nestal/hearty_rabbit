@@ -83,10 +83,6 @@ void SessionHandler::on_login(const StringRequest& req, EmptyResponseSender&& se
 				send=std::move(send)
 			](std::error_code ec, auto&& session) mutable
 			{
-				// testing
-//				using namespace std::chrono_literals;
-//				std::this_thread::sleep_for(10s);
-
 				http::response<http::empty_body> res{
 					ec == Error::login_incorrect ?
 						http::status::forbidden :
