@@ -13,7 +13,9 @@
 #pragma once
 
 #include "ui_MainWindow.h"
-#include <QMainWindow>
+
+#include <QtWidgets/QMainWindow>
+#include <QtNetwork/QNetworkAccessManager>
 
 class QFileSystemModel;
 
@@ -25,8 +27,12 @@ public:
 	MainWindow();
 
 private:
+	void list_hrb();
+
+private:
 	Ui::MainWindow      m_;
 	QFileSystemModel    *m_fs_model{};
+	QNetworkAccessManager   m_nam;
 };
 
 } // end of namespace hrb

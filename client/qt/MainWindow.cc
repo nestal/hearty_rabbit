@@ -14,6 +14,9 @@
 
 #include <QAction>
 #include <QFileSystemModel>
+#include <QtNetwork/QNetworkReply>
+
+#include <iostream>
 
 namespace hrb {
 
@@ -32,6 +35,17 @@ MainWindow::MainWindow() :
 		m_.local_fs->setColumnHidden(i, true);
 
 	connect(m_.action_exit, &QAction::triggered, []{QApplication::quit();});
+
+	list_hrb();
+}
+
+void MainWindow::list_hrb()
+{
+	auto reply = m_nam.get(QNetworkRequest{QUrl::fromUserInput("https://www.nestal.net/api/nestal/")});
+	connect(reply, &QNetworkReply::finished, [reply]
+	{
+		std::cout << "read reply = " << QString::fromUtf8(reply->readAll()).toStdString() << std::endl;
+	});
 }
 
 } // end of namespace hrb
