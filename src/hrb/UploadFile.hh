@@ -12,7 +12,7 @@
 
 #pragma once
 
-#include "ObjectID.hh"
+#include "hrb/common/ObjectID.hh"
 #include "util/FS.hh"
 #include "net/Request.hh"
 

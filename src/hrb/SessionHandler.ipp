@@ -243,10 +243,7 @@ void SessionHandler::on_request_body(Request&& req, Send&& send)
 					*m_db,
 					SendJSON{std::move(send), req.version(), std::nullopt, *this, &m_lib}
 				) :
-				Ownership{m_auth.user()}.list_public_blobs(
-					*m_db,
-					SendJSON{std::move(send), req.version(), std::nullopt, *this, &m_lib}
-				);
+				list_public_blobs(false, req.version(), std::forward<Send>(send));
 
 		if (intent.action() == URLIntent::Action::query)
 			return on_query({std::move(req), std::move(intent)}, std::forward<Send>(send));
@@ -350,7 +347,7 @@ void SessionHandler::get_blob(const BlobRequest& req, Send&& send)
 		[
 			req, this,
 			send=std::move(send)
-		](CollEntry entry, auto ec) mutable
+		](CollEntryDB entry, auto ec) mutable
 		{
 			// Only allow the owner to know whether an object exists or not.
 			// Always reply forbidden for everyone else.
@@ -443,10 +440,7 @@ void SessionHandler::query_blob_set(const URLIntent& intent, unsigned version, S
 
 	if (pub.has_value())
 	{
-		Ownership{m_auth.user()}.list_public_blobs(
-			*m_db,
-			SendJSON{std::forward<Send>(send), version, std::nullopt, *this, !json.has_value() ? &m_lib : nullptr}
-		);
+		list_public_blobs(json.has_value(), version, std::forward<Send>(send));
 	}
 	else if (dup_coll.has_value())
 	{
@@ -543,6 +537,47 @@ void SessionHandler::post_view(BlobRequest&& req, Send&& send)
 		});
 
 	send(http::response<http::empty_body>{http::status::bad_request, req.version()});
+}
+
+template <typename Send>
+void SessionHandler::list_public_blobs(bool is_json, unsigned version, Send&& send)
+{
+	Ownership{m_auth.user()}.list_public_blobs(
+		*m_db,
+		[send=std::forward<Send>(send), version, this, is_json](auto&& blob_refs, auto ec) mutable
+		{
+			auto jdoc = nlohmann::json::object();
+
+			auto elements = nlohmann::json::object();
+			for (auto&& bref : blob_refs)
+			{
+				// filter by "user" if it is not empty: that means we want all public blobs from all users
+				// if "user" is empty string.
+				if ((m_auth.user().empty() || m_auth.user() == bref.user) &&
+					bref.entry.permission() == Permission::public_())
+				{
+					try
+					{
+						auto entry_jdoc = nlohmann::json::parse(bref.entry.json());
+						entry_jdoc.emplace("perm", std::string{bref.entry.permission().description()});
+						entry_jdoc.emplace("owner", bref.user);
+						entry_jdoc.emplace("collection", bref.coll);
+						elements.emplace(to_hex(bref.blob), std::move(entry_jdoc));
+					}
+					catch (std::exception& e)
+					{
+						Log(
+							LOG_WARNING,
+							"The CollEntryDB JSON in database is not valid JSON: %1% %2%",
+							e.what(),
+							bref.entry.json());
+					}
+				}
+			};
+			jdoc.emplace("elements", std::move(elements));
+			SendJSON{std::forward<Send>(send), version, std::nullopt, *this, is_json ? nullptr : &m_lib}(std::move(jdoc), ec);
+		}
+	);
 }
 
 } // end of namespace

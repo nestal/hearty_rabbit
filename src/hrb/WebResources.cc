@@ -12,7 +12,7 @@
 
 #include "WebResources.hh"
 
-#include "ObjectID.hh"
+#include "hrb/common/ObjectID.hh"
 #include "ResourcesList.hh"
 #include "crypto/Blake2.hh"
 #include "util/Escape.hh"

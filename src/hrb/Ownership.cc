@@ -96,7 +96,7 @@ std::string Ownership::Collection::redis_key() const
 	return std::string{m_dir_prefix} + m_user + ':' + m_path;
 }
 
-void Ownership::Collection::link(redis::Connection& db, const ObjectID& id, const CollEntry& entry)
+void Ownership::Collection::link(redis::Connection& db, const ObjectID& id, const CollEntryDB& entry)
 {
 	auto hex = to_hex(id);
 
@@ -209,7 +209,7 @@ nlohmann::json Ownership::Collection::serialize(const redis::Reply& reply, const
 			continue;
 
 		auto blob_id = raw_to_object_id(blob);
-		CollEntry entry{perm.as_string()};
+		CollEntryDB entry{perm.as_string()};
 
 		// check permission: allow allow owner (i.e. m_user)
 		if (blob_id && entry.permission().allow(requester, owner))
@@ -285,7 +285,8 @@ void Ownership::update(
 {
 	// assume the blob is already in the collection, so there is no need to update
 	// blob backlink
-	Collection{m_user, coll}.update(db, blobid, entry);
+	auto s = CollEntryDB::create(entry);
+	Collection{m_user, coll}.update(db, blobid, CollEntryDB{s});
 }
 
 void Ownership::update(
@@ -303,7 +304,7 @@ void Ownership::update(
 void Ownership::Collection::update(
 	redis::Connection& db,
 	const ObjectID& id,
-	const CollEntry& entry
+	const CollEntryDB& entry
 )
 {
 	static const char hsetex[] = R"__(
@@ -336,8 +337,8 @@ void Ownership::Collection::update(
 	const nlohmann::json& entry
 )
 {
-	auto en_str = CollEntry::create(Permission::from_description(entry["perm"].get<std::string>()), entry);
-	update(db, id, CollEntry{en_str});
+	auto en_str = CollEntryDB::create(Permission::from_description(entry["perm"].get<std::string>()), entry);
+	update(db, id, CollEntryDB{en_str});
 }
 
 } // end of namespace hrb
