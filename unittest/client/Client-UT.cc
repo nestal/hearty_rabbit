@@ -51,12 +51,9 @@ TEST_CASE("simple client login", "[normal]")
 	ssl::context ctx{ssl::context::sslv23_client};
 
 	HRBClient subject{ioc, ctx, "localhost", "4433"};
-	auto req = subject.login("sumsum", "bearbear");
-	req->on_load([](auto ec, auto& req)
+	subject.login("sumsum", "bearbear", [](auto ec)
 	{
-		std::cout << ec << " " << req.response() << std::endl;
+		std::cout << ec << std::endl;
 	});
-	req->run();
-
 	ioc.run();
 }
