@@ -10,6 +10,10 @@ if (NOT BUILD_NUMBER)
 endif()
 message(STATUS "Building HeartyRabbit ${VERSION}.${BUILD_NUMBER}")
 
+if (BUILD_CLIENT)
+	add_subdirectory(client/qt)
+endif()
+
 set(Boost_USE_STATIC_LIBS  ON)
 find_package(Boost REQUIRED COMPONENTS system filesystem program_options)
 find_package(Threads REQUIRED)

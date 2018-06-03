@@ -1,0 +1,15 @@
+# cmake 3.8 is required for C++17
+cmake_minimum_required(VERSION 3.8)
+project(hearty_rabbit_gui)
+
+set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTOUIC ON)
+
+set(Boost_USE_STATIC_LIBS  ON)
+find_package(Boost REQUIRED COMPONENTS system filesystem program_options)
+find_package(Qt5Widgets CONFIG REQUIRED)
+
+# Put all source code in a library for unit test
+file(GLOB HRB_GUI_SRC *.cc *.hh)
+add_executable(hearty_rabbit_gui ${HRB_GUI_SRC})
+target_link_libraries(hearty_rabbit_gui Qt5::Widgets)
