@@ -12,8 +12,8 @@
 
 #pragma once
 
-#include "ObjectID.hh"
-#include "CollEntry.hh"
+#include "hrb/common/ObjectID.hh"
+#include "hrb/common/CollEntryDB.hh"
 
 #include "net/Redis.hh"
 

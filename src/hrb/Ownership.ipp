@@ -12,7 +12,10 @@
 
 #include "Ownership.hh"
 #include "Permission.hh"
-#include "CollEntry.hh"
+
+#include "common/BlobRef.hh"
+#include "common/CollEntry.hh"
+#include "common/CollEntryDB.hh"
 
 #include "crypto/Authentication.hh"
 #include "util/Error.hh"
@@ -64,10 +67,10 @@ public:
 	Collection(std::string_view user, std::string_view path);
 	explicit Collection(std::string_view redis_key);
 
-	void link(redis::Connection& db, const ObjectID& id, const CollEntry& entry);
+	void link(redis::Connection& db, const ObjectID& id, const CollEntryDB& entry);
 	void unlink(redis::Connection& db, const ObjectID& id);
 	std::string redis_key() const;
-	void update(redis::Connection& db, const ObjectID& id, const CollEntry& entry);
+	void update(redis::Connection& db, const ObjectID& id, const CollEntryDB& entry);
 	void update(redis::Connection& db, const ObjectID& id, const nlohmann::json& entry);
 
 	template <typename Complete>
@@ -210,7 +213,7 @@ void Ownership::Collection::find(
 				ec = Error::object_not_exist;
 
 			comp(
-				CollEntry{entry.as_string()},
+				CollEntryDB{entry.as_string()},
 				std::move(ec)
 			);
 		},
@@ -336,22 +339,14 @@ void Ownership::Collection::list(
 			if (!reply || ec)
 				Log(LOG_WARNING, "list() reply %1% %2%", reply.as_error(), ec);
 
-			auto to_object_id = [](const redis::Reply& reply)
-			{
-				return raw_to_object_id(reply.as_string());
-			};
-			auto filter_oid = [](const std::optional<ObjectID>& oid)
-			{
-				return oid.has_value();
-			};
-			auto indirect_optional = [](const std::optional<ObjectID>& oid)
-			{
-				assert(oid.has_value());
-				return *oid;
-			};
-
 			using namespace boost::adaptors;
-			comp(reply | transformed(to_object_id) | filtered(filter_oid) | transformed(indirect_optional), ec);
+			comp(
+				reply |
+				transformed([](auto&& reply){return raw_to_object_id(reply.as_string());}) |
+				filtered([](auto&& opt_oid){return opt_oid.has_value();}) |
+				transformed([](auto&& opt_oid){return *opt_oid;}),
+				ec
+			);
 		},
 		"HKEYS %b%b:%b",
 		m_dir_prefix.data(), m_dir_prefix.size(),
@@ -423,9 +418,11 @@ void Ownership::link(
 	BlobBackLink blob{m_user, coll_name, blobid};
 	Collection   coll{m_user, coll_name};
 
+	auto en_str = CollEntryDB::create(entry);
+
 	db.command("MULTI");
 	blob.link(db);
-	coll.link(db, blob.blob(), entry);
+	coll.link(db, blob.blob(), CollEntryDB{en_str});
 	db.command([comp=std::forward<Complete>(complete)](auto&&, std::error_code ec)
 	{
 		comp(ec);
@@ -543,7 +540,7 @@ void Ownership::move_blob(
 			dest=Collection{m_user, dest_coll},
 			src=Collection{m_user, src_coll},
 			comp=std::forward<Complete>(complete)
-		](CollEntry&& entry, auto ec) mutable
+		](CollEntryDB&& entry, auto ec) mutable
 		{
 			if (!ec)
 			{
@@ -578,45 +575,34 @@ void Ownership::list_public_blobs(
 	)__";
 
 	db.command(
-		[user=m_user, comp=std::forward<Complete>(complete)](auto&& reply, auto ec)
+		[user=m_user, comp=std::forward<Complete>(complete)](auto&& reply, auto ec) mutable
 		{
 			if (!reply)
 				Log(LOG_WARNING, "list_public_blobs() script return %1%", reply.as_error());
 
-			// TODO: get the cover here... where to find a redis::Connection?
-			auto jdoc = nlohmann::json::object();
-
-			auto elements = nlohmann::json::object();
-			for (const redis::Reply& row : reply)
-			{
-				auto [owner, coll, blob, perm] = row.as_tuple<4>(ec);
-
-				if (perm.as_string().empty())
-					continue;
-
-				auto blob_id = raw_to_object_id(blob.as_string());
-				CollEntry entry{perm.as_string()};
-
-				// filter by "user" if it is not empty: that means we want all public blobs from all users
-				// if "user" is empty string.
-				if (blob_id && (user.empty() || user == owner.as_string()) && entry.permission() == Permission::public_())
+			using namespace boost::adaptors;
+			comp(
+				reply |
+				transformed([](const redis::Reply& row)
 				{
-					try
-					{
-						auto entry_jdoc = nlohmann::json::parse(entry.json());
-						entry_jdoc.emplace("perm",  std::string{entry.permission().description()});
-						entry_jdoc.emplace("owner", std::string{owner.as_string()});
-						entry_jdoc.emplace("collection", std::string{coll.as_string()});
-						elements.emplace(to_hex(*blob_id), std::move(entry_jdoc));
-					}
-					catch (std::exception& e)
-					{
-						Log(LOG_WARNING, "exception thrown when parsing CollEntry::json(): %1% %2%", e.what(), entry.json());
-					}
-				}
-			};
-			jdoc.emplace("elements", std::move(elements));
-			comp(std::move(jdoc), ec);
+					std::error_code err;
+					auto [owner, coll, blob, entry_str] = row.as_tuple<4>(err);
+
+					std::optional<BlobRef> result;
+					if (auto blob_id = raw_to_object_id(blob.as_string()); !err && blob_id.has_value())
+						result = BlobRef{
+							std::string{owner.as_string()},
+							std::string{coll.as_string()},
+							*blob_id,
+							CollEntryDB{entry_str.as_string()}
+	                    };
+
+					return result;
+				}) |
+				filtered([](auto&& opt){return opt.has_value();}) |
+				transformed([](auto&& opt){return *opt;}),
+				ec
+			);
 		},
 		"EVAL %s 1 %b",
 		lua,
@@ -640,30 +626,24 @@ void Ownership::query_blob(redis::Connection& db, const ObjectID& blob, Complete
 	)__";
 
 	db.command(
-		[user=m_user, comp=std::forward<Complete>(complete)](auto&& reply, auto ec)
+		[user=m_user, blob, comp=std::forward<Complete>(complete)](auto&& reply, auto ec)
 		{
 			if (!reply)
 				Log(LOG_WARNING, "query_blob() script reply: %1%", reply.as_error());
 
-			struct Blob
-			{
-				std::string user;
-				std::string coll;
-				CollEntry   entry;
-			};
-
-			auto kv2blob = [](auto&& kv)
-			{
-				Collection coll{kv.key()};
-				return Blob{coll.user(), coll.path(), CollEntry{kv.value().as_string()}};
-			};
-			auto owned = [&user](const Blob& blob)
-			{
-				return user.empty() ? blob.entry.permission() == Permission::public_() : user == blob.user;
-			};
-
 			using namespace boost::adaptors;
-			comp(reply.kv_pairs() | transformed(kv2blob) | filtered(owned), ec);
+			comp(reply.kv_pairs() |
+				transformed([blob](auto&& kv)
+				{
+					Collection coll{kv.key()};
+					return BlobRef{coll.user(), coll.path(), blob, CollEntryDB{kv.value().as_string()}};
+				}) |
+				filtered([&user](auto&& blob)
+				{
+					return user.empty() ? blob.entry.permission() == Permission::public_() : user == blob.user;
+				}),
+				ec
+			);
 		},
 		"EVAL %s 1 %b%b %b",
 		lua,

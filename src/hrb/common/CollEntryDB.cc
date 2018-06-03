@@ -10,7 +10,8 @@
 // Created by nestal on 2/26/18.
 //
 
-#include "CollEntry.hh"
+#include "CollEntryDB.hh"
+#include "hrb/common/CollEntry.hh"
 
 #include <cassert>
 #include <sstream>
@@ -23,11 +24,11 @@ namespace {
 
 namespace hrb {
 
-CollEntry::CollEntry(std::string_view redis_reply) : m_raw{redis_reply}
+CollEntryDB::CollEntryDB(std::string_view redis_reply) : m_raw{redis_reply}
 {
 }
 
-std::string CollEntry::create(
+std::string CollEntryDB::create(
 	Permission perm, std::string_view filename, std::string_view mime,
 	Timestamp timestamp
 )
@@ -42,7 +43,7 @@ std::string CollEntry::create(
 	return perm.perm() + json.dump();
 }
 
-std::string_view CollEntry::json() const
+std::string_view CollEntryDB::json() const
 {
 	auto json = m_raw;
 	if (!json.empty())
@@ -50,30 +51,30 @@ std::string_view CollEntry::json() const
 	return json;
 }
 
-std::string CollEntry::filename() const
+std::string CollEntryDB::filename() const
 {
-	auto doc = nlohmann::json::parse(CollEntry::json(), nullptr, false);
+	auto doc = nlohmann::json::parse(CollEntryDB::json(), nullptr, false);
 	return doc.is_discarded() ? "" : doc.value(filename_pointer, "");
 }
 
-std::string CollEntry::mime() const
+std::string CollEntryDB::mime() const
 {
-	auto doc = nlohmann::json::parse(CollEntry::json(), nullptr, false);
+	auto doc = nlohmann::json::parse(CollEntryDB::json(), nullptr, false);
 	return doc.is_discarded() ? "" : doc.value(mime_pointer, "");
 }
 
-Timestamp CollEntry::timestamp() const
+Timestamp CollEntryDB::timestamp() const
 {
-	auto doc = nlohmann::json::parse(CollEntry::json(), nullptr, false);
+	auto doc = nlohmann::json::parse(CollEntryDB::json(), nullptr, false);
 	return doc.is_discarded() ? Timestamp{} : doc.value(timestamp_pointer, Timestamp{});
 }
 
-Permission CollEntry::permission() const
+Permission CollEntryDB::permission() const
 {
 	return m_raw.empty() ? Permission{} : Permission{m_raw.front()} ;
 }
 
-std::string CollEntry::create(Permission perm, const nlohmann::json& json)
+std::string CollEntryDB::create(Permission perm, const nlohmann::json& json)
 {
 	return create(
 		perm,
@@ -83,9 +84,9 @@ std::string CollEntry::create(Permission perm, const nlohmann::json& json)
 	);
 }
 
-CollEntryFields CollEntry::fields() const
+CollEntry CollEntryDB::fields() const
 {
-	auto json = nlohmann::json::parse(CollEntry::json(), nullptr, false);
+	auto json = nlohmann::json::parse(CollEntryDB::json(), nullptr, false);
 	return {
 		permission(),
 		json.value(filename_pointer, ""),
@@ -94,7 +95,7 @@ CollEntryFields CollEntry::fields() const
 	};
 }
 
-std::string CollEntry::create(const CollEntryFields& fields)
+std::string CollEntryDB::create(const CollEntry& fields)
 {
 	return create(fields.perm, fields.filename, fields.mime, fields.timestamp);
 }

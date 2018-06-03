@@ -174,14 +174,10 @@ TEST_CASE("add blob to Ownership", "[normal]")
 
 	// verify that the newly added blob is in the public list
 	bool found = false;
-	subject.list_public_blobs(*redis, [&found, blobid](auto&& json, auto ec)
+	subject.list_public_blobs(*redis, [&found, blobid](auto&& brefs, auto ec)
 	{
-		REQUIRE(json.find("elements") != json.end());
-		auto&& elements = json["elements"];
-
-		for (auto&& item : elements.items())
-			if (to_hex(blobid) == item.key())
-				found = true;
+		auto it = std::find_if(brefs.begin(), brefs.end(), [blobid](auto&& bref){return bref.blob == blobid;});
+		found = (it != brefs.end());
 	});
 
 	REQUIRE(ioc.run_for(10s) > 0);
@@ -236,9 +232,9 @@ TEST_CASE("Load 3 images in json", "[normal]")
 
 	for (auto&& blobid : blobids)
 	{
-		auto s = CollEntry::create(Permission::private_(), "file.jpg", "image/jpeg", Timestamp::now());
+		CollEntry entry{Permission::private_(), "file.jpg", "image/jpeg", Timestamp::now()};
 		subject.link(
-			*redis, "some/collection", blobid, CollEntry{s}, [&added](auto ec)
+			*redis, "some/collection", blobid, entry, [&added](auto ec)
 			{
 				REQUIRE(!ec);
 				added++;
@@ -252,9 +248,9 @@ TEST_CASE("Load 3 images in json", "[normal]")
 	ioc.restart();
 
 	// update CollEntry of the blobs
-	auto en_str = CollEntry::create(Permission::public_(), "another_file.jpg", "application/json", Timestamp{std::chrono::milliseconds{100}});
+	CollEntry entry{Permission::public_(), "another_file.jpg", "application/json", Timestamp{std::chrono::milliseconds{100}}};
 	for (auto&& blobid : blobids)
-		subject.update(*redis, "some/collection", blobid, CollEntry{en_str});
+		subject.update(*redis, "some/collection", blobid, entry);
 
 	bool tested = false;
 	subject.serialize(*redis, {{},"testuser"}, "some/collection", [&tested, &blobids](auto&& doc, auto ec)
@@ -316,11 +312,11 @@ TEST_CASE("Query blob of testuser")
 
 	auto blobid = insecure_random<ObjectID>();
 
-	auto ce_str = CollEntry::create(Permission::public_(), "haha.jpeg", "image/jpeg", Timestamp::now());
+	CollEntry entry{Permission::public_(), "haha.jpeg", "image/jpeg", Timestamp::now()};
 
 	int tested = 0;
 	subject.link(
-		*redis, "somecoll", blobid, CollEntry{ce_str}, [&tested](auto ec)
+		*redis, "somecoll", blobid, entry, [&tested](auto ec)
 		{
 			REQUIRE(!ec);
 			tested++;
@@ -540,8 +536,8 @@ TEST_CASE("collection entry", "[normal]")
 	Authentication yung{insecure_random<Authentication::Cookie>(), "yungyung"};
 	Authentication sum{insecure_random<Authentication::Cookie>(), "sumsum"};
 
-	auto s = CollEntry::create({}, "somepic.jpeg", "image/jpeg", Timestamp::now());
-	CollEntry subject{s};
+	auto s = CollEntryDB::create({}, "somepic.jpeg", "image/jpeg", Timestamp::now());
+	CollEntryDB subject{s};
 	INFO("entry JSON = " << subject.json());
 
 	REQUIRE(subject.filename() == "somepic.jpeg");
@@ -549,14 +545,14 @@ TEST_CASE("collection entry", "[normal]")
 	REQUIRE_FALSE(subject.permission().allow(sum, yung.user()));
 	REQUIRE(subject.raw() == s);
 
-	CollEntry same{subject.raw()};
+	CollEntryDB same{subject.raw()};
 	REQUIRE(same.filename() == "somepic.jpeg");
 	REQUIRE(same.mime() == "image/jpeg");
 	REQUIRE_FALSE(same.permission().allow(yung, sum.user()));
 	REQUIRE(same.raw() == subject.raw());
 
-	auto s2 = CollEntry::create(Permission::shared(), nlohmann::json::parse(same.json()));
-	CollEntry same2{s2};
+	auto s2 = CollEntryDB::create(Permission::shared(), nlohmann::json::parse(same.json()));
+	CollEntryDB same2{s2};
 	REQUIRE(same2.filename() == "somepic.jpeg");
 	REQUIRE(same2.mime() == "image/jpeg");
 	REQUIRE(same2.permission().allow(yung, sum.user()));
