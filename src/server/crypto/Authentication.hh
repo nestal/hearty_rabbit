@@ -12,7 +12,8 @@
 
 #pragma once
 
-#include <array>
+#include "common/UserID.hh"
+
 #include <functional>
 #include <optional>
 #include <string_view>
@@ -30,7 +31,7 @@ class Password;
 class Authentication
 {
 public:
-	using Cookie = std::array<unsigned char, 16>;
+	using Cookie = UserID::Cookie ;
 
 	Authentication() = default;
 	Authentication(Cookie cookie, std::string_view user, bool guest=false);
@@ -97,12 +98,12 @@ public:
 	// TODO: update UT so that we don't need a default argument
 	std::string set_cookie(std::chrono::seconds session_length = std::chrono::seconds{3600}) const;
 
-	const Cookie& cookie() const {return m_cookie;}
-	const std::string& user() const {return m_user;}
-	bool is_guest() const {return m_guest;}
+	const Cookie& cookie() const {return m_uid.cookie();}
+	const std::string& user() const {return m_uid.user();}
+	bool is_guest() const {return m_uid.is_guest();}
 
-	bool operator==(const Authentication& rhs) const;
-	bool operator!=(const Authentication& rhs) const;
+	bool operator==(const Authentication& rhs) const {return m_uid == rhs.m_uid;}
+	bool operator!=(const Authentication& rhs) const {return m_uid != rhs.m_uid;}
 
 private:
 	void renew_session(
@@ -115,9 +116,7 @@ private:
 	static const std::string_view m_shared_auth_prefix;
 
 private:
-	Cookie      m_cookie{};
-	std::string m_user;
-	bool        m_guest{false};
+	UserID m_uid;
 };
 
 std::optional<Authentication::Cookie> parse_cookie(std::string_view cookie);

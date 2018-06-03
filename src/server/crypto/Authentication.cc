@@ -103,10 +103,8 @@ void create_session(
 const std::string_view Authentication::m_shared_auth_prefix{"shared_auth:"};
 
 Authentication::Authentication(Cookie cookie, std::string_view user, bool guest) :
-	m_cookie{cookie}, m_user{user}, m_guest{guest}
+	m_uid{cookie, user, guest}
 {
-	if (m_user.empty())
-		m_cookie = Cookie{};
 }
 
 void Authentication::add_user(
@@ -218,7 +216,7 @@ std::string Authentication::set_cookie(std::chrono::seconds session_length) cons
 	std::string result = "id=";
 	if (valid())
 	{
-		boost::algorithm::hex_lower(m_cookie.begin(), m_cookie.end(), std::back_inserter(result));
+		boost::algorithm::hex_lower(m_uid.cookie().begin(), m_uid.cookie().end(), std::back_inserter(result));
 		result.append("; Secure; HttpOnly; SameSite=Strict; Path=/; Max-Age=");
 		result.append(std::to_string(session_length.count()));
 	}
@@ -258,17 +256,13 @@ void Authentication::destroy_session(
 		{
 			comp(std::move(ec));
 		},
-		"DEL session:%b", m_cookie.data(), m_cookie.size()
+		"DEL session:%b", cookie().data(), cookie().size()
 	);
 }
 
 bool Authentication::valid() const
 {
-	// if cookie is valid, user must not be empty
-	// if cookie is invalid, user must be empty
-	assert((m_cookie == Cookie{}) == m_user.empty() );
-
-	return m_cookie != Cookie{} && !m_user.empty();
+	return m_uid.valid();
 }
 
 void Authentication::renew_session(
@@ -303,32 +297,22 @@ void Authentication::renew_session(
 			// if error occurs or session already renewed, use the old session
 			if (ec || reply.as_int() != 1)
 			{
-				Log(LOG_NOTICE, "user %1% session already renewed: %2%", m_user, ec);
+				Log(LOG_NOTICE, "user %1% session already renewed: %2%", user(), ec);
 				comp(ec, Authentication{*this});
 			}
 			else
 			{
-				Log(LOG_NOTICE, "user %1% session renewed successfully", m_user);
-				comp(ec, Authentication{new_cookie, m_user});
+				Log(LOG_NOTICE, "user %1% session renewed successfully", user());
+				comp(ec, Authentication{new_cookie, user()});
 			}
 		},
 		"EVAL %s 2 session:%b session:%b %b %d",
 		lua,
-		m_cookie.data(), m_cookie.size(),           // KEYS[1]: old session cookie
+		cookie().data(), cookie().size(),           // KEYS[1]: old session cookie
 		new_cookie.data(), new_cookie.size(),       // KEYS[2]: new session cookie
-		m_user.data(), m_user.size(),               // ARGV[1]: username
+		user().data(), user().size(),               // ARGV[1]: username
 		session_length                              // ARGV[2]: session length
 	);
-}
-
-bool Authentication::operator==(const Authentication& rhs) const
-{
-	return m_user == rhs.m_user && m_cookie == rhs.m_cookie && m_guest == rhs.m_guest;
-}
-
-bool Authentication::operator!=(const Authentication& rhs) const
-{
-	return !operator==(rhs);
 }
 
 } // end of namespace hrb
