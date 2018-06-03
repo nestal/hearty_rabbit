@@ -16,9 +16,9 @@
 
 #include <array>
 #include <iosfwd>
+#include <optional>
 #include <string_view>
 #include <type_traits>
-#include <optional>
 
 namespace hrb {
 

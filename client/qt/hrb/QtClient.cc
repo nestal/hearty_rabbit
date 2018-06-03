@@ -14,4 +14,9 @@
 
 namespace hrb {
 
+std::shared_ptr<LoginResult> QtClient::login(const QString& site, const QString& user, const QString& password)
+{
+	return {};
+}
+
 } // end of namespace hrb

@@ -13,7 +13,7 @@
 #pragma once
 
 #include "hrb/common/ObjectID.hh"
-#include "Timestamp.hh"
+#include "common/Timestamp.hh"
 
 #include "image/PHash.hh"
 #include "util/Size2D.hh"

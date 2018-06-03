@@ -12,7 +12,7 @@
 
 #include <catch.hpp>
 
-#include "hrb/Timestamp.hh"
+#include "hrb/common/Timestamp.hh"
 
 using namespace hrb;
 using nlohmann::json;

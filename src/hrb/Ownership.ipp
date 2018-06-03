@@ -11,7 +11,7 @@
 //
 
 #include "Ownership.hh"
-#include "Permission.hh"
+#include "common/Permission.hh"
 
 #include "common/BlobRef.hh"
 #include "common/CollEntry.hh"
