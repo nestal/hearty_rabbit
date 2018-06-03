@@ -76,12 +76,8 @@ public:
 		m_resolver.async_resolve(
 			host,
 			port,
-			std::bind(
-				&GenericHTTPRequest::on_resolve,
-				this->shared_from_this(),
-				std::placeholders::_1,
-				std::placeholders::_2
-			));
+			[self=this->shared_from_this()](auto ec, auto&& results){self->on_resolve(ec, std::move(results));}
+		);
 	}
 
 private:
@@ -98,11 +94,8 @@ private:
 			m_stream.next_layer(),
 			results.begin(),
 			results.end(),
-			std::bind(
-				&GenericHTTPRequest::on_connect,
-				this->shared_from_this(),
-				std::placeholders::_1
-			));
+			[self=this->shared_from_this()](auto ec, auto&&){self->on_connect(ec);}
+		);
 	}
 
 	void on_connect(boost::system::error_code ec)
@@ -115,11 +108,11 @@ private:
 		// Perform the SSL handshake
 		m_stream.async_handshake(
 			ssl::stream_base::client,
-			std::bind(
-				&GenericHTTPRequest::on_handshake,
-				this->shared_from_this(),
-				std::placeholders::_1
-			));
+			[self=this->shared_from_this()](auto ec)
+			{
+				self->on_handshake(ec);
+			}
+		);
 	}
 
 	void on_handshake(boost::system::error_code ec)
@@ -130,12 +123,11 @@ private:
 		// Send the HTTP request to the remote host
 		http::async_write(
 			m_stream, m_req,
-			std::bind(
-				&GenericHTTPRequest::on_write,
-				this->shared_from_this(),
-				std::placeholders::_1,
-				std::placeholders::_2
-			));
+			[self=this->shared_from_this()](auto ec, auto bytes)
+			{
+				self->on_write(ec, bytes);
+			}
+		);
 	}
 
 	void on_write(
@@ -151,12 +143,11 @@ private:
 		// Receive the HTTP response
 		http::async_read(
 			m_stream, m_buffer, m_res,
-			std::bind(
-				&GenericHTTPRequest::on_read,
-				this->shared_from_this(),
-				std::placeholders::_1,
-				std::placeholders::_2
-			));
+			[self=this->shared_from_this()](auto ec, auto bytes)
+			{
+				self->on_read(ec, bytes);
+			}
+		);
 	}
 
 	void on_read(
@@ -173,11 +164,11 @@ private:
 
 		// Gracefully close the stream
 		m_stream.async_shutdown(
-			std::bind(
-				&GenericHTTPRequest::on_shutdown,
-				this->shared_from_this(),
-				std::placeholders::_1
-			));
+			[self=this->shared_from_this()](auto ec)
+			{
+				self->on_shutdown(ec);
+			}
+		);
 	}
 
 	void on_shutdown(boost::system::error_code ec)
