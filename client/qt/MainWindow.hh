@@ -15,6 +15,8 @@
 #include "ui_MainWindow.h"
 #include <QMainWindow>
 
+class QFileSystemModel;
+
 namespace hrb {
 
 class MainWindow : public QMainWindow
@@ -23,7 +25,8 @@ public:
 	MainWindow();
 
 private:
-	Ui::MainWindow  m_;
+	Ui::MainWindow      m_;
+	QFileSystemModel    *m_fs_model{};
 };
 
 } // end of namespace hrb

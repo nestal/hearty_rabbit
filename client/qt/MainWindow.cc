@@ -11,15 +11,27 @@
 //
 
 #include "MainWindow.hh"
+
 #include <QAction>
+#include <QFileSystemModel>
 
 namespace hrb {
 
-MainWindow::MainWindow()
+MainWindow::MainWindow() :
+	m_fs_model{new QFileSystemModel{this}}
 {
 	m_.setupUi(this);
+	m_fs_model->setRootPath(QDir::homePath());
+	m_fs_model->setFilter(QDir::Dirs | QDir::NoDotAndDotDot | QDir::Drives);
+	m_.local_fs->setModel(m_fs_model);
+	m_.local_fs->setRootIndex(m_fs_model->index(QDir::homePath()));
+	m_.local_fs->setCurrentIndex(m_fs_model->index(QDir::currentPath()));
 
-	connect(m_.m_action_exit, &QAction::triggered, []{QApplication::quit();});
+	// show only the first column in file system view
+	for (int i = 1; i < m_fs_model->columnCount({}); i++)
+		m_.local_fs->setColumnHidden(i, true);
+
+	connect(m_.action_exit, &QAction::triggered, []{QApplication::quit();});
 }
 
 } // end of namespace hrb
