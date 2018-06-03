@@ -10,6 +10,6 @@ find_package(Boost REQUIRED COMPONENTS system filesystem program_options)
 find_package(Qt5Widgets CONFIG REQUIRED)
 
 # Put all source code in a library for unit test
-file(GLOB HRB_GUI_SRC *.cc *.hh)
+file(GLOB HRB_GUI_SRC *.cc *.hh *.ui)
 add_executable(hearty_rabbit_gui ${HRB_GUI_SRC})
 target_link_libraries(hearty_rabbit_gui Qt5::Widgets)

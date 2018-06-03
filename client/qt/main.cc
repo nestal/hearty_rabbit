@@ -10,9 +10,17 @@
 // Created by nestal on 6/3/18.
 //
 
-#include <QMainWindow>
+#include "MainWindow.hh"
+
+#include <QApplication>
 
 int main(int argc, char *argv[])
 {
-	return 0;
+//	Q_INIT_RESOURCE(application);
+
+	QApplication app{argc, argv};
+	hrb::MainWindow wnd;
+	wnd.show();
+
+	return app.exec();
 }
