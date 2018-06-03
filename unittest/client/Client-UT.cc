@@ -33,14 +33,13 @@ namespace http = boost::beast::http;    // from <boost/beast/http.hpp>
 //------------------------------------------------------------------------------
 
 // Report a failure
-void
-fail(boost::system::error_code ec, char const *what)
+void fail(boost::system::error_code ec, char const *what)
 {
 	std::cerr << what << ": " << ec.message() << "\n";
 }
 
 // Performs an HTTP GET and prints the response
-class session : public std::enable_shared_from_this<session>
+class Request : public std::enable_shared_from_this<Request>
 {
 	tcp::resolver resolver_;
 	ssl::stream<tcp::socket> stream_;
@@ -50,16 +49,13 @@ class session : public std::enable_shared_from_this<session>
 
 public:
 	// Resolver and stream require an io_context
-	explicit
-	session(boost::asio::io_context& ioc, ssl::context& ctx)
-		:
+	explicit Request(boost::asio::io_context& ioc, ssl::context& ctx) :
 		resolver_(ioc), stream_(ioc, ctx)
 	{
 	}
 
 	// Start the asynchronous operation
-	void
-	run(
+	void run(
 		std::string_view host,
 		std::string_view port,
 		std::string_view target,
@@ -86,7 +82,7 @@ public:
 			host,
 			port,
 			std::bind(
-				&session::on_resolve,
+				&Request::on_resolve,
 				shared_from_this(),
 				std::placeholders::_1,
 				std::placeholders::_2
@@ -108,7 +104,7 @@ public:
 			results.begin(),
 			results.end(),
 			std::bind(
-				&session::on_connect,
+				&Request::on_connect,
 				shared_from_this(),
 				std::placeholders::_1
 			));
@@ -126,7 +122,7 @@ public:
 		stream_.async_handshake(
 			ssl::stream_base::client,
 			std::bind(
-				&session::on_handshake,
+				&Request::on_handshake,
 				shared_from_this(),
 				std::placeholders::_1
 			));
@@ -142,7 +138,7 @@ public:
 		http::async_write(
 			stream_, req_,
 			std::bind(
-				&session::on_write,
+				&Request::on_write,
 				shared_from_this(),
 				std::placeholders::_1,
 				std::placeholders::_2
@@ -164,7 +160,7 @@ public:
 		http::async_read(
 			stream_, buffer_, res_,
 			std::bind(
-				&session::on_read,
+				&Request::on_read,
 				shared_from_this(),
 				std::placeholders::_1,
 				std::placeholders::_2
@@ -188,7 +184,7 @@ public:
 		// Gracefully close the stream
 		stream_.async_shutdown(
 			std::bind(
-				&session::on_shutdown,
+				&Request::on_shutdown,
 				shared_from_this(),
 				std::placeholders::_1
 			));
@@ -226,7 +222,7 @@ TEST_CASE("simple client test", "[normal]")
 	ssl::context ctx{ssl::context::sslv23_client};
 
 	// Launch the asynchronous operation
-	std::make_shared<session>(ioc, ctx)->run(host, port, target, version);
+	std::make_shared<Request>(ioc, ctx)->run(host, port, target, version);
 
 	// Run the I/O service. The call will return when
 	// the get operation is complete.
