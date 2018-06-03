@@ -42,10 +42,13 @@ class GenericHTTPRequest : public std::enable_shared_from_this<
 {
 public:
 	// Resolver and stream require an io_context
-	explicit GenericHTTPRequest(boost::asio::io_context& ioc, ssl::context& ctx) :
-		m_resolver(ioc), m_stream(ioc, ctx)
+	template <typename Comp>
+	explicit GenericHTTPRequest(boost::asio::io_context& ioc, ssl::context& ctx, Comp&& comp) :
+		m_resolver(ioc), m_stream(ioc, ctx), m_comp{std::forward<Comp>(comp)}
 	{
 	}
+
+	auto& response() {return m_res;}
 
 	// Start the asynchronous operation
 	void run(
@@ -166,8 +169,7 @@ private:
 		if (ec)
 			return fail(ec, "read");
 
-		// Write the message to standard out
-//		std::cout << m_res << std::endl;
+		m_comp(*this);
 
 		// Gracefully close the stream
 		m_stream.async_shutdown(
@@ -198,6 +200,8 @@ private:
 	boost::beast::flat_buffer m_buffer; // (Must persist between reads)
 	http::request<RequestBody> m_req;
 	http::response<ResponseBody> m_res;
+
+	std::function<void(GenericHTTPRequest&)> m_comp;
 };
 
 } // end of namespace hrb

@@ -11,6 +11,7 @@
 //
 
 #include <catch.hpp>
+#include <iostream>
 
 #include "client/GenericHTTPRequest.hh"
 
@@ -30,7 +31,10 @@ TEST_CASE("simple client test", "[normal]")
 	ssl::context ctx{ssl::context::sslv23_client};
 
 	// Launch the asynchronous operation
-	std::make_shared<GenericHTTPRequest<http::empty_body, http::string_body>>(ioc, ctx)->run(host, port, target, version);
+	std::make_shared<GenericHTTPRequest<http::empty_body, http::string_body>>(ioc, ctx, [](auto& req)
+	{
+		std::cout << req.response() << std::endl;
+	})->run(host, port, target, version);
 
 	// Run the I/O service. The call will return when
 	// the get operation is complete.
