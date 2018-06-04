@@ -1,8 +1,14 @@
 # cmake 3.8 is required for C++17
-cmake_minimum_required(VERSION 3.8)
+cmake_minimum_required(VERSION 3.9)
 project(hearty_rabbit)
 
 set(VERSION "0.5-pre")
+include(CheckIPOSupported)
+check_ipo_supported(RESULT IPO_SUPPORTED)
+
+if (IPO_SUPPORTED)
+	message(STATUS "Inter-procedual optimization is supported")
+endif()
 
 # Get build number from environment variable. It should be set by travis.
 if (NOT BUILD_NUMBER)
@@ -88,6 +94,9 @@ target_link_libraries(
 	${LIBB2_LIBRARY}
 	${CMAKE_THREAD_LIBS_INIT}
 )
+if (IPO_SUPPORTED)
+	set_property(TARGET hrbcommon PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
+endif()
 
 ###################################################################################################
 # server library
@@ -112,6 +121,9 @@ target_include_directories(
 	hrbsrv PUBLIC
 	${PROJECT_SOURCE_DIR}/src/server
 )
+if (IPO_SUPPORTED)
+	set_property(TARGET hrbsrv PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
+endif()
 
 ###################################################################################################
 # client library
@@ -133,6 +145,9 @@ target_include_directories(
 	hrbclient PUBLIC
 	${PROJECT_SOURCE_DIR}/src/client
 )
+if (IPO_SUPPORTED)
+	set_property(TARGET hrbclient PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
+endif()
 
 ###################################################################################################
 # server-side unit tests: test cases for the server-side code
@@ -192,6 +207,9 @@ target_link_libraries(
 	hrbsrv
 )
 add_dependencies(hearty_rabbit unittest)
+if (IPO_SUPPORTED)
+	set_property(TARGET hearty_rabbit PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
+endif()
 
 if (BUILD_CLIENT)
 	add_subdirectory(client/qt)
