@@ -533,8 +533,8 @@ TEST_CASE("setting and remove the cover of collection", "[normal]")
 
 TEST_CASE("collection entry", "[normal]")
 {
-	Authentication yung{insecure_random<Authentication::Cookie>(), "yungyung"};
-	Authentication sum{insecure_random<Authentication::Cookie>(), "sumsum"};
+	Authentication yung{insecure_random<Authentication::CookieID>(), "yungyung"};
+	Authentication sum{insecure_random<Authentication::CookieID>(), "sumsum"};
 
 	auto s = CollEntryDB::create({}, "somepic.jpeg", "image/jpeg", Timestamp::now());
 	CollEntryDB subject{s};

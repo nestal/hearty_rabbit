@@ -152,7 +152,7 @@ void SessionHandler::on_request_header(
 	if (!m_request_cookie)
 	{
 		auto [auth_str] = urlform.find(intent.option(), "auth");
-		auto auth_key = hex_to_array<Authentication::Cookie{}.size()>(auth_str);
+		auto auth_key = hex_to_array<Authentication::CookieID{}.size()>(auth_str);
 		if (header.method() == http::verb::get && auth_key)
 		{
 			Authentication auth{*auth_key, intent.user(), true};

@@ -27,7 +27,7 @@ void HRBClient::login(std::string_view user, std::string_view password, Complete
 
 	req->on_load([this, comp=std::forward<Complete>(comp)](auto ec, auto& req)
 	{
-		m_cookie = std::string{req.response().at(http::field::set_cookie)};
+		m_cookie = Cookie{req.response().at(http::field::set_cookie)};
 		comp(ec);
 	});
 	req->run();

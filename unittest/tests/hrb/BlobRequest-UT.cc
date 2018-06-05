@@ -32,6 +32,6 @@ TEST_CASE("BlobRequest move ctor")
 	REQUIRE(moved.blob().has_value());
 	REQUIRE(*moved.blob() == *hex_to_object_id("d83587387441dbd26616b532fe039fc0e9f4c927"));
 	REQUIRE(moved.owner() == "testuser");
-	REQUIRE_FALSE(moved.request_by_owner({insecure_random<Authentication::Cookie>(), "sumsum"}));
-	REQUIRE(moved.request_by_owner({insecure_random<Authentication::Cookie>(), "testuser"}));
+	REQUIRE_FALSE(moved.request_by_owner({insecure_random<Authentication::CookieID>(), "sumsum"}));
+	REQUIRE(moved.request_by_owner({insecure_random<Authentication::CookieID>(), "testuser"}));
 }

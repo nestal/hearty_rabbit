@@ -13,6 +13,7 @@
 #pragma once
 
 #include "GenericHTTPRequest.hh"
+#include "common/Cookie.hh"
 
 namespace hrb {
 
@@ -34,7 +35,7 @@ private:
 	std::string m_port;
 
 	// session cookie
-	std::string m_cookie;
+	Cookie m_cookie;
 };
 
 }

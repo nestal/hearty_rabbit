@@ -27,6 +27,14 @@ Cookie::Cookie(std::string_view header) : m_cookie{header}
 {
 }
 
+Cookie::Cookie(boost::string_view header) : m_cookie{header.to_string()}
+{
+}
+
+Cookie::Cookie(const char *s) : m_cookie{s}
+{
+}
+
 std::chrono::system_clock::time_point Cookie::expires() const
 {
 	if (!m_expires.has_value())
