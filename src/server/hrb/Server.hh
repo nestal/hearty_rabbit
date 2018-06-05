@@ -41,7 +41,13 @@ public:
 	SessionHandler start_session();
 
 	// Administrative commands and configurations
-	void add_user(std::string_view username, Password&& password, std::function<void(std::error_code)> complete);
+	static void add_user(
+		const Configuration& cfg,
+		std::string_view username,
+		Password&& password,
+		std::function<void(std::error_code)> complete
+	);
+
 	void drop_privileges() const;
 
 private:

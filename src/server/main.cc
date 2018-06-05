@@ -68,14 +68,13 @@ void run(Server& server, const Configuration& cfg)
 
 int StartServer(const Configuration& cfg)
 {
-	Server server{cfg};
-	if (cfg.add_user([&server](auto&& username)
+	if (cfg.add_user([&cfg](auto&& username)
 	{
 		std::cout << "Please input password of the new user " << username << ":\n";
 		std::string password;
 		if (std::getline(std::cin, password))
 		{
-			server.add_user(username, Password{std::string_view{password}}, [](std::error_code&& ec)
+			Server::add_user(cfg, username, Password{std::string_view{password}}, [](std::error_code&& ec)
 			{
 				std::cout << "result = " << ec << " " << ec.message() << std::endl;
 			});
@@ -85,6 +84,7 @@ int StartServer(const Configuration& cfg)
 	else
 	{
 		Log(LOG_NOTICE, "hearty_rabbit (version %1%) starting", constants::version);
+		Server server{cfg};
 		run(server, cfg);
 		return EXIT_SUCCESS;
 	}

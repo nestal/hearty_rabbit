@@ -13,6 +13,7 @@
 #include "Server.hh"
 
 #include "SessionHandler.hh"
+#include "net/Listener.hh"
 
 #include "crypto/Password.hh"
 #include "crypto/Authentication.hh"
@@ -61,13 +62,15 @@ void Server::drop_privileges() const
 		throw std::runtime_error("cannot run as root");
 }
 
-void Server::add_user(std::string_view username, Password&& password, std::function<void(std::error_code)> complete)
+void Server::add_user(const Configuration& cfg, std::string_view username, Password&& password, std::function<void(std::error_code)> complete)
 {
-	Authentication::add_user(username, std::move(password), *m_db.alloc(), [&complete](std::error_code&& ec)
+	boost::asio::io_context ioc;
+	redis::Pool db{ioc, cfg.redis()};
+	Authentication::add_user(username, std::move(password), *db.alloc(), [&complete](std::error_code&& ec)
 	{
 		complete(std::move(ec));
 	});
-	m_ioc.run();
+	ioc.run();
 }
 
 boost::asio::io_context& Server::get_io_context()
