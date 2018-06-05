@@ -42,8 +42,11 @@ TEST_CASE("simple client login", "[normal]")
 		REQUIRE(tested);
 		ioc.restart();
 
-		subject.scan_collections([](auto json)
+		tested = false;
+		subject.scan_collections([&tested](auto json, auto err)
 		{
+			REQUIRE_FALSE(err);
+			tested = true;
 		});
 	}
 	SECTION("login incorrect")
@@ -59,8 +62,12 @@ TEST_CASE("simple client login", "[normal]")
 	REQUIRE(tested);
 	ioc.restart();
 
-	subject.list_collection("", [](auto refs)
+	tested = false;
+	subject.list_collection("", [&tested](auto refs, auto err)
 	{
+		REQUIRE_FALSE(err);
+		tested = true;
+
 		for (auto&& ref : refs)
 			std::cout << ref.second.filename << std::endl;
 	});

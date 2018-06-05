@@ -73,7 +73,7 @@ void HRBClient::list_collection(std::string_view coll, Complete&& comp)
 				result.emplace(*blob, item.value().template get<CollEntry>());
 		}
 
-		comp(std::move(result));
+		comp(std::move(result), ec);
 		req.shutdown();
 	});
 	req->run();
@@ -95,7 +95,7 @@ void HRBClient::scan_collections(Complete&& comp)
 		auto json = nlohmann::json::parse(req.response().body());
 		std::cout << json << std::endl;
 
-		comp(std::move(json));
+		comp(std::move(json), ec);
 		req.shutdown();
 	});
 	req->run();
