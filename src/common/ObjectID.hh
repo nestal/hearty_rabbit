@@ -14,6 +14,8 @@
 
 #include "Blake2.hh"
 
+#include <boost/functional/hash.hpp>
+
 #include <array>
 #include <iosfwd>
 #include <optional>
@@ -31,3 +33,29 @@ bool is_valid_blob_id(std::string_view hex);
 std::optional<ObjectID> raw_to_object_id(std::string_view raw);
 
 } // end of namespace
+
+// inject hash<> to std namespace for unordered_map
+namespace std
+{
+    template<> struct hash<hrb::ObjectID>
+    {
+        typedef hrb::ObjectID argument_type;
+        typedef std::size_t result_type;
+        result_type operator()(const argument_type& s) const noexcept
+		{
+			struct FiveU32
+			{
+				std::uint32_t i[5];
+			};
+
+			FiveU32 t;
+			static_assert(sizeof(t) == s.size());
+			std::memcpy(&t, &s[0], s.size());
+
+			std::size_t seed = 0;
+			for (auto&& i : t.i)
+				boost::hash_combine(seed, i);
+			return seed;
+		}
+   };
+}

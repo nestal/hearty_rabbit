@@ -16,7 +16,6 @@
 #include "Escape.hh"
 
 #include <boost/algorithm/hex.hpp>
-#include <openssl/evp.h>
 
 #include <cstring>
 #include <cassert>
