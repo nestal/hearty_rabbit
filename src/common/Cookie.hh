@@ -14,6 +14,7 @@
 
 #include <string>
 #include <optional>
+#include <chrono>
 
 namespace hrb {
 
@@ -26,6 +27,8 @@ class Cookie
 {
 public:
 	Cookie(std::string_view header);
+
+	std::chrono::system_clock::time_point expires() const;
 
 private:
 	std::string m_cookie;   //!< the value of the header field "Set-Cookie" or "Cookie"
