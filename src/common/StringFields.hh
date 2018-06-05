@@ -19,8 +19,8 @@ namespace hrb {
 class StringFields
 {
 public:
-	constexpr StringFields(std::string_view all_delims, std::string_view kv_delims) :
-		m_all_delims{all_delims}, m_kv_delims{kv_delims}
+	constexpr StringFields(std::string_view all_delims, std::string_view kv_delims, bool trim_space=false) :
+		m_all_delims{all_delims}, m_kv_delims{kv_delims}, m_trim_space{trim_space}
 	{
 	}
 
@@ -35,6 +35,12 @@ public:
 			// i.e. don't change to match_field(result, split_front("=;&"), split_front(";&"), fields...)
 			auto [name, match]  = split_left(remain, m_all_delims);
 			auto value = (match == '=' ? std::get<0>(split_left(remain, m_kv_delims)) : std::string_view{});
+
+			// only trim spaces for "name" before matching. never modify "value"
+			while (m_trim_space && !name.empty() && std::isspace(name.front()))
+				name.remove_prefix(1);
+			while (m_trim_space && !name.empty() && std::isspace(name.back()))
+				name.remove_suffix(1);
 
 			match_field(result, name, value, fields...);
 		}
@@ -56,6 +62,7 @@ public:
 private:
 	std::string_view m_all_delims;
 	std::string_view m_kv_delims;
+	bool m_trim_space;
 };
 constexpr StringFields urlform{"=;&", ";&"};
 
