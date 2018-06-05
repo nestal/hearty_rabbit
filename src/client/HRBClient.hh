@@ -21,16 +21,20 @@ class HRBClient
 public:
 	HRBClient(boost::asio::io_context& ioc, ssl::context& ctx, std::string_view host, std::string_view port);
 
-	void login(std::string_view user, std::string_view password, std::function<void(std::error_code)> comp);
+	template <typename Complete>
+	void login(std::string_view user, std::string_view password, Complete&& comp);
 
 private:
+	// connection to the server
 	boost::asio::io_context&    m_ioc;
 	ssl::context&               m_ssl;
 
-	std::string m_cookie;
-
+	// configurations
 	std::string m_host;
 	std::string m_port;
+
+	// session cookie
+	std::string m_cookie;
 };
 
 }

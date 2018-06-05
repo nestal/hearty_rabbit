@@ -14,6 +14,7 @@
 
 #include "client/GenericHTTPRequest.hh"
 #include "client/HRBClient.hh"
+#include "client/HRBClient.ipp"
 #include <iostream>
 
 using namespace hrb;
