@@ -17,7 +17,7 @@
 #include "common/Cookie.hh"
 #include "crypto/Random.hh"
 #include "net/Redis.hh"
-#include "util/Error.hh"
+#include "common/Error.hh"
 #include "util/Log.hh"
 
 #include <boost/algorithm/hex.hpp>

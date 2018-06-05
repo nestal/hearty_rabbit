@@ -13,6 +13,7 @@
 #include "ServerInstance.hh"
 
 #include "hrb/Server.hh"
+#include "crypto/Password.hh"
 #include "crypto/Random.hh"
 #include "util/Configuration.hh"
 
@@ -28,6 +29,7 @@ struct ServerInstance::Impl
 	Impl() :
 		m_srv{m_cfg}
 	{
+//		Server::add_user(m_cfg, "sumsum", Password{"bearbear"}, [](auto){});
 
 		m_srv.listen();
 	}

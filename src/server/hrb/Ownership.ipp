@@ -18,7 +18,7 @@
 #include "common/CollEntry.hh"
 
 #include "crypto/Authentication.hh"
-#include "util/Error.hh"
+#include "common/Error.hh"
 #include "util/Log.hh"
 #include "common/Escape.hh"
 

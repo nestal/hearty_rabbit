@@ -13,7 +13,7 @@
 #include <catch.hpp>
 
 #include "net/Redis.hh"
-#include "util/Error.hh"
+#include "common/Error.hh"
 #include "crypto/Authentication.hh"
 #include "crypto/Authentication.ipp"
 #include "crypto/Password.hh"

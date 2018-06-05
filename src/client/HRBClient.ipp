@@ -18,6 +18,7 @@
 #include "common/URLIntent.hh"
 #include "common/CollEntry.hh"
 #include "common/ObjectID.hh"
+#include "common/Error.hh"
 
 #include <json.hpp>
 
@@ -41,9 +42,14 @@ void HRBClient::login(std::string_view user, std::string_view password, Complete
 
 	req->on_load([this, comp=std::forward<Complete>(comp)](auto ec, auto& req)
 	{
-		// reset cookie state
-		m_cookie = Cookie{};
-		m_cookie.add("id", Cookie{req.response().at(http::field::set_cookie)}.field("id"));
+		if (req.response().result() == http::status::no_content)
+		{
+			// reset cookie state
+			m_cookie = Cookie{};
+			m_cookie.add("id", Cookie{req.response().at(http::field::set_cookie)}.field("id"));
+		}
+		else
+			ec = hrb::Error::login_incorrect;
 
 		comp(ec);
 	});

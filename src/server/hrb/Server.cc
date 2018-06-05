@@ -18,7 +18,7 @@
 #include "crypto/Password.hh"
 #include "crypto/Authentication.hh"
 
-#include "util/Error.hh"
+#include "common/Error.hh"
 #include "util/Configuration.hh"
 #include "util/Exception.hh"
 
