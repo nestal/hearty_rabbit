@@ -18,7 +18,6 @@
 #include "BlobDatabase.hh"
 #include "Ownership.ipp"
 #include "UploadFile.hh"
-#include "../../common/URLIntent.hh"
 #include "WebResources.hh"
 #include "index/PHashDb.hh"
 
@@ -27,6 +26,8 @@
 #include "net/MMapResponseBody.hh"
 #include "util/Log.hh"
 #include "common/Escape.hh"
+#include "common/URLIntent.hh"
+#include "common/StringFields.hh"
 
 #include <boost/beast/http/fields.hpp>
 #include <boost/beast/http/message.hpp>
@@ -150,7 +151,7 @@ void SessionHandler::on_request_header(
 	m_request_cookie = parse_cookie({cookie.data(), cookie.size()});
 	if (!m_request_cookie)
 	{
-		auto [auth_str] = find_fields(intent.option(), "auth");
+		auto [auth_str] = urlform.find(intent.option(), "auth");
 		auto auth_key = hex_to_array<Authentication::Cookie{}.size()>(auth_str);
 		if (header.method() == http::verb::get && auth_key)
 		{
@@ -363,7 +364,7 @@ void SessionHandler::get_blob(const BlobRequest& req, Send&& send)
 			if (!entry.permission().allow(m_auth.id(), req.owner()))
 				return send(http::response<http::empty_body>{http::status::forbidden, req.version()});
 
-			auto [rendition] = find_fields(req.option(), "rendition");
+			auto [rendition] = urlform.find(req.option(), "rendition");
 			return send(m_blob_db.response(*req.blob(), req.version(), req.etag(), rendition));
 		}
 	);
@@ -391,7 +392,7 @@ void SessionHandler::on_query(const BlobRequest& req, Send&& send)
 template <class Send>
 void SessionHandler::scan_collection(const URLIntent& intent, unsigned version, Send&& send)
 {
-	auto [user, json] = find_optional_fields(intent.option(), "user", "json");
+	auto [user, json] = urlform.find_optional(intent.option(), "user", "json");
 
 	if (!user.has_value())
 		return send(bad_request("invalid user in query", version));
@@ -409,7 +410,7 @@ void SessionHandler::scan_collection(const URLIntent& intent, unsigned version, 
 template <class Send>
 void SessionHandler::query_blob(const BlobRequest& req, Send&& send)
 {
-	auto [blob_arg, rendition] = find_fields(req.option(), "id", "rendition");
+	auto [blob_arg, rendition] = urlform.find(req.option(), "id", "rendition");
 	auto blob = hex_to_object_id(blob_arg);
 	if (!blob)
 		return send(bad_request("invalid blob ID", req.version()));
@@ -436,7 +437,7 @@ void SessionHandler::query_blob(const BlobRequest& req, Send&& send)
 template <class Send>
 void SessionHandler::query_blob_set(const URLIntent& intent, unsigned version, Send&& send)
 {
-	auto [pub, dup_coll, json] = find_optional_fields(intent.option(), "public", "detect_dup", "json");
+	auto [pub, dup_coll, json] = urlform.find_optional(intent.option(), "public", "detect_dup", "json");
 
 	if (pub.has_value())
 	{
@@ -485,7 +486,7 @@ void SessionHandler::post_view(BlobRequest&& req, Send&& send)
 		return send(http::response<http::empty_body>{http::status::forbidden, req.version()});
 
 	assert(!req.blob());
-	auto[cover, share] = find_fields(req.body(), "cover", "share");
+	auto[cover, share] = urlform.find(req.body(), "cover", "share");
 
 	using namespace std::chrono_literals;
 

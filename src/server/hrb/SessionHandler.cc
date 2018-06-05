@@ -22,6 +22,7 @@
 
 #include "common/CollEntry.hh"
 #include "common/URLIntent.hh"
+#include "common/StringFields.hh"
 
 #include "crypto/Password.hh"
 #include "crypto/Authentication.hh"
@@ -70,7 +71,7 @@ void SessionHandler::on_login(const StringRequest& req, EmptyResponseSender&& se
 	auto&& body = req.body();
 	if (req[http::field::content_type] == "application/x-www-form-urlencoded")
 	{
-		auto [username, password] = find_fields(body, "username", "password");
+		auto [username, password] = urlform.find(body, "username", "password");
 
 		Authentication::verify_user(
 			username,
@@ -155,7 +156,7 @@ void SessionHandler::post_blob(BlobRequest&& req, EmptyResponseSender&& send)
 		return send(http::response<http::empty_body>{http::status::forbidden, req.version()});
 
 	assert(req.blob());
-	auto [perm_str, move_destination] = find_fields(req.body(), "perm", "move");
+	auto [perm_str, move_destination] = urlform.find(req.body(), "perm", "move");
 
 	if (perm_str.empty() && move_destination.empty())
 		return send(http::response<http::empty_body>{http::status::bad_request, req.version()});

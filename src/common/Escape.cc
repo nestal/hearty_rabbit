@@ -59,9 +59,6 @@ bool need_escape(char in)
 
 namespace hrb {
 
-const std::string_view FormURLEncoded::all_delims{"=;&"};   //!< delimiter the separates key, value and the next k-v pair
-const std::string_view FormURLEncoded::kv_delims{";&"};     //!< delimiter the k-v pairs
-
 std::optional<char> hex_digit(char c)
 {
 	if      ( c >= '0' && c <= '9' ) return c - '0';

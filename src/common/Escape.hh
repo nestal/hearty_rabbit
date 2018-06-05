@@ -62,42 +62,6 @@ std::tuple<std::string_view, char> split_left(std::string_view& in, std::string_
 std::tuple<std::string_view, char> split_right(std::string_view& in, std::string_view value);
 std::string_view split_front_substring(std::string_view& in, std::string_view substring);
 
-// policy class for parsing parameters for HTTP POST content application/x-www-form-urlencoded
-struct FormURLEncoded
-{
-	static const std::string_view all_delims;   //!< delimiter the separates key, value and the next k-v pair (i.e =;&)
-	static const std::string_view kv_delims;    //!< delimiter the k-v pairs (i.e. ;&)
-};
-
-template <typename Delimiters, typename OutType, typename... Fields>
-auto basic_find_fields(std::string_view remain, Fields... fields)
-{
-	typename RepeatingTuple<OutType, sizeof...(fields)>::type result;
-	while (!remain.empty())
-	{
-		// Don't remove the temporary variables because the order
-		// of execution in function parameters is undefined.
-		// i.e. don't change to match_field(result, split_front("=;&"), split_front(";&"), fields...)
-		auto [name, match]  = split_left(remain, Delimiters::all_delims);
-		auto value = (match == '=' ? std::get<0>(split_left(remain, Delimiters::kv_delims)) : std::string_view{});
-
-		match_field(result, name, value, fields...);
-	}
-	return result;
-}
-
-template <typename... Fields>
-auto find_fields(std::string_view remain, Fields... fields)
-{
-	return basic_find_fields<FormURLEncoded, std::string_view>(remain, std::forward<Fields>(fields)...);
-}
-
-template <typename... Fields>
-auto find_optional_fields(std::string_view remain, Fields... fields)
-{
-	return basic_find_fields<FormURLEncoded, std::optional<std::string_view>>(remain, std::forward<Fields>(fields)...);
-}
-
 template <std::size_t index, typename ResultTuple>
 void parse_token(std::string_view& remain, std::string_view value, ResultTuple& tuple)
 {
