@@ -57,4 +57,7 @@ struct CollEntry
 	Timestamp   timestamp;
 };
 
+//void to_json(nlohmann::json& dest, const CollEntry& src);
+void from_json(const nlohmann::json& src, CollEntry& dest);
+
 } // end of namespace hrb

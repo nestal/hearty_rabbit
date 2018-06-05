@@ -18,6 +18,7 @@
 #include "net/Redis.hh"
 
 #include <boost/asio/io_context.hpp>
+#include <boost/asio/ssl/context.hpp>
 
 #include <system_error>
 #include <functional>
@@ -35,18 +36,27 @@ class Server
 {
 public:
 	explicit Server(const Configuration& cfg);
+	void listen();
 
 	boost::asio::io_context& get_io_context();
 
 	SessionHandler start_session();
 
 	// Administrative commands and configurations
-	void add_user(std::string_view username, Password&& password, std::function<void(std::error_code)> complete);
+	static void add_user(
+		const Configuration& cfg,
+		std::string_view username,
+		Password&& password,
+		std::function<void(std::error_code)> complete
+	);
+
+private:
 	void drop_privileges() const;
 
 private:
-	const Configuration&    m_cfg;
-	boost::asio::io_context m_ioc;
+	const Configuration&        m_cfg;
+	boost::asio::ssl::context   m_ssl{boost::asio::ssl::context::sslv23};
+	boost::asio::io_context     m_ioc;
 
 	redis::Pool     m_db;
 	WebResources    m_lib;

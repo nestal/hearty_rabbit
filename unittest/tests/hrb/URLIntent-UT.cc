@@ -13,7 +13,7 @@
 #include <catch.hpp>
 
 #include "common/URLIntent.hh"
-#include "common/Escape.hh"
+#include "common/StringFields.hh"
 
 using namespace hrb;
 
@@ -322,7 +322,7 @@ TEST_CASE("query URLs")
 	REQUIRE(query_question.option() == "other=option");
 	REQUIRE(query_question.str() == "/query/collection?other=option");
 
-	REQUIRE(std::get<0>(find_fields(query_user.option(), "user")) == "sum");
+	REQUIRE(std::get<0>(urlform.find(query_user.option(), "user")) == "sum");
 
 	URLIntent query3{"/query"};
 	REQUIRE(query3.action() == URLIntent::Action::query);

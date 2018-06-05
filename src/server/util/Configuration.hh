@@ -110,10 +110,10 @@ public:
 
 	// for unit tests
 	void blob_path(boost::filesystem::path path) {m_blob_path = std::move(path);}
+	void change_https_port(std::uint16_t port);
 
 private:
 	void load_config(const boost::filesystem::path& path);
-
 
 private:
 	boost::program_options::options_description m_desc{"Allowed options"};

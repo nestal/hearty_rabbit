@@ -37,7 +37,7 @@ void Authentication::share_resource(
 	Complete&& comp
 )
 {
-	auto auth = insecure_random<Cookie>();
+	auto auth = insecure_random<CookieID>();
 	auto expired = std::chrono::system_clock::now() + valid_period;
 
 	db.command(
@@ -94,11 +94,11 @@ void Authentication::list_guests(
 		{
 			auto valid_cookie = [](auto&& kv)
 			{
-				return kv.key().size() == Cookie{}.size();
+				return kv.key().size() == CookieID{}.size();
 			};
 			auto make_guest = [&owner](auto&& kv)
 			{
-				Cookie c{};
+				CookieID c{};
 				auto s = kv.key();
 				assert(s.size() == c.size());
 

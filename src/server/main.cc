@@ -14,10 +14,11 @@
 #include "net/Listener.hh"
 #include "net/Session.hh"
 
-#include <boost/asio/ssl/context.hpp>
 #include <boost/exception/errinfo_api_function.hpp>
 #include <boost/exception/info.hpp>
 #include <boost/exception/diagnostic_information.hpp>
+
+#include <openssl/evp.h>
 
 #include <regex>
 
@@ -27,35 +28,12 @@
 
 namespace hrb {
 
-void run(Server& server, const Configuration& cfg)
+void run(const Configuration& cfg)
 {
-	OpenSSL_add_all_digests();
 	auto const threads = std::max(1UL, cfg.thread_count());
 
-	boost::asio::ssl::context ctx{boost::asio::ssl::context::sslv23};
-	ctx.set_options(
-		boost::asio::ssl::context::default_workarounds |
-		boost::asio::ssl::context::no_sslv2
-	);
-	ctx.use_certificate_chain_file(cfg.cert_chain().string());
-	ctx.use_private_key_file(cfg.private_key().string(), boost::asio::ssl::context::pem);
-
-	// Create and launch a listening port for HTTP and HTTPS
-	std::make_shared<Listener>(
-		server.get_io_context(),
-		[&server](){return server.start_session();},
-		nullptr,
-		cfg
-	)->run();
-	std::make_shared<Listener>(
-		server.get_io_context(),
-		[&server](){return server.start_session();},
-		&ctx,
-		cfg
-	)->run();
-
-	// make sure we load the certificates and listen before dropping root privileges
-	server.drop_privileges();
+	Server server{cfg};
+	server.listen();
 
 	// Run the I/O service on the requested number of threads
 	std::vector<std::thread> v;
@@ -68,14 +46,13 @@ void run(Server& server, const Configuration& cfg)
 
 int StartServer(const Configuration& cfg)
 {
-	Server server{cfg};
-	if (cfg.add_user([&server](auto&& username)
+	if (cfg.add_user([&cfg](auto&& username)
 	{
 		std::cout << "Please input password of the new user " << username << ":\n";
 		std::string password;
 		if (std::getline(std::cin, password))
 		{
-			server.add_user(username, Password{std::string_view{password}}, [](std::error_code&& ec)
+			Server::add_user(cfg, username, Password{std::string_view{password}}, [](std::error_code&& ec)
 			{
 				std::cout << "result = " << ec << " " << ec.message() << std::endl;
 			});
@@ -85,7 +62,7 @@ int StartServer(const Configuration& cfg)
 	else
 	{
 		Log(LOG_NOTICE, "hearty_rabbit (version %1%) starting", constants::version);
-		run(server, cfg);
+		run(cfg);
 		return EXIT_SUCCESS;
 	}
 }
@@ -97,6 +74,7 @@ int main(int argc, char *argv[])
 	using namespace hrb;
 	try
 	{
+		OpenSSL_add_all_digests();
 		Configuration cfg{argc, argv, ::getenv("HEARTY_RABBIT_CONFIG")};
 		if (cfg.help())
 		{

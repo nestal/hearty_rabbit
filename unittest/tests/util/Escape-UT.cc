@@ -11,6 +11,7 @@
 //
 
 #include "common/Escape.hh"
+#include "common/StringFields.hh"
 
 #include <catch.hpp>
 #include <optional>
@@ -44,37 +45,37 @@ TEST_CASE("get_fields_from_form_string", "[normal]")
 {
 	SECTION("simple 2 fields")
 	{
-		auto [name, other] = find_fields("name=value&other=same", "name", "other");
+		auto [name, other] = urlform.find("name=value&other=same", "name", "other");
 		REQUIRE(name == "value");
 		REQUIRE(other == "same");
 	}
 	SECTION("single empty field")
 	{
-		auto [only] = find_fields("I am the only name", "I am the only name");
+		auto [only] = urlform.find("I am the only name", "I am the only name");
 		REQUIRE(only == "");
 	}
 	SECTION("single empty field not found")
 	{
-		auto [only] = find_fields("I am the only name", "not found");
+		auto [only] = urlform.find("I am the only name", "not found");
 		REQUIRE(only == "");
 	}
 	SECTION("some name without value")
 	{
-		auto [field] = find_fields("some+name+without+value=", "some+name+without+value");
+		auto [field] = urlform.find("some+name+without+value=", "some+name+without+value");
 		REQUIRE(field == "");
 	}
 	SECTION("simple 3 fields")
 	{
 		std::string_view in{"username=nestal&password=123&something=else"};
 
-		auto [username, password, something] = find_fields(in, "username", "password", "something");
+		auto [username, password, something] = urlform.find(in, "username", "password", "something");
 		REQUIRE(username == "nestal");
 		REQUIRE(password == "123");
 		REQUIRE(something == "else");
 	}
 	SECTION("4 fields: 1st one has no value")
 	{
-		auto [user, name, password, something] = find_fields(
+		auto [user, name, password, something] = urlform.find(
 			"user&name=nestal;password=123+++++%%&something=$$%%else",
 			"user", "name", "password", "something"
 		);
@@ -84,7 +85,7 @@ TEST_CASE("get_fields_from_form_string", "[normal]")
 	}
 	SECTION("4 fields: find two of them")
 	{
-		auto [ink, pen] = find_fields(
+		auto [ink, pen] = urlform.find(
 			"happy&birthday=2017-12-31;ink=blue&pen=good",
 			"ink", "pen"
 		);
@@ -93,7 +94,7 @@ TEST_CASE("get_fields_from_form_string", "[normal]")
 	}
 	SECTION("4 fields: tailing ;")
 	{
-		auto [ink, pen] = find_fields(
+		auto [ink, pen] = urlform.find(
 			"happy&2017-12-31;;ink=_I_don't_know_if_it_is_blue___&pen=good;;;;;;;",
 			"ink", "pen"
 		);
@@ -153,7 +154,7 @@ TEST_CASE("decode URI", "[normal]")
 
 TEST_CASE("basic find field with optional", "[normal]")
 {
-	auto [user, name, sum] = basic_find_fields<std::optional<std::string>>("user=sum&sum=user", "user", "name", "sum");
+	auto [user, name, sum] = urlform.basic_find<std::optional<std::string>>("user=sum&sum=user", "user", "name", "sum");
 	static_assert(std::is_same<decltype(user), std::optional<std::string>>::value);
 	REQUIRE(user.has_value());
 	REQUIRE(*user == "sum");
@@ -161,7 +162,7 @@ TEST_CASE("basic find field with optional", "[normal]")
 	REQUIRE(sum.has_value());
 	REQUIRE(*sum == "user");
 
-	auto [shield, sword, armor] = find_optional_fields("shield=hylian&armor", "shield", "sword", "armor");
+	auto [shield, sword, armor] = urlform.find_optional("shield=hylian&armor", "shield", "sword", "armor");
 	static_assert(std::is_same<decltype(shield), std::optional<std::string_view>>::value);
 	REQUIRE(shield.has_value());
 	REQUIRE(*shield == "hylian");

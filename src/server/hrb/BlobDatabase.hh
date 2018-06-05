@@ -13,7 +13,7 @@
 #pragma once
 
 #include "common/ObjectID.hh"
-#include "util/FS.hh"
+#include "common/FS.hh"
 #include "util/Size2D.hh"
 
 #include <boost/beast/http/message.hpp>

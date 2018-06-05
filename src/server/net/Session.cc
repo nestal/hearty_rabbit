@@ -15,7 +15,7 @@
 #include "crypto/Authentication.hh"
 #include "hrb/SessionHandler.ipp"
 #include "net/SplitBuffers.hh"
-#include "util/Error.hh"
+#include "common/Error.hh"
 #include "util/Log.hh"
 
 #include <boost/asio/bind_executor.hpp>

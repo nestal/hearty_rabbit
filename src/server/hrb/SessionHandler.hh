@@ -133,7 +133,7 @@ private:
 
 private:
 	std::shared_ptr<redis::Connection>              m_db;
-	std::optional<Authentication::Cookie>           m_request_cookie;
+	std::optional<Authentication::CookieID>           m_request_cookie;
 	std::chrono::high_resolution_clock::time_point  m_on_header;
 
 	Authentication          m_auth;

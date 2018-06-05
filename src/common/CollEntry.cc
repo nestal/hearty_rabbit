@@ -7,23 +7,19 @@
 */
 
 //
-// Created by nestal on 6/3/18.
+// Created by nestal on 6/5/18.
 //
 
-#include "HRBClient.hh"
+#include "CollEntry.hh"
 
 namespace hrb {
 
-HRBClient::HRBClient(
-	boost::asio::io_context& ioc,
-	boost::asio::ssl::context& ctx,
-	std::string_view host,
-	std::string_view port
-) :
-	m_ioc{ioc}, m_ssl{ctx}, m_host{host}, m_port{port}
+void from_json(const nlohmann::json& src, CollEntry& dest)
 {
-
+	dest.timestamp = src["timestamp"];
+	dest.filename  = src["filename"];
+	dest.mime      = src["mime"];
+	dest.perm      = Permission::from_description(src["perm"].get<std::string>());
 }
-
 
 } // end of namespace

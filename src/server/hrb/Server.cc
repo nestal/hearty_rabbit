@@ -13,11 +13,12 @@
 #include "Server.hh"
 
 #include "SessionHandler.hh"
+#include "net/Listener.hh"
 
 #include "crypto/Password.hh"
 #include "crypto/Authentication.hh"
 
-#include "util/Error.hh"
+#include "common/Error.hh"
 #include "util/Configuration.hh"
 #include "util/Exception.hh"
 
@@ -35,6 +36,33 @@ Server::Server(const Configuration& cfg) :
 	m_lib{cfg.web_root()},
 	m_blob_db{cfg}
 {
+}
+
+void Server::listen()
+{
+	m_ssl.set_options(
+		boost::asio::ssl::context::default_workarounds |
+		boost::asio::ssl::context::no_sslv2
+	);
+	m_ssl.use_certificate_chain_file(m_cfg.cert_chain().string());
+	m_ssl.use_private_key_file(m_cfg.private_key().string(), boost::asio::ssl::context::pem);
+
+	// Create and launch a listening port for HTTP and HTTPS
+	std::make_shared<Listener>(
+		m_ioc,
+		[this](){return start_session();},
+		nullptr,
+		m_cfg
+	)->run();
+	std::make_shared<Listener>(
+		m_ioc,
+		[this](){return start_session();},
+		&m_ssl,
+		m_cfg
+	)->run();
+
+	// make sure we load the certificates and listen before dropping root privileges
+	drop_privileges();
 }
 
 void Server::drop_privileges() const
@@ -61,13 +89,15 @@ void Server::drop_privileges() const
 		throw std::runtime_error("cannot run as root");
 }
 
-void Server::add_user(std::string_view username, Password&& password, std::function<void(std::error_code)> complete)
+void Server::add_user(const Configuration& cfg, std::string_view username, Password&& password, std::function<void(std::error_code)> complete)
 {
-	Authentication::add_user(username, std::move(password), *m_db.alloc(), [&complete](std::error_code&& ec)
+	boost::asio::io_context ioc;
+	redis::Pool db{ioc, cfg.redis()};
+	Authentication::add_user(username, std::move(password), *db.alloc(), [&complete](std::error_code&& ec)
 	{
 		complete(std::move(ec));
 	});
-	m_ioc.run();
+	ioc.run();
 }
 
 boost::asio::io_context& Server::get_io_context()

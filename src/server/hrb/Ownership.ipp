@@ -11,14 +11,14 @@
 //
 
 #include "Ownership.hh"
+#include "BlobRef.hh"
 #include "CollEntryDB.hh"
 
 #include "common/Permission.hh"
-#include "common/BlobRef.hh"
 #include "common/CollEntry.hh"
 
 #include "crypto/Authentication.hh"
-#include "util/Error.hh"
+#include "common/Error.hh"
 #include "util/Log.hh"
 #include "common/Escape.hh"
 
