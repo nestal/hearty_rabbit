@@ -120,6 +120,11 @@ URLIntent::URLIntent(Action act, std::string_view user, std::string_view coll, s
 {
 }
 
+URLIntent::URLIntent(QueryTarget target, std::string_view option) :
+	m_action{Action::query}, m_option{option}, m_query_target{target}
+{
+
+}
 
 void URLIntent::parse_field_from_left(std::string_view& target, hrb::URLIntent::Parameter p)
 {
