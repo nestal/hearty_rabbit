@@ -159,7 +159,7 @@ target_link_libraries(
 # must not assume the location of ${CMAKE_BINARY_DIR} relative to the source code.
 add_custom_command(
 	TARGET unittest
-	COMMENT "Run unit tests"
+	COMMENT "Run server-side unit tests"
 	POST_BUILD
 	WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
 	COMMAND unittest
@@ -182,6 +182,17 @@ target_link_libraries(
 	clienttest
 	hrbclient
 	hrbsrv
+)
+# Automatically run unit tests after the build
+# Although we specified the ${CMAKE_BINARY_DIR} as the current directory when running unit tests,
+# the test cases should not use absolute path when referring to test data. The test cases
+# must not assume the location of ${CMAKE_BINARY_DIR} relative to the source code.
+add_custom_command(
+	TARGET clienttest
+	COMMENT "Run client-side unit tests"
+	POST_BUILD
+	WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+	COMMAND clienttest
 )
 
 ###################################################################################################
