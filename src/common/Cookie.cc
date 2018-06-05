@@ -10,9 +10,13 @@
 // Created by nestal on 6/5/18.
 //
 
-#include <iostream>
 #include "Cookie.hh"
 #include "StringFields.hh"
+
+#include <iostream>
+#include <sstream>
+#include <locale>
+#include <iomanip>
 
 namespace hrb {
 namespace {
@@ -25,10 +29,19 @@ Cookie::Cookie(std::string_view header) : m_cookie{header}
 
 std::chrono::system_clock::time_point Cookie::expires() const
 {
-	auto [exp_str] = fields.find(m_cookie, "Expires");
-	std::cout << "Expires = " << exp_str << std::endl;
+	if (!m_expires.has_value())
+	{
+		auto[exp_str] = fields.find(m_cookie, "Expires");
+		std::cout << "Expires = " << exp_str << std::endl;
 
-	return std::chrono::system_clock::time_point();
+		std::istringstream ss{std::string{exp_str}};
+		std::tm tm{};
+
+		// Wed, 21 Oct 2015 07:28:00 GMT
+		if (ss >> std::get_time(&tm, "%a, %d %b %Y %H:%M:%S"))
+			m_expires = std::chrono::system_clock::from_time_t(::timegm(&tm));
+	}
+	return *m_expires;
 }
 
 } // end of namespace hrb

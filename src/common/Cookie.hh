@@ -34,7 +34,7 @@ private:
 	std::string m_cookie;   //!< the value of the header field "Set-Cookie" or "Cookie"
 
 	// cached parse results
-	mutable std::optional<std::string_view> m_expires;
+	mutable std::optional<std::chrono::system_clock::time_point> m_expires;
 };
 
 } // end of namespace hrb
