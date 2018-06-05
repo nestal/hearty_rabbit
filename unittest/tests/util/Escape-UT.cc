@@ -153,7 +153,7 @@ TEST_CASE("decode URI", "[normal]")
 
 TEST_CASE("basic find field with optional", "[normal]")
 {
-	auto [user, name, sum] = basic_find_fields<std::optional<std::string>>("user=sum&sum=user", "user", "name", "sum");
+	auto [user, name, sum] = basic_find_fields<FormURLEncoded, std::optional<std::string>>("user=sum&sum=user", "user", "name", "sum");
 	static_assert(std::is_same<decltype(user), std::optional<std::string>>::value);
 	REQUIRE(user.has_value());
 	REQUIRE(*user == "sum");
