@@ -176,10 +176,12 @@ target_include_directories(
 	clienttest PRIVATE
 	unittest/Catch2/single_include
 	${PROJECT_SOURCE_DIR}/src/client
+	${PROJECT_SOURCE_DIR}/src/server
 )
 target_link_libraries(
 	clienttest
 	hrbclient
+	hrbsrv
 )
 
 ###################################################################################################

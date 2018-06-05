@@ -33,7 +33,7 @@
 
 #include "util/Configuration.hh"
 #include "common/Escape.hh"
-#include "util/FS.hh"
+#include "common/FS.hh"
 #include "util/Log.hh"
 #include "hrb/index/PHashDb.hh"
 
