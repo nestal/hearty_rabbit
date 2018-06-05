@@ -29,7 +29,7 @@ struct ServerInstance::Impl
 	Impl() :
 		m_srv{m_cfg}
 	{
-//		Server::add_user(m_cfg, "sumsum", Password{"bearbear"}, [](auto){});
+		Server::add_user(m_cfg, "sumsum", Password{"bearbear"}, [](auto){});
 
 		m_srv.listen();
 	}

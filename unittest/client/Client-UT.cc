@@ -28,12 +28,24 @@ TEST_CASE("simple client login", "[normal]")
 	ssl::context ctx{ssl::context::sslv23_client};
 
 	bool tested = false;
-
 	HRBClient subject{ioc, ctx, "localhost", ServerInstance::listen_https_port()};
-	subject.login("sumsum", "bearbear", [&tested](auto ec)
+
+	SECTION("login correct")
 	{
-		tested = true;
-	});
+		subject.login("sumsum", "bearbear", [&tested](auto err)
+		{
+			tested = true;
+			REQUIRE_FALSE(err);
+		});
+	}
+	SECTION("login incorrect")
+	{
+		subject.login("yungyung", "bunny", [&tested](auto err)
+		{
+			tested = true;
+			REQUIRE(err == hrb::Error::login_incorrect);
+		});
+	}
 	REQUIRE(ioc.run_for(10s) > 0);
 	REQUIRE(tested);
 	ioc.restart();
