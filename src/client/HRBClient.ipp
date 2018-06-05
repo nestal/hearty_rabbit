@@ -52,6 +52,7 @@ void HRBClient::login(std::string_view user, std::string_view password, Complete
 			ec = hrb::Error::login_incorrect;
 
 		comp(ec);
+		req.shutdown();
 	});
 	req->run();
 }
@@ -71,14 +72,12 @@ void HRBClient::list(std::string_view coll, Complete&& comp)
 		std::unordered_map<ObjectID, CollEntry> result;
 		for (auto&& item : json["elements"].items())
 		{
-			nlohmann::json key   = item.key();
-			nlohmann::json value = item.value();
-
-			if (auto blob = hrb::hex_to_object_id(key.get<std::string>()); blob.has_value())
-				result.emplace(*blob, value.get<CollEntry>());
+			if (auto blob = hrb::hex_to_object_id(item.key()); blob.has_value())
+				result.emplace(*blob, item.value().template get<CollEntry>());
 		}
 
 		comp(std::move(result));
+		req.shutdown();
 	});
 	req->run();
 }

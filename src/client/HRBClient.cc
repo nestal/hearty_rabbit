@@ -22,8 +22,6 @@ HRBClient::HRBClient(
 ) :
 	m_ioc{ioc}, m_ssl{ctx}, m_host{host}, m_port{port}
 {
-
 }
-
 
 } // end of namespace
