@@ -144,6 +144,11 @@ std::string Configuration::https_root() const
 		+ (listen_https().port() == 443 ? ""s : (":"s + std::to_string(listen_https().port())));
 }
 
+void Configuration::change_https_port(std::uint16_t port)
+{
+	m_listen_https.port(port);
+}
+
 const JPEGRenditionSetting& RenditionSetting::find(std::string_view rend) const
 {
 	assert(m_renditions.find(std::string{m_default}) != m_renditions.end());

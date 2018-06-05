@@ -12,6 +12,8 @@
 
 #include <catch.hpp>
 
+#include "ServerInstance.hh"
+
 #include "client/GenericHTTPRequest.hh"
 #include "client/HRBClient.hh"
 #include "client/HRBClient.ipp"
@@ -27,7 +29,7 @@ TEST_CASE("simple client login", "[normal]")
 
 	bool tested = false;
 
-	HRBClient subject{ioc, ctx, "localhost", "4433"};
+	HRBClient subject{ioc, ctx, "localhost", ServerInstance::listen_https_port()};
 	subject.login("sumsum", "bearbear", [&tested](auto ec)
 	{
 		tested = true;

@@ -13,6 +13,7 @@
 #pragma once
 
 #include <memory>
+#include <string>
 
 namespace hrb {
 
@@ -23,6 +24,8 @@ public:
 	~ServerInstance();
 
 	void run();
+
+	static std::string listen_https_port();
 
 private:
 	struct Impl;

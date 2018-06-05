@@ -13,7 +13,6 @@
 #include "Cookie.hh"
 #include "StringFields.hh"
 
-#include <iostream>
 #include <sstream>
 #include <locale>
 #include <iomanip>
@@ -40,8 +39,6 @@ std::chrono::system_clock::time_point Cookie::expires() const
 	if (!m_expires.has_value())
 	{
 		auto[exp_str] = fields.find(m_cookie, "Expires");
-		std::cout << "Expires = " << exp_str << std::endl;
-
 		std::istringstream ss{std::string{exp_str}};
 		std::tm tm{};
 

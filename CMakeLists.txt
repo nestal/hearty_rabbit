@@ -159,7 +159,7 @@ target_link_libraries(
 # must not assume the location of ${CMAKE_BINARY_DIR} relative to the source code.
 add_custom_command(
 	TARGET unittest
-	COMMENT "Run server-side unit tests"
+	COMMENT "Running server-side unit tests"
 	POST_BUILD
 	WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
 	COMMAND unittest
@@ -189,7 +189,7 @@ target_link_libraries(
 # must not assume the location of ${CMAKE_BINARY_DIR} relative to the source code.
 add_custom_command(
 	TARGET clienttest
-	COMMENT "Run client-side unit tests"
+	COMMENT "Running client-side unit tests"
 	POST_BUILD
 	WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
 	COMMAND clienttest
