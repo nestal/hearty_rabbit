@@ -12,8 +12,8 @@
 
 #pragma once
 
-#include "ObjectID.hh"
-#include "server/hrb/CollEntryDB.hh"
+#include "CollEntryDB.hh"
+#include "common/ObjectID.hh"
 
 #include <string>
 #include <json.hpp>
