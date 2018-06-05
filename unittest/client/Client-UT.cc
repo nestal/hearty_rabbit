@@ -38,9 +38,10 @@ TEST_CASE("simple client login", "[normal]")
 	REQUIRE(tested);
 	ioc.restart();
 
-	subject.list("", [](auto json)
+	subject.list("", [](auto refs)
 	{
-		std::cout << json << std::endl;
+		for (auto&& ref : refs)
+			std::cout << ref.second.filename << std::endl;
 	});
 
 	REQUIRE(ioc.run_for(10s) > 0);

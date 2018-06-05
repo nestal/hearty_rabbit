@@ -16,7 +16,13 @@
 
 #include "GenericHTTPRequest.hh"
 #include "common/URLIntent.hh"
+#include "common/CollEntry.hh"
+#include "common/ObjectID.hh"
 
+#include <boost/range/adaptors.hpp>
+
+#include <iostream>
+#include <string>
 #include <json.hpp>
 
 namespace hrb {
@@ -52,8 +58,20 @@ void HRBClient::list(std::string_view coll, Complete&& comp)
 
 	req->on_load([this, comp=std::forward<Complete>(comp)](auto ec, auto& req)
 	{
+		using namespace boost::adaptors;
+
 		auto json = nlohmann::json::parse(req.response().body());
-		comp(std::move(json));
+		std::vector<std::pair<ObjectID, CollEntry>> result;
+		for (auto&& item : json["elements"].items())
+		{
+			nlohmann::json key   = item.key();
+			nlohmann::json value = item.value();
+
+			if (auto blob = hrb::hex_to_object_id(key.get<std::string>()); blob.has_value())
+				result.emplace_back(*blob, value.get<CollEntry>());
+		}
+
+		comp(std::move(result));
 	});
 	req->run();
 }
