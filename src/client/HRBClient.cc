@@ -14,7 +14,12 @@
 
 namespace hrb {
 
-HRBClient::HRBClient(boost::asio::io_context& ioc, ssl::context& ctx, std::string_view host, std::string_view port) :
+HRBClient::HRBClient(
+	boost::asio::io_context& ioc,
+	boost::asio::ssl::context& ctx,
+	std::string_view host,
+	std::string_view port
+) :
 	m_ioc{ioc}, m_ssl{ctx}, m_host{host}, m_port{port}
 {
 

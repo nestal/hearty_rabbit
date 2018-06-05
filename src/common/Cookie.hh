@@ -43,6 +43,8 @@ public:
 	void add(std::string_view id, std::string_view value);
 	bool has(std::string_view id) const;
 
+	std::string_view str() const {return m_cookie;}
+
 private:
 	std::string m_cookie;   //!< the value of the header field "Set-Cookie" or "Cookie"
 

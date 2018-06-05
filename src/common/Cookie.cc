@@ -59,7 +59,8 @@ std::string_view Cookie::field(std::string_view id) const
 
 void Cookie::add(std::string_view id, std::string_view value)
 {
-	m_cookie += ";";
+	if (!m_cookie.empty())
+		m_cookie += ";";
 	m_cookie += id;
 	m_cookie += "=";
 	m_cookie += value;

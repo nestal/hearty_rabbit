@@ -14,6 +14,11 @@
 
 #include "HRBClient.hh"
 
+#include "GenericHTTPRequest.hh"
+#include "common/URLIntent.hh"
+
+#include <json.hpp>
+
 namespace hrb {
 
 template <typename Complete>
@@ -25,10 +30,30 @@ void HRBClient::login(std::string_view user, std::string_view password, Complete
 	req->request().set(http::field::content_type, "application/x-www-form-urlencoded");
 	req->request().body() = "username=" + std::string{user} + "&password=" + std::string{password};
 
+	m_user = std::string{user};
+
 	req->on_load([this, comp=std::forward<Complete>(comp)](auto ec, auto& req)
 	{
-		m_cookie = Cookie{req.response().at(http::field::set_cookie)};
+		// reset cookie state
+		m_cookie = Cookie{};
+		m_cookie.add("id", Cookie{req.response().at(http::field::set_cookie)}.field("id"));
+
 		comp(ec);
+	});
+	req->run();
+}
+
+template <typename Complete>
+void HRBClient::list(std::string_view coll, Complete&& comp)
+{
+	auto req = std::make_shared<GenericHTTPRequest<http::empty_body, http::string_body>>(m_ioc, m_ssl);
+	req->init(m_host, m_port, URLIntent{URLIntent::Action::api, m_user, coll, ""}.str(), http::verb::get);
+	req->request().set(http::field::cookie, m_cookie.str());
+
+	req->on_load([this, comp=std::forward<Complete>(comp)](auto ec, auto& req)
+	{
+		auto json = nlohmann::json::parse(req.response().body());
+		comp(std::move(json));
 	});
 	req->run();
 }
