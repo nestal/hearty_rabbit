@@ -38,6 +38,33 @@ Server::Server(const Configuration& cfg) :
 {
 }
 
+void Server::listen()
+{
+	m_ssl.set_options(
+		boost::asio::ssl::context::default_workarounds |
+		boost::asio::ssl::context::no_sslv2
+	);
+	m_ssl.use_certificate_chain_file(m_cfg.cert_chain().string());
+	m_ssl.use_private_key_file(m_cfg.private_key().string(), boost::asio::ssl::context::pem);
+
+	// Create and launch a listening port for HTTP and HTTPS
+	std::make_shared<Listener>(
+		m_ioc,
+		[this](){return start_session();},
+		nullptr,
+		m_cfg
+	)->run();
+	std::make_shared<Listener>(
+		m_ioc,
+		[this](){return start_session();},
+		&m_ssl,
+		m_cfg
+	)->run();
+
+	// make sure we load the certificates and listen before dropping root privileges
+	drop_privileges();
+}
+
 void Server::drop_privileges() const
 {
 	// drop privileges if run as root
