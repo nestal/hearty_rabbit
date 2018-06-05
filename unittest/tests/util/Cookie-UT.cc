@@ -18,7 +18,9 @@ using namespace hrb;
 
 TEST_CASE("parse expire time from cookie", "[normal]")
 {
-	hrb::Cookie subject{" id=a3fWa; Expires=Wed, 21 Oct 2015 07:28:00 GMT; Secure; HttpOnly"};
+	Cookie subject{" id=a3fWa; Expires=Wed, 21 Oct 2015 07:28:00 GMT; Secure; HttpOnly"};
+	REQUIRE(subject.has("Expires"));
+	REQUIRE(subject.has("id"));
 	REQUIRE(subject.expires() < std::chrono::system_clock::now());
 
 	auto tt = std::chrono::system_clock::to_time_t(subject.expires());
@@ -30,4 +32,14 @@ TEST_CASE("parse expire time from cookie", "[normal]")
 	REQUIRE(tm->tm_mon == 9);
 	REQUIRE(tm->tm_mday == 21);
 
+	REQUIRE(subject.field("id") == "a3fWa");
+}
+
+TEST_CASE("cookie parsing round-trip", "[normal]")
+{
+	Cookie subject;
+	subject.add("sid", "some ID");
+	REQUIRE_FALSE(subject.has("id"));
+	REQUIRE(subject.has("sid"));
+	REQUIRE(subject.field("sid") == "some ID");
 }

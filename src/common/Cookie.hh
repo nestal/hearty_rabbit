@@ -26,9 +26,18 @@ namespace hrb {
 class Cookie
 {
 public:
-	Cookie(std::string_view header);
+	explicit Cookie(std::string_view header = {});
+
+	Cookie(const Cookie&) = default;
+	Cookie(Cookie&&) = default;
+	Cookie& operator=(const Cookie&) = default;
+	Cookie& operator=(Cookie&&) = default;
 
 	std::chrono::system_clock::time_point expires() const;
+	std::string_view field(std::string_view id) const;
+
+	void add(std::string_view id, std::string_view value);
+	bool has(std::string_view id) const;
 
 private:
 	std::string m_cookie;   //!< the value of the header field "Set-Cookie" or "Cookie"
