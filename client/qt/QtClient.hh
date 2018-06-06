@@ -29,6 +29,9 @@ signals:
 	void on_login(std::error_code ec);
 
 private:
+	QUrl setup_url(const std::string& target);
+
+private:
 	QString m_host;
 	int m_port{0};
 
