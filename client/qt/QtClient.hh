@@ -23,12 +23,15 @@ class QtClient : public QObject
 public:
 	QtClient(QObject *parent);
 
-	void login(const QString& site, const QString& username, const QString& password);
+	void login(const QString& host, int port, const QString& username, const QString& password);
 
 signals:
 	void on_login(std::error_code ec);
 
 private:
+	QString m_host;
+	int m_port{0};
+
 	QNetworkAccessManager   m_nam{this};
 };
 

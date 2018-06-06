@@ -25,7 +25,8 @@ class LoginDialog : public QDialog
 public:
 	explicit LoginDialog(QWidget *parent);
 
-	QString site() const;
+	QString host() const;
+	int port() const;
 	QString username() const;
 	QString password() const;
 

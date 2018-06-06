@@ -41,7 +41,7 @@ MainWindow::MainWindow() :
 	{
 		LoginDialog dlg{this};
 		if (dlg.exec() == QDialog::Accepted)
-			m_hrb.login(dlg.site(), dlg.username(), dlg.password());
+			m_hrb.login(dlg.host(), dlg.port(), dlg.username(), dlg.password());
 	});
 
 

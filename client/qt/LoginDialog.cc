@@ -19,11 +19,19 @@ namespace hrb {
 LoginDialog::LoginDialog(QWidget *parent) : QDialog{parent}
 {
 	m_.setupUi(this);
+
+	// default debug account
+#ifndef NDEBUG
+	m_.host->setText("localhost");
+	m_.port->setText("4433");
+	m_.username->setText("sumsum");
+	m_.password->setText("bearbear");
+#endif
 }
 
-QString LoginDialog::site() const
+QString LoginDialog::host() const
 {
-	return m_.site->text();
+	return m_.host->text();
 }
 
 QString LoginDialog::username() const
@@ -34,6 +42,11 @@ QString LoginDialog::username() const
 QString LoginDialog::password() const
 {
 	return m_.password->text();
+}
+
+int LoginDialog::port() const
+{
+	return m_.port->text().toInt();
 }
 
 } // end of namespace hrb
