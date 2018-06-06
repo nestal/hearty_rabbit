@@ -43,18 +43,13 @@ MainWindow::MainWindow() :
 		if (dlg.exec() == QDialog::Accepted)
 			m_hrb.login(dlg.host(), dlg.port(), dlg.username(), dlg.password());
 	});
-
-
-	list_hrb();
-}
-
-void MainWindow::list_hrb()
-{
 }
 
 void MainWindow::on_login(std::error_code err)
 {
 	std::cout << "login!" << std::endl;
+
+	m_hrb.list_collection("");
 }
 
 } // end of namespace hrb

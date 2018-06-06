@@ -30,7 +30,6 @@ public:
 	MainWindow();
 
 private:
-	void list_hrb();
 	void on_login(std::error_code err);
 
 private:

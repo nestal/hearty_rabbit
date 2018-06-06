@@ -14,6 +14,9 @@
 
 #include <QtNetwork/QNetworkAccessManager>
 
+#include "common/ObjectID.hh"
+#include "common/CollEntry.hh"
+
 namespace hrb {
 
 class QtClient : public QObject
@@ -24,9 +27,11 @@ public:
 	QtClient(QObject *parent);
 
 	void login(const QString& host, int port, const QString& username, const QString& password);
+	void list_collection(const QString& collection);
 
 signals:
 	void on_login(std::error_code ec);
+	void on_list_collection(const std::unordered_map<ObjectID, CollEntry>& coll);
 
 private:
 	QUrl setup_url(const std::string& target);
@@ -34,6 +39,8 @@ private:
 private:
 	QString m_host;
 	int m_port{0};
+
+	QString m_user;
 
 	QNetworkAccessManager   m_nam{this};
 };

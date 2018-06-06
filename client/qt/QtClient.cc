@@ -16,6 +16,7 @@
 
 #include "common/URLIntent.hh"
 
+
 #include <iostream>
 
 namespace hrb {
@@ -31,6 +32,7 @@ void QtClient::login(const QString& host, int port, const QString& username, con
 {
 	m_host = host;
 	m_port = port;
+	m_user = username;
 
 	QNetworkRequest request{setup_url(URLIntent{URLIntent::Action::login, "", "", ""}.str())};
 	request.setHeader(QNetworkRequest::ContentTypeHeader, "application/x-www-form-urlencoded");
@@ -58,6 +60,23 @@ QUrl QtClient::setup_url(const std::string& target)
 	url.setPort(m_port);
 	url.setPath(QString::fromStdString(target));
 	return url;
+}
+
+void QtClient::list_collection(const QString& collection)
+{
+	QNetworkRequest request{setup_url(URLIntent{
+		URLIntent::Action::api,
+		m_user.toStdString(),
+		collection.toStdString(),
+		""
+	}.str())};
+
+	auto reply = m_nam.get(request);
+	connect(reply, &QNetworkReply::finished, [reply, this]
+	{
+		auto json = reply->readAll();
+		std::cout << json.toStdString() << std::endl;
+	});
 }
 
 } // end of namespace hrb
