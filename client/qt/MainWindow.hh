@@ -14,8 +14,11 @@
 
 #include "ui_MainWindow.h"
 
+#include "QtClient.hh"
+
 #include <QtWidgets/QMainWindow>
-#include <QtNetwork/QNetworkAccessManager>
+
+#include <system_error>
 
 class QFileSystemModel;
 
@@ -28,11 +31,12 @@ public:
 
 private:
 	void list_hrb();
+	void on_login(std::error_code err);
 
 private:
 	Ui::MainWindow      m_;
 	QFileSystemModel    *m_fs_model{};
-	QNetworkAccessManager   m_nam;
+	QtClient            m_hrb{this};
 };
 
 } // end of namespace hrb

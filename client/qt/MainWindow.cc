@@ -15,7 +15,6 @@
 
 #include <QAction>
 #include <QFileSystemModel>
-#include <QtNetwork/QNetworkReply>
 
 #include <iostream>
 
@@ -35,13 +34,14 @@ MainWindow::MainWindow() :
 	for (int i = 1; i < m_fs_model->columnCount({}); i++)
 		m_.local_fs->setColumnHidden(i, true);
 
+	connect(&m_hrb, &QtClient::on_login, this, &MainWindow::on_login);
 	connect(m_.action_exit, &QAction::triggered, qApp, &QApplication::quit);
 
 	connect(m_.action_login, &QAction::triggered, [this](bool)
 	{
 		LoginDialog dlg{this};
 		if (dlg.exec() == QDialog::Accepted)
-			std::cout << "OK!" << std::endl;
+			m_hrb.login(dlg.site(), dlg.username(), dlg.password());
 	});
 
 
@@ -50,11 +50,11 @@ MainWindow::MainWindow() :
 
 void MainWindow::list_hrb()
 {
-	auto reply = m_nam.get(QNetworkRequest{QUrl::fromUserInput("https://www.nestal.net/api/nestal/")});
-	connect(reply, &QNetworkReply::finished, [reply]
-	{
-		std::cout << "read reply = " << QString::fromUtf8(reply->readAll()).toStdString() << std::endl;
-	});
+}
+
+void MainWindow::on_login(std::error_code err)
+{
+	std::cout << "login!" << std::endl;
 }
 
 } // end of namespace hrb

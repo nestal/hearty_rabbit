@@ -12,25 +12,24 @@
 
 #pragma once
 
-#include <QtWidgets/QDialog>
-
-#include "ui_LoginDialog.h"
-
-class QWidget;
+#include <QtNetwork/QNetworkAccessManager>
 
 namespace hrb {
 
-class LoginDialog : public QDialog
+class QtClient : public QObject
 {
-public:
-	explicit LoginDialog(QWidget *parent);
+	Q_OBJECT
 
-	QString site() const;
-	QString username() const;
-	QString password() const;
+public:
+	QtClient(QObject *parent);
+
+	void login(const QString& site, const QString& username, const QString& password);
+
+signals:
+	void on_login(std::error_code ec);
 
 private:
-	Ui::LoginDialog m_;
+	QNetworkAccessManager   m_nam{this};
 };
 
 } // end of namespace hrb

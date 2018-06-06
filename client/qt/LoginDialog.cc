@@ -21,4 +21,19 @@ LoginDialog::LoginDialog(QWidget *parent) : QDialog{parent}
 	m_.setupUi(this);
 }
 
+QString LoginDialog::site() const
+{
+	return m_.site->text();
+}
+
+QString LoginDialog::username() const
+{
+	return m_.username->text();
+}
+
+QString LoginDialog::password() const
+{
+	return m_.password->text();
+}
+
 } // end of namespace hrb
