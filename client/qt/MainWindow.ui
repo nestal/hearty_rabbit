@@ -20,8 +20,8 @@
       <property name="orientation">
        <enum>Qt::Vertical</enum>
       </property>
-      <widget class="QListView" name="m_local_list"/>
-      <widget class="QListView" name="m_remote_list"/>
+      <widget class="QListView" name="local_list"/>
+      <widget class="QListView" name="remote_list"/>
      </widget>
     </item>
    </layout>
@@ -39,6 +39,7 @@
     <property name="title">
      <string>&amp;File</string>
     </property>
+    <addaction name="action_login"/>
     <addaction name="separator"/>
     <addaction name="action_exit"/>
    </widget>
@@ -84,6 +85,11 @@
   <action name="action_exit">
    <property name="text">
     <string>E&amp;xit</string>
+   </property>
+  </action>
+  <action name="action_login">
+   <property name="text">
+    <string>&amp;Login...</string>
    </property>
   </action>
  </widget>

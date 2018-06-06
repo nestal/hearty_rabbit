@@ -11,6 +11,7 @@
 //
 
 #include "MainWindow.hh"
+#include "LoginDialog.hh"
 
 #include <QAction>
 #include <QFileSystemModel>
@@ -34,7 +35,15 @@ MainWindow::MainWindow() :
 	for (int i = 1; i < m_fs_model->columnCount({}); i++)
 		m_.local_fs->setColumnHidden(i, true);
 
-	connect(m_.action_exit, &QAction::triggered, []{QApplication::quit();});
+	connect(m_.action_exit, &QAction::triggered, qApp, &QApplication::quit);
+
+	connect(m_.action_login, &QAction::triggered, [this](bool)
+	{
+		LoginDialog dlg{this};
+		if (dlg.exec() == QDialog::Accepted)
+			std::cout << "OK!" << std::endl;
+	});
+
 
 	list_hrb();
 }

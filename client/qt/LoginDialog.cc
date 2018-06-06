@@ -7,16 +7,18 @@
 */
 
 //
-// Created by nestal on 6/3/18.
+// Created by nestal on 6/6/18.
 //
 
-#include "QtClient.hh"
+#include "LoginDialog.hh"
+
+#include <QtWidgets/QAction>
 
 namespace hrb {
 
-std::shared_ptr<LoginResult> QtClient::login(const QString& site, const QString& user, const QString& password)
+LoginDialog::LoginDialog(QWidget *parent) : QDialog{parent}
 {
-	return {};
+	m_.setupUi(this);
 }
 
 } // end of namespace hrb
