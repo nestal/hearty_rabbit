@@ -66,14 +66,7 @@ void HRBClient::list_collection(std::string_view coll, Complete&& comp)
 	req->on_load([this, comp=std::forward<Complete>(comp)](auto ec, auto& req)
 	{
 		auto json = nlohmann::json::parse(req.response().body());
-		std::unordered_map<ObjectID, CollEntry> result;
-		for (auto&& item : json["elements"].items())
-		{
-			if (auto blob = hrb::hex_to_object_id(item.key()); blob.has_value())
-				result.emplace(*blob, item.value().template get<CollEntry>());
-		}
-
-		comp(std::move(result), ec);
+		comp(json.template get<std::unordered_map<ObjectID, CollEntry>>(), ec);
 		req.shutdown();
 	});
 	req->run();

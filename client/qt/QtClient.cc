@@ -16,7 +16,7 @@
 
 #include "common/URLIntent.hh"
 
-
+#include <json.hpp>
 #include <iostream>
 
 namespace hrb {
@@ -24,6 +24,7 @@ namespace hrb {
 QtClient::QtClient(QObject *parent) : QObject{parent}
 {
 #ifndef NDEBUG
+	// ignore SSL error in debug mode to allow easy testing
 	connect(&m_nam, &QNetworkAccessManager::sslErrors, [](QNetworkReply *reply, auto errors){reply->ignoreSslErrors();});
 #endif
 }
@@ -76,6 +77,17 @@ void QtClient::list_collection(const QString& collection)
 	{
 		auto json = reply->readAll();
 		std::cout << json.toStdString() << std::endl;
+
+		auto dir = nlohmann::json::parse(json.toStdString(), nullptr, false);
+		if (!dir.is_discarded())
+		{
+			auto map = dir.get<std::unordered_map<ObjectID, CollEntry>>();
+			std::cout << "get " << map.size() << " entries" << std::endl;
+		}
+		else
+		{
+			std::cout << "parse error!" << std::endl;
+		}
 	});
 }
 
