@@ -65,6 +65,11 @@ void to_json(nlohmann::json& dest, const Collection& src)
 	dest = std::move(result);
 }
 
+Collection::iterator Collection::find(const ObjectID& id) const
+{
+	return m_blobs.find(id);
+}
+
 std::optional<ObjectID> Collection::cover() const
 {
 	if (auto it = m_meta.find("cover"); it != m_meta.end())

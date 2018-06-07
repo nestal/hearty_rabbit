@@ -15,6 +15,7 @@
 #include <QtNetwork/QNetworkReply>
 
 #include "common/URLIntent.hh"
+#include "common/Collection.hh"
 
 #include <json.hpp>
 #include <iostream>
@@ -81,8 +82,7 @@ void QtClient::list_collection(const QString& collection)
 		auto dir = nlohmann::json::parse(json.toStdString(), nullptr, false);
 		if (!dir.is_discarded())
 		{
-			auto map = dir.get<std::unordered_map<ObjectID, CollEntry>>();
-			std::cout << "get " << map.size() << " entries" << std::endl;
+			emit on_list_collection(dir.get<Collection>());
 		}
 		else
 		{

@@ -40,6 +40,8 @@ public:
 	std::optional<ObjectID> cover() const;
 	auto blobs() const {return boost::iterator_range<iterator>{m_blobs.begin(), m_blobs.end()};}
 
+	iterator find(const ObjectID& id) const;
+
 	friend void from_json(const nlohmann::json& src, Collection& dest);
 	friend void to_json(nlohmann::json& dest, const Collection& src);
 
@@ -50,6 +52,7 @@ public:
 	void add_blob(const ObjectID& id, const CollEntry& entry);
 
 	void update_timestamp(const ObjectID& id, Timestamp value);
+	std::size_t size() const {return m_blobs.size();}
 
 private:
 	std::string     m_name;
