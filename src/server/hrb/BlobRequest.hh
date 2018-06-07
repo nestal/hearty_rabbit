@@ -40,7 +40,7 @@ public:
 	BlobRequest& operator=(BlobRequest&& other) = default;
 	BlobRequest& operator=(const BlobRequest& other) = default;
 
-	std::optional<ObjectID> blob() const    {return hex_to_object_id(m_url.filename());}
+	std::optional<ObjectID> blob() const    {return ObjectID::from_hex(m_url.filename());}
 	std::string_view owner() const          {return m_url.user();}
 	std::string_view collection() const     {return m_url.collection();}
 	std::string_view option() const         {return m_url.option();}

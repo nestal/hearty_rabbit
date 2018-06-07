@@ -411,7 +411,7 @@ template <class Send>
 void SessionHandler::query_blob(const BlobRequest& req, Send&& send)
 {
 	auto [blob_arg, rendition] = urlform.find(req.option(), "id", "rendition");
-	auto blob = hex_to_object_id(blob_arg);
+	auto blob = ObjectID::from_hex(blob_arg);
 	if (!blob)
 		return send(bad_request("invalid blob ID", req.version()));
 
@@ -490,7 +490,7 @@ void SessionHandler::post_view(BlobRequest&& req, Send&& send)
 
 	using namespace std::chrono_literals;
 
-	if (auto cover_blob = hex_to_object_id(cover); cover_blob)
+	if (auto cover_blob = ObjectID::from_hex(cover); cover_blob)
 		return Ownership{req.owner()}.set_cover(
 			*m_db,
 			req.collection(),

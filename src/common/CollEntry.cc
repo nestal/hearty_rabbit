@@ -28,7 +28,7 @@ void from_json(const nlohmann::json& src, std::unordered_map<ObjectID, CollEntry
 
 	for (auto&& item : src["elements"].items())
 	{
-		if (auto blob = hrb::hex_to_object_id(item.key()); blob.has_value())
+		if (auto blob = ObjectID::from_hex(item.key()); blob.has_value())
 			result.emplace(*blob, item.value().template get<CollEntry>());
 	}
 

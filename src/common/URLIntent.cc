@@ -150,7 +150,7 @@ void URLIntent::parse_field_from_right(std::string_view& target, hrb::URLIntent:
 		auto [field, sep] = split_right(target_copy, "/");
 
 		// Special handling for Parameter::blob: the filename must be a blob ID.
-		if (p == Parameter::filename || is_valid_blob_id(field))
+		if (p == Parameter::filename || ObjectID::is_hex(field))
 		{
 			// Here we want to commit the changes to "target", only when
 			// the "filename" is a valid blob ID.

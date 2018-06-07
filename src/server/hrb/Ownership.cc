@@ -208,7 +208,7 @@ nlohmann::json Ownership::Collection::serialize(const redis::Reply& reply, const
 		if (perm.as_string().empty())
 			continue;
 
-		auto blob_id = raw_to_object_id(blob);
+		auto blob_id = ObjectID::from_raw(blob);
 		CollEntryDB entry{perm.as_string()};
 
 		// check permission: allow allow owner (i.e. m_user)

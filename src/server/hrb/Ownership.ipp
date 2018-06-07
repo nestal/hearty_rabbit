@@ -342,7 +342,7 @@ void Ownership::Collection::list(
 			using namespace boost::adaptors;
 			comp(
 				reply |
-				transformed([](auto&& reply){return raw_to_object_id(reply.as_string());}) |
+				transformed([](auto&& reply){return ObjectID::from_raw(reply.as_string());}) |
 				filtered([](auto&& opt_oid){return opt_oid.has_value();}) |
 				transformed([](auto&& opt_oid){return *opt_oid;}),
 				ec
@@ -589,7 +589,7 @@ void Ownership::list_public_blobs(
 					auto [owner, coll, blob, entry_str] = row.as_tuple<4>(err);
 
 					std::optional<BlobRef> result;
-					if (auto blob_id = raw_to_object_id(blob.as_string()); !err && blob_id.has_value())
+					if (auto blob_id = ObjectID::from_raw(blob.as_string()); !err && blob_id.has_value())
 						result = BlobRef{
 							std::string{owner.as_string()},
 							std::string{coll.as_string()},

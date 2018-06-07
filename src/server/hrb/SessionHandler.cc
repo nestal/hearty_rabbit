@@ -306,7 +306,7 @@ void SessionHandler::validate_collection_json(nlohmann::json& json)
 		if (meta.find("timestamp") == meta.end())
 		{
 			Log(LOG_WARNING, "%1% has no timestamp in collection entry: loading from disk", hex_id);
-			auto blob_id = hex_to_object_id(hex_id);
+			auto blob_id = ObjectID::from_hex(hex_id);
 			if (blob_id.has_value())
 			{
 				auto blob_file = m_blob_db.find(*blob_id);

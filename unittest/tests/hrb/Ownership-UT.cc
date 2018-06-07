@@ -78,7 +78,7 @@ TEST_CASE("list of collection owned by user", "[normal]")
 			INFO("blob = " << blob.key());
 			REQUIRE(all(blob.key(), is_xdigit() && !is_upper()));
 
-			Ownership{"owner"}.unlink(*redis, "/", *hex_to_object_id(blob.key()), [](auto&& ec)
+			Ownership{"owner"}.unlink(*redis, "/", *ObjectID::from_hex(blob.key()), [](auto&& ec)
 			{
 				REQUIRE(!ec);
 			});
