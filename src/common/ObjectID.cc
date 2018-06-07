@@ -74,4 +74,15 @@ bool ObjectID::is_hex(std::string_view hex)
 	return hex.size() == Blake2::size*2 && hex.find_first_not_of("01234567890ABCDEFabcdef") == hex.npos;
 }
 
+void from_json(const nlohmann::json& src, ObjectID& dest)
+{
+	if (auto opt = ObjectID::from_hex(src.get<std::string>()); opt.has_value())
+		dest = *opt;
+}
+
+void to_json(nlohmann::json& dest, const ObjectID& src)
+{
+	dest = to_hex(src);
+}
+
 } // end of namespace

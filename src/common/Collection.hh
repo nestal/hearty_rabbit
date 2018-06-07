@@ -35,9 +35,16 @@ public:
 	Collection& operator=(Collection&&) = default;
 	Collection& operator=(const Collection&) = default;
 
+	std::string_view name() const {return m_name;}
+	std::string_view owner() const {return m_owner;}
+	const ObjectID& cover() const {return m_cover;}
 	auto blobs() const {return boost::iterator_range<iterator>{m_blobs.begin(), m_blobs.end()};}
 
 	friend void from_json(const nlohmann::json& src, Collection& dest);
+	friend void to_json(nlohmann::json& dest, const Collection& src);
+
+	void add_blob(const ObjectID& id, CollEntry&& entry);
+	void add_blob(const ObjectID& id, const CollEntry& entry);
 
 private:
 	std::string     m_name;

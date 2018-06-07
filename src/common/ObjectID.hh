@@ -37,6 +37,9 @@ struct ObjectID : std::array<unsigned char, Blake2::size>
 };
 static_assert(std::is_standard_layout<ObjectID>::value);
 
+void from_json(const nlohmann::json& src, ObjectID& dest);
+void to_json(nlohmann::json& dest, const ObjectID& src);
+
 } // end of namespace
 
 // inject hash<> to std namespace for unordered_map

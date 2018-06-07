@@ -22,6 +22,17 @@ void from_json(const nlohmann::json& src, CollEntry& dest)
 	dest.perm      = Permission::from_description(src["perm"].get<std::string>());
 }
 
+void to_json(nlohmann::json& dest, const CollEntry& src)
+{
+	auto result = nlohmann::json::object();
+	result.emplace("timestamp", src.timestamp);
+	result.emplace("filename",  src.filename);
+	result.emplace("mime", src.mime);
+	result.emplace("perm", std::string{src.perm.description()});
+
+	dest = std::move(result);
+}
+
 void from_json(const nlohmann::json& src, std::unordered_map<ObjectID, CollEntry>& dest)
 {
 	std::unordered_map<ObjectID, CollEntry> result;
