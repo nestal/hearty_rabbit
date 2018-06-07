@@ -65,4 +65,12 @@ void to_json(nlohmann::json& dest, const Collection& src)
 	dest = std::move(result);
 }
 
+std::optional<ObjectID> Collection::cover() const
+{
+	if (auto it = m_meta.find("cover"); it != m_meta.end())
+		return ObjectID::from_json(*it);
+	else
+		return std::nullopt;
+}
+
 } // end of namespace hrb

@@ -29,6 +29,11 @@ ObjectID::ObjectID(const std::array<unsigned char, Blake2::size>& array)
 	std::copy(array.begin(), array.end(), begin());
 }
 
+std::optional<ObjectID> ObjectID::from_json(const nlohmann::json& json)
+{
+	return ObjectID::from_hex(json.get<std::string>());
+}
+
 std::optional<ObjectID> ObjectID::from_hex(std::string_view hex)
 {
 	auto opt_array = hex_to_array<ObjectID{}.size()>(hex);
@@ -76,7 +81,7 @@ bool ObjectID::is_hex(std::string_view hex)
 
 void from_json(const nlohmann::json& src, ObjectID& dest)
 {
-	if (auto opt = ObjectID::from_hex(src.get<std::string>()); opt.has_value())
+	if (auto opt = ObjectID::from_json(src); opt.has_value())
 		dest = *opt;
 }
 

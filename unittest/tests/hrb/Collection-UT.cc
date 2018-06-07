@@ -36,14 +36,22 @@ TEST_CASE("simple CollEntry <-> JSON round-trip", "[normal]")
 
 TEST_CASE("simple Collection <-> JSON round-trip", "[normal]")
 {
-	Collection subject{"some_coll", "sumyung", {}};
+	auto cover = insecure_random<ObjectID>();
+
+	Collection subject{"some_coll", "sumyung", nlohmann::json({"cover", cover})};
 	subject.add_blob(insecure_random<ObjectID>(), {Permission::public_(), "abc.txt", "text/plain", Timestamp{101s}});
 	subject.add_blob(insecure_random<ObjectID>(), {Permission::private_(), "image.jpeg", "image/jpeg", Timestamp{1h}});
 
 	nlohmann::json json(subject);
+	INFO("subject JSON: " << json);
+
+	REQUIRE(subject.cover().has_value());
+	REQUIRE(subject.cover() == cover);
+
 	std::cout << json << std::endl;
 
 	auto ret = json.get<Collection>();
 	REQUIRE(subject.owner() == ret.owner());
 	REQUIRE(subject.name() == ret.name());
+	REQUIRE(subject.cover() == ret.cover());
 }

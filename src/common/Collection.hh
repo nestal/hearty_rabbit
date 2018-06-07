@@ -37,7 +37,7 @@ public:
 
 	std::string_view name() const {return m_name;}
 	std::string_view owner() const {return m_owner;}
-//	const ObjectID& cover() const {return m_cover;}
+	std::optional<ObjectID> cover() const;
 	auto blobs() const {return boost::iterator_range<iterator>{m_blobs.begin(), m_blobs.end()};}
 
 	friend void from_json(const nlohmann::json& src, Collection& dest);
