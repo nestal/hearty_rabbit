@@ -22,8 +22,23 @@
       </property>
       <widget class="QListView" name="local_list"/>
       <widget class="QListView" name="remote_list">
+       <property name="iconSize">
+        <size>
+         <width>200</width>
+         <height>200</height>
+        </size>
+       </property>
        <property name="resizeMode">
         <enum>QListView::Adjust</enum>
+       </property>
+       <property name="spacing">
+        <number>5</number>
+       </property>
+       <property name="gridSize">
+        <size>
+         <width>200</width>
+         <height>250</height>
+        </size>
        </property>
        <property name="viewMode">
         <enum>QListView::IconMode</enum>
