@@ -194,12 +194,10 @@ void Ownership::Collection::unlink(redis::Connection& db, const ObjectID& id)
 	);
 }
 
-nlohmann::json Ownership::Collection::serialize(const redis::Reply& reply, const Authentication& requester, std::string_view owner)
+hrb::Collection Ownership::Collection::serialize(const redis::Reply& reply, const Authentication& requester) const
 {
-	// TODO: get the cover here... where to find a redis::Connection?
-	auto jdoc = nlohmann::json::object();
+	hrb::Collection result{m_path, m_user};
 
-	auto elements = nlohmann::json::object();
 	for (auto&& kv : reply.kv_pairs())
 	{
 		auto&& blob = kv.key();
@@ -212,19 +210,14 @@ nlohmann::json Ownership::Collection::serialize(const redis::Reply& reply, const
 		CollEntryDB entry{perm.as_string()};
 
 		// check permission: allow allow owner (i.e. m_user)
-		if (blob_id && entry.permission().allow(requester.id(), owner))
+		if (blob_id && entry.permission().allow(requester.id(), m_user))
 		{
 			auto entry_jdoc = nlohmann::json::parse(entry.json(), nullptr, false);
 			if (!entry_jdoc.is_discarded())
-			{
-				entry_jdoc.emplace("perm", std::string{entry.permission().description()});
-				elements.emplace(to_hex(*blob_id), std::move(entry_jdoc));
-			}
+				result.add_blob(*blob_id, entry.fields());
 		}
 	};
-	jdoc.emplace("elements", std::move(elements));
-
-	return jdoc;
+	return result;
 }
 
 /// \brief  Called after a blob is deleted.

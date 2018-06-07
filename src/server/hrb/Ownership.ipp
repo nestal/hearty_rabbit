@@ -15,7 +15,7 @@
 #include "CollEntryDB.hh"
 
 #include "common/Permission.hh"
-#include "common/CollEntry.hh"
+#include "common/Collection.hh"
 
 #include "crypto/Authentication.hh"
 #include "common/Error.hh"
@@ -107,11 +107,10 @@ public:
 	const std::string& user() const {return m_user;}
 	const std::string& path() const {return m_path;}
 
-	static nlohmann::json serialize(
+	hrb::Collection serialize(
 		const redis::Reply& hash_getall_reply,
-		const Authentication& requester,
-		std::string_view owner
-	);
+		const Authentication& requester
+	) const;
 
 	void post_unlink(redis::Connection& db, const ObjectID& blob);
 
@@ -379,9 +378,9 @@ void Ownership::Collection::serialize(
 
 			if (reply.array_size() == 2)
 			{
-				auto jdoc = serialize(reply[0], requester, m_user);
-				jdoc.emplace("owner",      m_user);
-				jdoc.emplace("collection", m_path);
+				// if use {} to construct nlohmann::json, it will create an array.
+				// like STL containers, nlohmann::json ctor overloads std::initializer_list
+				nlohmann::json jdoc(serialize(reply[0], requester));
 
 				// in some error cases created by unit tests, the string is not valid JSON
 				// in the database
