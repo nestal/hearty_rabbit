@@ -103,14 +103,6 @@ void QtClient::get_blob(const QString& owner, const QString& collection, const O
 		"rendition=" + rendition.toStdString()
 	})};
 
-	std::cout << URLIntent{
-		URLIntent::Action::api,
-		owner.toStdString(),
-		collection.toStdString(),
-		to_hex(blob),
-		"rendition=" + rendition.toStdString()
-	}.str() << std::endl;
-
 	auto reply = m_nam.get(request);
 	connect(reply, &QNetworkReply::finished, [reply, this, blob, rendition]
 	{

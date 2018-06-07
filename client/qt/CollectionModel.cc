@@ -72,8 +72,6 @@ void CollectionModel::update(const Collection& coll)
 
 void CollectionModel::receive_blob(const ObjectID& id, const QString& rendition, const QByteArray& blob)
 {
-	std::cout << "receiving " << blob.size() << " bytes " << blob.toStdString() << std::endl;
-
 	QImage image;
 	if (image.loadFromData(blob))
 	{

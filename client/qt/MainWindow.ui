@@ -21,7 +21,17 @@
        <enum>Qt::Vertical</enum>
       </property>
       <widget class="QListView" name="local_list"/>
-      <widget class="QListView" name="remote_list"/>
+      <widget class="QListView" name="remote_list">
+       <property name="resizeMode">
+        <enum>QListView::Adjust</enum>
+       </property>
+       <property name="viewMode">
+        <enum>QListView::IconMode</enum>
+       </property>
+       <property name="uniformItemSizes">
+        <bool>false</bool>
+       </property>
+      </widget>
      </widget>
     </item>
    </layout>
@@ -69,7 +79,7 @@
   </widget>
   <widget class="QDockWidget" name="m_remote_view">
    <property name="windowTitle">
-    <string>Remote Server</string>
+    <string>Re&amp;mote Server</string>
    </property>
    <attribute name="dockWidgetArea">
     <number>2</number>
