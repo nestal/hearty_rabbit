@@ -74,11 +74,12 @@ public:
 				>(high_resolution_clock::now() - m_parent.m_on_header).count()
 			);
 
-		Log(LOG_DEBUG, "SendJSON: %1%", json.dump());
-
 		auto result = ec ? http::status::internal_server_error : http::status::ok;
 		if (m_lib)
 		{
+			// TODO: catch exception here
+			// refactor it so that we don't need to get these from JSON
+			// better move these to SessionHandler
 			using jptr = nlohmann::json::json_pointer;
 			auto&& cover = json.value(jptr{"/blob"},       json.value(jptr{"/meta/cover"}, std::string{""}));
 			auto&& owner = json.value(jptr{"/owner"},      std::string{""});
