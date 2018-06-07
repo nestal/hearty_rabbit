@@ -15,6 +15,7 @@
 #include <boost/utility/string_view.hpp>
 
 #include <array>
+#include <iosfwd>
 #include <string_view>
 #include <vector>
 
@@ -74,6 +75,8 @@ public:
 	void set_option(std::string_view option) {m_option = option;}
 	void add_option(std::string_view option);
 
+	std::string path() const;
+
 	std::string str() const;
 	bool valid() const;
 	explicit operator bool() const {return valid();}
@@ -85,6 +88,8 @@ private:
 	void parse_field_from_right(std::string_view& target, Parameter p);
 	static QueryTarget parse_query_target(std::string_view str);
 	static std::string_view to_string(QueryTarget query_target);
+
+	std::ostream& write_path(std::ostream& os) const;
 
 private:
 	Action  m_action{Action::none};

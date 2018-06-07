@@ -167,9 +167,8 @@ void URLIntent::parse_field_from_right(std::string_view& target, hrb::URLIntent:
 	}
 }
 
-std::string URLIntent::str() const
+std::ostream& URLIntent::write_path(std::ostream& oss) const
 {
-	std::ostringstream oss;
 	oss << '/';
 	switch (m_action)
 	{
@@ -186,7 +185,7 @@ std::string URLIntent::str() const
 
 		// including Action::none
 		default:
-			return oss.str();
+			return oss;
 	}
 
 	auto& intent_definition = intent_defintions[static_cast<std::size_t>(m_action)];
@@ -220,9 +219,22 @@ std::string URLIntent::str() const
 		}
 	}
 
+	return oss;
+}
+
+std::string URLIntent::path() const
+{
+	std::ostringstream oss;
+	write_path(oss);
+	return oss.str();
+}
+
+std::string URLIntent::str() const
+{
+	std::ostringstream oss;
+	write_path(oss);
 	if (!m_option.empty())
 		oss << "?" << m_option;
-
 	return oss.str();
 }
 

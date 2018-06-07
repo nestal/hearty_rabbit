@@ -37,7 +37,7 @@ void QtClient::login(const QString& host, int port, const QString& username, con
 	m_port = port;
 	m_user = username;
 
-	QNetworkRequest request{setup_url(URLIntent{URLIntent::Action::login, "", "", ""}.str())};
+	QNetworkRequest request{setup_url({URLIntent::Action::login, "", "", ""})};
 	request.setHeader(QNetworkRequest::ContentTypeHeader, "application/x-www-form-urlencoded");
 
 	QString post = "username=" + username + "&password=" + password;
@@ -55,24 +55,25 @@ void QtClient::login(const QString& host, int port, const QString& username, con
 	});
 }
 
-QUrl QtClient::setup_url(const std::string& target)
+QUrl QtClient::setup_url(const URLIntent& intent)
 {
 	QUrl url;
 	url.setScheme("https");
 	url.setHost(m_host);
 	url.setPort(m_port);
-	url.setPath(QString::fromStdString(target));
+	url.setPath(QString::fromStdString(intent.path()));
+	url.setQuery(QString::fromStdString(std::string{intent.option()}));
 	return url;
 }
 
 void QtClient::list_collection(const QString& collection)
 {
-	QNetworkRequest request{setup_url(URLIntent{
+	QNetworkRequest request{setup_url({
 		URLIntent::Action::api,
 		m_user.toStdString(),
 		collection.toStdString(),
 		""
-	}.str())};
+	})};
 
 	auto reply = m_nam.get(request);
 	connect(reply, &QNetworkReply::finished, [reply, this]
@@ -94,13 +95,13 @@ void QtClient::list_collection(const QString& collection)
 
 void QtClient::get_blob(const QString& owner, const QString& collection, const ObjectID& blob, const QString& rendition)
 {
-	QNetworkRequest request{setup_url(URLIntent{
+	QNetworkRequest request{setup_url({
 		URLIntent::Action::api,
 		owner.toStdString(),
 		collection.toStdString(),
 		to_hex(blob),
 		"rendition=" + rendition.toStdString()
-	}.str())};
+	})};
 
 	std::cout << URLIntent{
 		URLIntent::Action::api,

@@ -19,6 +19,7 @@
 namespace hrb {
 
 class Collection;
+class URLIntent;
 
 class QtClient : public QObject
 {
@@ -38,7 +39,7 @@ signals:
 	void on_get_blob(const ObjectID& blob, const QString& rendition, const QByteArray& data);
 
 private:
-	QUrl setup_url(const std::string& target);
+	QUrl setup_url(const URLIntent& intent);
 
 private:
 	QString m_host;
