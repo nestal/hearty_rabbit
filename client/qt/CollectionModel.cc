@@ -12,6 +12,8 @@
 
 #include "CollectionModel.hh"
 
+#include <iostream>
+
 namespace hrb {
 
 CollectionModel::CollectionModel(QObject *parent) :
@@ -21,6 +23,7 @@ CollectionModel::CollectionModel(QObject *parent) :
 
 int CollectionModel::rowCount(const QModelIndex& parent) const
 {
+//	std::cout << parent.isValid() << " index (" << parent.row() << ")" << std::endl;
 	return parent.isValid() ? 0 : static_cast<int>(m_coll.size());
 }
 
@@ -28,8 +31,9 @@ QVariant CollectionModel::data(const QModelIndex& index, int role) const
 {
 	assert(m_coll.size() == m_blob_ids.size());
 
-	if (index.row() < rowCount(index))
+	if (index.row() < m_blob_ids.size() && role == Qt::DisplayRole)
 	{
+		assert(index.row() < static_cast<int>(m_blob_ids.size()));
 		if (auto it = m_coll.find(m_blob_ids[index.row()]); it != m_coll.blobs().end())
 			return QString::fromStdString(it->second.filename);
 	}

@@ -14,8 +14,6 @@
 
 #include "ui_MainWindow.h"
 
-#include "QtClient.hh"
-
 #include <QtWidgets/QMainWindow>
 
 #include <system_error>
@@ -23,6 +21,9 @@
 class QFileSystemModel;
 
 namespace hrb {
+
+class QtClient;
+class CollectionModel;
 
 class MainWindow : public QMainWindow
 {
@@ -35,7 +36,8 @@ private:
 private:
 	Ui::MainWindow      m_;
 	QFileSystemModel    *m_fs_model{};
-	QtClient            m_hrb{this};
+	CollectionModel     *m_coll_model{};
+	QtClient            *m_hrb{};
 };
 
 } // end of namespace hrb

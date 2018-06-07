@@ -19,13 +19,16 @@ namespace hrb {
 
 class CollectionModel : public QAbstractListModel
 {
+	Q_OBJECT
+
 public:
 	CollectionModel(QObject *parent);
 
-	void update(const Collection& coll);
-
 	int rowCount(const QModelIndex& parent) const override;
 	QVariant data(const QModelIndex &index, int role) const override;
+
+public slots:
+	void update(const Collection& coll);
 
 private:
 	Collection m_coll;
