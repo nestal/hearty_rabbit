@@ -21,6 +21,7 @@
 #include "WebResources.hh"
 
 #include "common/CollEntry.hh"
+#include "common/Collection.hh"
 #include "common/URLIntent.hh"
 #include "common/StringFields.hh"
 
@@ -296,24 +297,21 @@ std::string SessionHandler::server_root() const
 	return m_cfg.https_root();
 }
 
-void SessionHandler::validate_collection_json(nlohmann::json& json)
+void SessionHandler::validate_collection(Collection& coll)
 {
-	for (auto& element : json["elements"].items())
+	for (auto& [id, entry] : coll.blobs())
 	{
-		auto&& hex_id = element.key();
-		auto&& meta   = element.value();
-
-		if (meta.find("timestamp") == meta.end())
+		if (entry.timestamp == Timestamp{})
 		{
-			Log(LOG_WARNING, "%1% has no timestamp in collection entry: loading from disk", hex_id);
-			auto blob_id = ObjectID::from_hex(hex_id);
-			if (blob_id.has_value())
-			{
-				auto blob_file = m_blob_db.find(*blob_id);
-				meta.emplace("timestamp", blob_file.original_datetime());
+			Log(LOG_WARNING, "%1% has no timestamp in collection entry: loading from disk", to_hex(id));
 
-				Ownership{m_auth.user()}.update(*m_db, json["collection"].get<std::string>(), *blob_id, meta);
-			}
+			auto blob_file = m_blob_db.find(id);
+
+			auto new_entry{entry};
+			new_entry.timestamp = blob_file.original_datetime();
+			coll.update_timestamp(id, new_entry.timestamp);
+
+			Ownership{m_auth.user()}.update(*m_db, coll.name(), id, new_entry);
 		}
 	}
 }

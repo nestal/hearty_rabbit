@@ -283,10 +283,10 @@ void SessionHandler::on_request_api(Request&& req, URLIntent&& intent, Send&& se
 				breq.collection(),
 				[
 					send=SendJSON{std::move(send), req.version(), std::nullopt, *this}, this
-				](auto&& json, std::error_code ec) mutable
+				](auto&& coll, std::error_code ec) mutable
 				{
-					validate_collection_json(json);
-					send(std::move(json), ec);
+					validate_collection(coll);
+					send(nlohmann::json(coll), ec);
 				}
 			);
 	}

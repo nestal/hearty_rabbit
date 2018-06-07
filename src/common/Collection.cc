@@ -73,4 +73,10 @@ std::optional<ObjectID> Collection::cover() const
 		return std::nullopt;
 }
 
+void Collection::update_timestamp(const ObjectID& id, Timestamp value)
+{
+	if (auto it = m_blobs.find(id); it != m_blobs.end())
+		it->second.timestamp = value;
+}
+
 } // end of namespace hrb

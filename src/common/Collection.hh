@@ -43,8 +43,13 @@ public:
 	friend void from_json(const nlohmann::json& src, Collection& dest);
 	friend void to_json(nlohmann::json& dest, const Collection& src);
 
+	nlohmann::json& meta() {return m_meta;}
+	const nlohmann::json& meta() const {return m_meta;}
+
 	void add_blob(const ObjectID& id, CollEntry&& entry);
 	void add_blob(const ObjectID& id, const CollEntry& entry);
+
+	void update_timestamp(const ObjectID& id, Timestamp value);
 
 private:
 	std::string     m_name;

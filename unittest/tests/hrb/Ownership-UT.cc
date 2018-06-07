@@ -70,15 +70,13 @@ TEST_CASE("list of collection owned by user", "[normal]")
 	ioc.restart();
 
 	// remove all blobs in the collection
-	subject.serialize(*redis, Authentication{{}, "owner"}, "/", [&tested, redis](auto&& jdoc, auto ec)
+	subject.serialize(*redis, Authentication{{}, "owner"}, "/", [&tested, redis](auto&& coll, auto ec)
 	{
-		INFO("serialize() return " << jdoc);
-		for (auto&& blob : jdoc["elements"].items())
+//		INFO("serialize() return " << jdoc);
+		for (auto&& [id, blob] : coll.blobs())
 		{
-			INFO("blob = " << blob.key());
-			REQUIRE(all(blob.key(), is_xdigit() && !is_upper()));
-
-			Ownership{"owner"}.unlink(*redis, "/", *ObjectID::from_hex(blob.key()), [](auto&& ec)
+			INFO("blob = " << to_hex(id));
+			Ownership{"owner"}.unlink(*redis, "/", id, [](auto&& ec)
 			{
 				REQUIRE(!ec);
 			});
@@ -253,35 +251,23 @@ TEST_CASE("Load 3 images in json", "[normal]")
 		subject.update(*redis, "some/collection", blobid, entry);
 
 	bool tested = false;
-	subject.serialize(*redis, {{},"testuser"}, "some/collection", [&tested, &blobids](auto&& doc, auto ec)
+	subject.serialize(*redis, {{},"testuser"}, "some/collection", [&tested, &blobids](auto&& coll, auto ec)
 	{
 		using json = nlohmann::json;
 		INFO("serialize() error_code: " << ec << " " << ec.message());
-		INFO("serialize result = " << doc);
+//		INFO("serialize result = " << doc);
 
 		REQUIRE(!ec);
-		REQUIRE(!doc.empty());
-		REQUIRE(
-			doc.value(json::json_pointer{"/owner"}, "") == "testuser"
-		);
-		REQUIRE(
-			doc.value(json::json_pointer{"/collection"}, "") == "some/collection"
-		);
+//		REQUIRE(!doc.empty());
+		REQUIRE(coll.owner() == "testuser");
+		REQUIRE(coll.name() == "some/collection");
 
-		for (auto&& blobid : blobids)
+		for (auto&& [id, entry] : coll.blobs())
 		{
-			REQUIRE(
-				doc.value(json::json_pointer{"/elements/" + to_hex(blobid) + "/perm"}, "") == "public"
-			);
-			REQUIRE(
-				doc.value(json::json_pointer{"/elements/" + to_hex(blobid) + "/filename"}, "") == "another_file.jpg"
-			);
-			REQUIRE(
-				doc.value(json::json_pointer{"/elements/" + to_hex(blobid) + "/mime"}, "") == "application/json"
-			);
-			REQUIRE(
-				doc.value(json::json_pointer{"/elements/" + to_hex(blobid) + "/timestamp"}, 0) == 100
-			);
+			REQUIRE(entry.perm == Permission::public_());
+			REQUIRE(entry.filename == "another_file.jpg");
+			REQUIRE(entry.mime == "application/json");
+			REQUIRE(entry.timestamp == Timestamp{std::chrono::milliseconds{100}});
 		}
 
 		tested = true;

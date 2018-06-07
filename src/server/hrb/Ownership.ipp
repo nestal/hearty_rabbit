@@ -385,10 +385,7 @@ void Ownership::Collection::serialize(
 				if (meta.is_discarded())
 					meta = nlohmann::json::object();
 
-				// if use {} to construct nlohmann::json, it will create an array.
-				// like STL containers, nlohmann::json ctor overloads std::initializer_list
-				nlohmann::json jdoc(serialize(reply[0], requester, std::move(meta)));
-				comp(std::move(jdoc), std::move(ec));
+				comp(serialize(reply[0], requester, std::move(meta)), std::move(ec));
 			}
 
 			// TODO: handle case where
