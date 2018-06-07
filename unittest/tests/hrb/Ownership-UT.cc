@@ -70,9 +70,8 @@ TEST_CASE("list of collection owned by user", "[normal]")
 	ioc.restart();
 
 	// remove all blobs in the collection
-	subject.serialize(*redis, Authentication{{}, "owner"}, "/", [&tested, redis](auto&& coll, auto ec)
+	subject.find_collection(*redis, Authentication{{}, "owner"}, "/", [&tested, redis](auto&& coll, auto ec)
 	{
-//		INFO("serialize() return " << jdoc);
 		for (auto&& [id, blob] : coll.blobs())
 		{
 			INFO("blob = " << to_hex(id));
@@ -251,14 +250,11 @@ TEST_CASE("Load 3 images in json", "[normal]")
 		subject.update(*redis, "some/collection", blobid, entry);
 
 	bool tested = false;
-	subject.serialize(*redis, {{},"testuser"}, "some/collection", [&tested, &blobids](auto&& coll, auto ec)
+	subject.find_collection(*redis, {{},"testuser"}, "some/collection", [&tested, &blobids](auto&& coll, auto ec)
 	{
 		using json = nlohmann::json;
-		INFO("serialize() error_code: " << ec << " " << ec.message());
-//		INFO("serialize result = " << doc);
 
-		REQUIRE(!ec);
-//		REQUIRE(!doc.empty());
+		REQUIRE_FALSE(ec);
 		REQUIRE(coll.owner() == "testuser");
 		REQUIRE(coll.name() == "some/collection");
 

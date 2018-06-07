@@ -277,7 +277,7 @@ void SessionHandler::on_request_api(Request&& req, URLIntent&& intent, Send&& se
 		if (breq.blob())
 			return get_blob(std::move(breq), std::move(send));
 		else
-			return Ownership{breq.owner()}.serialize(
+			return Ownership{breq.owner()}.find_collection(
 				*m_db,
 				m_auth,
 				breq.collection(),
@@ -311,7 +311,7 @@ void SessionHandler::on_request_view(Request&& req, URLIntent&& intent, Send&& s
 	if (req.method() == http::verb::get)
 	{
 		// view request always sends HTML: pass &m_lib to SendJSON
-		return Ownership{breq.owner()}.serialize(
+		return Ownership{breq.owner()}.find_collection(
 			*m_db,
 			m_auth,
 			breq.collection(),

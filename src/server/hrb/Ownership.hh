@@ -79,7 +79,7 @@ public:
 	);
 
 	template <typename Complete>
-	void serialize(
+	void find_collection(
 		redis::Connection& db,
 		const Authentication& requester,
 		std::string_view coll,

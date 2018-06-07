@@ -89,7 +89,7 @@ public:
 	) const;
 
 	template <typename Complete>
-	void serialize(
+	void list(
 		redis::Connection& db,
 		const Authentication& requester,
 		Complete&& complete
@@ -107,13 +107,14 @@ public:
 	const std::string& user() const {return m_user;}
 	const std::string& path() const {return m_path;}
 
-	hrb::Collection serialize(
+	void post_unlink(redis::Connection& db, const ObjectID& blob);
+
+private:
+	hrb::Collection from_reply(
 		const redis::Reply& hash_getall_reply,
 		const Authentication& requester,
 		nlohmann::json&& meta
 	) const;
-
-	void post_unlink(redis::Connection& db, const ObjectID& blob);
 
 private:
 	std::string m_user;
@@ -356,7 +357,7 @@ void Ownership::Collection::list(
 }
 
 template <typename Complete>
-void Ownership::Collection::serialize(
+void Ownership::Collection::list(
 	redis::Connection& db,
 	const Authentication& requester,
 	Complete&& complete
@@ -375,7 +376,7 @@ void Ownership::Collection::serialize(
 		](auto&& reply, std::error_code&& ec) mutable
 		{
 			if (!reply || ec)
-				Log(LOG_WARNING, "serialize() script reply %1% %2%", reply.as_error(), ec);
+				Log(LOG_WARNING, "list() script reply %1% %2%", reply.as_error(), ec);
 
 			if (reply.array_size() == 2)
 			{
@@ -385,7 +386,7 @@ void Ownership::Collection::serialize(
 				if (meta.is_discarded())
 					meta = nlohmann::json::object();
 
-				comp(serialize(reply[0], requester, std::move(meta)), std::move(ec));
+				comp(from_reply(reply[0], requester, std::move(meta)), std::move(ec));
 			}
 
 			// TODO: handle case where
@@ -454,14 +455,14 @@ void Ownership::unlink(
 }
 
 template <typename Complete>
-void Ownership::serialize(
+void Ownership::find_collection(
 	redis::Connection& db,
 	const Authentication& requester,
 	std::string_view coll,
 	Complete&& complete
 ) const
 {
-	return Collection{m_user, coll}.serialize(db, requester, std::forward<Complete>(complete));
+	return Collection{m_user, coll}.list(db, requester, std::forward<Complete>(complete));
 }
 
 template <typename Complete>
