@@ -24,9 +24,9 @@
 namespace hrb {
 
 MainWindow::MainWindow() :
+	m_hrb{new QtClient{this}},
 	m_fs_model{new QFileSystemModel{this}},
-	m_coll_model{new CollectionModel{this}},
-	m_hrb{new QtClient{this}}
+	m_coll_model{new CollectionModel{this, m_hrb}}
 {
 	m_.setupUi(this);
 	m_fs_model->setRootPath(QDir::homePath());

@@ -13,26 +13,35 @@
 #pragma once
 
 #include <QtCore/QAbstractListModel>
+#include <QtGui/QImage>
+
 #include "common/Collection.hh"
 
 namespace hrb {
+
+class QtClient;
 
 class CollectionModel : public QAbstractListModel
 {
 	Q_OBJECT
 
 public:
-	CollectionModel(QObject *parent);
+	CollectionModel(QObject *parent, QtClient *hrb);
 
 	int rowCount(const QModelIndex& parent) const override;
 	QVariant data(const QModelIndex &index, int role) const override;
 
 public slots:
 	void update(const Collection& coll);
+	void receive_blob(const ObjectID& id, const QString& rendition, const QByteArray& blob);
 
 private:
-	Collection m_coll;
+	QtClient    *m_hrb{};
+
 	std::vector<ObjectID>   m_blob_ids;
+
+	Collection m_coll;
+	std::unordered_map<ObjectID, QImage>    m_images;
 };
 
 } // end of namespace hrb

@@ -30,9 +30,12 @@ public:
 	void login(const QString& host, int port, const QString& username, const QString& password);
 	void list_collection(const QString& collection);
 
+	void get_blob(const QString& owner, const QString& collection, const ObjectID& blob, const QString& rendition);
+
 signals:
 	void on_login(std::error_code ec);
 	void on_list_collection(const Collection& coll);
+	void on_get_blob(const ObjectID& blob, const QString& rendition, const QByteArray& data);
 
 private:
 	QUrl setup_url(const std::string& target);

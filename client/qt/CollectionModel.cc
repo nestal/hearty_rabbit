@@ -11,19 +11,20 @@
 //
 
 #include "CollectionModel.hh"
+#include "QtClient.hh"
 
 #include <iostream>
 
 namespace hrb {
 
-CollectionModel::CollectionModel(QObject *parent) :
-	QAbstractListModel{parent}
+CollectionModel::CollectionModel(QObject *parent, QtClient *hrb) :
+	QAbstractListModel{parent}, m_hrb{hrb}
 {
+	connect(m_hrb, &QtClient::on_get_blob, this, &CollectionModel::receive_blob);
 }
 
 int CollectionModel::rowCount(const QModelIndex& parent) const
 {
-//	std::cout << parent.isValid() << " index (" << parent.row() << ")" << std::endl;
 	return parent.isValid() ? 0 : static_cast<int>(m_coll.size());
 }
 
@@ -46,13 +47,23 @@ void CollectionModel::update(const Collection& coll)
 
 	std::vector<ObjectID> ids;
 	for (auto&& [id, en] : coll.blobs())
+	{
 		ids.push_back(id);
+		m_hrb->get_blob(QString::fromStdString(std::string{coll.owner()}), QString::fromStdString(std::string{coll.name()}), id, "thumbnail");
+	}
 
 	m_coll = coll;
 	m_blob_ids = std::move(ids);
 
 	changePersistentIndex({}, {});
 	emit layoutChanged();
+}
+
+void CollectionModel::receive_blob(const ObjectID& id, const QString& rendition, const QByteArray& blob)
+{
+	QImage image;
+	if (image.loadFromData(blob))
+		m_images.emplace(id, std::move(image));
 }
 
 } // end of namespace hrb

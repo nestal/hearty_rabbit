@@ -14,8 +14,9 @@
 
 #include <QtNetwork/QNetworkReply>
 
-#include "common/URLIntent.hh"
 #include "common/Collection.hh"
+#include "common/Escape.hh"
+#include "common/URLIntent.hh"
 
 #include <json.hpp>
 #include <iostream>
@@ -88,6 +89,23 @@ void QtClient::list_collection(const QString& collection)
 		{
 			std::cout << "parse error!" << std::endl;
 		}
+	});
+}
+
+void QtClient::get_blob(const QString& owner, const QString& collection, const ObjectID& blob, const QString& rendition)
+{
+	QNetworkRequest request{setup_url(URLIntent{
+		URLIntent::Action::api,
+		owner.toStdString(),
+		collection.toStdString(),
+		to_hex(blob),
+		"rendition=" + rendition.toStdString()
+	}.str())};
+
+	auto reply = m_nam.get(request);
+	connect(reply, &QNetworkReply::finished, [reply, this, blob, rendition]
+	{
+		emit on_get_blob(blob, rendition, reply->readAll());
 	});
 }
 
