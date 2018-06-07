@@ -74,6 +74,8 @@ public:
 				>(high_resolution_clock::now() - m_parent.m_on_header).count()
 			);
 
+		Log(LOG_DEBUG, "SendJSON: %1%", json.dump());
+
 		auto result = ec ? http::status::internal_server_error : http::status::ok;
 		if (m_lib)
 		{
@@ -277,16 +279,16 @@ void SessionHandler::on_request_api(Request&& req, URLIntent&& intent, Send&& se
 		if (breq.blob())
 			return get_blob(std::move(breq), std::move(send));
 		else
-			return Ownership{breq.owner()}.serialize(
+			return Ownership{breq.owner()}.find_collection(
 				*m_db,
 				m_auth,
 				breq.collection(),
 				[
 					send=SendJSON{std::move(send), req.version(), std::nullopt, *this}, this
-				](auto&& json, std::error_code ec) mutable
+				](auto&& coll, std::error_code ec) mutable
 				{
-					validate_collection_json(json);
-					send(std::move(json), ec);
+					validate_collection(coll);
+					send(nlohmann::json(coll), ec);
 				}
 			);
 	}
@@ -311,7 +313,7 @@ void SessionHandler::on_request_view(Request&& req, URLIntent&& intent, Send&& s
 	if (req.method() == http::verb::get)
 	{
 		// view request always sends HTML: pass &m_lib to SendJSON
-		return Ownership{breq.owner()}.serialize(
+		return Ownership{breq.owner()}.find_collection(
 			*m_db,
 			m_auth,
 			breq.collection(),
@@ -411,7 +413,7 @@ template <class Send>
 void SessionHandler::query_blob(const BlobRequest& req, Send&& send)
 {
 	auto [blob_arg, rendition] = urlform.find(req.option(), "id", "rendition");
-	auto blob = hex_to_object_id(blob_arg);
+	auto blob = ObjectID::from_hex(blob_arg);
 	if (!blob)
 		return send(bad_request("invalid blob ID", req.version()));
 
@@ -490,7 +492,7 @@ void SessionHandler::post_view(BlobRequest&& req, Send&& send)
 
 	using namespace std::chrono_literals;
 
-	if (auto cover_blob = hex_to_object_id(cover); cover_blob)
+	if (auto cover_blob = ObjectID::from_hex(cover); cover_blob)
 		return Ownership{req.owner()}.set_cover(
 			*m_db,
 			req.collection(),

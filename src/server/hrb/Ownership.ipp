@@ -15,7 +15,7 @@
 #include "CollEntryDB.hh"
 
 #include "common/Permission.hh"
-#include "common/CollEntry.hh"
+#include "common/Collection.hh"
 
 #include "crypto/Authentication.hh"
 #include "common/Error.hh"
@@ -89,7 +89,7 @@ public:
 	) const;
 
 	template <typename Complete>
-	void serialize(
+	void list(
 		redis::Connection& db,
 		const Authentication& requester,
 		Complete&& complete
@@ -107,13 +107,14 @@ public:
 	const std::string& user() const {return m_user;}
 	const std::string& path() const {return m_path;}
 
-	static nlohmann::json serialize(
+	void post_unlink(redis::Connection& db, const ObjectID& blob);
+
+private:
+	hrb::Collection from_reply(
 		const redis::Reply& hash_getall_reply,
 		const Authentication& requester,
-		std::string_view owner
-	);
-
-	void post_unlink(redis::Connection& db, const ObjectID& blob);
+		nlohmann::json&& meta
+	) const;
 
 private:
 	std::string m_user;
@@ -342,7 +343,7 @@ void Ownership::Collection::list(
 			using namespace boost::adaptors;
 			comp(
 				reply |
-				transformed([](auto&& reply){return raw_to_object_id(reply.as_string());}) |
+				transformed([](auto&& reply){return ObjectID::from_raw(reply.as_string());}) |
 				filtered([](auto&& opt_oid){return opt_oid.has_value();}) |
 				transformed([](auto&& opt_oid){return *opt_oid;}),
 				ec
@@ -356,7 +357,7 @@ void Ownership::Collection::list(
 }
 
 template <typename Complete>
-void Ownership::Collection::serialize(
+void Ownership::Collection::list(
 	redis::Connection& db,
 	const Authentication& requester,
 	Complete&& complete
@@ -375,21 +376,23 @@ void Ownership::Collection::serialize(
 		](auto&& reply, std::error_code&& ec) mutable
 		{
 			if (!reply || ec)
-				Log(LOG_WARNING, "serialize() script reply %1% %2%", reply.as_error(), ec);
+				Log(LOG_WARNING, "list() script reply %1% %2%", reply.as_error(), ec);
 
 			if (reply.array_size() == 2)
 			{
-				auto jdoc = serialize(reply[0], requester, m_user);
-				jdoc.emplace("owner",      m_user);
-				jdoc.emplace("collection", m_path);
-
 				// in some error cases created by unit tests, the string is not valid JSON
 				// in the database
 				auto meta = nlohmann::json::parse(reply[1].as_string(), nullptr, false);
-				if (!meta.is_discarded())
-					jdoc.emplace("meta", std::move(meta));
+				if (meta.is_discarded())
+					meta = nlohmann::json::object();
 
-				comp(std::move(jdoc), std::move(ec));
+				if (!meta.is_object())
+				{
+					Log(LOG_WARNING, "invalid meta data for collection %1%: %2%", path, reply[1].as_string());
+					meta = nlohmann::json::object();
+				}
+
+				comp(from_reply(reply[0], requester, std::move(meta)), std::move(ec));
 			}
 
 			// TODO: handle case where
@@ -458,14 +461,14 @@ void Ownership::unlink(
 }
 
 template <typename Complete>
-void Ownership::serialize(
+void Ownership::find_collection(
 	redis::Connection& db,
 	const Authentication& requester,
 	std::string_view coll,
 	Complete&& complete
 ) const
 {
-	return Collection{m_user, coll}.serialize(db, requester, std::forward<Complete>(complete));
+	return Collection{m_user, coll}.list(db, requester, std::forward<Complete>(complete));
 }
 
 template <typename Complete>
@@ -589,7 +592,7 @@ void Ownership::list_public_blobs(
 					auto [owner, coll, blob, entry_str] = row.as_tuple<4>(err);
 
 					std::optional<BlobRef> result;
-					if (auto blob_id = raw_to_object_id(blob.as_string()); !err && blob_id.has_value())
+					if (auto blob_id = ObjectID::from_raw(blob.as_string()); !err && blob_id.has_value())
 						result = BlobRef{
 							std::string{owner.as_string()},
 							std::string{coll.as_string()},

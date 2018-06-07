@@ -84,15 +84,18 @@ std::string CollEntryDB::create(Permission perm, const nlohmann::json& json)
 	);
 }
 
-CollEntry CollEntryDB::fields() const
+std::optional<CollEntry> CollEntryDB::fields() const
 {
 	auto json = nlohmann::json::parse(CollEntryDB::json(), nullptr, false);
-	return {
-		permission(),
-		json.value(filename_pointer, ""),
-		json.value(mime_pointer, ""),
-		json.value(timestamp_pointer, Timestamp{})
-	};
+	if (!json.is_discarded())
+		return CollEntry{
+			permission(),
+			json.value(filename_pointer, ""),
+			json.value(mime_pointer, ""),
+			json.value(timestamp_pointer, Timestamp{})
+		};
+	else
+		return std::nullopt;
 }
 
 std::string CollEntryDB::create(const CollEntry& fields)

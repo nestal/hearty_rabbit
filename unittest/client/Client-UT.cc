@@ -37,6 +37,17 @@ TEST_CASE("simple client login", "[normal]")
 			tested = true;
 			REQUIRE_FALSE(err);
 		});
+
+		REQUIRE(ioc.run_for(10s) > 0);
+		REQUIRE(tested);
+		ioc.restart();
+
+		tested = false;
+		subject.scan_collections([&tested](auto json, auto err)
+		{
+			REQUIRE_FALSE(err);
+			tested = true;
+		});
 	}
 	SECTION("login incorrect")
 	{
@@ -46,12 +57,17 @@ TEST_CASE("simple client login", "[normal]")
 			REQUIRE(err == hrb::Error::login_incorrect);
 		});
 	}
+
 	REQUIRE(ioc.run_for(10s) > 0);
 	REQUIRE(tested);
 	ioc.restart();
 
-	subject.list("", [](auto refs)
+	tested = false;
+	subject.list_collection("", [&tested](auto refs, auto err)
 	{
+		REQUIRE_FALSE(err);
+		tested = true;
+
 		for (auto&& ref : refs)
 			std::cout << ref.second.filename << std::endl;
 	});

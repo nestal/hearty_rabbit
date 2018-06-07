@@ -30,7 +30,6 @@ struct ServerInstance::Impl
 		m_srv{m_cfg}
 	{
 		Server::add_user(m_cfg, "sumsum", Password{"bearbear"}, [](auto){});
-
 		m_srv.listen();
 	}
 	~Impl()
@@ -55,10 +54,13 @@ const Configuration ServerInstance::Impl::m_cfg{[]()
 	};
 
 	// use a randomize port
-	auto port = cfg.listen_https().port();
-	while (port <= 1024 || port == cfg.listen_https().port())
-		hrb::insecure_random(port);
-	cfg.change_https_port(port);
+	auto https_port = cfg.listen_https().port();
+	auto http_port  = cfg.listen_http().port();
+	while (https_port <= 1024 || https_port == cfg.listen_https().port())
+		hrb::insecure_random(https_port);
+	while (http_port <= 1024 || http_port == cfg.listen_http().port())
+		hrb::insecure_random(http_port);
+	cfg.change_listen_ports(https_port, http_port);
 
 	return cfg;
 }()};

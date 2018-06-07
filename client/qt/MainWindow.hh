@@ -15,11 +15,15 @@
 #include "ui_MainWindow.h"
 
 #include <QtWidgets/QMainWindow>
-#include <QtNetwork/QNetworkAccessManager>
+
+#include <system_error>
 
 class QFileSystemModel;
 
 namespace hrb {
+
+class QtClient;
+class CollectionModel;
 
 class MainWindow : public QMainWindow
 {
@@ -27,12 +31,14 @@ public:
 	MainWindow();
 
 private:
-	void list_hrb();
+	void on_login(std::error_code err);
 
 private:
 	Ui::MainWindow      m_;
+	QtClient            *m_hrb{};
+
 	QFileSystemModel    *m_fs_model{};
-	QNetworkAccessManager   m_nam;
+	CollectionModel     *m_coll_model{};
 };
 
 } // end of namespace hrb

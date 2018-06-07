@@ -43,7 +43,7 @@ class GenericHTTPRequest : public std::enable_shared_from_this<
 public:
 	// Resolver and stream require an io_context
 	explicit GenericHTTPRequest(boost::asio::io_context& ioc, ssl::context& ctx) :
-		m_resolver(ioc), m_stream(ioc, ctx)
+		m_resolver{ioc}, m_stream{ioc, ctx}
 	{
 	}
 
@@ -90,11 +90,19 @@ public:
 		);
 	}
 
+	void shutdown()
+	{
+		// Gracefully close the stream
+		m_stream.async_shutdown(
+			[self=this->shared_from_this()](auto ec)
+			{
+				self->on_shutdown(ec);
+			}
+		);
+	}
+
 private:
-	void on_resolve(
-		boost::system::error_code ec,
-		tcp::resolver::results_type results
-	)
+	void on_resolve(boost::system::error_code ec, tcp::resolver::results_type results)
 	{
 		if (ec)
 			return fail(ec, "resolve");
@@ -131,7 +139,6 @@ private:
 			return fail(ec, "handshake");
 
 		m_req.prepare_payload();
-//		std::cout << "request = " << m_req << std::endl;
 
 		// Send the HTTP request to the remote host
 		http::async_write(
@@ -143,10 +150,7 @@ private:
 		);
 	}
 
-	void on_write(
-		boost::system::error_code ec,
-		std::size_t bytes_transferred
-	)
+	void on_write(boost::system::error_code ec, std::size_t bytes_transferred)
 	{
 		boost::ignore_unused(bytes_transferred);
 
@@ -163,10 +167,7 @@ private:
 		);
 	}
 
-	void on_read(
-		boost::system::error_code ec,
-		std::size_t bytes_transferred
-	)
+	void on_read(boost::system::error_code ec, std::size_t bytes_transferred)
 	{
 		boost::ignore_unused(bytes_transferred);
 
@@ -174,14 +175,6 @@ private:
 			return fail(ec, "read");
 
 		m_comp(ec, *this);
-
-		// Gracefully close the stream
-		m_stream.async_shutdown(
-			[self=this->shared_from_this()](auto ec)
-			{
-				self->on_shutdown(ec);
-			}
-		);
 	}
 
 	void on_shutdown(boost::system::error_code ec)

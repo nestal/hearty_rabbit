@@ -12,16 +12,21 @@
 
 #include "MainWindow.hh"
 
+#include "CollectionModel.hh"
+#include "LoginDialog.hh"
+#include "QtClient.hh"
+
 #include <QAction>
 #include <QFileSystemModel>
-#include <QtNetwork/QNetworkReply>
 
 #include <iostream>
 
 namespace hrb {
 
 MainWindow::MainWindow() :
-	m_fs_model{new QFileSystemModel{this}}
+	m_hrb{new QtClient{this}},
+	m_fs_model{new QFileSystemModel{this}},
+	m_coll_model{new CollectionModel{this, m_hrb}}
 {
 	m_.setupUi(this);
 	m_fs_model->setRootPath(QDir::homePath());
@@ -34,18 +39,24 @@ MainWindow::MainWindow() :
 	for (int i = 1; i < m_fs_model->columnCount({}); i++)
 		m_.local_fs->setColumnHidden(i, true);
 
-	connect(m_.action_exit, &QAction::triggered, []{QApplication::quit();});
+	connect(m_hrb, &QtClient::on_login, this, &MainWindow::on_login);
+	connect(m_hrb, &QtClient::on_list_collection, m_coll_model, &CollectionModel::update);
+	m_.remote_list->setModel(m_coll_model);
 
-	list_hrb();
+	connect(m_.action_login, &QAction::triggered, [this](bool)
+	{
+		LoginDialog dlg{this};
+		if (dlg.exec() == QDialog::Accepted)
+			m_hrb->login(dlg.host(), dlg.port(), dlg.username(), dlg.password());
+	});
+	connect(m_.action_exit, &QAction::triggered, qApp, &QApplication::quit);
 }
 
-void MainWindow::list_hrb()
+void MainWindow::on_login(std::error_code err)
 {
-	auto reply = m_nam.get(QNetworkRequest{QUrl::fromUserInput("https://www.nestal.net/api/nestal/")});
-	connect(reply, &QNetworkReply::finished, [reply]
-	{
-		std::cout << "read reply = " << QString::fromUtf8(reply->readAll()).toStdString() << std::endl;
-	});
+	std::cout << "login!" << std::endl;
+
+	m_hrb->list_collection("");
 }
 
 } // end of namespace hrb

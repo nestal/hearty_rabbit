@@ -24,12 +24,26 @@
 
 namespace hrb {
 
-std::optional<ObjectID> hex_to_object_id(std::string_view hex)
+ObjectID::ObjectID(const std::array<unsigned char, Blake2::size>& array)
 {
-	return hex_to_array<ObjectID{}.size()>(hex);
+	std::copy(array.begin(), array.end(), begin());
 }
 
-std::optional<ObjectID> raw_to_object_id(std::string_view raw)
+std::optional<ObjectID> ObjectID::from_json(const nlohmann::json& json)
+{
+	return ObjectID::from_hex(json.get<std::string>());
+}
+
+std::optional<ObjectID> ObjectID::from_hex(std::string_view hex)
+{
+	auto opt_array = hex_to_array<ObjectID{}.size()>(hex);
+	if (opt_array.has_value())
+		return *opt_array;
+	else
+		return std::nullopt;
+}
+
+std::optional<ObjectID> ObjectID::from_raw(std::string_view raw)
 {
 	ObjectID result{};
 	if (raw.size() == result.size())
@@ -60,9 +74,20 @@ std::ostream& operator<<(std::ostream& os, const ObjectID& id)
 	return os << to_hex(id);
 }
 
-bool is_valid_blob_id(std::string_view hex)
+bool ObjectID::is_hex(std::string_view hex)
 {
 	return hex.size() == Blake2::size*2 && hex.find_first_not_of("01234567890ABCDEFabcdef") == hex.npos;
+}
+
+void from_json(const nlohmann::json& src, ObjectID& dest)
+{
+	if (auto opt = ObjectID::from_json(src); opt.has_value())
+		dest = *opt;
+}
+
+void to_json(nlohmann::json& dest, const ObjectID& src)
+{
+	dest = to_hex(src);
 }
 
 } // end of namespace

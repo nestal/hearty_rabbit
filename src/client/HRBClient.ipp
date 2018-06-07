@@ -22,8 +22,7 @@
 
 #include <json.hpp>
 
-#include <boost/range/adaptors.hpp>
-
+#include <iostream>
 #include <string>
 #include <unordered_map>
 
@@ -52,12 +51,13 @@ void HRBClient::login(std::string_view user, std::string_view password, Complete
 			ec = hrb::Error::login_incorrect;
 
 		comp(ec);
+		req.shutdown();
 	});
 	req->run();
 }
 
 template <typename Complete>
-void HRBClient::list(std::string_view coll, Complete&& comp)
+void HRBClient::list_collection(std::string_view coll, Complete&& comp)
 {
 	auto req = std::make_shared<GenericHTTPRequest<http::empty_body, http::string_body>>(m_ioc, m_ssl);
 	req->init(m_host, m_port, URLIntent{URLIntent::Action::api, m_user, coll, ""}.str(), http::verb::get);
@@ -65,20 +65,31 @@ void HRBClient::list(std::string_view coll, Complete&& comp)
 
 	req->on_load([this, comp=std::forward<Complete>(comp)](auto ec, auto& req)
 	{
-		using namespace boost::adaptors;
+		auto json = nlohmann::json::parse(req.response().body());
+		comp(json.template get<std::unordered_map<ObjectID, CollEntry>>(), ec);
+		req.shutdown();
+	});
+	req->run();
+}
+
+template <typename Complete>
+void HRBClient::scan_collections(Complete&& comp)
+{
+	auto req = std::make_shared<GenericHTTPRequest<http::empty_body, http::string_body>>(m_ioc, m_ssl);
+	req->init(m_host, m_port, URLIntent{URLIntent::QueryTarget::collection, "user=" + m_user + "&json"}.str(), http::verb::get);
+	req->request().set(http::field::cookie, m_cookie.str());
+
+	std::cout << URLIntent{URLIntent::QueryTarget::collection, "user=" + m_user + "&json"}.str() << std::endl;
+
+	req->on_load([this, comp=std::forward<Complete>(comp)](auto ec, auto& req)
+	{
+		std::cout << req.response().body() << std::endl;
 
 		auto json = nlohmann::json::parse(req.response().body());
-		std::unordered_map<ObjectID, CollEntry> result;
-		for (auto&& item : json["elements"].items())
-		{
-			nlohmann::json key   = item.key();
-			nlohmann::json value = item.value();
+		std::cout << json << std::endl;
 
-			if (auto blob = hrb::hex_to_object_id(key.get<std::string>()); blob.has_value())
-				result.emplace(*blob, value.get<CollEntry>());
-		}
-
-		comp(std::move(result));
+		comp(std::move(json), ec);
+		req.shutdown();
 	});
 	req->run();
 }

@@ -119,6 +119,13 @@ TEST_CASE("/view URL parsing")
 
 TEST_CASE("/api URL parsing")
 {
+	URLIntent api_blob{"/api/sumsum/ab17e567297463b3c187d25ab6ab5d9bab1cbfe0?rendition=thumbnail"};
+	REQUIRE(api_blob.action() == URLIntent::Action::api);
+	REQUIRE(api_blob.collection() == "");
+	REQUIRE(api_blob.filename() == "ab17e567297463b3c187d25ab6ab5d9bab1cbfe0");
+	REQUIRE(api_blob.option() == "rendition=thumbnail");
+	REQUIRE(api_blob.valid());
+
 	URLIntent view_json{"/api/user_name/a_col/lec/tion/?json"};
 	REQUIRE(view_json.action() == URLIntent::Action::api);
 	REQUIRE(view_json.user() == "user_name");

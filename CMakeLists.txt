@@ -204,7 +204,7 @@ target_link_libraries(
 	hearty_rabbit
 	hrbsrv
 )
-add_dependencies(hearty_rabbit unittest)
+add_dependencies(hearty_rabbit unittest clienttest)
 
 if (BUILD_CLIENT)
 	add_subdirectory(client/qt)
