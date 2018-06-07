@@ -212,9 +212,8 @@ hrb::Collection Ownership::Collection::from_reply(const redis::Reply& reply, con
 		// check permission: allow allow owner (i.e. m_user)
 		if (blob_id && entry.permission().allow(requester.id(), m_user))
 		{
-			auto entry_jdoc = nlohmann::json::parse(entry.json(), nullptr, false);
-			if (!entry_jdoc.is_discarded())
-				result.add_blob(*blob_id, entry.fields());
+			if (auto fields = entry.fields(); fields.has_value())
+				result.add_blob(*blob_id, *fields);
 		}
 	};
 	return result;
