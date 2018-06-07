@@ -13,7 +13,7 @@
 #pragma once
 
 #include <QtCore/QAbstractListModel>
-#include <QtGui/QImage>
+#include <QtGui/QIcon>
 
 #include "common/Collection.hh"
 
@@ -41,7 +41,7 @@ private:
 	std::vector<ObjectID>   m_blob_ids;
 
 	Collection m_coll;
-	std::unordered_map<ObjectID, QImage>    m_images;
+	std::unordered_map<ObjectID, QIcon>    m_images;
 };
 
 } // end of namespace hrb

@@ -35,9 +35,10 @@ private:
 
 private:
 	Ui::MainWindow      m_;
+	QtClient            *m_hrb{};
+
 	QFileSystemModel    *m_fs_model{};
 	CollectionModel     *m_coll_model{};
-	QtClient            *m_hrb{};
 };
 
 } // end of namespace hrb

@@ -32,11 +32,22 @@ QVariant CollectionModel::data(const QModelIndex& index, int role) const
 {
 	assert(m_coll.size() == m_blob_ids.size());
 
-	if (index.row() < m_blob_ids.size() && role == Qt::DisplayRole)
+	if (index.row() < m_blob_ids.size())
 	{
 		assert(index.row() < static_cast<int>(m_blob_ids.size()));
+
 		if (auto it = m_coll.find(m_blob_ids[index.row()]); it != m_coll.blobs().end())
-			return QString::fromStdString(it->second.filename);
+		{
+			switch (role)
+			{
+				case Qt::DisplayRole: return QString::fromStdString(it->second.filename);
+				case Qt::DecorationRole:
+				{
+					if (auto image = m_images.find(it->first); image != m_images.end())
+						return image->second;
+				}
+			}
+		}
 	}
 	return {};
 }
@@ -61,9 +72,20 @@ void CollectionModel::update(const Collection& coll)
 
 void CollectionModel::receive_blob(const ObjectID& id, const QString& rendition, const QByteArray& blob)
 {
+	std::cout << "receiving " << blob.size() << " bytes " << blob.toStdString() << std::endl;
+
 	QImage image;
 	if (image.loadFromData(blob))
-		m_images.emplace(id, std::move(image));
+	{
+		m_images.emplace(id, QIcon{QPixmap::fromImage(std::move(image))});
+
+		auto row = std::find(m_blob_ids.begin(), m_blob_ids.end(), id);
+		if (row != m_blob_ids.end())
+		{
+			auto idx = index(row-m_blob_ids.begin(), 0);
+			emit dataChanged(idx, idx, {Qt::DecorationRole});
+		}
+	}
 }
 
 } // end of namespace hrb
