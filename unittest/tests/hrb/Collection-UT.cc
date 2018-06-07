@@ -36,7 +36,7 @@ TEST_CASE("simple CollEntry <-> JSON round-trip", "[normal]")
 
 TEST_CASE("simple Collection <-> JSON round-trip", "[normal]")
 {
-	Collection subject{"some_coll", "sumyung"};
+	Collection subject{"some_coll", "sumyung", {}};
 	subject.add_blob(insecure_random<ObjectID>(), {Permission::public_(), "abc.txt", "text/plain", Timestamp{101s}});
 	subject.add_blob(insecure_random<ObjectID>(), {Permission::private_(), "image.jpeg", "image/jpeg", Timestamp{1h}});
 

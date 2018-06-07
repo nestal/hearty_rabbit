@@ -15,8 +15,8 @@
 
 namespace hrb {
 
-Collection::Collection(std::string_view name, std::string_view owner) :
-	m_name{name}, m_owner{owner}
+Collection::Collection(std::string_view name, std::string_view owner, nlohmann::json&& meta) :
+	m_name{name}, m_owner{owner}, m_meta{std::move(meta)}
 {
 }
 
@@ -36,6 +36,7 @@ void from_json(const nlohmann::json& src, Collection& dest)
 
 	result.m_name   = src["collection"];
 	result.m_owner  = src["owner"];
+	result.m_meta   = src["meta"];
 
 	for (auto&& item : src["elements"].items())
 	{
@@ -52,6 +53,7 @@ void to_json(nlohmann::json& dest, const Collection& src)
 	auto result = nlohmann::json::object();
 	result["collection"] = src.m_name;
 	result["owner"]      = src.m_owner;
+	result["meta"]       = src.m_meta;
 
 	auto blobs = nlohmann::json::object();
 	for (auto&& [id, entry] : src.m_blobs)

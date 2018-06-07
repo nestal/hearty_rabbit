@@ -28,7 +28,7 @@ public:
 
 public:
 	Collection() = default;
-	Collection(std::string_view name, std::string_view owner);
+	Collection(std::string_view name, std::string_view owner, nlohmann::json&& meta);
 
 	Collection(Collection&&) = default;
 	Collection(const Collection&) = default;
@@ -37,7 +37,7 @@ public:
 
 	std::string_view name() const {return m_name;}
 	std::string_view owner() const {return m_owner;}
-	const ObjectID& cover() const {return m_cover;}
+//	const ObjectID& cover() const {return m_cover;}
 	auto blobs() const {return boost::iterator_range<iterator>{m_blobs.begin(), m_blobs.end()};}
 
 	friend void from_json(const nlohmann::json& src, Collection& dest);
@@ -49,7 +49,7 @@ public:
 private:
 	std::string     m_name;
 	std::string     m_owner;
-	ObjectID        m_cover;
+	nlohmann::json  m_meta;
 
 	std::unordered_map<ObjectID, CollEntry> m_blobs;
 };
