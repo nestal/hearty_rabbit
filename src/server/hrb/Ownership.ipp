@@ -109,7 +109,8 @@ public:
 
 	hrb::Collection serialize(
 		const redis::Reply& hash_getall_reply,
-		const Authentication& requester
+		const Authentication& requester,
+		nlohmann::json&& meta
 	) const;
 
 	void post_unlink(redis::Connection& db, const ObjectID& blob);
@@ -378,16 +379,15 @@ void Ownership::Collection::serialize(
 
 			if (reply.array_size() == 2)
 			{
-				// if use {} to construct nlohmann::json, it will create an array.
-				// like STL containers, nlohmann::json ctor overloads std::initializer_list
-				nlohmann::json jdoc(serialize(reply[0], requester));
-
 				// in some error cases created by unit tests, the string is not valid JSON
 				// in the database
 				auto meta = nlohmann::json::parse(reply[1].as_string(), nullptr, false);
-				if (!meta.is_discarded())
-					jdoc.emplace("meta", std::move(meta));
+				if (meta.is_discarded())
+					meta = nlohmann::json::object();
 
+				// if use {} to construct nlohmann::json, it will create an array.
+				// like STL containers, nlohmann::json ctor overloads std::initializer_list
+				nlohmann::json jdoc(serialize(reply[0], requester, std::move(meta)));
 				comp(std::move(jdoc), std::move(ec));
 			}
 

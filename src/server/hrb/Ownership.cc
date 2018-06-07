@@ -194,9 +194,9 @@ void Ownership::Collection::unlink(redis::Connection& db, const ObjectID& id)
 	);
 }
 
-hrb::Collection Ownership::Collection::serialize(const redis::Reply& reply, const Authentication& requester) const
+hrb::Collection Ownership::Collection::serialize(const redis::Reply& reply, const Authentication& requester, nlohmann::json&& meta) const
 {
-	hrb::Collection result{m_path, m_user, {}};
+	hrb::Collection result{m_path, m_user, std::move(meta)};
 
 	for (auto&& kv : reply.kv_pairs())
 	{
