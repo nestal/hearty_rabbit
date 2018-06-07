@@ -38,7 +38,7 @@ TEST_CASE("simple Collection <-> JSON round-trip", "[normal]")
 {
 	auto cover = insecure_random<ObjectID>();
 
-	Collection subject{"some_coll", "sumyung", nlohmann::json({"cover", cover})};
+	Collection subject{"some_coll", "sumyung", nlohmann::json::object({{"cover", cover}})};
 	subject.add_blob(insecure_random<ObjectID>(), {Permission::public_(), "abc.txt", "text/plain", Timestamp{101s}});
 	subject.add_blob(insecure_random<ObjectID>(), {Permission::private_(), "image.jpeg", "image/jpeg", Timestamp{1h}});
 

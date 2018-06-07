@@ -196,6 +196,7 @@ void Ownership::Collection::unlink(redis::Connection& db, const ObjectID& id)
 
 hrb::Collection Ownership::Collection::from_reply(const redis::Reply& reply, const Authentication& requester, nlohmann::json&& meta) const
 {
+	assert(meta.is_object());
 	hrb::Collection result{m_path, m_user, std::move(meta)};
 
 	for (auto&& kv : reply.kv_pairs())

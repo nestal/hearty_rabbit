@@ -386,6 +386,12 @@ void Ownership::Collection::list(
 				if (meta.is_discarded())
 					meta = nlohmann::json::object();
 
+				if (!meta.is_object())
+				{
+					Log(LOG_WARNING, "invalid meta data for collection %1%: %2%", path, reply[1].as_string());
+					meta = nlohmann::json::object();
+				}
+
 				comp(from_reply(reply[0], requester, std::move(meta)), std::move(ec));
 			}
 

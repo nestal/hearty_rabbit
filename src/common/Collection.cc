@@ -16,8 +16,9 @@
 namespace hrb {
 
 Collection::Collection(std::string_view name, std::string_view owner, nlohmann::json&& meta) :
-	m_name{name}, m_owner{owner}, m_meta{std::move(meta)}
+	m_name{name}, m_owner{owner}, m_meta(std::move(meta))
 {
+	assert(m_meta.is_object() || m_meta.is_null());
 }
 
 void Collection::add_blob(const ObjectID& id, CollEntry&& entry)

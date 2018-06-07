@@ -74,6 +74,8 @@ public:
 				>(high_resolution_clock::now() - m_parent.m_on_header).count()
 			);
 
+		Log(LOG_DEBUG, "SendJSON: %1%", json.dump());
+
 		auto result = ec ? http::status::internal_server_error : http::status::ok;
 		if (m_lib)
 		{
