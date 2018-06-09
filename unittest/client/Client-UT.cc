@@ -63,13 +63,14 @@ TEST_CASE("simple client login", "[normal]")
 	ioc.restart();
 
 	tested = false;
-	subject.list_collection("", [&tested](auto refs, auto err)
+	subject.list_collection("", [&tested](auto coll, auto err)
 	{
 		REQUIRE_FALSE(err);
+		REQUIRE(coll.name() == "");
 		tested = true;
 
-		for (auto&& ref : refs)
-			std::cout << ref.second.filename << std::endl;
+//		for (auto&& ref : refs)
+//			std::cout << ref.second.filename << std::endl;
 	});
 
 	REQUIRE(ioc.run_for(10s) > 0);
