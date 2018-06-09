@@ -12,19 +12,28 @@
 
 #include "WebResources.hh"
 
-#include "ResourcesList.hh"
-
 #include "common/ObjectID.hh"
+#include "ResourcesList.hh"
 #include "common/Blake2.hh"
 #include "common/Escape.hh"
-#include "util/Magic.hh"
 
 #include <boost/exception/info.hpp>
 
 namespace hrb {
+namespace {
+std::string_view resource_mime(const std::string& ext)
+{
+	// don't expect a big list
+	if (ext == ".html") return "text/html";
+	else if (ext == ".css") return "text/css";
+	else if (ext == ".svg") return "image/svg+xml";
+	else if (ext == ".js") return "application/javascript";
+	else return "application/octet-stream";
+}
 
 const std::string_view dir_needle{"{/** dynamic json placeholder for dir **/}"};
 const std::string_view meta_needle{R"(<meta property="og:title" content="Hearty Rabbit">)"};
+}
 
 template <typename Iterator>
 auto WebResources::load(const boost::filesystem::path& base, Iterator first, Iterator last)
@@ -42,12 +51,10 @@ auto WebResources::load(const boost::filesystem::path& base, Iterator first, Ite
 		hasher.update(mmap.data(), mmap.size());
 		auto etag = to_quoted_hex(ObjectID{hasher.finalize()});
 
-		auto mime = Magic::instance().mime(mmap.buffer());
-
 		result.emplace(
 			*it,
 			std::move(mmap),
-			std::string{mime},
+			std::string{resource_mime(path.extension().string())},
 			std::move(etag)
 		);
 	}
