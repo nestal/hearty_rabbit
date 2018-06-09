@@ -58,19 +58,19 @@ TEST_CASE("simple Collection <-> JSON round-trip", "[normal]")
 TEST_CASE("CollectionList operator==()", "[normal]")
 {
 	CollectionList subject;
-	subject.add("default", insecure_random<ObjectID>());
-	subject.add("some coll", insecure_random<ObjectID>());
+	subject.add("sumsum", "default", insecure_random<ObjectID>());
+	subject.add("sumsum", "some coll", insecure_random<ObjectID>());
 
 	CollectionList subject2;
-	subject2.add("default", insecure_random<ObjectID>());
-	subject2.add("some coll", insecure_random<ObjectID>());
+	subject2.add("sumsum", "default", insecure_random<ObjectID>());
+	subject2.add("sumsum", "some coll", insecure_random<ObjectID>());
 
 	REQUIRE_FALSE(subject == subject2);
 	REQUIRE(subject != subject2);
 
 	CollectionList subject3;
-	subject3.add("default", subject.entries()[0].cover());
-	subject3.add("some coll", subject.entries()[1].cover());
+	subject3.add("sumsum", "default", subject.entries()[0].cover());
+	subject3.add("sumsum", "some coll", subject.entries()[1].cover());
 
 	REQUIRE(subject == subject3);
 	REQUIRE_FALSE(subject != subject3);
@@ -79,8 +79,8 @@ TEST_CASE("CollectionList operator==()", "[normal]")
 TEST_CASE("simple CollectionList <-> JSON round-trip", "[normal]")
 {
 	CollectionList subject;
-	subject.add("default", insecure_random<ObjectID>());
-	subject.add("some coll", insecure_random<ObjectID>());
+	subject.add("sumsum", "default", insecure_random<ObjectID>());
+	subject.add("sumsum", "some coll", insecure_random<ObjectID>());
 	REQUIRE(subject.entries().size() == 2);
 
 	// additional property besides cover

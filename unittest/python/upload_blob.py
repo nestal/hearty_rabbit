@@ -14,6 +14,13 @@ class NormalTestCase(unittest.TestCase):
 	def response_blob(response):
 		return response.headers["Location"][-40:]
 
+	@staticmethod
+	def find_coll(coll_list, coll):
+		for en in coll_list:
+			if en["coll"] == coll:
+				return en
+		return None
+
 	# without the "test" prefix in the method, it is not treated as a test routine
 	@staticmethod
 	def random_image(width, height, format="jpeg"):
@@ -368,10 +375,10 @@ class NormalTestCase(unittest.TestCase):
 		r1 = self.user1.get("https://localhost:4433/query/collection?user=sumsum&json")
 		self.assertEqual(r1.status_code, 200)
 		self.assertTrue("colls" in r1.json())
-		self.assertTrue("collection1" in r1.json()["colls"])
+		self.assertIsNotNone(self.find_coll(r1.json()["colls"], "collection1"))
 
 		for x in range(10):
-			self.assertEqual(r1.json()["colls"]["collection{}".format(x)]["cover"], covers[x])
+			self.assertEqual(self.find_coll(r1.json()["colls"], "collection{}".format(x))["cover"], covers[x])
 
 		# error case: try setting the covers using images from other collections
 		for x in range(10):
@@ -422,7 +429,7 @@ class NormalTestCase(unittest.TestCase):
 		r2 = self.user1.get("https://localhost:4433/query/collection?user=sumsum&json")
 		self.assertEqual(r2.status_code, 200)
 		self.assertTrue("colls" in r2.json())
-		self.assertTrue("女神ハイリア" in r2.json()["colls"])
+		self.assertIsNotNone(self.find_coll(r2.json()["colls"], "女神ハイリア"))
 
 	def test_percent_filename(self):
 		r1 = self.user1.put(
@@ -458,8 +465,8 @@ class NormalTestCase(unittest.TestCase):
 		# verify the first image will become the cover of the album
 		r2 = self.user1.get("https://localhost:4433/query/collection?user=sumsum&json")
 		self.assertEqual(r2.status_code, 200)
-		self.assertTrue("🙇" in r2.json()["colls"])
-		self.assertEqual(cover_id, r2.json()["colls"]["🙇"]["cover"])
+		self.assertIsNotNone(self.find_coll(r2.json()["colls"], "🙇"))
+		self.assertEqual(cover_id, self.find_coll(r2.json()["colls"], "🙇")["cover"])
 		self.assertEqual("sumsum", r2.json()["username"])
 
 		# upload another image, but the cover will stay the same
@@ -474,7 +481,7 @@ class NormalTestCase(unittest.TestCase):
 		# verify that the cover will stay the same
 		r4 = self.user1.get("https://localhost:4433/query/collection?user=sumsum&json")
 		self.assertEqual(r4.status_code, 200)
-		self.assertEqual(cover_id, r4.json()["colls"]["🙇"]["cover"])
+		self.assertEqual(cover_id, self.find_coll(r4.json()["colls"], "🙇")["cover"])
 		self.assertEqual("sumsum", r4.json()["username"])
 
 		# delete the cover image
@@ -483,8 +490,8 @@ class NormalTestCase(unittest.TestCase):
 		# the cover will become the second image
 		r5 = self.user1.get("https://localhost:4433/query/collection?user=sumsum&json")
 		self.assertEqual(r5.status_code, 200)
-		self.assertTrue("🙇" in r5.json()["colls"])
-		self.assertEqual(second_image, r5.json()["colls"]["🙇"]["cover"])
+		self.assertIsNotNone(self.find_coll(r5.json()["colls"], "🙇"))
+		self.assertEqual(second_image, self.find_coll(r5.json()["colls"], "🙇")["cover"])
 
 		# delete the other image as well
 		self.assertEqual(self.user1.delete("https://localhost:4433" + r3.headers["Location"]).status_code, 204)
@@ -492,7 +499,7 @@ class NormalTestCase(unittest.TestCase):
 		# the album will be removed
 		r6 = self.user1.get("https://localhost:4433/query/collection?user=sumsum&json")
 		self.assertEqual(r6.status_code, 200)
-		self.assertFalse("🙇" in r6.json()["colls"])
+		self.assertIsNone(self.find_coll(r6.json()["colls"], "🙇"))
 
 	def test_share_link(self):
 		# upload to default album

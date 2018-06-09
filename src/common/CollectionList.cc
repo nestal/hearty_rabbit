@@ -16,25 +16,37 @@ namespace hrb {
 
 bool operator==(const CollectionList::Entry& lhs, const CollectionList::Entry& rhs)
 {
-	return lhs.m_name == rhs.m_name && lhs.m_properties == rhs.m_properties;
+	return lhs.m_collection == rhs.m_collection && lhs.m_properties == rhs.m_properties;
 }
 
 void from_json(const nlohmann::json& src, CollectionList& dest)
 {
 	CollectionList result;
 
-	for (auto&& item : src["colls"].items())
-		result.add(item.key(), item.value());
+	for (auto item : src["colls"])
+	{
+		std::string owner = item["owner"];
+		std::string coll  = item["coll"];
+		item.erase("owner");
+		item.erase("coll");
+
+		result.add(owner, coll, std::move(item));
+	}
 
 	dest = std::move(result);
 }
 
 void to_json(nlohmann::json& dest, const CollectionList& src)
 {
-	auto colls = nlohmann::json::object();
+	auto colls = nlohmann::json::array();
 
 	for (auto&& en : src.m_entries)
-		colls.emplace(en.name(), en.properties());
+	{
+		auto coll = en.properties();
+		coll.emplace("owner", std::string{en.owner()});
+		coll.emplace("coll", std::string{en.collection()});
+		colls.push_back(std::move(coll));
+	}
 
 	auto result = nlohmann::json::object();
 	result.emplace("colls", std::move(colls));
@@ -57,14 +69,14 @@ bool operator==(const CollectionList& lhs, const CollectionList& rhs)
 	return lhs.m_entries == rhs.m_entries;
 }
 
-CollectionList::Entry::Entry(std::string_view name, const ObjectID& cover) :
-	m_name{name}, m_properties({{"cover", cover}})
+CollectionList::Entry::Entry(std::string_view owner, std::string_view coll, const ObjectID& cover) :
+	m_owner{owner}, m_collection{coll}, m_properties({{"cover", cover}})
 {
 
 }
 
-CollectionList::Entry::Entry(std::string_view name, const nlohmann::json& properties) :
-	m_name{name}, m_properties(properties)
+CollectionList::Entry::Entry(std::string_view owner, std::string_view coll, const nlohmann::json& properties) :
+	m_owner{owner}, m_collection{coll}, m_properties(properties)
 {
 }
 

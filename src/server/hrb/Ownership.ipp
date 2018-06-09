@@ -184,9 +184,9 @@ void Ownership::Collection::scan_all(
 	auto coll_list = std::make_shared<CollectionList>();
 
 	scan(db, owner, 0,
-		[coll_list](auto coll, auto&& json)
+		[coll_list, owner=std::string{owner}](auto coll, auto&& json)
 		{
-			coll_list->add(coll, std::move(json));
+			coll_list->add(owner, coll, std::move(json));
 		},
 		[coll_list, comp=std::forward<Complete>(complete), owner=std::string{owner}](long cursor, auto ec)
 		{

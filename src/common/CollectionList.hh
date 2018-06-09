@@ -29,10 +29,11 @@ public:
 	class Entry
 	{
 	public:
-		Entry(std::string_view name, const ObjectID& cover);
-		Entry(std::string_view name, const nlohmann::json& properties);
+		Entry(std::string_view owner, std::string_view coll, const ObjectID& cover);
+		Entry(std::string_view owner, std::string_view coll, const nlohmann::json& properties);
 
-		std::string_view name() const {return m_name;}
+		std::string_view owner() const {return m_owner;}
+		std::string_view collection() const {return m_collection;}
 		ObjectID cover() const {return m_properties["cover"].template get<ObjectID>();}
 
 		const nlohmann::json& properties() const {return m_properties;}
@@ -42,7 +43,8 @@ public:
 		friend bool operator!=(const Entry& lhs, const Entry& rhs) {return !operator==(lhs, rhs);}
 
 	private:
-		std::string     m_name;
+		std::string     m_owner;
+		std::string     m_collection;
 		nlohmann::json  m_properties;
 	};
 	using Entries = std::vector<Entry>;
@@ -56,9 +58,9 @@ public:
 	boost::iterator_range<iterator> entries();
 
 	template <typename PropertiesOrCover>
-	void add(std::string_view name, PropertiesOrCover&& prop)
+	void add(std::string_view owner, std::string_view coll, PropertiesOrCover&& prop)
 	{
-		m_entries.emplace_back(name, std::forward<PropertiesOrCover>(prop));
+		m_entries.emplace_back(owner, coll, std::forward<PropertiesOrCover>(prop));
 	}
 
 	friend void from_json(const nlohmann::json& src, CollectionList& dest);

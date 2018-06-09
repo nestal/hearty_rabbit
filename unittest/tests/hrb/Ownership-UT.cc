@@ -48,8 +48,8 @@ TEST_CASE("list of collection owned by user", "[normal]")
 		REQUIRE(json.find("colls") != json.end());
 
 		std::vector<std::string> colls;
-		for (auto&& it : json["colls"].items())
-			colls.emplace_back(it.key());
+		for (auto&& it : json["colls"])
+			colls.push_back(it["coll"]);
 
 		REQUIRE(std::find(colls.begin(), colls.end(), "/") != colls.end());
 		tested++;
@@ -436,8 +436,11 @@ TEST_CASE("setting and remove the cover of collection", "[normal]")
 			tested = true;
 
 			REQUIRE(jdoc["owner"] == "testuser");
-			for (auto&& it : jdoc["colls"].items())
-				dirs.push_back(it.key());
+			for (auto&& entry : jdoc["colls"])
+			{
+				dirs.push_back(entry["coll"]);
+				REQUIRE(entry["owner"] == "testuser");
+			}
 		}
 	);
 
@@ -469,9 +472,9 @@ TEST_CASE("setting and remove the cover of collection", "[normal]")
 			REQUIRE(!ec);
 			REQUIRE(jdoc["owner"] == "testuser");
 
-			for (auto&& it : jdoc["colls"].items())
+			for (auto&& it : jdoc["colls"])
 			{
-				if (it.key() == "/" && it.value()["cover"] == to_hex(cover_blob))
+				if (it["coll"] == "/" && it["cover"] == to_hex(cover_blob))
 					tested = true;
 			}
 		}
@@ -496,13 +499,12 @@ TEST_CASE("setting and remove the cover of collection", "[normal]")
 			REQUIRE(removed);
 			REQUIRE(!ec);
 			REQUIRE(jdoc["owner"] == "testuser");
-			for (auto&& it : jdoc["colls"].items())
+			for (auto&& it : jdoc["colls"])
 			{
-				if (it.key() == "/" )
+				if (it["coll"] == "/" )
 				{
-					auto cover = it.value().find("cover");
-					REQUIRE(cover  != it.value().end());
-					REQUIRE(*cover != to_hex(cover_blob));
+					REQUIRE(it.find("cover") != it.end());
+					REQUIRE(it["cover"] != to_hex(cover_blob));
 					updated = true;
 				}
 			}
