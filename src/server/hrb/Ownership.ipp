@@ -16,6 +16,7 @@
 
 #include "common/Permission.hh"
 #include "common/Collection.hh"
+#include "common/CollectionList.hh"
 
 #include "crypto/Authentication.hh"
 #include "common/Error.hh"
@@ -180,19 +181,20 @@ void Ownership::Collection::scan_all(
 	Complete&& complete
 )
 {
-	auto jdoc = std::make_shared<nlohmann::json>();
-	jdoc->emplace("owner",    std::string{owner});
-	jdoc->emplace("colls",    nlohmann::json::object());
+	auto coll_list = std::make_shared<CollectionList>();
 
 	scan(db, owner, 0,
-		[&colls=(*jdoc)["colls"]](auto coll, auto&& json)
+		[coll_list](auto coll, auto&& json)
 		{
-			colls.emplace(coll, std::move(json));
+			coll_list->add(coll, std::move(json));
 		},
-		[jdoc, comp=std::forward<Complete>(complete)](long cursor, auto ec)
+		[coll_list, comp=std::forward<Complete>(complete), owner=std::string{owner}](long cursor, auto ec)
 		{
+			nlohmann::json jdoc(*coll_list);
+			jdoc.emplace("owner", owner);
+
 			if (cursor == 0)
-				comp(std::move(*jdoc), ec);
+				comp(std::move(jdoc), ec);
 			return true;
 		}
 	);
