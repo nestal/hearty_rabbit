@@ -26,10 +26,23 @@ namespace hrb {
 class CollectionList
 {
 public:
-	struct Entry
+	class Entry
 	{
-		std::string     name;
-		ObjectID        cover;
+	public:
+		Entry(std::string_view name, const ObjectID& cover);
+		Entry(std::string_view name, const nlohmann::json& properties);
+
+		std::string_view name() const {return m_name;}
+		ObjectID cover() const {return m_properties["cover"].template get<ObjectID>();}
+
+		const nlohmann::json& properties() const {return m_properties;}
+
+		friend bool operator==(const Entry& lhs, const Entry& rhs);
+		friend bool operator!=(const Entry& lhs, const Entry& rhs) {return !operator==(lhs, rhs);}
+
+	private:
+		std::string     m_name;
+		nlohmann::json  m_properties;
 	};
 	using Entries = std::vector<Entry>;
 	using iterator = Entries::const_iterator;
@@ -39,10 +52,17 @@ public:
 
 	boost::iterator_range<iterator> entries() const;
 
-	void add(std::string_view name, const ObjectID& cover);
+	template <typename PropertiesOrCover>
+	void add(std::string_view name, PropertiesOrCover&& prop)
+	{
+		m_entries.emplace_back(name, std::forward<PropertiesOrCover>(prop));
+	}
 
 	friend void from_json(const nlohmann::json& src, CollectionList& dest);
 	friend void to_json(nlohmann::json& dest, const CollectionList& src);
+
+	friend bool operator==(const CollectionList& lhs, const CollectionList& rhs);
+	friend bool operator!=(const CollectionList& lhs, const CollectionList& rhs) {return !operator==(lhs, rhs);}
 
 private:
 	Entries m_entries;

@@ -14,6 +14,11 @@
 
 namespace hrb {
 
+bool operator==(const CollectionList::Entry& lhs, const CollectionList::Entry& rhs)
+{
+	return lhs.m_name == rhs.m_name && lhs.m_properties == rhs.m_properties;
+}
+
 void from_json(const nlohmann::json& src, CollectionList& dest)
 {
 	CollectionList result;
@@ -29,7 +34,7 @@ void to_json(nlohmann::json& dest, const CollectionList& src)
 	auto colls = nlohmann::json::object();
 
 	for (auto&& en : src.m_entries)
-		colls.emplace(en.name, nlohmann::json::object({{"cover", en.cover}}));
+		colls.emplace(en.name(), en.properties());
 
 	auto result = nlohmann::json::object();
 	result.emplace("colls", std::move(colls));
@@ -42,9 +47,20 @@ boost::iterator_range<CollectionList::iterator> CollectionList::entries() const
 	return {m_entries.begin(), m_entries.end()};
 }
 
-void CollectionList::add(std::string_view name, const ObjectID& cover)
+bool operator==(const CollectionList& lhs, const CollectionList& rhs)
 {
-	m_entries.push_back(CollectionList::Entry{std::string{name}, cover});
+	return lhs.m_entries == rhs.m_entries;
+}
+
+CollectionList::Entry::Entry(std::string_view name, const ObjectID& cover) :
+	m_name{name}, m_properties({{"cover", cover}})
+{
+
+}
+
+CollectionList::Entry::Entry(std::string_view name, const nlohmann::json& properties) :
+	m_name{name}, m_properties{properties}
+{
 }
 
 } // end of namespace hrb
