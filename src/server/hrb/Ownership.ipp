@@ -188,13 +188,10 @@ void Ownership::Collection::scan_all(
 		{
 			coll_list->add(owner, coll, std::move(json));
 		},
-		[coll_list, comp=std::forward<Complete>(complete), owner=std::string{owner}](long cursor, auto ec)
+		[coll_list, comp=std::forward<Complete>(complete), owner=std::string{owner}](long cursor, auto ec) mutable
 		{
-			nlohmann::json jdoc(*coll_list);
-			jdoc.emplace("owner", owner);
-
 			if (cursor == 0)
-				comp(std::move(jdoc), ec);
+				comp(std::move(*coll_list), ec);
 			return true;
 		}
 	);

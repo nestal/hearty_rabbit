@@ -69,6 +69,22 @@ bool operator==(const CollectionList& lhs, const CollectionList& rhs)
 	return lhs.m_entries == rhs.m_entries;
 }
 
+CollectionList::iterator CollectionList::find(std::string_view owner, std::string_view coll)
+{
+	return std::find_if(m_entries.begin(), m_entries.end(), [owner, coll](auto&& en)
+	{
+		return en.owner() == owner && en.collection() == coll;
+	});
+}
+
+CollectionList::const_iterator CollectionList::find(std::string_view owner, std::string_view coll) const
+{
+	return std::find_if(m_entries.begin(), m_entries.end(), [owner, coll](auto&& en)
+	{
+		return en.owner() == owner && en.collection() == coll;
+	});
+}
+
 CollectionList::Entry::Entry(std::string_view owner, std::string_view coll, const ObjectID& cover) :
 	m_owner{owner}, m_collection{coll}, m_properties({{"cover", cover}})
 {

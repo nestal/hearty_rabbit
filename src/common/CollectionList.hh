@@ -57,6 +57,15 @@ public:
 	boost::iterator_range<const_iterator> entries() const;
 	boost::iterator_range<iterator> entries();
 
+	iterator find(std::string_view owner, std::string_view coll);
+	const_iterator find(std::string_view owner, std::string_view coll) const;
+
+	auto begin() {return m_entries.begin();}
+	auto end() {return m_entries.end();}
+
+	auto begin() const {return m_entries.begin();}
+	auto end() const {return m_entries.end();}
+
 	template <typename PropertiesOrCover>
 	void add(std::string_view owner, std::string_view coll, PropertiesOrCover&& prop)
 	{
