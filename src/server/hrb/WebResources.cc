@@ -16,19 +16,18 @@
 #include "ResourcesList.hh"
 #include "common/Blake2.hh"
 #include "common/Escape.hh"
+#include "util/Magic.hh"
 
 #include <boost/exception/info.hpp>
 
 namespace hrb {
 namespace {
-std::string_view resource_mime(const std::string& ext)
+std::string_view resource_mime(const std::string& ext, BufferView content)
 {
 	// don't expect a big list
-	if (ext == ".html") return "text/html";
-	else if (ext == ".css") return "text/css";
-	else if (ext == ".svg") return "image/svg+xml";
+	if (ext == ".css") return "text/css";
 	else if (ext == ".js") return "application/javascript";
-	else return "application/octet-stream";
+	else return Magic::instance().mime(content);
 }
 
 const std::string_view dir_needle{"{/** dynamic json placeholder for dir **/}"};
@@ -50,11 +49,12 @@ auto WebResources::load(const boost::filesystem::path& base, Iterator first, Ite
 		Blake2 hasher;
 		hasher.update(mmap.data(), mmap.size());
 		auto etag = to_quoted_hex(ObjectID{hasher.finalize()});
+		auto mime = resource_mime(path.extension().string(), mmap.buffer());
 
 		result.emplace(
 			*it,
 			std::move(mmap),
-			std::string{resource_mime(path.extension().string())},
+			std::string{mime},
 			std::move(etag)
 		);
 	}
