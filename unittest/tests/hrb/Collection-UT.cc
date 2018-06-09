@@ -83,6 +83,9 @@ TEST_CASE("simple CollectionList <-> JSON round-trip", "[normal]")
 	subject.add("some coll", insecure_random<ObjectID>());
 	REQUIRE(subject.entries().size() == 2);
 
+	// additional property besides cover
+	subject.entries()[1].properties().emplace("field", "value");
+
 	// don't use {} to construct nlohmann. it will produce an JSON array
 	nlohmann::json json(subject);
 	INFO("subject JSON: " << json);
@@ -90,4 +93,5 @@ TEST_CASE("simple CollectionList <-> JSON round-trip", "[normal]")
 	auto ret = json.get<CollectionList>();
 	REQUIRE(ret.entries().size() == 2);
 	REQUIRE(subject == ret);
+	REQUIRE(ret.entries()[1].properties()["field"] == "value");
 }

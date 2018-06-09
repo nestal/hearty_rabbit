@@ -36,6 +36,7 @@ public:
 		ObjectID cover() const {return m_properties["cover"].template get<ObjectID>();}
 
 		const nlohmann::json& properties() const {return m_properties;}
+		nlohmann::json& properties() {return m_properties;}
 
 		friend bool operator==(const Entry& lhs, const Entry& rhs);
 		friend bool operator!=(const Entry& lhs, const Entry& rhs) {return !operator==(lhs, rhs);}
@@ -45,12 +46,14 @@ public:
 		nlohmann::json  m_properties;
 	};
 	using Entries = std::vector<Entry>;
-	using iterator = Entries::const_iterator;
+	using iterator = Entries::iterator;
+	using const_iterator = Entries::const_iterator;
 
 public:
 	CollectionList() = default;
 
-	boost::iterator_range<iterator> entries() const;
+	boost::iterator_range<const_iterator> entries() const;
+	boost::iterator_range<iterator> entries();
 
 	template <typename PropertiesOrCover>
 	void add(std::string_view name, PropertiesOrCover&& prop)

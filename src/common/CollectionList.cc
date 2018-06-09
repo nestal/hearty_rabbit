@@ -24,7 +24,7 @@ void from_json(const nlohmann::json& src, CollectionList& dest)
 	CollectionList result;
 
 	for (auto&& item : src["colls"].items())
-		result.add(item.key(), item.value()["cover"].template get<ObjectID>());
+		result.add(item.key(), item.value());
 
 	dest = std::move(result);
 }
@@ -42,7 +42,12 @@ void to_json(nlohmann::json& dest, const CollectionList& src)
 	dest = std::move(result);
 }
 
-boost::iterator_range<CollectionList::iterator> CollectionList::entries() const
+boost::iterator_range<CollectionList::const_iterator> CollectionList::entries() const
+{
+	return {m_entries.begin(), m_entries.end()};
+}
+
+boost::iterator_range<CollectionList::iterator> CollectionList::entries()
 {
 	return {m_entries.begin(), m_entries.end()};
 }
@@ -59,7 +64,7 @@ CollectionList::Entry::Entry(std::string_view name, const ObjectID& cover) :
 }
 
 CollectionList::Entry::Entry(std::string_view name, const nlohmann::json& properties) :
-	m_name{name}, m_properties{properties}
+	m_name{name}, m_properties(properties)
 {
 }
 
