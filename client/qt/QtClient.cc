@@ -49,7 +49,7 @@ void QtClient::login(const QString& host, int port, const QString& username, con
 		if (reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt() == 204)
 			std::cout << "login success" << std::endl;
 
-		emit on_login({});
+		Q_EMIT on_login({});
 
 		reply->deleteLater();
 	});
@@ -84,7 +84,7 @@ void QtClient::list_collection(const QString& collection)
 		auto dir = nlohmann::json::parse(json.toStdString(), nullptr, false);
 		if (!dir.is_discarded())
 		{
-			emit on_list_collection(dir.get<Collection>());
+			Q_EMIT on_list_collection(dir.get<Collection>());
 		}
 		else
 		{
@@ -107,7 +107,7 @@ void QtClient::get_blob(const QString& owner, const QString& collection, const O
 	connect(reply, &QNetworkReply::finished, [reply, this, blob, rendition]
 	{
 		std::cout << reply->errorString().toStdString() << " " << reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt() << std::endl;
-		emit on_get_blob(blob, rendition, reply->readAll());
+		Q_EMIT on_get_blob(blob, rendition, reply->readAll());
 	});
 }
 

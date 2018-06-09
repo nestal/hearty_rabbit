@@ -13,6 +13,7 @@
 #pragma once
 
 #include <QtNetwork/QNetworkAccessManager>
+#include <QtCore/QFuture>
 
 #include "common/ObjectID.hh"
 
@@ -26,14 +27,14 @@ class QtClient : public QObject
 	Q_OBJECT
 
 public:
-	QtClient(QObject *parent);
+	explicit QtClient(QObject *parent);
 
 	void login(const QString& host, int port, const QString& username, const QString& password);
 	void list_collection(const QString& collection);
 
 	void get_blob(const QString& owner, const QString& collection, const ObjectID& blob, const QString& rendition);
 
-signals:
+Q_SIGNALS:
 	void on_login(std::error_code ec);
 	void on_list_collection(const Collection& coll);
 	void on_get_blob(const ObjectID& blob, const QString& rendition, const QByteArray& data);
