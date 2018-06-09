@@ -54,7 +54,7 @@ QVariant CollectionModel::data(const QModelIndex& index, int role) const
 
 void CollectionModel::update(const Collection& coll)
 {
-	emit layoutAboutToBeChanged();
+	Q_EMIT layoutAboutToBeChanged();
 
 	std::vector<ObjectID> ids;
 	for (auto&& [id, en] : coll.blobs())
@@ -67,7 +67,7 @@ void CollectionModel::update(const Collection& coll)
 	m_blob_ids = std::move(ids);
 
 	changePersistentIndex({}, {});
-	emit layoutChanged();
+	Q_EMIT layoutChanged();
 }
 
 void CollectionModel::receive_blob(const ObjectID& id, const QString& rendition, const QByteArray& blob)
@@ -81,7 +81,7 @@ void CollectionModel::receive_blob(const ObjectID& id, const QString& rendition,
 		if (row != m_blob_ids.end())
 		{
 			auto idx = index(row-m_blob_ids.begin(), 0);
-			emit dataChanged(idx, idx, {Qt::DecorationRole});
+			Q_EMIT dataChanged(idx, idx, {Qt::DecorationRole});
 		}
 	}
 }

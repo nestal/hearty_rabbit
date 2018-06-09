@@ -14,6 +14,7 @@ find_package(Qt5Network CONFIG REQUIRED)
 file(GLOB_RECURSE HRB_GUI_SRC *.cc *.hh *.ui)
 add_executable(hearty_rabbit_gui ${HRB_GUI_SRC})
 target_link_libraries(hearty_rabbit_gui hrbclient Qt5::Widgets Qt5::Network)
+target_compile_definitions(hearty_rabbit_gui PUBLIC -DQT_NO_KEYWORDS)
 target_include_directories(
 	hearty_rabbit_gui PUBLIC
 	${PROJECT_SOURCE_DIR}/../../src/client
