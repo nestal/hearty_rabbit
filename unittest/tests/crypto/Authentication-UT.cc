@@ -13,7 +13,7 @@
 #include <catch.hpp>
 
 #include "net/Redis.hh"
-#include "util/Error.hh"
+#include "common/Error.hh"
 #include "crypto/Authentication.hh"
 #include "crypto/Authentication.ipp"
 #include "crypto/Password.hh"
@@ -106,7 +106,7 @@ TEST_CASE("Test normal user login", "[normal]")
 		}
 		SECTION("verify random session ID")
 		{
-			auto cookie = insecure_random<Authentication::Cookie>();
+			auto cookie = insecure_random<Authentication::CookieID>();
 
 			Authentication::verify_session(cookie, *redis, 60s, [&tested](std::error_code ec, auto&& session)
 				{
@@ -170,21 +170,21 @@ TEST_CASE("Parsing cookie", "[normal]")
 {
 	auto session = parse_cookie("id=0123456789ABCDEF0123456789ABCDEF; somethingelse; ");
 	REQUIRE(session.has_value());
-	REQUIRE(*session == Authentication::Cookie{0x01,0x23,0x45, 0x67, 0x89,0xAB,0xCD,0xEF,0x01,0x23,0x45,0x67,0x89,0xAB,0xCD,0xEF});
+	REQUIRE(*session == Authentication::CookieID{0x01,0x23,0x45, 0x67, 0x89,0xAB,0xCD,0xEF,0x01,0x23,0x45,0x67,0x89,0xAB,0xCD,0xEF});
 
 	session = parse_cookie("name=value; id=0123456789ABCDEF0123456789ABCDEF; ");
 	REQUIRE(session.has_value());
-	REQUIRE(*session == Authentication::Cookie{0x01,0x23,0x45, 0x67, 0x89,0xAB,0xCD,0xEF,0x01,0x23,0x45,0x67,0x89,0xAB,0xCD,0xEF});
+	REQUIRE(*session == Authentication::CookieID{0x01,0x23,0x45, 0x67, 0x89,0xAB,0xCD,0xEF,0x01,0x23,0x45,0x67,0x89,0xAB,0xCD,0xEF});
 
 	// some lower case characters
 	session = parse_cookie("name=value; id=0123456789abcDEF0123456789ABCdef; ");
 	REQUIRE(session.has_value());
-	REQUIRE(*session == Authentication::Cookie{0x01,0x23,0x45, 0x67, 0x89,0xAB,0xCD,0xEF,0x01,0x23,0x45,0x67,0x89,0xAB,0xCD,0xEF});
+	REQUIRE(*session == Authentication::CookieID{0x01,0x23,0x45, 0x67, 0x89,0xAB,0xCD,0xEF,0x01,0x23,0x45,0x67,0x89,0xAB,0xCD,0xEF});
 
 	using namespace std::literals;
 
 	// Random round-trip
-	auto rand = insecure_random<Authentication::Cookie>();
+	auto rand = insecure_random<Authentication::CookieID>();
 	auto cookie = Authentication{rand, "test"}.set_cookie(600s);
 	INFO("cookie for random session ID is " << cookie);
 	session = parse_cookie(cookie);
@@ -234,7 +234,7 @@ TEST_CASE("Sharing resource to guest", "[normal]")
 
 	bool found = false;
 
-	Authentication someone_else{insecure_random<Authentication::Cookie>(), "someone"};
+	Authentication someone_else{insecure_random<Authentication::CookieID>(), "someone"};
 	someone_else.is_shared_resource("dir:", *redis, [&found](bool shared, auto ec)
 	{
 		REQUIRE_FALSE(shared);

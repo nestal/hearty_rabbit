@@ -116,6 +116,12 @@ TEST_CASE( "Multiple renditions", "[normal]" )
 	auto file = (current_src / "rendition.json").string();
 	Configuration subject{0, nullptr, file.c_str()};
 	REQUIRE(subject.renditions().dimension(subject.renditions().default_rendition()) == Size2D{1024, 1024});
+
+	REQUIRE(subject.listen_https().port() != 8964);
+	REQUIRE(subject.listen_http().port() != 6489);
+	subject.change_listen_ports(8964, 6489);
+	REQUIRE(subject.listen_https().port() == 8964);
+	REQUIRE(subject.listen_http().port() == 6489);
 }
 
 TEST_CASE( "Bad UID/GID", "[error]" )

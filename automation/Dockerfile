@@ -10,7 +10,7 @@ RUN yum install -y deltarpm epel-release \
 	&& yum update -y \
 	&& yum install -y --setopt=tsflags=nodocs openssl-devel git make hiredis-devel \
 		file-devel libicu-devel zlib-devel bzip2-devel xz-devel libunwind-devel which \
-		autoconf automake libtool exiv2-devel msgpack-devel libpng-devel nasm \
+		autoconf automake libtool exiv2-devel msgpack-devel libpng-devel nasm libcurl-devel \
 	&& source scl_source enable devtoolset-7 \
 	&& yum clean all -y \
 	&& mkdir /build
@@ -83,5 +83,7 @@ RUN \
 	&& make -j8 install \
 	&& cd .. && rm -rf build
 
-# TODO: remove rapidjson after completely migrated to nlohmann
+RUN git clone --depth 1 -b 1.4.60 https://github.com/aws/aws-sdk-cpp.git
+RUN cd aws-sdk-cpp; mkdir build; cd build; cmake -DBUILD_SHARED_LIBS=OFF ..; make -j8
+
 ADD https://github.com/nlohmann/json/releases/download/v3.1.2/json.hpp /opt/include/

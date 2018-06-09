@@ -12,7 +12,7 @@
 
 #include <catch.hpp>
 
-#include "util/FS.hh"
+#include "common/FS.hh"
 
 #include "image/PHash.hh"
 

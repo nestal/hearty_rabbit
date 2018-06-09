@@ -16,7 +16,7 @@
 #include "hrb/Ownership.ipp"
 #include "hrb/BlobDatabase.hh"
 #include "hrb/UploadFile.hh"
-#include "hrb/Permission.hh"
+#include "common/Permission.hh"
 #include "crypto/Random.hh"
 
 #include <boost/algorithm/string.hpp>
@@ -37,21 +37,15 @@ TEST_CASE("list of collection owned by user", "[normal]")
 	int tested = 0;
 	subject.link(*redis, "/", blobid, CollEntry{}, [&tested](std::error_code ec)
 	{
-		REQUIRE(!ec);
+		REQUIRE_FALSE(ec);
 		tested++;
 	});
 
 	// assert that the collection is added
-	subject.scan_all_collections(*redis, [&tested](auto&& json, auto ec)
+	subject.scan_all_collections(*redis, [&tested](auto&& coll_list, auto ec)
 	{
-		REQUIRE(!ec);
-		REQUIRE(json.find("colls") != json.end());
-
-		std::vector<std::string> colls;
-		for (auto&& it : json["colls"].items())
-			colls.emplace_back(it.key());
-
-		REQUIRE(std::find(colls.begin(), colls.end(), "/") != colls.end());
+		REQUIRE_FALSE(ec);
+		REQUIRE(coll_list.find("owner", "/") != coll_list.end());
 		tested++;
 	});
 
@@ -70,15 +64,12 @@ TEST_CASE("list of collection owned by user", "[normal]")
 	ioc.restart();
 
 	// remove all blobs in the collection
-	subject.serialize(*redis, Authentication{{}, "owner"}, "/", [&tested, redis](auto&& jdoc, auto ec)
+	subject.find_collection(*redis, Authentication{{}, "owner"}, "/", [&tested, redis](auto&& coll, auto ec)
 	{
-		INFO("serialize() return " << jdoc);
-		for (auto&& blob : jdoc["elements"].items())
+		for (auto&& [id, blob] : coll.blobs())
 		{
-			INFO("blob = " << blob.key());
-			REQUIRE(all(blob.key(), is_xdigit() && !is_upper()));
-
-			Ownership{"owner"}.unlink(*redis, "/", *hex_to_object_id(blob.key()), [](auto&& ec)
+			INFO("blob = " << to_hex(id));
+			Ownership{"owner"}.unlink(*redis, "/", id, [](auto&& ec)
 			{
 				REQUIRE(!ec);
 			});
@@ -92,14 +83,10 @@ TEST_CASE("list of collection owned by user", "[normal]")
 	ioc.restart();
 
 	// assert that the collection "/" does not exist anymore, because all its blobs are removed
-	subject.scan_all_collections(*redis, [&tested](auto&& json, auto ec)
+	subject.scan_all_collections(*redis, [&tested](auto&& coll_list, auto ec)
 	{
-		REQUIRE(!ec);
-		REQUIRE(json.find("colls") != json.end());
-
-		std::vector<std::string> colls;
-		for (auto&& it : json["colls"].items())
-			REQUIRE(it.key() != std::string{"/"});
+		REQUIRE_FALSE(ec);
+		REQUIRE(coll_list.find("owner", "/") == coll_list.end());
 		tested++;
 	});
 	REQUIRE(ioc.run_for(10s) > 0);
@@ -174,14 +161,10 @@ TEST_CASE("add blob to Ownership", "[normal]")
 
 	// verify that the newly added blob is in the public list
 	bool found = false;
-	subject.list_public_blobs(*redis, [&found, blobid](auto&& json, auto ec)
+	subject.list_public_blobs(*redis, [&found, blobid](auto&& brefs, auto ec)
 	{
-		REQUIRE(json.find("elements") != json.end());
-		auto&& elements = json["elements"];
-
-		for (auto&& item : elements.items())
-			if (to_hex(blobid) == item.key())
-				found = true;
+		auto it = std::find_if(brefs.begin(), brefs.end(), [blobid](auto&& bref){return bref.blob == blobid;});
+		found = (it != brefs.end());
 	});
 
 	REQUIRE(ioc.run_for(10s) > 0);
@@ -236,9 +219,9 @@ TEST_CASE("Load 3 images in json", "[normal]")
 
 	for (auto&& blobid : blobids)
 	{
-		auto s = CollEntry::create(Permission::private_(), "file.jpg", "image/jpeg", Timestamp::now());
+		CollEntry entry{Permission::private_(), "file.jpg", "image/jpeg", Timestamp::now()};
 		subject.link(
-			*redis, "some/collection", blobid, CollEntry{s}, [&added](auto ec)
+			*redis, "some/collection", blobid, entry, [&added](auto ec)
 			{
 				REQUIRE(!ec);
 				added++;
@@ -252,40 +235,25 @@ TEST_CASE("Load 3 images in json", "[normal]")
 	ioc.restart();
 
 	// update CollEntry of the blobs
-	auto en_str = CollEntry::create(Permission::public_(), "another_file.jpg", "application/json", Timestamp{std::chrono::milliseconds{100}});
+	CollEntry entry{Permission::public_(), "another_file.jpg", "application/json", Timestamp{std::chrono::milliseconds{100}}};
 	for (auto&& blobid : blobids)
-		subject.update(*redis, "some/collection", blobid, CollEntry{en_str});
+		subject.update(*redis, "some/collection", blobid, entry);
 
 	bool tested = false;
-	subject.serialize(*redis, {{},"testuser"}, "some/collection", [&tested, &blobids](auto&& doc, auto ec)
+	subject.find_collection(*redis, {{},"testuser"}, "some/collection", [&tested, &blobids](auto&& coll, auto ec)
 	{
 		using json = nlohmann::json;
-		INFO("serialize() error_code: " << ec << " " << ec.message());
-		INFO("serialize result = " << doc);
 
-		REQUIRE(!ec);
-		REQUIRE(!doc.empty());
-		REQUIRE(
-			doc.value(json::json_pointer{"/owner"}, "") == "testuser"
-		);
-		REQUIRE(
-			doc.value(json::json_pointer{"/collection"}, "") == "some/collection"
-		);
+		REQUIRE_FALSE(ec);
+		REQUIRE(coll.owner() == "testuser");
+		REQUIRE(coll.name() == "some/collection");
 
-		for (auto&& blobid : blobids)
+		for (auto&& [id, entry] : coll.blobs())
 		{
-			REQUIRE(
-				doc.value(json::json_pointer{"/elements/" + to_hex(blobid) + "/perm"}, "") == "public"
-			);
-			REQUIRE(
-				doc.value(json::json_pointer{"/elements/" + to_hex(blobid) + "/filename"}, "") == "another_file.jpg"
-			);
-			REQUIRE(
-				doc.value(json::json_pointer{"/elements/" + to_hex(blobid) + "/mime"}, "") == "application/json"
-			);
-			REQUIRE(
-				doc.value(json::json_pointer{"/elements/" + to_hex(blobid) + "/timestamp"}, 0) == 100
-			);
+			REQUIRE(entry.perm == Permission::public_());
+			REQUIRE(entry.filename == "another_file.jpg");
+			REQUIRE(entry.mime == "application/json");
+			REQUIRE(entry.timestamp == Timestamp{std::chrono::milliseconds{100}});
 		}
 
 		tested = true;
@@ -316,11 +284,11 @@ TEST_CASE("Query blob of testuser")
 
 	auto blobid = insecure_random<ObjectID>();
 
-	auto ce_str = CollEntry::create(Permission::public_(), "haha.jpeg", "image/jpeg", Timestamp::now());
+	CollEntry entry{Permission::public_(), "haha.jpeg", "image/jpeg", Timestamp::now()};
 
 	int tested = 0;
 	subject.link(
-		*redis, "somecoll", blobid, CollEntry{ce_str}, [&tested](auto ec)
+		*redis, "somecoll", blobid, entry, [&tested](auto ec)
 		{
 			REQUIRE(!ec);
 			tested++;
@@ -365,11 +333,13 @@ TEST_CASE("set cover error cases", "[error]")
 
 		// concatenate all existing album name to create a album name that doesn't exist
 		subject.scan_all_collections(*redis,
-			[&inexist_album](auto&& jdoc, auto ec)
+			[&inexist_album](auto&& coll_list, auto ec)
 			{
-				REQUIRE(jdoc["owner"] == "testuser");
-				for (auto&& it : jdoc["colls"].items())
-					inexist_album += it.key();
+				for (auto&& it : coll_list)
+				{
+					REQUIRE(it.owner() == "testuser");
+					inexist_album += it.collection();
+				}
 			}
 		);
 
@@ -451,15 +421,17 @@ TEST_CASE("setting and remove the cover of collection", "[normal]")
 
 	bool tested = false;
 	subject.scan_all_collections(*redis,
-		[&dirs, &tested](auto&& jdoc, auto ec)
+		[&dirs, &tested](auto&& coll_list, auto ec)
 		{
 			INFO("scan() error: " << ec << " " << ec.message());
-			REQUIRE(!ec);
+			REQUIRE_FALSE(ec);
 			tested = true;
 
-			REQUIRE(jdoc["owner"] == "testuser");
-			for (auto&& it : jdoc["colls"].items())
-				dirs.push_back(it.key());
+			for (auto&& entry : coll_list)
+			{
+				dirs.emplace_back(entry.collection());
+				REQUIRE(entry.owner() == "testuser");
+			}
 		}
 	);
 
@@ -486,16 +458,13 @@ TEST_CASE("setting and remove the cover of collection", "[normal]")
 
 	// check if the cover is updated
 	subject.scan_all_collections(*redis,
-		[&cover_blob, &tested](auto&& jdoc, auto ec)
+		[&cover_blob, &tested](auto&& coll_list, auto ec)
 		{
-			REQUIRE(!ec);
-			REQUIRE(jdoc["owner"] == "testuser");
-
-			for (auto&& it : jdoc["colls"].items())
-			{
-				if (it.key() == "/" && it.value()["cover"] == to_hex(cover_blob))
-					tested = true;
-			}
+			REQUIRE_FALSE(ec);
+			auto def_coll = coll_list.find("testuser", "/");
+			REQUIRE(def_coll != coll_list.end());
+			REQUIRE(def_coll->cover() == cover_blob);
+			tested = true;
 		}
 	);
 	REQUIRE(ioc.run_for(10s) > 0);
@@ -513,18 +482,17 @@ TEST_CASE("setting and remove the cover of collection", "[normal]")
 	// check if the cover is updated
 	bool updated = false;
 	subject.scan_all_collections(*redis,
-		[&cover_blob, &updated, &removed](auto&& jdoc, auto ec)
+		[&cover_blob, &updated, &removed](auto&& coll_list, auto ec)
 		{
 			REQUIRE(removed);
-			REQUIRE(!ec);
-			REQUIRE(jdoc["owner"] == "testuser");
-			for (auto&& it : jdoc["colls"].items())
+			REQUIRE_FALSE(ec);
+
+			for (auto&& it : coll_list)
 			{
-				if (it.key() == "/" )
+				REQUIRE(it.owner() == "testuser");
+				if (it.collection() == "/" )
 				{
-					auto cover = it.value().find("cover");
-					REQUIRE(cover  != it.value().end());
-					REQUIRE(*cover != to_hex(cover_blob));
+					REQUIRE(it.cover() != cover_blob);
 					updated = true;
 				}
 			}
@@ -537,29 +505,29 @@ TEST_CASE("setting and remove the cover of collection", "[normal]")
 
 TEST_CASE("collection entry", "[normal]")
 {
-	Authentication yung{insecure_random<Authentication::Cookie>(), "yungyung"};
-	Authentication sum{insecure_random<Authentication::Cookie>(), "sumsum"};
+	Authentication yung{insecure_random<Authentication::CookieID>(), "yungyung"};
+	Authentication sum{insecure_random<Authentication::CookieID>(), "sumsum"};
 
-	auto s = CollEntry::create({}, "somepic.jpeg", "image/jpeg", Timestamp::now());
-	CollEntry subject{s};
+	auto s = CollEntryDB::create({}, "somepic.jpeg", "image/jpeg", Timestamp::now());
+	CollEntryDB subject{s};
 	INFO("entry JSON = " << subject.json());
 
 	REQUIRE(subject.filename() == "somepic.jpeg");
 	REQUIRE(subject.mime() == "image/jpeg");
-	REQUIRE_FALSE(subject.permission().allow(sum, yung.user()));
+	REQUIRE_FALSE(subject.permission().allow(sum.id(), yung.user()));
 	REQUIRE(subject.raw() == s);
 
-	CollEntry same{subject.raw()};
+	CollEntryDB same{subject.raw()};
 	REQUIRE(same.filename() == "somepic.jpeg");
 	REQUIRE(same.mime() == "image/jpeg");
-	REQUIRE_FALSE(same.permission().allow(yung, sum.user()));
+	REQUIRE_FALSE(same.permission().allow(yung.id(), sum.user()));
 	REQUIRE(same.raw() == subject.raw());
 
-	auto s2 = CollEntry::create(Permission::shared(), nlohmann::json::parse(same.json()));
-	CollEntry same2{s2};
+	auto s2 = CollEntryDB::create(Permission::shared(), nlohmann::json::parse(same.json()));
+	CollEntryDB same2{s2};
 	REQUIRE(same2.filename() == "somepic.jpeg");
 	REQUIRE(same2.mime() == "image/jpeg");
-	REQUIRE(same2.permission().allow(yung, sum.user()));
+	REQUIRE(same2.permission().allow(yung.id(), sum.user()));
 	REQUIRE(same2.raw().substr(1) == subject.raw().substr(1));
 
 }

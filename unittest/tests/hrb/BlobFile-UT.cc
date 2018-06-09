@@ -13,7 +13,7 @@
 #include <catch.hpp>
 
 #include "hrb/BlobFile.hh"
-#include "hrb/CollEntry.hh"
+#include "hrb/CollEntryDB.hh"
 #include "hrb/UploadFile.hh"
 
 #include "util/MMap.hh"
@@ -215,11 +215,11 @@ TEST_CASE_METHOD(BlobFileUTFixture, "upload lena.png as BlobFile", "[normal]")
 	REQUIRE(rend_mat.cols == 256);
 }
 
-TEST_CASE("hex_to_object_id() error cases", "[error]")
+TEST_CASE("ObjectID::from_hex() error cases", "[error]")
 {
-	REQUIRE(!hex_to_object_id(""));
-	REQUIRE(!hex_to_object_id("1"));
-	REQUIRE(!hex_to_object_id("012345678901234567890123456789_123456789"));
-	REQUIRE(!hex_to_object_id("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"));
-	REQUIRE(!hex_to_object_id("0123456789012345678901234567890123456789AAAAAA"));
+	REQUIRE(!ObjectID::from_hex(""));
+	REQUIRE(!ObjectID::from_hex("1"));
+	REQUIRE(!ObjectID::from_hex("012345678901234567890123456789_123456789"));
+	REQUIRE(!ObjectID::from_hex("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"));
+	REQUIRE(!ObjectID::from_hex("0123456789012345678901234567890123456789AAAAAA"));
 }
