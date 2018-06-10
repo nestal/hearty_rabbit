@@ -46,8 +46,10 @@ public:
 	friend void to_json(nlohmann::json& dest, BlobList&& src);
 	friend void from_json(const nlohmann::json& src, BlobList& dest);
 
+	const nlohmann::json& json() const {return m_json;}
+
 private:
-	nlohmann::json elements() const;
+	const nlohmann::json& elements() const;
 
 private:
 	nlohmann::json m_json;

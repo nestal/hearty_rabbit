@@ -44,7 +44,6 @@ void BlobList::add(const BlobList::Entry& entry)
 std::vector<BlobList::Entry> BlobList::entries() const
 {
 	std::vector<Entry> result;
-
 	for (auto&& kv : elements().items())
 	{
 		auto&& key   = kv.key();
@@ -76,11 +75,11 @@ void from_json(const nlohmann::json& src, BlobList& dest)
 	dest.m_json = src;
 }
 
-nlohmann::json BlobList::elements() const
+const nlohmann::json& BlobList::elements() const
 {
-	return m_json.is_object() ?
-		m_json.value("elements", nlohmann::json::object()) :
-		nlohmann::json::object();
+	static const auto empty = nlohmann::json::object();
+	auto it = m_json.find("elements");
+	return it == m_json.end() ? empty : *it;
 }
 
 } // end of namespace hrb
