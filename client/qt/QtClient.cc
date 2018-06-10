@@ -113,19 +113,9 @@ void QtClient::owned_collections(const QString& user)
 	connect(reply, &QNetworkReply::finished, [reply, this]
 	{
 		if (reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt() == 200)
-		{
-			std::cout
-				<< reply->errorString().toStdString()
-				<< " "
-				<< reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt()
-				<< std::endl;
-
-			auto json = reply->readAll();
-			std::cout << json.toStdString() << std::endl;
-
-			auto dir = nlohmann::json::parse(json.toStdString(), nullptr, false);
-			Q_EMIT on_owned_collections(dir);
-		}
+			Q_EMIT on_owned_collections(nlohmann::json::parse(
+				reply->readAll().toStdString(), nullptr, false
+			));
 	});
 }
 

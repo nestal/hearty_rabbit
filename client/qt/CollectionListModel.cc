@@ -42,8 +42,6 @@ void CollectionListModel::update(const CollectionList& coll)
 	auto en = coll.entries();
 	m_entries.assign(en.begin(), en.end());
 
-	std::cout << "receive " << m_entries.size() << " collections" << std::endl;
-
 	changePersistentIndex({}, {});
 	Q_EMIT layoutChanged();
 }
