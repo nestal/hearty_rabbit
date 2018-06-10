@@ -10,6 +10,7 @@
 // Created by nestal on 6/7/18.
 //
 
+#include "common/BlobList.hh"
 #include "common/Collection.hh"
 #include "common/CollectionList.hh"
 #include "crypto/Random.hh"
@@ -94,4 +95,15 @@ TEST_CASE("simple CollectionList <-> JSON round-trip", "[normal]")
 	REQUIRE(ret.entries().size() == 2);
 	REQUIRE(subject == ret);
 	REQUIRE(ret.entries()[1].properties()["field"] == "value");
+}
+
+TEST_CASE("simple BlobList <-> JSON round-trip", "[normal]")
+{
+	BlobList subject;
+	subject.add("sumsum", "coll", insecure_random<ObjectID>(), CollEntry{});
+
+	for (auto&& e : subject.entries())
+	{
+		REQUIRE(e.owner == "sumsum");
+	}
 }

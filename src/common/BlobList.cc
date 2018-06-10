@@ -36,4 +36,9 @@ void BlobList::add(std::string_view owner, std::string_view coll, const ObjectID
 	m_json["elements"].emplace(to_hex(blob), std::move(entry_jdoc));
 }
 
+void BlobList::add(const BlobList::Entry& entry)
+{
+	return add(entry.owner, entry.coll, entry.blob, entry.entry);
+}
+
 } // end of namespace hrb

@@ -12,12 +12,14 @@
 
 #pragma once
 
+#include "CollEntry.hh"
 #include "JSON.hh"
+#include "ObjectID.hh"
+
+#include <boost/range/adaptors.hpp>
 
 namespace hrb {
 
-class CollEntry;
-class ObjectID;
 class Permission;
 
 class BlobList
@@ -25,7 +27,10 @@ class BlobList
 public:
 	struct Entry
 	{
-
+		std::string owner;
+		std::string coll;
+		ObjectID    blob;
+		CollEntry   entry;
 	};
 
 public:
@@ -33,6 +38,18 @@ public:
 
 	void add(std::string_view owner, std::string_view coll, const ObjectID& blob, const Permission& perm, nlohmann::json&& entry);
 	void add(std::string_view owner, std::string_view coll, const ObjectID& blob, const CollEntry& entry);
+	void add(const Entry& entry);
+
+	auto entries() const
+	{
+		using namespace boost::adaptors;
+		return m_json | transformed([](auto&& kv)
+		{
+			auto&& key   = kv.first;
+			auto&& value = kv.second;
+			return Entry{value.at("owner"), value.at("coll"), ObjectID::from_hex(key), value.template get<CollEntry>()};
+		});
+	}
 
 private:
 	nlohmann::json m_json;
