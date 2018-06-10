@@ -100,10 +100,10 @@ TEST_CASE("simple CollectionList <-> JSON round-trip", "[normal]")
 TEST_CASE("simple BlobList <-> JSON round-trip", "[normal]")
 {
 	BlobList subject;
-	subject.add("sumsum", "coll", insecure_random<ObjectID>(), CollEntry{});
+	subject.add("sumsum", "coll", insecure_random<ObjectID>(), CollEntry{Permission::shared(), "abc.txt", "text/css"});
 
-//	for (auto&& e : subject.entries())
-//	{
-//		REQUIRE(e.owner == "sumsum");
-//	}
+	for (auto&& e : subject.entries())
+	{
+		REQUIRE(e.owner == "sumsum");
+	}
 }

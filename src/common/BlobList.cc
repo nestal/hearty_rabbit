@@ -41,4 +41,29 @@ void BlobList::add(const BlobList::Entry& entry)
 	return add(entry.owner, entry.coll, entry.blob, entry.entry);
 }
 
+std::vector<BlobList::Entry> BlobList::entries() const
+{
+	std::vector<Entry> result;
+
+	for (auto&& kv : m_json.at("elements").items())
+	{
+		auto&& key   = kv.key();
+		auto&& value = kv.value();
+
+		if (auto blob = ObjectID::from_hex(key); blob.has_value())
+			result.push_back(Entry{
+				value.at("owner").get<std::string>(),
+				value.at("collection").get<std::string>(),
+				*blob,
+				value.template get<CollEntry>()
+			});
+	}
+	return result;
+}
+
+std::size_t BlobList::size() const
+{
+	return m_json.at("elements").size();
+}
+
 } // end of namespace hrb
