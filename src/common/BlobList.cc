@@ -68,6 +68,8 @@ std::size_t BlobList::size() const
 void to_json(nlohmann::json& dest, BlobList&& src)
 {
 	dest = std::move(src.m_json);
+	if (!dest.is_object())
+		dest = nlohmann::json::object();
 }
 
 void from_json(const nlohmann::json& src, BlobList& dest)
