@@ -48,6 +48,12 @@ MainWindow::MainWindow() :
 	connect(m_hrb, &QtClient::on_owned_collections, m_coll_list_model, &CollectionListModel::update);
 	m_.remote_dirs->setModel(m_coll_list_model);
 
+	connect(m_.remote_dirs, &QAbstractItemView::clicked, [this](const QModelIndex& item)
+	{
+		auto entry = m_coll_list_model->find(item);
+		m_hrb->list_collection(QString::fromUtf8(entry.collection().data(), entry.collection().size()));
+	});
+
 	connect(m_.action_login, &QAction::triggered, [this](bool)
 	{
 		LoginDialog dlg{this};

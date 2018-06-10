@@ -48,4 +48,9 @@ void CollectionListModel::update(const CollectionList& coll)
 	Q_EMIT layoutChanged();
 }
 
+CollectionList::Entry CollectionListModel::find(const QModelIndex& index) const
+{
+	return m_entries.at(static_cast<std::size_t>(index.row()));
+}
+
 } // end of namespace hrb

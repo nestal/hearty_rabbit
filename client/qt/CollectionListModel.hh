@@ -32,6 +32,8 @@ public:
 	int rowCount(const QModelIndex& parent) const override;
 	QVariant data(const QModelIndex &index, int role) const override;
 
+	CollectionList::Entry find(const QModelIndex& index) const;
+
 public Q_SLOTS:
 	void update(const CollectionList& coll);
 
