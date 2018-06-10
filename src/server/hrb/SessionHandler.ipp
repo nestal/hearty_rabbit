@@ -25,6 +25,8 @@
 #include "crypto/Authentication.ipp"
 #include "net/MMapResponseBody.hh"
 #include "util/Log.hh"
+
+#include "common/BlobList.hh"
 #include "common/Escape.hh"
 #include "common/URLIntent.hh"
 #include "common/StringFields.hh"
@@ -567,7 +569,7 @@ void SessionHandler::list_public_blobs(bool is_json, unsigned version, Send&& se
 		*m_db,
 		[send=std::forward<Send>(send), version, this, is_json](auto&& blob_refs, auto ec) mutable
 		{
-			auto elements = nlohmann::json::object();
+			BlobList blob_list;
 			for (auto&& bref : blob_refs)
 			{
 				// filter by "user" if it is not empty: that means we want all public blobs from all users
@@ -575,28 +577,12 @@ void SessionHandler::list_public_blobs(bool is_json, unsigned version, Send&& se
 				if ((m_auth.user().empty() || m_auth.user() == bref.user) &&
 					bref.entry.permission() == Permission::public_())
 				{
-					try
-					{
-						auto entry_jdoc = nlohmann::json::parse(bref.entry.json());
-						entry_jdoc.emplace("perm", std::string{bref.entry.permission().description()});
-						entry_jdoc.emplace("owner", bref.user);
-						entry_jdoc.emplace("collection", bref.coll);
-						elements.emplace(to_hex(bref.blob), std::move(entry_jdoc));
-					}
-					catch (std::exception& e)
-					{
-						Log(
-							LOG_WARNING,
-							"The CollEntryDB JSON in database is not valid JSON: %1% %2%",
-							e.what(),
-							bref.entry.json());
-					}
+					if (auto json = nlohmann::json::parse(bref.entry.json(), nullptr, false); !json.is_discarded())
+						blob_list.add(bref.user, bref.coll, bref.blob, bref.entry.permission(), std::move(json));
 				}
 			}
 
-			auto jdoc = nlohmann::json::object();
-			jdoc.emplace("elements", std::move(elements));
-			SendJSON{std::forward<Send>(send), version, std::nullopt, *this, is_json ? nullptr : &m_lib}(std::move(jdoc), ec);
+			SendJSON{std::forward<Send>(send), version, std::nullopt, *this, is_json ? nullptr : &m_lib}(std::move(blob_list), ec);
 		}
 	);
 }
