@@ -17,7 +17,7 @@
 #include "net/Request.hh"
 
 // JSON library
-#include <json.hpp>
+#include <nlohmann/json.hpp>
 
 // standard library
 #include <chrono>

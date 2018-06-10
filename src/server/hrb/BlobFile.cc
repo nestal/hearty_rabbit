@@ -23,7 +23,7 @@
 #include "util/MMap.hh"
 
 // JSON for saving meta data
-#include <json.hpp>
+#include <nlohmann/json.hpp>
 
 // OpenCV for calculating phash
 #include <opencv2/imgcodecs.hpp>

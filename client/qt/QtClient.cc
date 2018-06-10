@@ -15,10 +15,11 @@
 #include <QtNetwork/QNetworkReply>
 
 #include "common/Collection.hh"
+#include "common/CollectionList.hh"
 #include "common/Escape.hh"
 #include "common/URLIntent.hh"
 
-#include <json.hpp>
+#include <nlohmann/json.hpp>
 #include <iostream>
 
 namespace hrb {
@@ -78,18 +79,11 @@ void QtClient::list_collection(const QString& collection)
 	auto reply = m_nam.get(request);
 	connect(reply, &QNetworkReply::finished, [reply, this]
 	{
-		auto json = reply->readAll();
-		std::cout << json.toStdString() << std::endl;
-
-		auto dir = nlohmann::json::parse(json.toStdString(), nullptr, false);
+		auto dir = nlohmann::json::parse(reply->readAll().toStdString(), nullptr, false);
 		if (!dir.is_discarded())
-		{
 			Q_EMIT on_list_collection(dir.get<Collection>());
-		}
 		else
-		{
 			std::cout << "parse error!" << std::endl;
-		}
 	});
 }
 
@@ -106,8 +100,22 @@ void QtClient::get_blob(const QString& owner, const QString& collection, const O
 	auto reply = m_nam.get(request);
 	connect(reply, &QNetworkReply::finished, [reply, this, blob, rendition]
 	{
-		std::cout << reply->errorString().toStdString() << " " << reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt() << std::endl;
-		Q_EMIT on_get_blob(blob, rendition, reply->readAll());
+		if (reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt() == 200)
+			Q_EMIT on_get_blob(blob, rendition, reply->readAll());
+	});
+}
+
+void QtClient::owned_collections(const QString& user)
+{
+	QNetworkRequest request{setup_url({URLIntent::QueryTarget::collection, "json&user=" + user.toStdString()})};
+
+	auto reply = m_nam.get(request);
+	connect(reply, &QNetworkReply::finished, [reply, this]
+	{
+		if (reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt() == 200)
+			Q_EMIT on_owned_collections(nlohmann::json::parse(
+				reply->readAll().toStdString(), nullptr, false
+			));
 	});
 }
 

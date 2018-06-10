@@ -17,10 +17,11 @@
 #include "GenericHTTPRequest.hh"
 #include "common/URLIntent.hh"
 #include "common/CollEntry.hh"
+#include "common/Collection.hh"
 #include "common/ObjectID.hh"
 #include "common/Error.hh"
 
-#include <json.hpp>
+#include <nlohmann/json.hpp>
 
 #include <iostream>
 #include <string>
@@ -66,7 +67,7 @@ void HRBClient::list_collection(std::string_view coll, Complete&& comp)
 	req->on_load([this, comp=std::forward<Complete>(comp)](auto ec, auto& req)
 	{
 		auto json = nlohmann::json::parse(req.response().body());
-		comp(json.template get<std::unordered_map<ObjectID, CollEntry>>(), ec);
+		comp(json.template get<Collection>(), ec);
 		req.shutdown();
 	});
 	req->run();
@@ -83,12 +84,7 @@ void HRBClient::scan_collections(Complete&& comp)
 
 	req->on_load([this, comp=std::forward<Complete>(comp)](auto ec, auto& req)
 	{
-		std::cout << req.response().body() << std::endl;
-
-		auto json = nlohmann::json::parse(req.response().body());
-		std::cout << json << std::endl;
-
-		comp(std::move(json), ec);
+		comp(nlohmann::json::parse(req.response().body()), ec);
 		req.shutdown();
 	});
 	req->run();

@@ -15,8 +15,8 @@
 #include "CollEntryDB.hh"
 #include "common/ObjectID.hh"
 
+#include <nlohmann/json.hpp>
 #include <string>
-#include <json.hpp>
 
 namespace hrb {
 
