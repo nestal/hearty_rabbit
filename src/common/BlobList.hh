@@ -40,7 +40,7 @@ public:
 	void add(std::string_view owner, std::string_view coll, const ObjectID& blob, const CollEntry& entry);
 	void add(const Entry& entry);
 
-	auto entries() const
+/*	std::vector<Entry> entries() const
 	{
 		using namespace boost::adaptors;
 		return m_json | transformed([](auto&& kv)
@@ -50,7 +50,7 @@ public:
 			return Entry{value.at("owner"), value.at("coll"), ObjectID::from_hex(key), value.template get<CollEntry>()};
 		});
 	}
-
+*/
 private:
 	nlohmann::json m_json;
 };

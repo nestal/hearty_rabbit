@@ -12,8 +12,8 @@
 
 #pragma once
 
+#include <nlohmann/json.hpp>
 #include <string_view>
-#include <json.hpp>
 
 // partial specialization (full specialization works too)
 namespace nlohmann {

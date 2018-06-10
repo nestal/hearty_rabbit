@@ -21,7 +21,7 @@
 #include "common/ObjectID.hh"
 #include "common/Error.hh"
 
-#include <json.hpp>
+#include <nlohmann/json.hpp>
 
 #include <iostream>
 #include <string>

@@ -18,7 +18,7 @@
 #include "common/Escape.hh"
 #include "common/URLIntent.hh"
 
-#include <json.hpp>
+#include <nlohmann/json.hpp>
 #include <iostream>
 
 namespace hrb {
