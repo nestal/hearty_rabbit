@@ -45,7 +45,7 @@ std::vector<BlobList::Entry> BlobList::entries() const
 {
 	std::vector<Entry> result;
 
-	for (auto&& kv : m_json.at("elements").items())
+	for (auto&& kv : elements().items())
 	{
 		auto&& key   = kv.key();
 		auto&& value = kv.value();
@@ -63,7 +63,24 @@ std::vector<BlobList::Entry> BlobList::entries() const
 
 std::size_t BlobList::size() const
 {
-	return m_json.at("elements").size();
+	return elements().size();
+}
+
+void to_json(nlohmann::json& dest, BlobList&& src)
+{
+	dest = std::move(src.m_json);
+}
+
+void from_json(const nlohmann::json& src, BlobList& dest)
+{
+	dest.m_json = src;
+}
+
+nlohmann::json BlobList::elements() const
+{
+	return m_json.is_object() ?
+		m_json.value("elements", nlohmann::json::object()) :
+		nlohmann::json::object();
 }
 
 } // end of namespace hrb

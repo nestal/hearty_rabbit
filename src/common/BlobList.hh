@@ -43,6 +43,12 @@ public:
 	std::vector<Entry> entries() const;
 	std::size_t size() const;
 
+	friend void to_json(nlohmann::json& dest, BlobList&& src);
+	friend void from_json(const nlohmann::json& src, BlobList& dest);
+
+private:
+	nlohmann::json elements() const;
+
 private:
 	nlohmann::json m_json;
 };
