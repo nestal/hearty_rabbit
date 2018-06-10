@@ -55,7 +55,24 @@ public:
 	{
 	}
 
-	auto operator()(nlohmann::json&& json, std::error_code ec) const
+	/// Convert anything that is thrown into this function into JSON and send
+	/// it out as a HTTP response.
+	template <typename JSONSerializable>
+	auto operator()(JSONSerializable&& serializable, std::error_code ec) const
+	{
+		try
+		{
+			nlohmann::json json(std::forward<JSONSerializable>(serializable));
+			return send_json(std::move(json), ec);
+		}
+		catch (std::exception& e)
+		{
+			Log(LOG_WARNING, "exception throw in send_json(): %1%", e.what());
+			return send_json(nlohmann::json::object(), Error::unknown_error);
+		}
+	}
+
+	auto send_json(nlohmann::json&& json, std::error_code ec) const
 	{
 		assert(json.is_object());
 		using namespace std::chrono;
@@ -550,8 +567,6 @@ void SessionHandler::list_public_blobs(bool is_json, unsigned version, Send&& se
 		*m_db,
 		[send=std::forward<Send>(send), version, this, is_json](auto&& blob_refs, auto ec) mutable
 		{
-			auto jdoc = nlohmann::json::object();
-
 			auto elements = nlohmann::json::object();
 			for (auto&& bref : blob_refs)
 			{
@@ -577,7 +592,9 @@ void SessionHandler::list_public_blobs(bool is_json, unsigned version, Send&& se
 							bref.entry.json());
 					}
 				}
-			};
+			}
+
+			auto jdoc = nlohmann::json::object();
 			jdoc.emplace("elements", std::move(elements));
 			SendJSON{std::forward<Send>(send), version, std::nullopt, *this, is_json ? nullptr : &m_lib}(std::move(jdoc), ec);
 		}
