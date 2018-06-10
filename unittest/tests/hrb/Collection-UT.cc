@@ -139,3 +139,15 @@ TEST_CASE("simple BlobList <-> JSON round-trip", "[normal]")
 	REQUIRE(entries[1].entry.mime == "image/jpeg");
 	REQUIRE(entries[1].entry.perm == Permission::private_());
 }
+
+TEST_CASE("empty BlobList serialization", "[normal]")
+{
+	BlobList subject;
+	REQUIRE(subject.size() == 0);
+
+	nlohmann::json json(std::move(subject));
+	REQUIRE(json.is_object());
+
+	auto ret = json.get<BlobList>();
+	REQUIRE(ret.size() == 0);
+}
