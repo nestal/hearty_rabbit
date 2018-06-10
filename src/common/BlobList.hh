@@ -12,14 +12,27 @@
 
 #pragma once
 
-#include <json.hpp>
+#include "JSON.hh"
 
 namespace hrb {
+
+class CollEntry;
+class ObjectID;
+class Permission;
 
 class BlobList
 {
 public:
+	struct Entry
+	{
+
+	};
+
+public:
 	BlobList() = default;
+
+	void add(std::string_view owner, std::string_view coll, const ObjectID& blob, const Permission& perm, nlohmann::json&& entry);
+	void add(std::string_view owner, std::string_view coll, const ObjectID& blob, const CollEntry& entry);
 
 private:
 	nlohmann::json m_json;
