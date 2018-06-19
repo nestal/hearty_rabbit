@@ -18,15 +18,16 @@
 #include "BlobDatabase.hh"
 #include "Ownership.ipp"
 #include "UploadFile.hh"
-#include "../../common/URLIntent.hh"
 #include "WebResources.hh"
 #include "index/PHashDb.hh"
+
+#include "common/Escape.hh"
+#include "common/URLIntent.hh"
 
 #include "crypto/Authentication.hh"
 #include "crypto/Authentication.ipp"
 #include "net/MMapResponseBody.hh"
 #include "util/Log.hh"
-#include "common/Escape.hh"
 
 #include <boost/beast/http/fields.hpp>
 #include <boost/beast/http/message.hpp>
@@ -363,8 +364,15 @@ void SessionHandler::get_blob(const BlobRequest& req, Send&& send)
 			if (!entry.permission().allow(m_auth.id(), req.owner()))
 				return send(http::response<http::empty_body>{http::status::forbidden, req.version()});
 
-			auto [rendition] = find_fields(req.option(), "rendition");
-			return send(m_blob_db.response(*req.blob(), req.version(), req.etag(), rendition));
+			if (auto [json] = find_optional_fields(req.option(), "json"); json)
+			{
+				return send(m_blob_db.meta(*req.blob(), req.version()));
+			}
+			else
+			{
+				auto [rendition] = find_fields(req.option(), "rendition");
+				return send(m_blob_db.response(*req.blob(), req.version(), req.etag(), rendition));
+			}
 		}
 	);
 }

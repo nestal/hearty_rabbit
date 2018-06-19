@@ -57,8 +57,25 @@ fs::path BlobDatabase::dest(const ObjectID& id, std::string_view) const
 	return m_cfg.blob_path() / hex.substr(0, 2) / hex;
 }
 
+BlobDatabase::BlobResponse BlobDatabase::meta(const ObjectID& id, unsigned version) const
+{
+	BlobFile blob_obj{dest(id), id};
+	auto mmap = blob_obj.meta();
+	if (!mmap.is_opened())
+		return BlobResponse{http::status::not_found, version};
+
+	BlobResponse res{
+		std::piecewise_construct,
+		std::make_tuple(std::move(mmap)),
+		std::make_tuple(http::status::ok, version)
+	};
+	res.set(http::field::content_type, "application/json");
+	set_cache_control(res, id);
+	return res;
+}
+
 BlobDatabase::BlobResponse BlobDatabase::response(
-	ObjectID id,
+	const ObjectID& id,
 	unsigned version,
 	std::string_view etag,
 	std::string_view rendition
@@ -93,7 +110,6 @@ BlobDatabase::BlobResponse BlobDatabase::response(
 	res.set(http::field::content_type, mime);
 	set_cache_control(res, id);
 	return res;
-
 }
 
 void BlobDatabase::set_cache_control(BlobResponse& res, const ObjectID& id)
