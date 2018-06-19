@@ -189,20 +189,7 @@ void BlobFile::update_meta() const
 		}
 
 		if (meta_file && meta.is_object())
-		{
-			m_meta.emplace();
-
-			using namespace std::chrono;
-			m_meta->mime = meta["mime"];
-			if (meta.find("original_datetime") != meta.end())
-				m_meta->original = meta["original_datetime"].get<Timestamp>();
-			else
-				m_meta->original = std::nullopt;
-			if (meta.find("phash") != meta.end())
-				m_meta->phash = PHash{meta["phash"].get<std::uint64_t>()};
-			else
-				m_meta->phash = std::nullopt;
-		}
+			m_meta.emplace(meta.get<Meta>());
 
 		// some meta field is still missing, we need to deduce the meta
 		deduce_meta({});
@@ -321,6 +308,24 @@ void to_json(nlohmann::json& dest, const BlobFile::Meta& src)
 		meta.emplace("phash", src.phash->value());
 
 	dest = std::move(meta);
+}
+
+void from_json(const nlohmann::json& src, BlobFile::Meta& dest)
+{
+	if (src.is_object())
+	{
+		dest.mime = src["mime"];
+
+		if (src.count("original_datetime") > 0)
+			dest.original = src["original_datetime"].get<Timestamp>();
+		else
+			dest.original = std::nullopt;
+
+		if (src.count("phash") > 0)
+			dest.phash = PHash{src["phash"].get<std::uint64_t>()};
+		else
+			dest.phash = std::nullopt;
+	}
 }
 
 } // end of namespace hrb

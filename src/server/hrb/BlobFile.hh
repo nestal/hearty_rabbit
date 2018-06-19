@@ -86,6 +86,7 @@ private:
 	};
 
 	friend void to_json(nlohmann::json& dest, const Meta& src);
+	friend void from_json(const nlohmann::json& src, Meta& dest);
 
 	mutable std::optional<Meta>	m_meta;
 };
