@@ -18,6 +18,7 @@
 #include "common/URLIntent.hh"
 #include "common/CollEntry.hh"
 #include "common/Collection.hh"
+#include "common/CollectionList.hh"
 #include "common/ObjectID.hh"
 #include "common/Error.hh"
 
@@ -80,11 +81,9 @@ void HRBClient::scan_collections(Complete&& comp)
 	req->init(m_host, m_port, URLIntent{URLIntent::QueryTarget::collection, "user=" + m_user + "&json"}.str(), http::verb::get);
 	req->request().set(http::field::cookie, m_cookie.str());
 
-	std::cout << URLIntent{URLIntent::QueryTarget::collection, "user=" + m_user + "&json"}.str() << std::endl;
-
 	req->on_load([this, comp=std::forward<Complete>(comp)](auto ec, auto& req)
 	{
-		comp(nlohmann::json::parse(req.response().body()), ec);
+		comp(nlohmann::json::parse(req.response().body()).template get<CollectionList>(), ec);
 		req.shutdown();
 	});
 	req->run();
