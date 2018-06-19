@@ -20,6 +20,7 @@
 #include "util/FS.hh"
 #include "util/MMap.hh"
 
+#include <json.hpp>
 #include <system_error>
 #include <chrono>
 
@@ -55,6 +56,8 @@ public:
 	std::string_view mime() const;
 	std::optional<PHash> phash() const;
 
+	nlohmann::json meta() const;
+
 	Timestamp original_datetime() const;
 
 	bool is_image() const;
@@ -81,6 +84,9 @@ private:
 		std::optional<Timestamp>	original;	//!< Date time stored inside the master rendition (e.g. EXIF2)
 		Timestamp	uploaded;
 	};
+
+	friend void to_json(nlohmann::json& dest, const Meta& src);
+
 	mutable std::optional<Meta>	m_meta;
 };
 

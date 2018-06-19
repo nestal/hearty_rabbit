@@ -220,17 +220,8 @@ MMap BlobFile::deduce_meta(MMap&& master) const
 	master = deduce_uploaded(std::move(master));
 
 	// save the meta data to file
-	using namespace std::chrono;
-	nlohmann::json meta{
-		{"mime", m_meta->mime}
-	};
-	if (m_meta->original)
-		meta.emplace("original_datetime", *m_meta->original);
-	if (m_meta->phash)
-		meta.emplace("phash", m_meta->phash->value());
-
 	std::ofstream meta_file{(m_dir/"meta.json").string()};
-	meta_file << meta;
+	meta_file << nlohmann::json(*m_meta);
 
 	return std::move(master);
 }
@@ -305,6 +296,31 @@ MMap BlobFile::deduce_uploaded(MMap&& master) const
 	if (m_meta->uploaded == Timestamp{})
 		m_meta->uploaded = std::chrono::time_point_cast<Timestamp::duration>(Timestamp::clock::now());
 	return std::move(master);
+}
+
+nlohmann::json BlobFile::meta() const
+{
+	update_meta();
+	return nlohmann::json(*m_meta);
+}
+
+void to_json(nlohmann::json& dest, const BlobFile::Meta& src)
+{
+	// save the meta data to file
+	using namespace std::chrono;
+	nlohmann::json meta{
+		{"mime", src.mime}
+	};
+
+	// just to be sure
+	assert(meta.is_object());
+
+	if (src.original)
+		meta.emplace("original_datetime", *src.original);
+	if (src.phash)
+		meta.emplace("phash", src.phash->value());
+
+	dest = std::move(meta);
 }
 
 } // end of namespace hrb

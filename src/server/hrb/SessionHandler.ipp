@@ -409,28 +409,31 @@ void SessionHandler::scan_collection(const URLIntent& intent, unsigned version, 
 template <class Send>
 void SessionHandler::query_blob(const BlobRequest& req, Send&& send)
 {
-	auto [blob_arg, rendition] = find_fields(req.option(), "id", "rendition");
+	auto [blob_arg, rendition, meta] = find_fields(req.option(), "id", "rendition", "meta");
 	auto blob = hex_to_object_id(blob_arg);
 	if (!blob)
 		return send(bad_request("invalid blob ID", req.version()));
 
-	Ownership{m_auth.user()}.query_blob(
-		*m_db,
-		*blob,
-		[
-			send=std::forward<Send>(send), req, blobid=*blob,
-			rendition=std::string{rendition}, this
-		](auto&& range, auto ec)
-		{
-			if (ec)
-				return send(server_error("internal server error", req.version()));
+	if (!rendition.empty())
+	{
+		Ownership{m_auth.user()}.query_blob(
+			*m_db,
+			*blob,
+			[
+				send=std::forward<Send>(send), req, blobid=*blob,
+				rendition=std::string{rendition}, this
+			](auto&& range, auto ec)
+			{
+				if (ec)
+					return send(server_error("internal server error", req.version()));
 
-			for (auto&& en : range)
-				return send(m_blob_db.response(blobid, req.version(), req.etag(), rendition));
+				for (auto&& en : range)
+					return send(m_blob_db.response(blobid, req.version(), req.etag(), rendition));
 
-			return send(not_found("blob not found", req.version()));
-		}
-	);
+				return send(not_found("blob not found", req.version()));
+			}
+		);
+	}
 }
 
 template <class Send>
