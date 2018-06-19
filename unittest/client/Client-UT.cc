@@ -47,13 +47,21 @@ TEST_CASE("simple client test", "[normal]")
 
 TEST_CASE("simple client login", "[normal]")
 {
+	using namespace std::chrono_literals;
+
 	boost::asio::io_context ioc;
 	ssl::context ctx{ssl::context::sslv23_client};
+
+	bool login = false;
 
 	HRBClient subject{ioc, ctx, "localhost", "4433"};
 	subject.login("sumsum", "bearbear", [](auto ec)
 	{
-		std::cout << ec << std::endl;
+		REQUIRE_FALSE(ec);
+		login = true;
 	});
 	ioc.run();
+
+	REQUIRE(ioc.run_for(10s) > 0);
+	REQUIRE(login);
 }

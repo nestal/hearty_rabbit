@@ -14,6 +14,8 @@
 
 #include "GenericHTTPRequest.hh"
 
+#include "common/UserID.hh"
+
 namespace hrb {
 
 class HRBClient
@@ -27,7 +29,8 @@ private:
 	boost::asio::io_context&    m_ioc;
 	ssl::context&               m_ssl;
 
-	std::string m_cookie;
+	// authenication
+	UserID m_user;
 
 	std::string m_host;
 	std::string m_port;
