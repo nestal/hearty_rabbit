@@ -13,6 +13,7 @@
 #pragma once
 
 #include "common/Cookie.hh"
+#include "common/UserID.hh"
 
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ssl.hpp>
@@ -43,8 +44,8 @@ private:
 	std::string m_port;
 
 	// session cookie
-	Cookie m_cookie;
-	std::string m_user;
+	Cookie  m_cookie;
+	UserID  m_user;
 };
 
 }
