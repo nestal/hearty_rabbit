@@ -56,7 +56,8 @@ public:
 	std::string_view mime() const;
 	std::optional<PHash> phash() const;
 
-	nlohmann::json meta() const;
+	nlohmann::json meta_json() const;
+	MMap meta() const;
 
 	Timestamp original_datetime() const;
 

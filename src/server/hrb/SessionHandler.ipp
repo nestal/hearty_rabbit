@@ -339,7 +339,7 @@ void SessionHandler::get_blob(const BlobRequest& req, Send&& send)
 		return send(std::move(res));
 	}
 
-	// Check if the user owns the blob
+	// Check if the user can access the blob
 	// Note: do not move-construct "req" to the lambda because the arguments of find() uses it.
 	// Otherwise, "req" will become dangled.
 	Ownership{req.owner()}.find(
@@ -409,31 +409,28 @@ void SessionHandler::scan_collection(const URLIntent& intent, unsigned version, 
 template <class Send>
 void SessionHandler::query_blob(const BlobRequest& req, Send&& send)
 {
-	auto [blob_arg, rendition, meta] = find_fields(req.option(), "id", "rendition", "meta");
+	auto [blob_arg, rendition] = find_fields(req.option(), "id", "rendition");
 	auto blob = hex_to_object_id(blob_arg);
 	if (!blob)
 		return send(bad_request("invalid blob ID", req.version()));
 
-	if (!rendition.empty())
-	{
-		Ownership{m_auth.user()}.query_blob(
-			*m_db,
-			*blob,
-			[
-				send=std::forward<Send>(send), req, blobid=*blob,
-				rendition=std::string{rendition}, this
-			](auto&& range, auto ec)
-			{
-				if (ec)
-					return send(server_error("internal server error", req.version()));
+	Ownership{m_auth.user()}.query_blob(
+		*m_db,
+		*blob,
+		[
+			send=std::forward<Send>(send), req, blobid=*blob,
+			rendition=std::string{rendition}, this
+		](auto&& range, auto ec)
+		{
+			if (ec)
+				return send(server_error("internal server error", req.version()));
 
-				for (auto&& en : range)
-					return send(m_blob_db.response(blobid, req.version(), req.etag(), rendition));
+			for (auto&& en : range)
+				return send(m_blob_db.response(blobid, req.version(), req.etag(), rendition));
 
-				return send(not_found("blob not found", req.version()));
-			}
-		);
-	}
+			return send(not_found("blob not found", req.version()));
+		}
+	);
 }
 
 template <class Send>

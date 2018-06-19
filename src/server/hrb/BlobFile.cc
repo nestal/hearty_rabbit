@@ -246,7 +246,9 @@ MMap BlobFile::deduce_original(MMap&& master) const
 		{
 			auto field = exif.get(master.buffer(), EXIF2::Tag::date_time);
 			if (field.has_value())
-				m_meta->original = std::chrono::time_point_cast<Timestamp::duration>(EXIF2::parse_datetime(exif.get_value(master.buffer(), *field)));
+				m_meta->original = std::chrono::time_point_cast<Timestamp::duration>(
+					EXIF2::parse_datetime(exif.get_value(master.buffer(), *field))
+				);
 		}
 	}
 
@@ -285,7 +287,7 @@ MMap BlobFile::deduce_uploaded(MMap&& master) const
 	return std::move(master);
 }
 
-nlohmann::json BlobFile::meta() const
+nlohmann::json BlobFile::meta_json() const
 {
 	update_meta();
 	return nlohmann::json(*m_meta);
@@ -326,6 +328,23 @@ void from_json(const nlohmann::json& src, BlobFile::Meta& dest)
 		else
 			dest.phash = std::nullopt;
 	}
+}
+
+MMap BlobFile::meta() const
+{
+	std::error_code ec;
+	auto mmap = MMap::open(m_dir/"meta.json", ec);
+	if (ec)
+	{
+		deduce_meta({});
+		mmap = MMap::open(m_dir/"meta.json", ec);
+	}
+
+	// log error because we are going to ignore it
+	if (ec)
+		Log(LOG_WARNING, "cannot open meta.json for %3%: %1% (%2%)", ec, ec.message(), to_hex(m_id));
+
+	return std::move(mmap);
 }
 
 } // end of namespace hrb

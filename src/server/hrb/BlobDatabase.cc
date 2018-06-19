@@ -78,6 +78,8 @@ BlobDatabase::BlobResponse BlobDatabase::response(
 	if (ec)
 		return BlobResponse{http::status::not_found, version};
 
+	// the mime type of the rendition may not be the same as the master rendition
+	// (which is stored in the meta data), so we need to deduce it again here.
 	auto mime = Magic::instance().mime(mmap.blob());
 
 	// Advice the kernel that we only read the memory in one pass

@@ -201,7 +201,7 @@ TEST_CASE_METHOD(BlobFileUTFixture, "upload lena.png as BlobFile", "[normal]")
 
 	// open the blob using another object and compare meta data
 	BlobFile subject2{m_blob_path, subject.ID()};
-	REQUIRE(subject2.meta().is_object());
+	REQUIRE(subject2.meta_json().is_object());
 	REQUIRE(subject2.mime() == subject.mime());
 	REQUIRE(subject2.phash() == subject.phash());
 
