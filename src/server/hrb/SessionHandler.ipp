@@ -386,13 +386,13 @@ void SessionHandler::get_blob(const BlobRequest& req, Send&& send)
 			if (!entry.permission().allow(m_auth.id(), req.owner()))
 				return send(http::response<http::empty_body>{http::status::forbidden, req.version()});
 
-			if (auto [json] = find_optional_fields(req.option(), "json"); json)
+			if (auto [json] = urlform.find_optional(req.option(), "json"); json)
 			{
 				return send(m_blob_db.meta(*req.blob(), req.version()));
 			}
 			else
 			{
-				auto [rendition] = find_fields(req.option(), "rendition");
+				auto [rendition] = urlform.find(req.option(), "rendition");
 				return send(m_blob_db.response(*req.blob(), req.version(), req.etag(), rendition));
 			}
 		}
