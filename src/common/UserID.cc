@@ -16,20 +16,20 @@
 
 namespace hrb {
 
-UserID::UserID(Cookie cookie, std::string_view user, bool guest) :
+UserID::UserID(CookieID cookie, std::string_view user, bool guest) :
 	m_cookie{cookie}, m_user{user}, m_guest{guest}
 {
 	if (m_user.empty())
-		m_cookie = Cookie{};
+		m_cookie = CookieID{};
 }
 
 bool UserID::valid() const
 {
 	// if cookie is valid, user must not be empty
 	// if cookie is invalid, user must be empty
-	assert((m_cookie == Cookie{}) == m_user.empty() );
+	assert((m_cookie == CookieID{}) == m_user.empty() );
 
-	return m_cookie != Cookie{} && !m_user.empty();
+	return m_cookie != CookieID{} && !m_user.empty();
 }
 
 

@@ -14,6 +14,10 @@
 
 #include "Blake2.hh"
 
+#include <boost/functional/hash.hpp>
+
+#include <nlohmann/json.hpp>
+
 #include <array>
 #include <iosfwd>
 #include <optional>
@@ -22,12 +26,45 @@
 
 namespace hrb {
 
-using ObjectID = std::array<unsigned char, Blake2::size>;
+struct ObjectID : std::array<unsigned char, Blake2::size>
+{
+	using array::array;
+	ObjectID(const std::array<unsigned char, Blake2::size>& array);
+
+	static std::optional<ObjectID> from_hex(std::string_view hex);
+	static std::optional<ObjectID> from_raw(std::string_view raw);
+	static std::optional<ObjectID> from_json(const nlohmann::json& json);
+	static bool is_hex(std::string_view hex);
+};
 static_assert(std::is_standard_layout<ObjectID>::value);
 
-std::optional<ObjectID> hex_to_object_id(std::string_view hex);
-bool is_valid_blob_id(std::string_view hex);
-
-std::optional<ObjectID> raw_to_object_id(std::string_view raw);
+void from_json(const nlohmann::json& src, ObjectID& dest);
+void to_json(nlohmann::json& dest, const ObjectID& src);
 
 } // end of namespace
+
+// inject hash<> to std namespace for unordered_map
+namespace std
+{
+    template<> struct hash<hrb::ObjectID>
+    {
+        typedef hrb::ObjectID argument_type;
+        typedef std::size_t result_type;
+        result_type operator()(const argument_type& s) const noexcept
+		{
+			struct FiveU32
+			{
+				std::uint32_t i[5];
+			};
+
+			FiveU32 t;
+			static_assert(sizeof(t) == s.size());
+			std::memcpy(&t, &s[0], s.size());
+
+			std::size_t seed = 0;
+			for (auto&& i : t.i)
+				boost::hash_combine(seed, i);
+			return seed;
+		}
+   };
+}

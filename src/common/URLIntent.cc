@@ -120,6 +120,11 @@ URLIntent::URLIntent(Action act, std::string_view user, std::string_view coll, s
 {
 }
 
+URLIntent::URLIntent(QueryTarget target, std::string_view option) :
+	m_action{Action::query}, m_option{option}, m_query_target{target}
+{
+
+}
 
 void URLIntent::parse_field_from_left(std::string_view& target, hrb::URLIntent::Parameter p)
 {
@@ -145,7 +150,7 @@ void URLIntent::parse_field_from_right(std::string_view& target, hrb::URLIntent:
 		auto [field, sep] = split_right(target_copy, "/");
 
 		// Special handling for Parameter::blob: the filename must be a blob ID.
-		if (p == Parameter::filename || is_valid_blob_id(field))
+		if (p == Parameter::filename || ObjectID::is_hex(field))
 		{
 			// Here we want to commit the changes to "target", only when
 			// the "filename" is a valid blob ID.
@@ -162,9 +167,8 @@ void URLIntent::parse_field_from_right(std::string_view& target, hrb::URLIntent:
 	}
 }
 
-std::string URLIntent::str() const
+std::ostream& URLIntent::write_path(std::ostream& oss) const
 {
-	std::ostringstream oss;
 	oss << '/';
 	switch (m_action)
 	{
@@ -181,7 +185,7 @@ std::string URLIntent::str() const
 
 		// including Action::none
 		default:
-			return oss.str();
+			return oss;
 	}
 
 	auto& intent_definition = intent_defintions[static_cast<std::size_t>(m_action)];
@@ -215,9 +219,22 @@ std::string URLIntent::str() const
 		}
 	}
 
+	return oss;
+}
+
+std::string URLIntent::path() const
+{
+	std::ostringstream oss;
+	write_path(oss);
+	return oss.str();
+}
+
+std::string URLIntent::str() const
+{
+	std::ostringstream oss;
+	write_path(oss);
 	if (!m_option.empty())
 		oss << "?" << m_option;
-
 	return oss.str();
 }
 

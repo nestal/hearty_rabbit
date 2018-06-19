@@ -17,7 +17,7 @@
 #include "net/Request.hh"
 
 // JSON library
-#include <json.hpp>
+#include <nlohmann/json.hpp>
 
 // standard library
 #include <chrono>
@@ -31,6 +31,7 @@ namespace hrb {
 class Authentication;
 class BlobDatabase;
 class BlobRequest;
+class Collection;
 class Configuration;
 class MMapResponseBody;
 class SplitBuffers;
@@ -129,11 +130,11 @@ private:
 	void list_public_blobs(bool is_json, unsigned version, Send&& send);
 
 	std::string server_root() const;
-	void validate_collection_json(nlohmann::json& json);
+	void validate_collection(Collection& json);
 
 private:
 	std::shared_ptr<redis::Connection>              m_db;
-	std::optional<Authentication::Cookie>           m_request_cookie;
+	std::optional<Authentication::CookieID>           m_request_cookie;
 	std::chrono::high_resolution_clock::time_point  m_on_header;
 
 	Authentication          m_auth;

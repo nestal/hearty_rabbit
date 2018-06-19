@@ -17,7 +17,7 @@
 
 #include "image/PHash.hh"
 #include "util/Size2D.hh"
-#include "util/FS.hh"
+#include "common/FS.hh"
 #include "util/MMap.hh"
 
 #include <json.hpp>

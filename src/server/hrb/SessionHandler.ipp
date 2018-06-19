@@ -21,13 +21,15 @@
 #include "WebResources.hh"
 #include "index/PHashDb.hh"
 
-#include "common/Escape.hh"
-#include "common/URLIntent.hh"
-
 #include "crypto/Authentication.hh"
 #include "crypto/Authentication.ipp"
 #include "net/MMapResponseBody.hh"
 #include "util/Log.hh"
+
+#include "common/BlobList.hh"
+#include "common/Escape.hh"
+#include "common/URLIntent.hh"
+#include "common/StringFields.hh"
 
 #include <boost/beast/http/fields.hpp>
 #include <boost/beast/http/message.hpp>
@@ -55,7 +57,24 @@ public:
 	{
 	}
 
-	auto operator()(nlohmann::json&& json, std::error_code ec) const
+	/// Convert anything that is thrown into this function into JSON and send
+	/// it out as a HTTP response.
+	template <typename JSONSerializable>
+	auto operator()(JSONSerializable&& serializable, std::error_code ec) const
+	{
+		try
+		{
+			nlohmann::json json(std::forward<JSONSerializable>(serializable));
+			return send_json(std::move(json), ec);
+		}
+		catch (std::exception& e)
+		{
+			Log(LOG_WARNING, "exception throw in send_json(): %1%", e.what());
+			return send_json(nlohmann::json::object(), Error::unknown_error);
+		}
+	}
+
+	auto send_json(nlohmann::json&& json, std::error_code ec) const
 	{
 		assert(json.is_object());
 		using namespace std::chrono;
@@ -77,6 +96,9 @@ public:
 		auto result = ec ? http::status::internal_server_error : http::status::ok;
 		if (m_lib)
 		{
+			// TODO: catch exception here
+			// refactor it so that we don't need to get these from JSON
+			// better move these to SessionHandler
 			using jptr = nlohmann::json::json_pointer;
 			auto&& cover = json.value(jptr{"/blob"},       json.value(jptr{"/meta/cover"}, std::string{""}));
 			auto&& owner = json.value(jptr{"/owner"},      std::string{""});
@@ -151,8 +173,8 @@ void SessionHandler::on_request_header(
 	m_request_cookie = parse_cookie({cookie.data(), cookie.size()});
 	if (!m_request_cookie)
 	{
-		auto [auth_str] = find_fields(intent.option(), "auth");
-		auto auth_key = hex_to_array<Authentication::Cookie{}.size()>(auth_str);
+		auto [auth_str] = urlform.find(intent.option(), "auth");
+		auto auth_key = hex_to_array<Authentication::CookieID{}.size()>(auth_str);
 		if (header.method() == http::verb::get && auth_key)
 		{
 			Authentication auth{*auth_key, intent.user(), true};
@@ -277,16 +299,16 @@ void SessionHandler::on_request_api(Request&& req, URLIntent&& intent, Send&& se
 		if (breq.blob())
 			return get_blob(std::move(breq), std::move(send));
 		else
-			return Ownership{breq.owner()}.serialize(
+			return Ownership{breq.owner()}.find_collection(
 				*m_db,
 				m_auth,
 				breq.collection(),
 				[
 					send=SendJSON{std::move(send), req.version(), std::nullopt, *this}, this
-				](auto&& json, std::error_code ec) mutable
+				](auto&& coll, std::error_code ec) mutable
 				{
-					validate_collection_json(json);
-					send(std::move(json), ec);
+					validate_collection(coll);
+					send(nlohmann::json(coll), ec);
 				}
 			);
 	}
@@ -311,7 +333,7 @@ void SessionHandler::on_request_view(Request&& req, URLIntent&& intent, Send&& s
 	if (req.method() == http::verb::get)
 	{
 		// view request always sends HTML: pass &m_lib to SendJSON
-		return Ownership{breq.owner()}.serialize(
+		return Ownership{breq.owner()}.find_collection(
 			*m_db,
 			m_auth,
 			breq.collection(),
@@ -399,7 +421,7 @@ void SessionHandler::on_query(const BlobRequest& req, Send&& send)
 template <class Send>
 void SessionHandler::scan_collection(const URLIntent& intent, unsigned version, Send&& send)
 {
-	auto [user, json] = find_optional_fields(intent.option(), "user", "json");
+	auto [user, json] = urlform.find_optional(intent.option(), "user", "json");
 
 	if (!user.has_value())
 		return send(bad_request("invalid user in query", version));
@@ -417,8 +439,8 @@ void SessionHandler::scan_collection(const URLIntent& intent, unsigned version, 
 template <class Send>
 void SessionHandler::query_blob(const BlobRequest& req, Send&& send)
 {
-	auto [blob_arg, rendition] = find_fields(req.option(), "id", "rendition");
-	auto blob = hex_to_object_id(blob_arg);
+	auto [blob_arg, rendition] = urlform.find(req.option(), "id", "rendition");
+	auto blob = ObjectID::from_hex(blob_arg);
 	if (!blob)
 		return send(bad_request("invalid blob ID", req.version()));
 
@@ -444,7 +466,7 @@ void SessionHandler::query_blob(const BlobRequest& req, Send&& send)
 template <class Send>
 void SessionHandler::query_blob_set(const URLIntent& intent, unsigned version, Send&& send)
 {
-	auto [pub, dup_coll, json] = find_optional_fields(intent.option(), "public", "detect_dup", "json");
+	auto [pub, dup_coll, json] = urlform.find_optional(intent.option(), "public", "detect_dup", "json");
 
 	if (pub.has_value())
 	{
@@ -493,11 +515,11 @@ void SessionHandler::post_view(BlobRequest&& req, Send&& send)
 		return send(http::response<http::empty_body>{http::status::forbidden, req.version()});
 
 	assert(!req.blob());
-	auto[cover, share] = find_fields(req.body(), "cover", "share");
+	auto[cover, share] = urlform.find(req.body(), "cover", "share");
 
 	using namespace std::chrono_literals;
 
-	if (auto cover_blob = hex_to_object_id(cover); cover_blob)
+	if (auto cover_blob = ObjectID::from_hex(cover); cover_blob)
 		return Ownership{req.owner()}.set_cover(
 			*m_db,
 			req.collection(),
@@ -554,9 +576,7 @@ void SessionHandler::list_public_blobs(bool is_json, unsigned version, Send&& se
 		*m_db,
 		[send=std::forward<Send>(send), version, this, is_json](auto&& blob_refs, auto ec) mutable
 		{
-			auto jdoc = nlohmann::json::object();
-
-			auto elements = nlohmann::json::object();
+			BlobList blob_list;
 			for (auto&& bref : blob_refs)
 			{
 				// filter by "user" if it is not empty: that means we want all public blobs from all users
@@ -564,26 +584,12 @@ void SessionHandler::list_public_blobs(bool is_json, unsigned version, Send&& se
 				if ((m_auth.user().empty() || m_auth.user() == bref.user) &&
 					bref.entry.permission() == Permission::public_())
 				{
-					try
-					{
-						auto entry_jdoc = nlohmann::json::parse(bref.entry.json());
-						entry_jdoc.emplace("perm", std::string{bref.entry.permission().description()});
-						entry_jdoc.emplace("owner", bref.user);
-						entry_jdoc.emplace("collection", bref.coll);
-						elements.emplace(to_hex(bref.blob), std::move(entry_jdoc));
-					}
-					catch (std::exception& e)
-					{
-						Log(
-							LOG_WARNING,
-							"The CollEntryDB JSON in database is not valid JSON: %1% %2%",
-							e.what(),
-							bref.entry.json());
-					}
+					if (auto json = nlohmann::json::parse(bref.entry.json(), nullptr, false); !json.is_discarded())
+						blob_list.add(bref.user, bref.coll, bref.blob, bref.entry.permission(), std::move(json));
 				}
-			};
-			jdoc.emplace("elements", std::move(elements));
-			SendJSON{std::forward<Send>(send), version, std::nullopt, *this, is_json ? nullptr : &m_lib}(std::move(jdoc), ec);
+			}
+
+			SendJSON{std::forward<Send>(send), version, std::nullopt, *this, is_json ? nullptr : &m_lib}(std::move(blob_list), ec);
 		}
 	);
 }

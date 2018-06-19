@@ -31,10 +31,10 @@ class Password;
 class Authentication
 {
 public:
-	using Cookie = UserID::Cookie ;
+	using CookieID = UserID::CookieID ;
 
 	Authentication() = default;
-	Authentication(Cookie cookie, std::string_view user, bool guest=false);
+	Authentication(CookieID cookie, std::string_view user, bool guest=false);
 	Authentication(Authentication&&) = default;
 	Authentication(const Authentication&) = default;
 	~Authentication() = default;
@@ -60,7 +60,7 @@ public:
 	);
 
 	static void verify_session(
-		const Cookie& cookie,
+		const CookieID& cookie,
 		redis::Connection& db,
 		std::chrono::seconds session_length,
 		std::function<void(std::error_code, Authentication&&)>&& completion
@@ -99,7 +99,7 @@ public:
 	std::string set_cookie(std::chrono::seconds session_length = std::chrono::seconds{3600}) const;
 
 	const UserID& id() const {return m_uid;}
-	const Cookie& cookie() const {return m_uid.cookie();}
+	const CookieID& cookie() const {return m_uid.cookie();}
 	const std::string& user() const {return m_uid.user();}
 	bool is_guest() const {return m_uid.is_guest();}
 
@@ -120,6 +120,6 @@ private:
 	UserID m_uid;
 };
 
-std::optional<Authentication::Cookie> parse_cookie(std::string_view cookie);
+std::optional<Authentication::CookieID> parse_cookie(std::string_view cookie);
 
 } // end of namespace

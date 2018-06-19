@@ -13,11 +13,16 @@
 #define CATCH_CONFIG_RUNNER
 #include <catch.hpp>
 
+#include "ServerInstance.hh"
+
 #include <openssl/evp.h>
 
 int main( int argc, char* argv[] )
 {
 	OpenSSL_add_all_digests();
+
+	hrb::ServerInstance inst;
+	inst.run();
 
 	return Catch::Session().run(argc, argv);
 }

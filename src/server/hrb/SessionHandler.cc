@@ -21,7 +21,9 @@
 #include "WebResources.hh"
 
 #include "common/CollEntry.hh"
+#include "common/Collection.hh"
 #include "common/URLIntent.hh"
+#include "common/StringFields.hh"
 
 #include "crypto/Password.hh"
 #include "crypto/Authentication.hh"
@@ -32,7 +34,7 @@
 
 #include "util/Configuration.hh"
 #include "common/Escape.hh"
-#include "util/FS.hh"
+#include "common/FS.hh"
 #include "util/Log.hh"
 #include "hrb/index/PHashDb.hh"
 
@@ -70,7 +72,7 @@ void SessionHandler::on_login(const StringRequest& req, EmptyResponseSender&& se
 	auto&& body = req.body();
 	if (req[http::field::content_type] == "application/x-www-form-urlencoded")
 	{
-		auto [username, password] = find_fields(body, "username", "password");
+		auto [username, password] = urlform.find(body, "username", "password");
 
 		Authentication::verify_user(
 			username,
@@ -155,7 +157,7 @@ void SessionHandler::post_blob(BlobRequest&& req, EmptyResponseSender&& send)
 		return send(http::response<http::empty_body>{http::status::forbidden, req.version()});
 
 	assert(req.blob());
-	auto [perm_str, move_destination] = find_fields(req.body(), "perm", "move");
+	auto [perm_str, move_destination] = urlform.find(req.body(), "perm", "move");
 
 	if (perm_str.empty() && move_destination.empty())
 		return send(http::response<http::empty_body>{http::status::bad_request, req.version()});
@@ -295,24 +297,21 @@ std::string SessionHandler::server_root() const
 	return m_cfg.https_root();
 }
 
-void SessionHandler::validate_collection_json(nlohmann::json& json)
+void SessionHandler::validate_collection(Collection& coll)
 {
-	for (auto& element : json["elements"].items())
+	for (auto& [id, entry] : coll.blobs())
 	{
-		auto&& hex_id = element.key();
-		auto&& meta   = element.value();
-
-		if (meta.find("timestamp") == meta.end())
+		if (entry.timestamp == Timestamp{})
 		{
-			Log(LOG_WARNING, "%1% has no timestamp in collection entry: loading from disk", hex_id);
-			auto blob_id = hex_to_object_id(hex_id);
-			if (blob_id.has_value())
-			{
-				auto blob_file = m_blob_db.find(*blob_id);
-				meta.emplace("timestamp", blob_file.original_datetime());
+			Log(LOG_WARNING, "%1% has no timestamp in collection entry: loading from disk", to_hex(id));
 
-				Ownership{m_auth.user()}.update(*m_db, json["collection"].get<std::string>(), *blob_id, meta);
-			}
+			auto blob_file = m_blob_db.find(id);
+
+			auto new_entry{entry};
+			new_entry.timestamp = blob_file.original_datetime();
+			coll.update_timestamp(id, new_entry.timestamp);
+
+			Ownership{m_auth.user()}.update(*m_db, coll.name(), id, new_entry);
 		}
 	}
 }

@@ -15,8 +15,10 @@
 #include "common/Permission.hh"
 #include "common/Timestamp.hh"
 
-#include <json.hpp>
+#include <nlohmann/json.hpp>
+
 #include <string>
+#include <optional>
 
 namespace hrb {
 
@@ -41,7 +43,7 @@ public:
 	std::string filename() const;
 	std::string mime() 	const;
 	Timestamp timestamp() const;
-	CollEntry fields() const;
+	std::optional<CollEntry> fields() const;
 
 	std::string_view json() const;
 	Permission permission() const;

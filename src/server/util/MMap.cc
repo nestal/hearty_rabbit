@@ -12,7 +12,7 @@
 
 // Application headers
 #include "MMap.hh"
-#include "Error.hh"
+#include "common/Error.hh"
 
 // Boost library
 #include <boost/beast/core/file_posix.hpp>

@@ -41,7 +41,7 @@ public:
 				auto oids = reply.as_string();
 				while (oids.size() >= ObjectID{}.size())
 				{
-					if (auto oid = raw_to_object_id(oids.substr(0, ObjectID{}.size())); oid.has_value())
+					if (auto oid = ObjectID::from_raw(oids.substr(0, ObjectID{}.size())); oid.has_value())
 						result.push_back(*oid);
 
 					oids.remove_prefix(ObjectID{}.size());

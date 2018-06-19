@@ -12,10 +12,13 @@
 
 #pragma once
 
+#include "ObjectID.hh"
 #include "Permission.hh"
 #include "Timestamp.hh"
 
-#include <json.hpp>
+#include "JSON.hh"
+
+#include <unordered_map>
 
 namespace hrb {
 
@@ -56,5 +59,8 @@ struct CollEntry
 	std::string mime;
 	Timestamp   timestamp;
 };
+
+void to_json(nlohmann::json& dest, const CollEntry& src);
+void from_json(const nlohmann::json& src, CollEntry& dest);
 
 } // end of namespace hrb

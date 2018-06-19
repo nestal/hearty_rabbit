@@ -24,7 +24,7 @@ find_path(LIBB2_INCLUDE blake2.h PATHS include)
 message(STATUS "found libb2 at ${LIBB2_LIBRARY} ${LIBB2_INCLUDE}")
 
 # Find nlohmann/json
-find_path(NLOHMANN_INCLUDE json.hpp PATHS include)
+find_path(NLOHMANN_INCLUDE nlohmann/json.hpp PATHS include)
 message(STATUS "found nlohmann/json at ${NLOHMANN_INCLUDE}")
 
 pkg_check_modules(HIREDIS REQUIRED hiredis)
@@ -159,7 +159,7 @@ target_link_libraries(
 # must not assume the location of ${CMAKE_BINARY_DIR} relative to the source code.
 add_custom_command(
 	TARGET unittest
-	COMMENT "Run unit tests"
+	COMMENT "Running server-side unit tests"
 	POST_BUILD
 	WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
 	COMMAND unittest
@@ -176,10 +176,23 @@ target_include_directories(
 	clienttest PRIVATE
 	unittest/Catch2/single_include
 	${PROJECT_SOURCE_DIR}/src/client
+	${PROJECT_SOURCE_DIR}/src/server
 )
 target_link_libraries(
 	clienttest
 	hrbclient
+	hrbsrv
+)
+# Automatically run unit tests after the build
+# Although we specified the ${CMAKE_BINARY_DIR} as the current directory when running unit tests,
+# the test cases should not use absolute path when referring to test data. The test cases
+# must not assume the location of ${CMAKE_BINARY_DIR} relative to the source code.
+add_custom_command(
+	TARGET clienttest
+	COMMENT "Running client-side unit tests"
+	POST_BUILD
+	WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+	COMMAND clienttest
 )
 
 ###################################################################################################
@@ -191,7 +204,7 @@ target_link_libraries(
 	hearty_rabbit
 	hrbsrv
 )
-add_dependencies(hearty_rabbit unittest)
+add_dependencies(hearty_rabbit unittest clienttest)
 
 if (BUILD_CLIENT)
 	add_subdirectory(client/qt)

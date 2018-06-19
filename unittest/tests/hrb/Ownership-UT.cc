@@ -37,21 +37,15 @@ TEST_CASE("list of collection owned by user", "[normal]")
 	int tested = 0;
 	subject.link(*redis, "/", blobid, CollEntry{}, [&tested](std::error_code ec)
 	{
-		REQUIRE(!ec);
+		REQUIRE_FALSE(ec);
 		tested++;
 	});
 
 	// assert that the collection is added
-	subject.scan_all_collections(*redis, [&tested](auto&& json, auto ec)
+	subject.scan_all_collections(*redis, [&tested](auto&& coll_list, auto ec)
 	{
-		REQUIRE(!ec);
-		REQUIRE(json.find("colls") != json.end());
-
-		std::vector<std::string> colls;
-		for (auto&& it : json["colls"].items())
-			colls.emplace_back(it.key());
-
-		REQUIRE(std::find(colls.begin(), colls.end(), "/") != colls.end());
+		REQUIRE_FALSE(ec);
+		REQUIRE(coll_list.find("owner", "/") != coll_list.end());
 		tested++;
 	});
 
@@ -70,15 +64,12 @@ TEST_CASE("list of collection owned by user", "[normal]")
 	ioc.restart();
 
 	// remove all blobs in the collection
-	subject.serialize(*redis, Authentication{{}, "owner"}, "/", [&tested, redis](auto&& jdoc, auto ec)
+	subject.find_collection(*redis, Authentication{{}, "owner"}, "/", [&tested, redis](auto&& coll, auto ec)
 	{
-		INFO("serialize() return " << jdoc);
-		for (auto&& blob : jdoc["elements"].items())
+		for (auto&& [id, blob] : coll.blobs())
 		{
-			INFO("blob = " << blob.key());
-			REQUIRE(all(blob.key(), is_xdigit() && !is_upper()));
-
-			Ownership{"owner"}.unlink(*redis, "/", *hex_to_object_id(blob.key()), [](auto&& ec)
+			INFO("blob = " << to_hex(id));
+			Ownership{"owner"}.unlink(*redis, "/", id, [](auto&& ec)
 			{
 				REQUIRE(!ec);
 			});
@@ -92,14 +83,10 @@ TEST_CASE("list of collection owned by user", "[normal]")
 	ioc.restart();
 
 	// assert that the collection "/" does not exist anymore, because all its blobs are removed
-	subject.scan_all_collections(*redis, [&tested](auto&& json, auto ec)
+	subject.scan_all_collections(*redis, [&tested](auto&& coll_list, auto ec)
 	{
-		REQUIRE(!ec);
-		REQUIRE(json.find("colls") != json.end());
-
-		std::vector<std::string> colls;
-		for (auto&& it : json["colls"].items())
-			REQUIRE(it.key() != std::string{"/"});
+		REQUIRE_FALSE(ec);
+		REQUIRE(coll_list.find("owner", "/") == coll_list.end());
 		tested++;
 	});
 	REQUIRE(ioc.run_for(10s) > 0);
@@ -253,35 +240,20 @@ TEST_CASE("Load 3 images in json", "[normal]")
 		subject.update(*redis, "some/collection", blobid, entry);
 
 	bool tested = false;
-	subject.serialize(*redis, {{},"testuser"}, "some/collection", [&tested, &blobids](auto&& doc, auto ec)
+	subject.find_collection(*redis, {{},"testuser"}, "some/collection", [&tested, &blobids](auto&& coll, auto ec)
 	{
 		using json = nlohmann::json;
-		INFO("serialize() error_code: " << ec << " " << ec.message());
-		INFO("serialize result = " << doc);
 
-		REQUIRE(!ec);
-		REQUIRE(!doc.empty());
-		REQUIRE(
-			doc.value(json::json_pointer{"/owner"}, "") == "testuser"
-		);
-		REQUIRE(
-			doc.value(json::json_pointer{"/collection"}, "") == "some/collection"
-		);
+		REQUIRE_FALSE(ec);
+		REQUIRE(coll.owner() == "testuser");
+		REQUIRE(coll.name() == "some/collection");
 
-		for (auto&& blobid : blobids)
+		for (auto&& [id, entry] : coll.blobs())
 		{
-			REQUIRE(
-				doc.value(json::json_pointer{"/elements/" + to_hex(blobid) + "/perm"}, "") == "public"
-			);
-			REQUIRE(
-				doc.value(json::json_pointer{"/elements/" + to_hex(blobid) + "/filename"}, "") == "another_file.jpg"
-			);
-			REQUIRE(
-				doc.value(json::json_pointer{"/elements/" + to_hex(blobid) + "/mime"}, "") == "application/json"
-			);
-			REQUIRE(
-				doc.value(json::json_pointer{"/elements/" + to_hex(blobid) + "/timestamp"}, 0) == 100
-			);
+			REQUIRE(entry.perm == Permission::public_());
+			REQUIRE(entry.filename == "another_file.jpg");
+			REQUIRE(entry.mime == "application/json");
+			REQUIRE(entry.timestamp == Timestamp{std::chrono::milliseconds{100}});
 		}
 
 		tested = true;
@@ -361,11 +333,13 @@ TEST_CASE("set cover error cases", "[error]")
 
 		// concatenate all existing album name to create a album name that doesn't exist
 		subject.scan_all_collections(*redis,
-			[&inexist_album](auto&& jdoc, auto ec)
+			[&inexist_album](auto&& coll_list, auto ec)
 			{
-				REQUIRE(jdoc["owner"] == "testuser");
-				for (auto&& it : jdoc["colls"].items())
-					inexist_album += it.key();
+				for (auto&& it : coll_list)
+				{
+					REQUIRE(it.owner() == "testuser");
+					inexist_album += it.collection();
+				}
 			}
 		);
 
@@ -447,15 +421,17 @@ TEST_CASE("setting and remove the cover of collection", "[normal]")
 
 	bool tested = false;
 	subject.scan_all_collections(*redis,
-		[&dirs, &tested](auto&& jdoc, auto ec)
+		[&dirs, &tested](auto&& coll_list, auto ec)
 		{
 			INFO("scan() error: " << ec << " " << ec.message());
-			REQUIRE(!ec);
+			REQUIRE_FALSE(ec);
 			tested = true;
 
-			REQUIRE(jdoc["owner"] == "testuser");
-			for (auto&& it : jdoc["colls"].items())
-				dirs.push_back(it.key());
+			for (auto&& entry : coll_list)
+			{
+				dirs.emplace_back(entry.collection());
+				REQUIRE(entry.owner() == "testuser");
+			}
 		}
 	);
 
@@ -482,16 +458,13 @@ TEST_CASE("setting and remove the cover of collection", "[normal]")
 
 	// check if the cover is updated
 	subject.scan_all_collections(*redis,
-		[&cover_blob, &tested](auto&& jdoc, auto ec)
+		[&cover_blob, &tested](auto&& coll_list, auto ec)
 		{
-			REQUIRE(!ec);
-			REQUIRE(jdoc["owner"] == "testuser");
-
-			for (auto&& it : jdoc["colls"].items())
-			{
-				if (it.key() == "/" && it.value()["cover"] == to_hex(cover_blob))
-					tested = true;
-			}
+			REQUIRE_FALSE(ec);
+			auto def_coll = coll_list.find("testuser", "/");
+			REQUIRE(def_coll != coll_list.end());
+			REQUIRE(def_coll->cover() == cover_blob);
+			tested = true;
 		}
 	);
 	REQUIRE(ioc.run_for(10s) > 0);
@@ -509,18 +482,17 @@ TEST_CASE("setting and remove the cover of collection", "[normal]")
 	// check if the cover is updated
 	bool updated = false;
 	subject.scan_all_collections(*redis,
-		[&cover_blob, &updated, &removed](auto&& jdoc, auto ec)
+		[&cover_blob, &updated, &removed](auto&& coll_list, auto ec)
 		{
 			REQUIRE(removed);
-			REQUIRE(!ec);
-			REQUIRE(jdoc["owner"] == "testuser");
-			for (auto&& it : jdoc["colls"].items())
+			REQUIRE_FALSE(ec);
+
+			for (auto&& it : coll_list)
 			{
-				if (it.key() == "/" )
+				REQUIRE(it.owner() == "testuser");
+				if (it.collection() == "/" )
 				{
-					auto cover = it.value().find("cover");
-					REQUIRE(cover  != it.value().end());
-					REQUIRE(*cover != to_hex(cover_blob));
+					REQUIRE(it.cover() != cover_blob);
 					updated = true;
 				}
 			}
@@ -533,8 +505,8 @@ TEST_CASE("setting and remove the cover of collection", "[normal]")
 
 TEST_CASE("collection entry", "[normal]")
 {
-	Authentication yung{insecure_random<Authentication::Cookie>(), "yungyung"};
-	Authentication sum{insecure_random<Authentication::Cookie>(), "sumsum"};
+	Authentication yung{insecure_random<Authentication::CookieID>(), "yungyung"};
+	Authentication sum{insecure_random<Authentication::CookieID>(), "sumsum"};
 
 	auto s = CollEntryDB::create({}, "somepic.jpeg", "image/jpeg", Timestamp::now());
 	CollEntryDB subject{s};

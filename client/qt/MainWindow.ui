@@ -20,8 +20,33 @@
       <property name="orientation">
        <enum>Qt::Vertical</enum>
       </property>
-      <widget class="QListView" name="m_local_list"/>
-      <widget class="QListView" name="m_remote_list"/>
+      <widget class="QListView" name="local_list"/>
+      <widget class="QListView" name="remote_list">
+       <property name="iconSize">
+        <size>
+         <width>200</width>
+         <height>200</height>
+        </size>
+       </property>
+       <property name="resizeMode">
+        <enum>QListView::Adjust</enum>
+       </property>
+       <property name="spacing">
+        <number>5</number>
+       </property>
+       <property name="gridSize">
+        <size>
+         <width>200</width>
+         <height>250</height>
+        </size>
+       </property>
+       <property name="viewMode">
+        <enum>QListView::IconMode</enum>
+       </property>
+       <property name="uniformItemSizes">
+        <bool>false</bool>
+       </property>
+      </widget>
      </widget>
     </item>
    </layout>
@@ -39,6 +64,7 @@
     <property name="title">
      <string>&amp;File</string>
     </property>
+    <addaction name="action_login"/>
     <addaction name="separator"/>
     <addaction name="action_exit"/>
    </widget>
@@ -68,7 +94,7 @@
   </widget>
   <widget class="QDockWidget" name="m_remote_view">
    <property name="windowTitle">
-    <string>Remote Server</string>
+    <string>Re&amp;mote Server</string>
    </property>
    <attribute name="dockWidgetArea">
     <number>2</number>
@@ -84,6 +110,11 @@
   <action name="action_exit">
    <property name="text">
     <string>E&amp;xit</string>
+   </property>
+  </action>
+  <action name="action_login">
+   <property name="text">
+    <string>&amp;Login...</string>
    </property>
   </action>
  </widget>

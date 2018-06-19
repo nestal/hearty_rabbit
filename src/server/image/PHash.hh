@@ -13,7 +13,7 @@
 #pragma once
 
 #include "util/BufferView.hh"
-#include "util/FS.hh"
+#include "common/FS.hh"
 
 #include <opencv2/core.hpp>
 #include <cstdint>

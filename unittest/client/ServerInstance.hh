@@ -7,15 +7,29 @@
 */
 
 //
-// Created by nestal on 6/3/18.
+// Created by nestal on 6/5/18.
 //
 
 #pragma once
 
+#include <memory>
+#include <string>
+
 namespace hrb {
 
-class NetworkAccessManager
+class ServerInstance
 {
+public:
+	ServerInstance();
+	~ServerInstance();
+
+	void run();
+
+	static std::string listen_https_port();
+
+private:
+	struct Impl;
+	std::unique_ptr<Impl> m_impl;
 };
 
 } // end of namespace hrb
