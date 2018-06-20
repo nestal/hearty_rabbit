@@ -18,15 +18,15 @@
 
 namespace hrb {
 
-UserID::UserID(CookieID cookie, std::string_view user, bool guest) :
-	m_cookie{cookie}, m_user{user}, m_guest{guest}
+UserID::UserID(SessionID session, std::string_view user, bool guest) :
+	m_session{session}, m_user{user}, m_guest{guest}
 {
 	if (m_user.empty())
-		m_cookie = CookieID{};
+		m_session = SessionID{};
 }
 
 UserID::UserID(std::string_view cookie_id, std::string_view user) :
-	m_cookie{hex_to_array<CookieID{}.size()>(cookie_id).value_or(CookieID{})},
+	m_session{hex_to_array<SessionID{}.size()>(cookie_id).value_or(SessionID{})},
 	m_user{user}
 {
 }
@@ -35,15 +35,15 @@ bool UserID::valid() const
 {
 	// if cookie is valid, user must not be empty
 	// if cookie is invalid, user must be empty
-	assert((m_cookie == CookieID{}) == m_user.empty() );
+	assert((m_session == SessionID{}) == m_user.empty() );
 
-	return m_cookie != CookieID{} && !m_user.empty();
+	return m_session != SessionID{} && !m_user.empty();
 }
 
 
 bool UserID::operator==(const UserID& rhs) const
 {
-	return m_user == rhs.m_user && m_cookie == rhs.m_cookie && m_guest == rhs.m_guest;
+	return m_user == rhs.m_user && m_session == rhs.m_session && m_guest == rhs.m_guest;
 }
 
 bool UserID::operator!=(const UserID& rhs) const

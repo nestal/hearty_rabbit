@@ -63,7 +63,7 @@ void HRBClient::list_collection(std::string_view coll, Complete&& comp)
 	req->init(m_host, m_port, URLIntent{URLIntent::Action::api, m_user.user(), coll, ""}.str(), http::verb::get);
 
 	Cookie cookie;
-	cookie.add("id", to_hex(m_user.cookie()));
+	cookie.add("id", to_hex(m_user.session()));
 	req->request().set(http::field::cookie, cookie.str());
 
 	req->on_load([this, comp=std::forward<Complete>(comp)](auto ec, auto& req)
@@ -82,7 +82,7 @@ void HRBClient::scan_collections(Complete&& comp)
 	req->init(m_host, m_port, URLIntent{URLIntent::QueryTarget::collection, "json&user=" + m_user.user()}.str(), http::verb::get);
 
 	Cookie cookie;
-	cookie.add("id", to_hex(m_user.cookie()));
+	cookie.add("id", to_hex(m_user.session()));
 	req->request().set(http::field::cookie, cookie.str());
 
 	req->on_load([this, comp=std::forward<Complete>(comp)](auto ec, auto& req)

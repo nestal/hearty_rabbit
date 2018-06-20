@@ -17,7 +17,7 @@ namespace hrb {
 
 bool BlobRequest::request_by_owner(const Authentication& requester) const
 {
-	return !requester.is_guest() && requester.user() == m_url.user();
+	return !requester.id().is_guest() && requester.id().user() == m_url.user();
 }
 
 } // end of namespace

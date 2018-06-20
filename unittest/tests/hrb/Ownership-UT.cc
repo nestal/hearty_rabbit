@@ -505,8 +505,8 @@ TEST_CASE("setting and remove the cover of collection", "[normal]")
 
 TEST_CASE("collection entry", "[normal]")
 {
-	Authentication yung{insecure_random<Authentication::CookieID>(), "yungyung"};
-	Authentication sum{insecure_random<Authentication::CookieID>(), "sumsum"};
+	Authentication yung{insecure_random<UserID::SessionID>(), "yungyung"};
+	Authentication sum{insecure_random<UserID::SessionID>(), "sumsum"};
 
 	auto s = CollEntryDB::create({}, "somepic.jpeg", "image/jpeg", Timestamp::now());
 	CollEntryDB subject{s};
@@ -514,20 +514,20 @@ TEST_CASE("collection entry", "[normal]")
 
 	REQUIRE(subject.filename() == "somepic.jpeg");
 	REQUIRE(subject.mime() == "image/jpeg");
-	REQUIRE_FALSE(subject.permission().allow(sum.id(), yung.user()));
+	REQUIRE_FALSE(subject.permission().allow(sum.id(), yung.id().user()));
 	REQUIRE(subject.raw() == s);
 
 	CollEntryDB same{subject.raw()};
 	REQUIRE(same.filename() == "somepic.jpeg");
 	REQUIRE(same.mime() == "image/jpeg");
-	REQUIRE_FALSE(same.permission().allow(yung.id(), sum.user()));
+	REQUIRE_FALSE(same.permission().allow(yung.id(), sum.id().user()));
 	REQUIRE(same.raw() == subject.raw());
 
 	auto s2 = CollEntryDB::create(Permission::shared(), nlohmann::json::parse(same.json()));
 	CollEntryDB same2{s2};
 	REQUIRE(same2.filename() == "somepic.jpeg");
 	REQUIRE(same2.mime() == "image/jpeg");
-	REQUIRE(same2.permission().allow(yung.id(), sum.user()));
+	REQUIRE(same2.permission().allow(yung.id(), sum.id().user()));
 	REQUIRE(same2.raw().substr(1) == subject.raw().substr(1));
 
 }
