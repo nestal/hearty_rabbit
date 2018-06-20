@@ -43,6 +43,18 @@ TEST_CASE("simple client login", "[normal]")
 		ioc.restart();
 
 		tested = false;
+
+		subject.upload("", __FILE__, [&tested](auto err)
+		{
+			tested = true;
+			REQUIRE_FALSE(err);
+		});
+
+		REQUIRE(ioc.run_for(10s) > 0);
+		REQUIRE(tested);
+		ioc.restart();
+
+		tested = false;
 		subject.scan_collections([&tested](auto coll_list, auto err)
 		{
 			REQUIRE_FALSE(err);

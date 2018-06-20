@@ -24,6 +24,8 @@
 #include "common/ObjectID.hh"
 #include "common/URLIntent.hh"
 
+#include <boost/beast/http/file_body.hpp>
+
 #include <nlohmann/json.hpp>
 
 #include <string>
@@ -73,8 +75,6 @@ template <typename Complete>
 void HRBClient::scan_collections(Complete&& comp)
 {
 	auto req = request<http::empty_body, http::string_body>({URLIntent::QueryTarget::collection, "json&user=" + m_user.username()}, http::verb::get);
-	req->request().set(http::field::cookie, m_user.cookie().str());
-
 	req->on_load([this, comp=std::forward<Complete>(comp)](auto ec, auto& req)
 	{
 		comp(nlohmann::json::parse(req.response().body()).template get<CollectionList>(), ec);
@@ -86,14 +86,27 @@ void HRBClient::scan_collections(Complete&& comp)
 template <typename Complete>
 void HRBClient::upload(std::string_view coll, const fs::path& file, Complete&& comp)
 {
+	auto req = request<http::file_body, http::string_body>({
+		URLIntent::Action::upload, m_user.username(), coll, file.filename().string()
+	}, http::verb::put);
 
+	boost::system::error_code err;
+	req->request().body().open(file.string().c_str(), boost::beast::file_mode::read, err);
+	req->on_load([this, comp=std::forward<Complete>(comp)](auto ec, auto& req)
+	{
+		std::cout << req.response() << " " << req.response().at(http::field::location) << std::endl;
+
+		comp(ec);
+		req.shutdown();
+	});
+	req->run();
 }
 
 template <typename RequestBody, typename ResponseBody>
 auto HRBClient::request(const URLIntent& intent, boost::beast::http::verb method)
 {
 	auto req = std::make_shared<GenericHTTPRequest<RequestBody, ResponseBody>>(m_ioc, m_ssl);
-	req->init(m_host, m_port, intent.str(), http::verb::get);
+	req->init(m_host, m_port, intent.str(), method);
 	req->request().set(http::field::cookie, m_user.cookie().str());
 	return req;
 }
