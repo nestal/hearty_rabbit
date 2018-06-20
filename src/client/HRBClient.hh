@@ -16,7 +16,7 @@
 #include "common/UserID.hh"
 #include "common/FS.hh"
 
-#include "GenericHTTPRequest.hh"
+#include <boost/beast/http/verb.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ssl.hpp>
 
@@ -25,6 +25,9 @@
 namespace hrb {
 
 class URLIntent;
+
+template <typename RequestBody, typename ResponseBody>
+class GenericHTTPRequest;
 
 class HRBClient
 {
@@ -44,11 +47,8 @@ public:
 	void upload(std::string_view coll, const fs::path& file, Complete&& comp);
 
 private:
-	using CommonRequest = GenericHTTPRequest<
-		boost::beast::http::empty_body,
-		boost::beast::http::string_body
-	>;
-	std::shared_ptr<CommonRequest> request(const URLIntent& intent, boost::beast::http::verb method);
+	template <typename RequestBody, typename ResponseBody>
+	auto request(const URLIntent& intent, boost::beast::http::verb method);
 
 private:
 	// connection to the server
