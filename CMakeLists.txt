@@ -24,7 +24,7 @@ find_path(LIBB2_INCLUDE blake2.h PATHS include)
 message(STATUS "found libb2 at ${LIBB2_LIBRARY} ${LIBB2_INCLUDE}")
 
 # Find nlohmann/json
-find_path(NLOHMANN_INCLUDE nlohmann/json.hpp PATHS include)
+find_path(NLOHMANN_INCLUDE json.hpp PATHS include)
 message(STATUS "found nlohmann/json at ${NLOHMANN_INCLUDE}")
 
 pkg_check_modules(HIREDIS REQUIRED hiredis)

@@ -12,7 +12,7 @@
 
 #pragma once
 
-#include <nlohmann/json.hpp>
+#include <json.hpp>
 
 #include <chrono>
 #include <iosfwd>

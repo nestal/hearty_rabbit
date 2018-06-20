@@ -23,7 +23,7 @@
 #include "util/Log.hh"
 #include "common/Escape.hh"
 
-#include <nlohmann/json.hpp>
+#include <json.hpp>
 
 #include <boost/range/adaptor/filtered.hpp>
 #include <boost/range/adaptor/transformed.hpp>

@@ -24,7 +24,6 @@ namespace hrb {
 
 class QtClient;
 class CollectionModel;
-class CollectionListModel;
 
 class MainWindow : public QMainWindow
 {
@@ -38,11 +37,8 @@ private:
 	Ui::MainWindow      m_;
 	QtClient            *m_hrb{};
 
-	QString m_username;
-
 	QFileSystemModel    *m_fs_model{};
 	CollectionModel     *m_coll_model{};
-	CollectionListModel *m_coll_list_model{};
 };
 
 } // end of namespace hrb

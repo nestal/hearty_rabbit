@@ -45,12 +45,11 @@ public:
 	fs::path dest(const ObjectID& id, std::string_view rendition = {}) const;
 
 	BlobResponse response(
-		const ObjectID& id,
+		ObjectID id,
 		unsigned version,
 		std::string_view etag,
 		std::string_view rendition = {}
 	) const;
-	BlobResponse meta(const ObjectID& id, unsigned version) const;
 
 	template <class FwdIt>
 	auto find_similar(FwdIt first, FwdIt last, double threshold)
