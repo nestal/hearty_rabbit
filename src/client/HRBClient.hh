@@ -25,6 +25,7 @@
 namespace hrb {
 
 class URLIntent;
+struct ObjectID;
 
 template <typename RequestBody, typename ResponseBody>
 class GenericHTTPRequest;
@@ -45,6 +46,9 @@ public:
 
 	template <typename Complete>
 	void upload(std::string_view coll, const fs::path& file, Complete&& comp);
+
+	template <typename Complete>
+	void get_blob(std::string_view owner, std::string_view coll, const ObjectID& blob);
 
 private:
 	template <typename RequestBody, typename ResponseBody>

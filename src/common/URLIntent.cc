@@ -11,8 +11,8 @@
 //
 
 #include "URLIntent.hh"
-#include "ObjectID.hh"
 
+#include "ObjectID.hh"
 #include "Escape.hh"
 
 #include <sstream>
@@ -115,9 +115,30 @@ URLIntent::URLIntent(boost::string_view boost_target)
 		m_valid = false;
 }
 
-URLIntent::URLIntent(Action act, std::string_view user, std::string_view coll, std::string_view name, std::string_view option) :
-	m_action{act}, m_user{trim(user)}, m_coll{trim(coll)}, m_filename{trim(name)}, m_option{option}, m_valid{true}
+URLIntent::URLIntent(Action act) : m_action{act}, m_valid{act == Action::login || act == Action::logout || act == Action::home}
 {
+
+}
+
+URLIntent::URLIntent(Action act, std::string_view user, std::string_view coll, std::string_view name, std::string_view option) :
+	m_action{act}, m_user{trim(user)}, m_coll{trim(coll)}, m_filename{trim(name)}, m_option{option}
+{
+	if (act == Action::api || act == Action::view)
+		m_valid = (m_filename.empty() || ObjectID::is_hex(m_filename));
+
+	else
+		m_valid = (act == Action::upload || act == Action::lib);
+}
+
+URLIntent::URLIntent(
+	URLIntent::Action act,
+	std::string_view user,
+	std::string_view coll,
+	const ObjectID& blob,
+	std::string_view option
+) : URLIntent{act, user, coll, to_hex(blob), option}
+{
+	m_valid = (act == Action::api || act == Action::view);
 }
 
 URLIntent::URLIntent(QueryTarget target, std::string_view option) :

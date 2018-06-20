@@ -94,9 +94,7 @@ void HRBClient::upload(std::string_view coll, const fs::path& file, Complete&& c
 	req->request().body().open(file.string().c_str(), boost::beast::file_mode::read, err);
 	req->on_load([this, comp=std::forward<Complete>(comp)](auto ec, auto& req)
 	{
-		std::cout << req.response() << " " << req.response().at(http::field::location) << std::endl;
-
-		comp(ec);
+		comp(URLIntent{req.response().at(http::field::location)}, ec);
 		req.shutdown();
 	});
 	req->run();
