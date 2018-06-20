@@ -212,20 +212,6 @@ void Authentication::verify_user(
 	);
 }
 
-std::optional<UserID::SessionID> parse_cookie(std::string_view cookie_str)
-{
-	Cookie cookie{cookie_str};
-
-	auto value = cookie.field("id");
-	if (UserID::SessionID result{}; value.size() == result.size() * 2)
-	{
-		boost::algorithm::unhex(value.begin(), value.end(), result.begin());
-		return result;
-	}
-	else
-		return std::nullopt;
-}
-
 void Authentication::destroy_session(
 	redis::Connection& db,
 	std::function<void(std::error_code)>&& completion

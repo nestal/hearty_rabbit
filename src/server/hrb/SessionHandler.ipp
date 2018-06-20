@@ -169,9 +169,8 @@ void SessionHandler::on_request_header(
 		return complete(RequestBodyType::string, std::error_code{});
 
 	// Everything else require a valid session.
-	auto cookie = header[http::field::cookie];
-	m_request_cookie = parse_cookie({cookie.data(), cookie.size()});
-	if (!m_request_cookie)
+	m_request_session_id = UserID::parse_cookie(Cookie{header[http::field::cookie]});
+	if (!m_request_session_id)
 	{
 		auto [auth_str] = urlform.find(intent.option(), "auth");
 		auto auth_key = hex_to_array<UserID::SessionID{}.size()>(auth_str);
@@ -198,7 +197,7 @@ void SessionHandler::on_request_header(
 	}
 
 	Authentication::verify_session(
-		*m_request_cookie,
+		*m_request_session_id,
 		*m_db,
 		session_length(),
 		[

@@ -27,7 +27,7 @@ UserID::UserID(SessionID session, std::string_view user, bool guest) :
 }
 
 UserID::UserID(const Cookie& cookie, std::string_view user) :
-	m_session{hex_to_array<SessionID{}.size()>(cookie.field("id")).value_or(SessionID{})},
+	m_session{parse_cookie(cookie).value_or(SessionID{})},
 	m_user{user}
 {
 }
@@ -75,6 +75,11 @@ Cookie UserID::set_cookie(std::chrono::seconds session_length) const
 		cookie.add("Expires", "Thu, Jan 01 1970 00:00:00 UTC");
 	}
 	return cookie;
+}
+
+std::optional<UserID::SessionID> UserID::parse_cookie(const Cookie& cookie)
+{
+	return hex_to_array<SessionID{}.size()>(cookie.field("id"));
 }
 
 } // end of namespace hrb

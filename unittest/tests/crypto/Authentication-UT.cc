@@ -167,32 +167,6 @@ TEST_CASE("Test normal user login", "[normal]")
 	REQUIRE(tested_count == 2);
 }
 
-TEST_CASE("Parsing cookie", "[normal]")
-{
-	auto session = parse_cookie("id=0123456789ABCDEF0123456789ABCDEF; somethingelse; ");
-	REQUIRE(session.has_value());
-	REQUIRE(*session == UserID::SessionID{0x01,0x23,0x45, 0x67, 0x89,0xAB,0xCD,0xEF,0x01,0x23,0x45,0x67,0x89,0xAB,0xCD,0xEF});
-
-	session = parse_cookie("name=value; id=0123456789ABCDEF0123456789ABCDEF; ");
-	REQUIRE(session.has_value());
-	REQUIRE(*session == UserID::SessionID{0x01,0x23,0x45, 0x67, 0x89,0xAB,0xCD,0xEF,0x01,0x23,0x45,0x67,0x89,0xAB,0xCD,0xEF});
-
-	// some lower case characters
-	session = parse_cookie("name=value; id=0123456789abcDEF0123456789ABCdef; ");
-	REQUIRE(session.has_value());
-	REQUIRE(*session == UserID::SessionID{0x01,0x23,0x45, 0x67, 0x89,0xAB,0xCD,0xEF,0x01,0x23,0x45,0x67,0x89,0xAB,0xCD,0xEF});
-
-	using namespace std::literals;
-
-	// Random round-trip
-	auto rand = insecure_random<UserID::SessionID>();
-	std::string cookie{UserID{rand, "test"}.set_cookie(600s).str()};
-	INFO("cookie for random session ID is " << cookie);
-	session = parse_cookie(cookie);
-	REQUIRE(session.has_value());
-	REQUIRE(*session == rand);
-}
-
 TEST_CASE("Sharing resource to guest", "[normal]")
 {
 	using namespace std::chrono_literals;

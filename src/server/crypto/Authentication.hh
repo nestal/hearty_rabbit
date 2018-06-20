@@ -113,6 +113,4 @@ private:
 	UserID m_uid;
 };
 
-std::optional<UserID::SessionID> parse_cookie(std::string_view cookie);
-
 } // end of namespace

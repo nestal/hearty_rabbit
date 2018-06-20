@@ -287,9 +287,9 @@ http::response<SplitBuffers> SessionHandler::file_request(const URLIntent& inten
 
 bool SessionHandler::renewed_auth() const
 {
-	return m_request_cookie.has_value()      ?  // if request cookie is present, check against the new cookie
-		*m_request_cookie != m_auth.session() :  // otherwise, there's no cookie in the original request,
-		(m_auth.valid() && !m_auth.is_guest()); // if we have a valid (non-guest) cookie now, then the session is renewed.
+	return m_request_session_id.has_value()      ?   // if request cookie is present, check against the new cookie
+		*m_request_session_id != m_auth.session() :  // otherwise, there's no cookie in the original request,
+		(m_auth.valid() && !m_auth.is_guest());      // if we have a valid (non-guest) cookie now, then the session is renewed.
 }
 
 std::string SessionHandler::server_root() const

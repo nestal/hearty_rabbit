@@ -19,16 +19,7 @@
 namespace hrb {
 
 class Cookie;
-/*
-struct SessionID : std::array<unsigned char, 16>
-{
-	using array::array;
-	SessionID(const std::array<unsigned char, 16>& array);
 
-	static std::optional<SessionID> from_hex(std::string_view hex);
-	static std::optional<SessionID> from_raw(std::string_view raw);
-};
-*/
 class UserID
 {
 public:
@@ -50,6 +41,8 @@ public:
 
 	Cookie cookie() const;
 	Cookie set_cookie(std::chrono::seconds session_length = std::chrono::seconds{3600}) const;
+
+	static std::optional<SessionID> parse_cookie(const Cookie& cookie);
 
 private:
 	SessionID       m_session{};
