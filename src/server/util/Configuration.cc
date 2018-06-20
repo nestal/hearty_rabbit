@@ -14,7 +14,7 @@
 
 #include "config.hh"
 
-#include <json.hpp>
+#include <nlohmann/json.hpp>
 
 #include <boost/program_options.hpp>
 #include <boost/exception/info.hpp>

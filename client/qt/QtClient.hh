@@ -20,6 +20,7 @@
 namespace hrb {
 
 class Collection;
+class CollectionList;
 class URLIntent;
 
 class QtClient : public QObject
@@ -31,6 +32,7 @@ public:
 
 	void login(const QString& host, int port, const QString& username, const QString& password);
 	void list_collection(const QString& collection);
+	void owned_collections(const QString& user);
 
 	void get_blob(const QString& owner, const QString& collection, const ObjectID& blob, const QString& rendition);
 
@@ -38,6 +40,7 @@ Q_SIGNALS:
 	void on_login(std::error_code ec);
 	void on_list_collection(const Collection& coll);
 	void on_get_blob(const ObjectID& blob, const QString& rendition, const QByteArray& data);
+	void on_owned_collections(const CollectionList& colls);
 
 private:
 	QUrl setup_url(const URLIntent& intent);

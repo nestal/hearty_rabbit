@@ -25,7 +25,7 @@ bool Permission::allow(const UserID& requester, std::string_view owner)
 	{
 		case '*':   return true;
 		case '+':   return requester.valid() || requester.is_guest();
-		case ' ':	return !requester.is_guest() && requester.user() == owner;
+		case ' ':	return !requester.is_guest() && requester.username() == owner;
 
 		// TODO: handle ACL
 		default:    return false;

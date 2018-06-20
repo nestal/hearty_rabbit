@@ -13,6 +13,7 @@
 #include <catch.hpp>
 
 #include "net/Redis.hh"
+#include "common/Cookie.hh"
 #include "common/Error.hh"
 #include "crypto/Authentication.hh"
 #include "crypto/Authentication.ipp"
@@ -76,14 +77,14 @@ TEST_CASE("Test normal user login", "[normal]")
 					REQUIRE(session.valid());
 
 					Authentication::verify_session(
-						session.cookie(), *redis, 60s,
+						session.session(), *redis, 60s,
 						[&tested](std::error_code ec, auto&& auth)
 						{
 							// Username returned is always lower case.
 							REQUIRE(!ec);
 							REQUIRE(auth.valid());
 							REQUIRE_FALSE(auth.is_guest());
-							REQUIRE(auth.user() == "sumsum");
+							REQUIRE(auth.username() == "sumsum");
 							tested = true;
 						}
 					);
@@ -106,7 +107,7 @@ TEST_CASE("Test normal user login", "[normal]")
 		}
 		SECTION("verify random session ID")
 		{
-			auto cookie = insecure_random<Authentication::CookieID>();
+			auto cookie = insecure_random<UserID::SessionID>();
 
 			Authentication::verify_session(cookie, *redis, 60s, [&tested](std::error_code ec, auto&& session)
 				{
@@ -133,16 +134,16 @@ TEST_CASE("Test normal user login", "[normal]")
 			// Force session renew by setting the session length (180s) required to be more than
 			// twice of the value specified when created (60s)
 			Authentication::verify_session(
-				session.cookie(), *redis, 180s,
-				[&tested_count, old_cookie = session.cookie()](std::error_code ec, auto&& auth)
+				session.session(), *redis, 180s,
+				[&tested_count, old_cookie = session.session()](std::error_code ec, auto&& auth)
 				{
 					REQUIRE(!ec);
 					REQUIRE(auth.valid());
 					REQUIRE_FALSE(auth.is_guest());
-					REQUIRE(auth.user() == "sumsum");
+					REQUIRE(auth.username() == "sumsum");
 
 					// Verify cookie changed
-					REQUIRE(auth.cookie() != old_cookie);
+					REQUIRE(auth.session() != old_cookie);
 					tested_count++;
 				}
 			);
@@ -150,13 +151,13 @@ TEST_CASE("Test normal user login", "[normal]")
 			// Session will not be renewed when verified again, but verification will still
 			// succeed.
 			Authentication::verify_session(
-				session.cookie(), *redis, 180s,
-				[&tested_count, old_cookie = session.cookie()](std::error_code ec, auto&& auth)
+				session.session(), *redis, 180s,
+				[&tested_count, old_cookie = session.session()](std::error_code ec, auto&& auth)
 				{
 					REQUIRE(!ec);
 					REQUIRE(auth.valid());
-					REQUIRE(auth.user() == "sumsum");
-					REQUIRE(auth.cookie() == old_cookie);
+					REQUIRE(auth.username() == "sumsum");
+					REQUIRE(auth.session() == old_cookie);
 					tested_count++;
 				}
 			);
@@ -164,32 +165,6 @@ TEST_CASE("Test normal user login", "[normal]")
 	);
 	REQUIRE(ioc.run_for(10s) > 0);
 	REQUIRE(tested_count == 2);
-}
-
-TEST_CASE("Parsing cookie", "[normal]")
-{
-	auto session = parse_cookie("id=0123456789ABCDEF0123456789ABCDEF; somethingelse; ");
-	REQUIRE(session.has_value());
-	REQUIRE(*session == Authentication::CookieID{0x01,0x23,0x45, 0x67, 0x89,0xAB,0xCD,0xEF,0x01,0x23,0x45,0x67,0x89,0xAB,0xCD,0xEF});
-
-	session = parse_cookie("name=value; id=0123456789ABCDEF0123456789ABCDEF; ");
-	REQUIRE(session.has_value());
-	REQUIRE(*session == Authentication::CookieID{0x01,0x23,0x45, 0x67, 0x89,0xAB,0xCD,0xEF,0x01,0x23,0x45,0x67,0x89,0xAB,0xCD,0xEF});
-
-	// some lower case characters
-	session = parse_cookie("name=value; id=0123456789abcDEF0123456789ABCdef; ");
-	REQUIRE(session.has_value());
-	REQUIRE(*session == Authentication::CookieID{0x01,0x23,0x45, 0x67, 0x89,0xAB,0xCD,0xEF,0x01,0x23,0x45,0x67,0x89,0xAB,0xCD,0xEF});
-
-	using namespace std::literals;
-
-	// Random round-trip
-	auto rand = insecure_random<Authentication::CookieID>();
-	auto cookie = Authentication{rand, "test"}.set_cookie(600s);
-	INFO("cookie for random session ID is " << cookie);
-	session = parse_cookie(cookie);
-	REQUIRE(session.has_value());
-	REQUIRE(*session == rand);
 }
 
 TEST_CASE("Sharing resource to guest", "[normal]")
@@ -202,7 +177,7 @@ TEST_CASE("Sharing resource to guest", "[normal]")
 	Authentication::share_resource("sumsum", "dir:", 3600s, *redis, [&tested, redis](auto&& auth, auto ec)
 	{
 		REQUIRE(!ec);
-		REQUIRE(auth.is_guest());
+		REQUIRE(auth.id().is_guest());
 		REQUIRE(auth.valid());
 
 		tested++;
@@ -234,7 +209,7 @@ TEST_CASE("Sharing resource to guest", "[normal]")
 
 	bool found = false;
 
-	Authentication someone_else{insecure_random<Authentication::CookieID>(), "someone"};
+	Authentication someone_else{insecure_random<UserID::SessionID>(), "someone"};
 	someone_else.is_shared_resource("dir:", *redis, [&found](bool shared, auto ec)
 	{
 		REQUIRE_FALSE(shared);
