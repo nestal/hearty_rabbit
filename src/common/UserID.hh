@@ -14,11 +14,21 @@
 
 #include <chrono>
 #include <array>
+#include <optional>
 
 namespace hrb {
 
 class Cookie;
+/*
+struct SessionID : std::array<unsigned char, 16>
+{
+	using array::array;
+	SessionID(const std::array<unsigned char, 16>& array);
 
+	static std::optional<SessionID> from_hex(std::string_view hex);
+	static std::optional<SessionID> from_raw(std::string_view raw);
+};
+*/
 class UserID
 {
 public:
@@ -27,10 +37,10 @@ public:
 public:
 	UserID() = default;
 	UserID(SessionID session, std::string_view user, bool guest=false);
-	UserID(std::string_view cookie_id, std::string_view user);
+	UserID(const Cookie& cookie, std::string_view user);
 
 	const SessionID& session() const {return m_session;}
-	const std::string& user() const {return m_user;}
+	const std::string& username() const {return m_user;}
 	bool is_guest() const {return m_guest;}
 
 	bool valid() const;

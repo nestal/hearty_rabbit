@@ -80,7 +80,7 @@ public:
 		using namespace std::chrono;
 
 		if (!m_parent.m_auth.is_guest() && m_parent.m_auth.valid())
-			json.emplace("username", m_parent.m_auth.user());
+			json.emplace("username", m_parent.m_auth.username());
 		if (m_parent.m_auth.is_guest())
 			json.emplace("auth", to_hex(m_parent.m_auth.session()));
 		if (m_blob)
@@ -262,7 +262,7 @@ void SessionHandler::on_request_body(Request&& req, Send&& send)
 
 		if (intent.action() == URLIntent::Action::home)
 			return m_auth.valid() ?
-				Ownership{m_auth.user()}.scan_all_collections(
+				Ownership{m_auth.username()}.scan_all_collections(
 					*m_db,
 					SendJSON{std::move(send), req.version(), std::nullopt, *this, &m_lib}
 				) :
@@ -427,7 +427,7 @@ void SessionHandler::scan_collection(const URLIntent& intent, unsigned version, 
 		return send(bad_request("invalid user in query", version));
 
 	// TODO: allow other users to query another user's shared collections
-	if (m_auth.user() != *user)
+	if (m_auth.username() != *user)
 		return send(http::response<http::string_body>{http::status::forbidden, version});
 
 	Ownership{*user}.scan_all_collections(
@@ -444,7 +444,7 @@ void SessionHandler::query_blob(const BlobRequest& req, Send&& send)
 	if (!blob)
 		return send(bad_request("invalid blob ID", req.version()));
 
-	Ownership{m_auth.user()}.query_blob(
+	Ownership{m_auth.username()}.query_blob(
 		*m_db,
 		*blob,
 		[
@@ -474,7 +474,7 @@ void SessionHandler::query_blob_set(const URLIntent& intent, unsigned version, S
 	}
 	else if (dup_coll.has_value())
 	{
-		Ownership{m_auth.user()}.list(
+		Ownership{m_auth.username()}.list(
 			*m_db,
 			*dup_coll,
 			[
@@ -572,7 +572,7 @@ void SessionHandler::post_view(BlobRequest&& req, Send&& send)
 template <typename Send>
 void SessionHandler::list_public_blobs(bool is_json, unsigned version, Send&& send)
 {
-	Ownership{m_auth.user()}.list_public_blobs(
+	Ownership{m_auth.username()}.list_public_blobs(
 		*m_db,
 		[send=std::forward<Send>(send), version, this, is_json](auto&& blob_refs, auto ec) mutable
 		{
@@ -581,7 +581,7 @@ void SessionHandler::list_public_blobs(bool is_json, unsigned version, Send&& se
 			{
 				// filter by "user" if it is not empty: that means we want all public blobs from all users
 				// if "user" is empty string.
-				if ((m_auth.user().empty() || m_auth.user() == bref.user) &&
+				if ((m_auth.username().empty() || m_auth.username() == bref.user) &&
 					bref.entry.permission() == Permission::public_())
 				{
 					if (auto json = nlohmann::json::parse(bref.entry.json(), nullptr, false); !json.is_discarded())

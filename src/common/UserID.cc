@@ -26,8 +26,8 @@ UserID::UserID(SessionID session, std::string_view user, bool guest) :
 		m_session = SessionID{};
 }
 
-UserID::UserID(std::string_view cookie_id, std::string_view user) :
-	m_session{hex_to_array<SessionID{}.size()>(cookie_id).value_or(SessionID{})},
+UserID::UserID(const Cookie& cookie, std::string_view user) :
+	m_session{hex_to_array<SessionID{}.size()>(cookie.field("id")).value_or(SessionID{})},
 	m_user{user}
 {
 }

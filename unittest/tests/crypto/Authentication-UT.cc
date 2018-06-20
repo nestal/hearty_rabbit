@@ -83,7 +83,7 @@ TEST_CASE("Test normal user login", "[normal]")
 							REQUIRE(!ec);
 							REQUIRE(auth.valid());
 							REQUIRE_FALSE(auth.is_guest());
-							REQUIRE(auth.user() == "sumsum");
+							REQUIRE(auth.username() == "sumsum");
 							tested = true;
 						}
 					);
@@ -139,7 +139,7 @@ TEST_CASE("Test normal user login", "[normal]")
 					REQUIRE(!ec);
 					REQUIRE(auth.valid());
 					REQUIRE_FALSE(auth.is_guest());
-					REQUIRE(auth.user() == "sumsum");
+					REQUIRE(auth.username() == "sumsum");
 
 					// Verify cookie changed
 					REQUIRE(auth.session() != old_cookie);
@@ -155,7 +155,7 @@ TEST_CASE("Test normal user login", "[normal]")
 				{
 					REQUIRE(!ec);
 					REQUIRE(auth.valid());
-					REQUIRE(auth.user() == "sumsum");
+					REQUIRE(auth.username() == "sumsum");
 					REQUIRE(auth.session() == old_cookie);
 					tested_count++;
 				}
@@ -185,7 +185,7 @@ TEST_CASE("Parsing cookie", "[normal]")
 
 	// Random round-trip
 	auto rand = insecure_random<UserID::SessionID>();
-	auto cookie = Authentication{rand, "test"}.set_cookie(600s);
+	auto cookie = Authentication{rand, "test"}.id().set_cookie(600s);
 	INFO("cookie for random session ID is " << cookie);
 	session = parse_cookie(cookie);
 	REQUIRE(session.has_value());

@@ -72,7 +72,7 @@ void Authentication::is_shared_resource(
 		},
 		"HGET %b%b:%b %b",
 		m_shared_auth_prefix.data(), m_shared_auth_prefix.size(),
-		id().user().data(), id().user().size(),
+		id().username().data(), id().username().size(),
 		resource.data(), resource.size(),
 		id().session().data(), id().session().size()
 	);

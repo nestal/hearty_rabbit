@@ -212,11 +212,6 @@ void Authentication::verify_user(
 	);
 }
 
-std::string Authentication::set_cookie(std::chrono::seconds session_length) const
-{
-	return m_uid.set_cookie(session_length);
-}
-
 std::optional<UserID::SessionID> parse_cookie(std::string_view cookie_str)
 {
 	Cookie cookie{cookie_str};
@@ -282,20 +277,20 @@ void Authentication::renew_session(
 			// if error occurs or session already renewed, use the old session
 			if (ec || reply.as_int() != 1)
 			{
-				Log(LOG_NOTICE, "user %1% session already renewed: %2%", id().user(), ec);
+				Log(LOG_NOTICE, "user %1% session already renewed: %2%", id().username(), ec);
 				comp(ec, UserID{m_uid});
 			}
 			else
 			{
-				Log(LOG_NOTICE, "user %1% session renewed successfully", id().user());
-				comp(ec, UserID{new_cookie, id().user()});
+				Log(LOG_NOTICE, "user %1% session renewed successfully", id().username());
+				comp(ec, UserID{new_cookie, id().username()});
 			}
 		},
 		"EVAL %s 2 session:%b session:%b %b %d",
 		lua,
 		id().session().data(), id().session().size(), // KEYS[1]: old session cookie
 		new_cookie.data(), new_cookie.size(),         // KEYS[2]: new session cookie
-		id().user().data(), id().user().size(),       // ARGV[1]: username
+		id().username().data(), id().username().size(),       // ARGV[1]: username
 		session_length                                // ARGV[2]: session length
 	);
 }

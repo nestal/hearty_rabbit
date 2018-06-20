@@ -196,7 +196,7 @@ void SessionHandler::on_upload(UploadRequest&& req, EmptyResponseSender&& send)
 	boost::system::error_code bec;
 
 	URLIntent path_url{req.target()};
-	if (m_auth.user() != path_url.user())
+	if (m_auth.username() != path_url.user())
 	{
 		// TODO: Introduce a small delay when responsing to requests with invalid session ID.
 		// This is to slow down bruce-force attacks on the session ID.
@@ -227,9 +227,9 @@ void SessionHandler::on_upload(UploadRequest&& req, EmptyResponseSender&& send)
 	// Add the newly created blob to the user's ownership table.
 	// The user's ownership table contains all the blobs that is owned by the user.
 	// It will be used for authorizing the user's request on these blob later.
-	Ownership{m_auth.user()}.link(
+	Ownership{m_auth.username()}.link(
 		*m_db, path_url.collection(), blob.ID(), entry, [
-			location = URLIntent{URLIntent::Action::api, m_auth.user(), path_url.collection(), to_hex(blob.ID())}.str(),
+			location = URLIntent{URLIntent::Action::api, m_auth.username(), path_url.collection(), to_hex(blob.ID())}.str(),
 			send = std::move(send),
 			version = req.version()
 		](auto ec)
@@ -262,7 +262,7 @@ http::response<SplitBuffers> SessionHandler::not_found(boost::string_view target
 {
 	nlohmann::json dir;
 	dir.emplace("error_message", "The request resource was not found.");
-	dir.emplace("username", std::string{m_auth.user()});
+	dir.emplace("username", std::string{m_auth.username()});
 
 	return m_lib.inject(http::status::not_found, dir.dump(), "<meta></meta>", version);
 }
@@ -311,7 +311,7 @@ void SessionHandler::validate_collection(Collection& coll)
 			new_entry.timestamp = blob_file.original_datetime();
 			coll.update_timestamp(id, new_entry.timestamp);
 
-			Ownership{m_auth.user()}.update(*m_db, coll.name(), id, new_entry);
+			Ownership{m_auth.username()}.update(*m_db, coll.name(), id, new_entry);
 		}
 	}
 }

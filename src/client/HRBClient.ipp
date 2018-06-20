@@ -46,7 +46,7 @@ void HRBClient::login(std::string_view user, std::string_view password, Complete
 	req->on_load([this, username, comp=std::forward<Complete>(comp)](auto ec, auto& req)
 	{
 		if (req.response().result() == http::status::no_content)
-			m_user = UserID{Cookie{req.response().at(http::field::set_cookie)}.field("id"), username};
+			m_user = UserID{Cookie{req.response().at(http::field::set_cookie)}, username};
 		else
 			ec = hrb::Error::login_incorrect;
 
@@ -60,7 +60,7 @@ template <typename Complete>
 void HRBClient::list_collection(std::string_view coll, Complete&& comp)
 {
 	auto req = std::make_shared<GenericHTTPRequest<http::empty_body, http::string_body>>(m_ioc, m_ssl);
-	req->init(m_host, m_port, URLIntent{URLIntent::Action::api, m_user.user(), coll, ""}.str(), http::verb::get);
+	req->init(m_host, m_port, URLIntent{URLIntent::Action::api, m_user.username(), coll, ""}.str(), http::verb::get);
 	req->request().set(http::field::cookie, m_user.cookie().str());
 
 	req->on_load([this, comp=std::forward<Complete>(comp)](auto ec, auto& req)
@@ -76,7 +76,7 @@ template <typename Complete>
 void HRBClient::scan_collections(Complete&& comp)
 {
 	auto req = std::make_shared<GenericHTTPRequest<http::empty_body, http::string_body>>(m_ioc, m_ssl);
-	req->init(m_host, m_port, URLIntent{URLIntent::QueryTarget::collection, "json&user=" + m_user.user()}.str(), http::verb::get);
+	req->init(m_host, m_port, URLIntent{URLIntent::QueryTarget::collection, "json&user=" + m_user.username()}.str(), http::verb::get);
 	req->request().set(http::field::cookie, m_user.cookie().str());
 
 	req->on_load([this, comp=std::forward<Complete>(comp)](auto ec, auto& req)
