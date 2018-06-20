@@ -12,6 +12,9 @@
 
 #include "HRBClient.hh"
 
+#include "GenericHTTPRequest.hh"
+#include "common/URLIntent.hh"
+
 namespace hrb {
 
 HRBClient::HRBClient(
@@ -22,6 +25,14 @@ HRBClient::HRBClient(
 ) :
 	m_ioc{ioc}, m_ssl{ctx}, m_host{host}, m_port{port}
 {
+}
+
+std::shared_ptr<HRBClient::CommonRequest> HRBClient::request(const URLIntent& intent, boost::beast::http::verb method)
+{
+	auto req = std::make_shared<CommonRequest>(m_ioc, m_ssl);
+	req->init(m_host, m_port, intent.str(), http::verb::get);
+	req->request().set(http::field::cookie, m_user.cookie().str());
+	return req;
 }
 
 } // end of namespace

@@ -14,7 +14,6 @@
 
 #include "HRBClient.hh"
 
-#include "GenericHTTPRequest.hh"
 #include "common/Cookie.hh"
 #include "common/CollEntry.hh"
 #include "common/Collection.hh"
@@ -59,10 +58,7 @@ void HRBClient::login(std::string_view user, std::string_view password, Complete
 template <typename Complete>
 void HRBClient::list_collection(std::string_view coll, Complete&& comp)
 {
-	auto req = std::make_shared<GenericHTTPRequest<http::empty_body, http::string_body>>(m_ioc, m_ssl);
-	req->init(m_host, m_port, URLIntent{URLIntent::Action::api, m_user.username(), coll, ""}.str(), http::verb::get);
-	req->request().set(http::field::cookie, m_user.cookie().str());
-
+	auto req = request({URLIntent::Action::api, m_user.username(), coll, ""}, http::verb::get);
 	req->on_load([this, comp=std::forward<Complete>(comp)](auto ec, auto& req)
 	{
 		auto json = nlohmann::json::parse(req.response().body());
@@ -75,8 +71,7 @@ void HRBClient::list_collection(std::string_view coll, Complete&& comp)
 template <typename Complete>
 void HRBClient::scan_collections(Complete&& comp)
 {
-	auto req = std::make_shared<GenericHTTPRequest<http::empty_body, http::string_body>>(m_ioc, m_ssl);
-	req->init(m_host, m_port, URLIntent{URLIntent::QueryTarget::collection, "json&user=" + m_user.username()}.str(), http::verb::get);
+	auto req = request({URLIntent::QueryTarget::collection, "json&user=" + m_user.username()}, http::verb::get);
 	req->request().set(http::field::cookie, m_user.cookie().str());
 
 	req->on_load([this, comp=std::forward<Complete>(comp)](auto ec, auto& req)
@@ -85,6 +80,12 @@ void HRBClient::scan_collections(Complete&& comp)
 		req.shutdown();
 	});
 	req->run();
+}
+
+template <typename Complete>
+void HRBClient::upload(std::string_view coll, const fs::path& file, Complete&& comp)
+{
+
 }
 
 } // end of namespace

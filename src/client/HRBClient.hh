@@ -14,11 +14,17 @@
 
 #include "common/Cookie.hh"
 #include "common/UserID.hh"
+#include "common/FS.hh"
 
+#include "GenericHTTPRequest.hh"
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ssl.hpp>
 
+#include <memory>
+
 namespace hrb {
+
+class URLIntent;
 
 class HRBClient
 {
@@ -33,6 +39,16 @@ public:
 
 	template <typename Complete>
 	void scan_collections(Complete&& comp);
+
+	template <typename Complete>
+	void upload(std::string_view coll, const fs::path& file, Complete&& comp);
+
+private:
+	using CommonRequest = GenericHTTPRequest<
+		boost::beast::http::empty_body,
+		boost::beast::http::string_body
+	>;
+	std::shared_ptr<CommonRequest> request(const URLIntent& intent, boost::beast::http::verb method);
 
 private:
 	// connection to the server
