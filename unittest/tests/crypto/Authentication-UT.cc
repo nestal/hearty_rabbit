@@ -13,6 +13,7 @@
 #include <catch.hpp>
 
 #include "net/Redis.hh"
+#include "common/Cookie.hh"
 #include "common/Error.hh"
 #include "crypto/Authentication.hh"
 #include "crypto/Authentication.ipp"
@@ -185,7 +186,7 @@ TEST_CASE("Parsing cookie", "[normal]")
 
 	// Random round-trip
 	auto rand = insecure_random<UserID::SessionID>();
-	auto cookie = Authentication{rand, "test"}.id().set_cookie(600s);
+	std::string cookie{UserID{rand, "test"}.set_cookie(600s).str()};
 	INFO("cookie for random session ID is " << cookie);
 	session = parse_cookie(cookie);
 	REQUIRE(session.has_value());

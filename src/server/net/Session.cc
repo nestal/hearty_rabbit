@@ -12,9 +12,9 @@
 
 #include "Session.hh"
 
-#include "crypto/Authentication.hh"
 #include "hrb/SessionHandler.ipp"
 #include "net/SplitBuffers.hh"
+#include "common/Cookie.hh"
 #include "common/Error.hh"
 #include "util/Log.hh"
 
@@ -142,7 +142,7 @@ void Session::on_read(boost::system::error_code ec, std::size_t)
 
 					// check if auth is renewed. if yes, set it to cookie before sending
 					if (m_server->renewed_auth())
-						response.set(http::field::set_cookie, m_server->auth().set_cookie(m_login_session));
+						response.set(http::field::set_cookie, m_server->auth().set_cookie(m_login_session).str());
 
 					send_response(std::forward<decltype(response)>(response));
 				}

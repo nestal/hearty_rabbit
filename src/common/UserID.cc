@@ -59,19 +59,22 @@ Cookie UserID::cookie() const
 	return cookie;
 }
 
-std::string UserID::set_cookie(std::chrono::seconds session_length) const
+Cookie UserID::set_cookie(std::chrono::seconds session_length) const
 {
-	std::string result{cookie().str()};
+	auto cookie{this->cookie()};
+	cookie.add("Path", "/");
 	if (valid())
 	{
-		result.append("; Secure; HttpOnly; SameSite=Strict; Path=/; Max-Age=");
-		result.append(std::to_string(session_length.count()));
+		cookie.add("Secure");
+		cookie.add("HttpOnly");
+		cookie.add("SameSite", "Strict");
+		cookie.add("Max-Age", std::to_string(session_length.count()));
 	}
 	else
 	{
-		result.append("; Path=/; expires=Thu, Jan 01 1970 00:00:00 UTC");
+		cookie.add("Expires", "Thu, Jan 01 1970 00:00:00 UTC");
 	}
-	return result;
+	return cookie;
 }
 
 } // end of namespace hrb
