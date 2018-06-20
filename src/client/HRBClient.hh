@@ -43,8 +43,7 @@ private:
 	std::string m_host;
 	std::string m_port;
 
-	// session cookie
-	Cookie  m_cookie;
+	// authenticated user
 	UserID  m_user;
 };
 

@@ -28,6 +28,7 @@
 
 #include <string>
 #include <unordered_map>
+#include <iostream>
 
 namespace hrb {
 
@@ -45,17 +46,7 @@ void HRBClient::login(std::string_view user, std::string_view password, Complete
 	req->on_load([this, username, comp=std::forward<Complete>(comp)](auto ec, auto& req)
 	{
 		if (req.response().result() == http::status::no_content)
-		{
-			// Cookie::field() of a temporary Cookie object will return a dangled string_view
-			// after the temporary Cookie object is destroyed
-			std::string cookie_id{Cookie{req.response().at(http::field::set_cookie)}.field("id")};
-
-			// reset cookie state
-			m_cookie = Cookie{};
-			m_cookie.add("id", cookie_id);
-
-			m_user = UserID{hex_to_array<UserID::CookieID{}.size()>(cookie_id).value_or(UserID::CookieID{}), username};
-		}
+			m_user = UserID{Cookie{req.response().at(http::field::set_cookie)}.field("id"), username};
 		else
 			ec = hrb::Error::login_incorrect;
 
@@ -70,7 +61,10 @@ void HRBClient::list_collection(std::string_view coll, Complete&& comp)
 {
 	auto req = std::make_shared<GenericHTTPRequest<http::empty_body, http::string_body>>(m_ioc, m_ssl);
 	req->init(m_host, m_port, URLIntent{URLIntent::Action::api, m_user.user(), coll, ""}.str(), http::verb::get);
-	req->request().set(http::field::cookie, m_cookie.str());
+
+	Cookie cookie;
+	cookie.add("id", to_hex(m_user.cookie()));
+	req->request().set(http::field::cookie, cookie.str());
 
 	req->on_load([this, comp=std::forward<Complete>(comp)](auto ec, auto& req)
 	{
@@ -86,7 +80,10 @@ void HRBClient::scan_collections(Complete&& comp)
 {
 	auto req = std::make_shared<GenericHTTPRequest<http::empty_body, http::string_body>>(m_ioc, m_ssl);
 	req->init(m_host, m_port, URLIntent{URLIntent::QueryTarget::collection, "json&user=" + m_user.user()}.str(), http::verb::get);
-	req->request().set(http::field::cookie, m_cookie.str());
+
+	Cookie cookie;
+	cookie.add("id", to_hex(m_user.cookie()));
+	req->request().set(http::field::cookie, cookie.str());
 
 	req->on_load([this, comp=std::forward<Complete>(comp)](auto ec, auto& req)
 	{

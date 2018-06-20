@@ -24,6 +24,7 @@ public:
 public:
 	UserID() = default;
 	UserID(CookieID cookie, std::string_view user, bool guest=false);
+	UserID(std::string_view cookie_id, std::string_view user);
 
 	const CookieID& cookie() const {return m_cookie;}
 	const std::string& user() const {return m_user;}
@@ -35,9 +36,9 @@ public:
 	bool operator!=(const UserID& rhs) const;
 
 private:
-	CookieID      m_cookie{};
-	std::string m_user;
-	bool        m_guest{false};
+	CookieID        m_cookie{};
+	std::string     m_user;
+	bool            m_guest{false};
 };
 
 } // end of namespace hrb
