@@ -49,6 +49,8 @@ TEST_CASE("simple client login", "[normal]")
 			tested = true;
 			REQUIRE_FALSE(err);
 			REQUIRE_FALSE(intent.str().empty());
+
+
 		});
 
 		REQUIRE(ioc.run_for(10s) > 0);

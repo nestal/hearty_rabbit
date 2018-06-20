@@ -109,4 +109,10 @@ auto HRBClient::request(const URLIntent& intent, boost::beast::http::verb method
 	return req;
 }
 
+template <typename Complete>
+void HRBClient::get_blob(std::string_view owner, std::string_view coll, const ObjectID& blob)
+{
+
+}
+
 } // end of namespace

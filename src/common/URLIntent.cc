@@ -330,4 +330,9 @@ void URLIntent::add_option(std::string_view option)
 	m_option.append(option);
 }
 
+std::optional<ObjectID> URLIntent::blob() const
+{
+	return ObjectID::from_hex(m_filename);
+}
+
 } // end of namespace hrb

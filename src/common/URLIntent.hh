@@ -79,6 +79,8 @@ public:
 	void set_option(std::string_view option) {m_option = option;}
 	void add_option(std::string_view option);
 
+	std::optional<ObjectID> blob() const;
+
 	std::string path() const;
 
 	std::string str() const;
