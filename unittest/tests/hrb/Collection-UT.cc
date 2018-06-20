@@ -10,7 +10,6 @@
 // Created by nestal on 6/7/18.
 //
 
-#include "common/BlobList.hh"
 #include "common/Collection.hh"
 #include "common/CollectionList.hh"
 #include "crypto/Random.hh"
@@ -95,59 +94,4 @@ TEST_CASE("simple CollectionList <-> JSON round-trip", "[normal]")
 	REQUIRE(ret.entries().size() == 2);
 	REQUIRE(subject == ret);
 	REQUIRE(ret.entries()[1].properties()["field"] == "value");
-}
-
-TEST_CASE("simple BlobList <-> JSON round-trip", "[normal]")
-{
-	BlobList subject;
-	subject.add("sumsum", "coll", insecure_random<ObjectID>(), CollEntry{Permission::shared(), "abc.txt", "text/css"});
-
-	REQUIRE(subject.size() == 1);
-	for (auto&& e : subject.entries())
-	{
-		REQUIRE(e.owner == "sumsum");
-		REQUIRE(e.coll == "coll");
-		REQUIRE(e.entry.filename == "abc.txt");
-		REQUIRE(e.entry.mime == "text/css");
-		REQUIRE(e.entry.perm == Permission::shared());
-	}
-	subject.add("yung", "cool", insecure_random<ObjectID>(), CollEntry{Permission::private_(), "IMG_0102.JPG", "image/jpeg"});
-	REQUIRE(subject.size() == 2);
-
-	INFO("subject = " << subject.json());
-
-	nlohmann::json json(std::move(subject));
-	REQUIRE(subject.size() == 0);
-
-	auto ret = json.get<BlobList>();
-	REQUIRE(ret.size() == 2);
-	INFO("ret = " << ret.json());
-
-	// sort it by owner name for easy checking
-	auto entries = ret.entries();
-	std::sort(entries.begin(), entries.end(), [](auto&& e1, auto&& e2){return e1.owner < e2.owner;});
-	REQUIRE(entries.size() == 2);
-
-	REQUIRE(entries[0].owner == "sumsum");
-	REQUIRE(entries[0].coll == "coll");
-	REQUIRE(entries[0].entry.filename == "abc.txt");
-	REQUIRE(entries[0].entry.mime == "text/css");
-	REQUIRE(entries[0].entry.perm == Permission::shared());
-	REQUIRE(entries[1].owner == "yung");
-	REQUIRE(entries[1].coll == "cool");
-	REQUIRE(entries[1].entry.filename == "IMG_0102.JPG");
-	REQUIRE(entries[1].entry.mime == "image/jpeg");
-	REQUIRE(entries[1].entry.perm == Permission::private_());
-}
-
-TEST_CASE("empty BlobList serialization", "[normal]")
-{
-	BlobList subject;
-	REQUIRE(subject.size() == 0);
-
-	nlohmann::json json(std::move(subject));
-	REQUIRE(json.is_object());
-
-	auto ret = json.get<BlobList>();
-	REQUIRE(ret.size() == 0);
 }

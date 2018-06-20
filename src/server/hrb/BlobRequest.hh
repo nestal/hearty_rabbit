@@ -20,7 +20,7 @@
 
 namespace hrb {
 
-class UserID;
+class Authentication;
 
 class BlobRequest
 {
@@ -47,7 +47,7 @@ public:
 	std::string_view etag() const           {return m_etag;}
 	unsigned version() const                {return m_version;}
 
-	bool request_by_owner(const UserID& requester) const;
+	bool request_by_owner(const Authentication& requester) const;
 
 	std::string_view body() const           {return m_body;}
 

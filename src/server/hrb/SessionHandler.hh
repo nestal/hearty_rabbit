@@ -12,12 +12,12 @@
 
 #pragma once
 
-#include "common/UserID.hh"
+#include "crypto/Authentication.hh"
 #include "net/Redis.hh"
 #include "net/Request.hh"
 
 // JSON library
-#include <nlohmann/json.hpp>
+#include <json.hpp>
 
 // standard library
 #include <chrono>
@@ -69,7 +69,7 @@ public:
 
 	// ugly hack for unit test
 	template <class Request, class Send>
-	void handle_request(Request&& req, Send&& send, const UserID& auth)
+	void handle_request(Request&& req, Send&& send, const Authentication& auth)
 	{
 		m_auth = auth;
 		on_request_body(std::forward<Request>(req), std::forward<Send>(send));
@@ -82,7 +82,7 @@ public:
 
 	std::chrono::seconds session_length() const;
 
-	const UserID& auth() const {return m_auth;}
+	const Authentication& auth() const {return m_auth;}
 	bool renewed_auth() const;
 
 private:
@@ -134,10 +134,10 @@ private:
 
 private:
 	std::shared_ptr<redis::Connection>              m_db;
-	std::optional<UserID::SessionID>                m_request_session_id;
+	std::optional<Authentication::CookieID>           m_request_cookie;
 	std::chrono::high_resolution_clock::time_point  m_on_header;
 
-	UserID                  m_auth;
+	Authentication          m_auth;
 	WebResources&           m_lib;
 	BlobDatabase&           m_blob_db;
 	const Configuration&    m_cfg;

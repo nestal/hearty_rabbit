@@ -15,11 +15,10 @@
 #include <QtNetwork/QNetworkReply>
 
 #include "common/Collection.hh"
-#include "common/CollectionList.hh"
 #include "common/Escape.hh"
 #include "common/URLIntent.hh"
 
-#include <nlohmann/json.hpp>
+#include <json.hpp>
 #include <iostream>
 
 namespace hrb {
@@ -62,16 +61,13 @@ QUrl QtClient::setup_url(const URLIntent& intent)
 	url.setScheme("https");
 	url.setHost(m_host);
 	url.setPort(m_port);
-	url.setPath(QString::fromStdString(intent.path()), QUrl::StrictMode);
-	url.setQuery(QString::fromStdString(std::string{intent.option()}), QUrl::StrictMode);
-
+	url.setPath(QString::fromStdString(intent.path()));
+	url.setQuery(QString::fromStdString(std::string{intent.option()}));
 	return url;
 }
 
 void QtClient::list_collection(const QString& collection)
 {
-	std::cout << "in list_collection: " << collection.toStdString() << std::endl;
-
 	QNetworkRequest request{setup_url({
 		URLIntent::Action::api,
 		m_user.toStdString(),
@@ -82,11 +78,18 @@ void QtClient::list_collection(const QString& collection)
 	auto reply = m_nam.get(request);
 	connect(reply, &QNetworkReply::finished, [reply, this]
 	{
-		auto dir = nlohmann::json::parse(reply->readAll().toStdString(), nullptr, false);
+		auto json = reply->readAll();
+		std::cout << json.toStdString() << std::endl;
+
+		auto dir = nlohmann::json::parse(json.toStdString(), nullptr, false);
 		if (!dir.is_discarded())
+		{
 			Q_EMIT on_list_collection(dir.get<Collection>());
+		}
 		else
+		{
 			std::cout << "parse error!" << std::endl;
+		}
 	});
 }
 
@@ -103,22 +106,8 @@ void QtClient::get_blob(const QString& owner, const QString& collection, const O
 	auto reply = m_nam.get(request);
 	connect(reply, &QNetworkReply::finished, [reply, this, blob, rendition]
 	{
-		if (reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt() == 200)
-			Q_EMIT on_get_blob(blob, rendition, reply->readAll());
-	});
-}
-
-void QtClient::owned_collections(const QString& user)
-{
-	QNetworkRequest request{setup_url({URLIntent::QueryTarget::collection, "json&user=" + user.toStdString()})};
-
-	auto reply = m_nam.get(request);
-	connect(reply, &QNetworkReply::finished, [reply, this]
-	{
-		if (reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt() == 200)
-			Q_EMIT on_owned_collections(nlohmann::json::parse(
-				reply->readAll().toStdString(), nullptr, false
-			));
+		std::cout << reply->errorString().toStdString() << " " << reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt() << std::endl;
+		Q_EMIT on_get_blob(blob, rendition, reply->readAll());
 	});
 }
 

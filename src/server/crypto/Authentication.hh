@@ -31,9 +31,10 @@ class Password;
 class Authentication
 {
 public:
+	using CookieID = UserID::CookieID ;
+
 	Authentication() = default;
-	Authentication(const UserID& uid) : m_uid{uid} {}
-	Authentication(UserID::SessionID session, std::string_view user, bool guest=false);
+	Authentication(CookieID cookie, std::string_view user, bool guest=false);
 	Authentication(Authentication&&) = default;
 	Authentication(const Authentication&) = default;
 	~Authentication() = default;
@@ -55,14 +56,14 @@ public:
 		Password&& password,
 		redis::Connection& db,
 		std::chrono::seconds session_length,
-		std::function<void(std::error_code, UserID&&)> completion
+		std::function<void(std::error_code, const Authentication&)> completion
 	);
 
 	static void verify_session(
-		const UserID::SessionID& cookie,
+		const CookieID& cookie,
 		redis::Connection& db,
 		std::chrono::seconds session_length,
-		std::function<void(std::error_code, UserID&&)>&& completion
+		std::function<void(std::error_code, Authentication&&)>&& completion
 	);
 
 	template <typename Complete, typename Duration>
@@ -94,7 +95,13 @@ public:
 		std::function<void(std::error_code)>&& completion
 	) const;
 
+	// TODO: update UT so that we don't need a default argument
+	std::string set_cookie(std::chrono::seconds session_length = std::chrono::seconds{3600}) const;
+
 	const UserID& id() const {return m_uid;}
+	const CookieID& cookie() const {return m_uid.cookie();}
+	const std::string& user() const {return m_uid.user();}
+	bool is_guest() const {return m_uid.is_guest();}
 
 	bool operator==(const Authentication& rhs) const {return m_uid == rhs.m_uid;}
 	bool operator!=(const Authentication& rhs) const {return m_uid != rhs.m_uid;}
@@ -103,7 +110,7 @@ private:
 	void renew_session(
 		redis::Connection& db,
 		std::chrono::seconds session_length,
-		std::function<void(std::error_code, UserID&&)>&& completion
+		std::function<void(std::error_code, Authentication&&)>&& completion
 	) const;
 
 private:
@@ -112,5 +119,7 @@ private:
 private:
 	UserID m_uid;
 };
+
+std::optional<Authentication::CookieID> parse_cookie(std::string_view cookie);
 
 } // end of namespace

@@ -14,8 +14,7 @@
 
 #include "util/Configuration.hh"
 
-#include <nlohmann/json.hpp>
-
+#include <json.hpp>
 #include <fstream>
 
 using namespace hrb;

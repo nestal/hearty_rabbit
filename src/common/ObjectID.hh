@@ -16,7 +16,7 @@
 
 #include <boost/functional/hash.hpp>
 
-#include <nlohmann/json.hpp>
+#include <json.hpp>
 
 #include <array>
 #include <iosfwd>

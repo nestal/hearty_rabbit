@@ -17,7 +17,6 @@
 #include <string>
 #include <optional>
 #include <chrono>
-#include <iosfwd>
 
 namespace hrb {
 
@@ -41,7 +40,7 @@ public:
 	std::chrono::system_clock::time_point expires() const;
 	std::string_view field(std::string_view id) const;
 
-	void add(std::string_view id, std::string_view value = {});
+	void add(std::string_view id, std::string_view value);
 	bool has(std::string_view id) const;
 
 	std::string_view str() const {return m_cookie;}
@@ -52,7 +51,5 @@ private:
 	// cached parse results
 	mutable std::optional<std::chrono::system_clock::time_point> m_expires;
 };
-
-std::ostream& operator<<(std::ostream& os, const Cookie& cookie);
 
 } // end of namespace hrb

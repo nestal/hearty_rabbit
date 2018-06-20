@@ -15,7 +15,7 @@
 #include "common/Permission.hh"
 #include "common/Timestamp.hh"
 
-#include <nlohmann/json.hpp>
+#include <json.hpp>
 
 #include <string>
 #include <optional>
