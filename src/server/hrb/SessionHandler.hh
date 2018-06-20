@@ -12,7 +12,7 @@
 
 #pragma once
 
-#include "crypto/Authentication.hh"
+#include "common/UserID.hh"
 #include "net/Redis.hh"
 #include "net/Request.hh"
 
@@ -69,7 +69,7 @@ public:
 
 	// ugly hack for unit test
 	template <class Request, class Send>
-	void handle_request(Request&& req, Send&& send, const Authentication& auth)
+	void handle_request(Request&& req, Send&& send, const UserID& auth)
 	{
 		m_auth = auth;
 		on_request_body(std::forward<Request>(req), std::forward<Send>(send));
@@ -82,7 +82,7 @@ public:
 
 	std::chrono::seconds session_length() const;
 
-	const Authentication& auth() const {return m_auth;}
+	const UserID& auth() const {return m_auth;}
 	bool renewed_auth() const;
 
 private:
@@ -137,7 +137,7 @@ private:
 	std::optional<UserID::SessionID>                m_request_cookie;
 	std::chrono::high_resolution_clock::time_point  m_on_header;
 
-	Authentication          m_auth;
+	UserID                  m_auth;
 	WebResources&           m_lib;
 	BlobDatabase&           m_blob_db;
 	const Configuration&    m_cfg;

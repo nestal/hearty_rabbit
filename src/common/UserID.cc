@@ -11,6 +11,7 @@
 //
 
 #include "UserID.hh"
+#include "Cookie.hh"
 #include "Escape.hh"
 
 #include <cassert>
@@ -49,6 +50,28 @@ bool UserID::operator==(const UserID& rhs) const
 bool UserID::operator!=(const UserID& rhs) const
 {
 	return !operator==(rhs);
+}
+
+Cookie UserID::cookie() const
+{
+	Cookie cookie;
+	cookie.add("id", valid() ? to_hex(m_session) : "");
+	return cookie;
+}
+
+std::string UserID::set_cookie(std::chrono::seconds session_length) const
+{
+	std::string result{cookie().str()};
+	if (valid())
+	{
+		result.append("; Secure; HttpOnly; SameSite=Strict; Path=/; Max-Age=");
+		result.append(std::to_string(session_length.count()));
+	}
+	else
+	{
+		result.append("; Path=/; expires=Thu, Jan 01 1970 00:00:00 UTC");
+	}
+	return result;
 }
 
 } // end of namespace hrb

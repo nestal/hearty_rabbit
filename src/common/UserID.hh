@@ -12,9 +12,12 @@
 
 #pragma once
 
+#include <chrono>
 #include <array>
 
 namespace hrb {
+
+class Cookie;
 
 class UserID
 {
@@ -34,6 +37,9 @@ public:
 
 	bool operator==(const UserID& rhs) const;
 	bool operator!=(const UserID& rhs) const;
+
+	Cookie cookie() const;
+	std::string set_cookie(std::chrono::seconds session_length = std::chrono::seconds{3600}) const;
 
 private:
 	SessionID       m_session{};

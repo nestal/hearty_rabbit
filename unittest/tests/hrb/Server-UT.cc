@@ -111,12 +111,12 @@ private:
 	boost::filesystem::path m_file;
 };
 
-Authentication create_session(std::string_view username, std::string_view password, const Configuration& cfg)
+UserID create_session(std::string_view username, std::string_view password, const Configuration& cfg)
 {
 	boost::asio::io_context ioc;
 	auto db = redis::connect(ioc, cfg.redis());
 
-	std::promise<Authentication> result;
+	std::promise<UserID> result;
 
 	Authentication::add_user(username, Password{password}, *db, [&result, db, username, password](std::error_code ec)
 	{

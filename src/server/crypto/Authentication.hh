@@ -32,6 +32,7 @@ class Authentication
 {
 public:
 	Authentication() = default;
+	Authentication(const UserID& uid) : m_uid{uid} {}
 	Authentication(UserID::SessionID session, std::string_view user, bool guest=false);
 	Authentication(Authentication&&) = default;
 	Authentication(const Authentication&) = default;
@@ -54,14 +55,14 @@ public:
 		Password&& password,
 		redis::Connection& db,
 		std::chrono::seconds session_length,
-		std::function<void(std::error_code, const Authentication&)> completion
+		std::function<void(std::error_code, UserID&&)> completion
 	);
 
 	static void verify_session(
 		const UserID::SessionID& cookie,
 		redis::Connection& db,
 		std::chrono::seconds session_length,
-		std::function<void(std::error_code, Authentication&&)>&& completion
+		std::function<void(std::error_code, UserID&&)>&& completion
 	);
 
 	template <typename Complete, typename Duration>
@@ -105,7 +106,7 @@ private:
 	void renew_session(
 		redis::Connection& db,
 		std::chrono::seconds session_length,
-		std::function<void(std::error_code, Authentication&&)>&& completion
+		std::function<void(std::error_code, UserID&&)>&& completion
 	) const;
 
 private:

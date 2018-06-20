@@ -76,14 +76,14 @@ TEST_CASE("Test normal user login", "[normal]")
 					REQUIRE(session.valid());
 
 					Authentication::verify_session(
-						session.id().session(), *redis, 60s,
+						session.session(), *redis, 60s,
 						[&tested](std::error_code ec, auto&& auth)
 						{
 							// Username returned is always lower case.
 							REQUIRE(!ec);
 							REQUIRE(auth.valid());
-							REQUIRE_FALSE(auth.id().is_guest());
-							REQUIRE(auth.id().user() == "sumsum");
+							REQUIRE_FALSE(auth.is_guest());
+							REQUIRE(auth.user() == "sumsum");
 							tested = true;
 						}
 					);
@@ -99,7 +99,7 @@ TEST_CASE("Test normal user login", "[normal]")
 					INFO("verify_user(incorrect) result = " << ec.message());
 					REQUIRE(ec == Error::login_incorrect);
 					REQUIRE(!session.valid());
-					REQUIRE_FALSE(session.id().is_guest());
+					REQUIRE_FALSE(session.is_guest());
 					tested = true;
 				}
 			);
@@ -113,7 +113,7 @@ TEST_CASE("Test normal user login", "[normal]")
 					INFO("verify_session(incorrect) result = " << ec.message());
 					REQUIRE(!ec);
 					REQUIRE_FALSE(session.valid());
-					REQUIRE_FALSE(session.id().is_guest());
+					REQUIRE_FALSE(session.is_guest());
 					tested = true;
 				}
 			);
@@ -133,16 +133,16 @@ TEST_CASE("Test normal user login", "[normal]")
 			// Force session renew by setting the session length (180s) required to be more than
 			// twice of the value specified when created (60s)
 			Authentication::verify_session(
-				session.id().session(), *redis, 180s,
-				[&tested_count, old_cookie = session.id().session()](std::error_code ec, auto&& auth)
+				session.session(), *redis, 180s,
+				[&tested_count, old_cookie = session.session()](std::error_code ec, auto&& auth)
 				{
 					REQUIRE(!ec);
 					REQUIRE(auth.valid());
-					REQUIRE_FALSE(auth.id().is_guest());
-					REQUIRE(auth.id().user() == "sumsum");
+					REQUIRE_FALSE(auth.is_guest());
+					REQUIRE(auth.user() == "sumsum");
 
 					// Verify cookie changed
-					REQUIRE(auth.id().session() != old_cookie);
+					REQUIRE(auth.session() != old_cookie);
 					tested_count++;
 				}
 			);
@@ -150,13 +150,13 @@ TEST_CASE("Test normal user login", "[normal]")
 			// Session will not be renewed when verified again, but verification will still
 			// succeed.
 			Authentication::verify_session(
-				session.id().session(), *redis, 180s,
-				[&tested_count, old_cookie = session.id().session()](std::error_code ec, auto&& auth)
+				session.session(), *redis, 180s,
+				[&tested_count, old_cookie = session.session()](std::error_code ec, auto&& auth)
 				{
 					REQUIRE(!ec);
 					REQUIRE(auth.valid());
-					REQUIRE(auth.id().user() == "sumsum");
-					REQUIRE(auth.id().session() == old_cookie);
+					REQUIRE(auth.user() == "sumsum");
+					REQUIRE(auth.session() == old_cookie);
 					tested_count++;
 				}
 			);
