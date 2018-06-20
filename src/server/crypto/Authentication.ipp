@@ -37,7 +37,7 @@ void Authentication::share_resource(
 	Complete&& comp
 )
 {
-	auto auth = insecure_random<CookieID>();
+	auto auth = insecure_random<UserID::SessionID>();
 	auto expired = std::chrono::system_clock::now() + valid_period;
 
 	db.command(
@@ -72,9 +72,9 @@ void Authentication::is_shared_resource(
 		},
 		"HGET %b%b:%b %b",
 		m_shared_auth_prefix.data(), m_shared_auth_prefix.size(),
-		user().data(), user().size(),
+		id().username().data(), id().username().size(),
 		resource.data(), resource.size(),
-		cookie().data(), cookie().size()
+		id().session().data(), id().session().size()
 	);
 }
 
@@ -94,11 +94,11 @@ void Authentication::list_guests(
 		{
 			auto valid_cookie = [](auto&& kv)
 			{
-				return kv.key().size() == CookieID{}.size();
+				return kv.key().size() == UserID::SessionID{}.size();
 			};
 			auto make_guest = [&owner](auto&& kv)
 			{
-				CookieID c{};
+				UserID::SessionID c{};
 				auto s = kv.key();
 				assert(s.size() == c.size());
 

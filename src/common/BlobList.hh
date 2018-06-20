@@ -35,6 +35,10 @@ public:
 
 public:
 	BlobList() = default;
+	BlobList(BlobList&& other);
+	BlobList(const BlobList&) = default;
+	BlobList& operator=(BlobList&& other);
+	BlobList& operator=(const BlobList& other);
 
 	void add(std::string_view owner, std::string_view coll, const ObjectID& blob, const Permission& perm, nlohmann::json&& entry);
 	void add(std::string_view owner, std::string_view coll, const ObjectID& blob, const CollEntry& entry);
@@ -49,10 +53,7 @@ public:
 	const nlohmann::json& json() const {return m_json;}
 
 private:
-	const nlohmann::json& elements() const;
-
-private:
-	nlohmann::json m_json;
+	nlohmann::json m_json{{"elements", nlohmann::json::object()}};
 };
 
 } // end of namespace hrb

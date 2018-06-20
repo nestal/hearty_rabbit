@@ -80,9 +80,9 @@ public:
 		using namespace std::chrono;
 
 		if (!m_parent.m_auth.is_guest() && m_parent.m_auth.valid())
-			json.emplace("username", m_parent.m_auth.user());
+			json.emplace("username", m_parent.m_auth.username());
 		if (m_parent.m_auth.is_guest())
-			json.emplace("auth", to_hex(m_parent.m_auth.cookie()));
+			json.emplace("auth", to_hex(m_parent.m_auth.session()));
 		if (m_blob)
 			json.emplace("blob", to_hex(*m_blob));
 		if (m_parent.m_on_header != high_resolution_clock::time_point{})
@@ -112,7 +112,7 @@ public:
 			URLIntent view_url{URLIntent::Action::view, owner, coll, "Hearty Rabbit"};
 			if (m_parent.m_auth.is_guest())
 			{
-				auto auth = "auth=" + to_hex(m_parent.m_auth.cookie());
+				auto auth = "auth=" + to_hex(m_parent.m_auth.session());
 				cover_url.add_option(auth);
 				view_url.add_option(auth);
 			}
@@ -169,16 +169,15 @@ void SessionHandler::on_request_header(
 		return complete(RequestBodyType::string, std::error_code{});
 
 	// Everything else require a valid session.
-	auto cookie = header[http::field::cookie];
-	m_request_cookie = parse_cookie({cookie.data(), cookie.size()});
-	if (!m_request_cookie)
+	m_request_session_id = UserID::parse_cookie(Cookie{header[http::field::cookie]});
+	if (!m_request_session_id)
 	{
 		auto [auth_str] = urlform.find(intent.option(), "auth");
-		auto auth_key = hex_to_array<Authentication::CookieID{}.size()>(auth_str);
+		auto auth_key = hex_to_array<UserID::SessionID{}.size()>(auth_str);
 		if (header.method() == http::verb::get && auth_key)
 		{
-			Authentication auth{*auth_key, intent.user(), true};
-			return auth.is_shared_resource(
+			UserID auth{*auth_key, intent.user(), true};
+			return Authentication{auth}.is_shared_resource(
 				intent.collection(),
 				*m_db,
 				[complete = std::forward<Complete>(complete), auth, this, intent](bool shared, auto err)
@@ -198,7 +197,7 @@ void SessionHandler::on_request_header(
 	}
 
 	Authentication::verify_session(
-		*m_request_cookie,
+		*m_request_session_id,
 		*m_db,
 		session_length(),
 		[
@@ -206,7 +205,7 @@ void SessionHandler::on_request_header(
 			action=intent.action(),
 			method=header.method(),
 			complete=std::forward<Complete>(complete)
-		](std::error_code ec, const Authentication& auth) mutable
+		](std::error_code ec, const UserID& auth) mutable
 		{
 			m_auth = auth;
 
@@ -262,7 +261,7 @@ void SessionHandler::on_request_body(Request&& req, Send&& send)
 
 		if (intent.action() == URLIntent::Action::home)
 			return m_auth.valid() ?
-				Ownership{m_auth.user()}.scan_all_collections(
+				Ownership{m_auth.username()}.scan_all_collections(
 					*m_db,
 					SendJSON{std::move(send), req.version(), std::nullopt, *this, &m_lib}
 				) :
@@ -362,7 +361,7 @@ void SessionHandler::get_blob(const BlobRequest& req, Send&& send)
 		return send(std::move(res));
 	}
 
-	// Check if the user owns the blob
+	// Check if the user can access the blob
 	// Note: do not move-construct "req" to the lambda because the arguments of find() uses it.
 	// Otherwise, "req" will become dangled.
 	Ownership{req.owner()}.find(
@@ -383,11 +382,18 @@ void SessionHandler::get_blob(const BlobRequest& req, Send&& send)
 			if (ec)
 				return send(http::response<http::empty_body>{http::status::internal_server_error, req.version()});
 
-			if (!entry.permission().allow(m_auth.id(), req.owner()))
+			if (!entry.permission().allow(m_auth, req.owner()))
 				return send(http::response<http::empty_body>{http::status::forbidden, req.version()});
 
-			auto [rendition] = urlform.find(req.option(), "rendition");
-			return send(m_blob_db.response(*req.blob(), req.version(), req.etag(), rendition));
+			if (auto [json] = urlform.find_optional(req.option(), "json"); json)
+			{
+				return send(m_blob_db.meta(*req.blob(), req.version()));
+			}
+			else
+			{
+				auto [rendition] = urlform.find(req.option(), "rendition");
+				return send(m_blob_db.response(*req.blob(), req.version(), req.etag(), rendition));
+			}
 		}
 	);
 }
@@ -420,7 +426,7 @@ void SessionHandler::scan_collection(const URLIntent& intent, unsigned version, 
 		return send(bad_request("invalid user in query", version));
 
 	// TODO: allow other users to query another user's shared collections
-	if (m_auth.user() != *user)
+	if (m_auth.username() != *user)
 		return send(http::response<http::string_body>{http::status::forbidden, version});
 
 	Ownership{*user}.scan_all_collections(
@@ -437,7 +443,7 @@ void SessionHandler::query_blob(const BlobRequest& req, Send&& send)
 	if (!blob)
 		return send(bad_request("invalid blob ID", req.version()));
 
-	Ownership{m_auth.user()}.query_blob(
+	Ownership{m_auth.username()}.query_blob(
 		*m_db,
 		*blob,
 		[
@@ -467,7 +473,7 @@ void SessionHandler::query_blob_set(const URLIntent& intent, unsigned version, S
 	}
 	else if (dup_coll.has_value())
 	{
-		Ownership{m_auth.user()}.list(
+		Ownership{m_auth.username()}.list(
 			*m_db,
 			*dup_coll,
 			[
@@ -534,7 +540,7 @@ void SessionHandler::post_view(BlobRequest&& req, Send&& send)
 			req
 		](auto&& auth, auto ec)
 		{
-			URLIntent location{URLIntent::Action::view, req.owner(), req.collection(), "", "auth=" + to_hex(auth.cookie())};
+			URLIntent location{URLIntent::Action::view, req.owner(), req.collection(), "", "auth=" + to_hex(auth.id().session())};
 
 			http::response<http::empty_body> res{http::status::no_content, req.version()};
 			res.set(http::field::location, location.str());
@@ -548,7 +554,7 @@ void SessionHandler::post_view(BlobRequest&& req, Send&& send)
 		{
 			auto json = nlohmann::json::array();
 			for (auto&& guest : guests)
-				json.emplace_back(to_hex(guest.cookie()));
+				json.emplace_back(to_hex(guest.id().session()));
 
 			http::response<http::string_body> res{
 				std::piecewise_construct,
@@ -565,7 +571,7 @@ void SessionHandler::post_view(BlobRequest&& req, Send&& send)
 template <typename Send>
 void SessionHandler::list_public_blobs(bool is_json, unsigned version, Send&& send)
 {
-	Ownership{m_auth.user()}.list_public_blobs(
+	Ownership{m_auth.username()}.list_public_blobs(
 		*m_db,
 		[send=std::forward<Send>(send), version, this, is_json](auto&& blob_refs, auto ec) mutable
 		{
@@ -574,7 +580,7 @@ void SessionHandler::list_public_blobs(bool is_json, unsigned version, Send&& se
 			{
 				// filter by "user" if it is not empty: that means we want all public blobs from all users
 				// if "user" is empty string.
-				if ((m_auth.user().empty() || m_auth.user() == bref.user) &&
+				if ((m_auth.username().empty() || m_auth.username() == bref.user) &&
 					bref.entry.permission() == Permission::public_())
 				{
 					if (auto json = nlohmann::json::parse(bref.entry.json(), nullptr, false); !json.is_discarded())

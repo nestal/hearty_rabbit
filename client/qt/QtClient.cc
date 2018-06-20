@@ -62,13 +62,16 @@ QUrl QtClient::setup_url(const URLIntent& intent)
 	url.setScheme("https");
 	url.setHost(m_host);
 	url.setPort(m_port);
-	url.setPath(QString::fromStdString(intent.path()));
-	url.setQuery(QString::fromStdString(std::string{intent.option()}));
+	url.setPath(QString::fromStdString(intent.path()), QUrl::StrictMode);
+	url.setQuery(QString::fromStdString(std::string{intent.option()}), QUrl::StrictMode);
+
 	return url;
 }
 
 void QtClient::list_collection(const QString& collection)
 {
+	std::cout << "in list_collection: " << collection.toStdString() << std::endl;
+
 	QNetworkRequest request{setup_url({
 		URLIntent::Action::api,
 		m_user.toStdString(),

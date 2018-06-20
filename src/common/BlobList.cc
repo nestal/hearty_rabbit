@@ -19,21 +19,38 @@
 
 namespace hrb {
 
+BlobList::BlobList(BlobList&& other) : m_json(std::move(other.m_json))
+{
+	other.m_json = nlohmann::json::object({{"elements", {}}});
+}
+
+BlobList& BlobList::operator=(const BlobList& other)
+{
+	BlobList tmp{std::move(other)};
+	swap(tmp.m_json, m_json);
+	return *this;
+}
+
+
 void BlobList::add(std::string_view owner, std::string_view coll, const ObjectID& blob, const CollEntry& entry)
 {
+	assert(m_json.count("elements") > 0);
+
 	nlohmann::json entry_jdoc(entry);
 	entry_jdoc.emplace("owner", owner);
 	entry_jdoc.emplace("collection", coll);
-	m_json["elements"].emplace(to_hex(blob), std::move(entry_jdoc));
+	m_json.at("elements").emplace(to_hex(blob), std::move(entry_jdoc));
 }
 
 void BlobList::add(std::string_view owner, std::string_view coll, const ObjectID& blob, const Permission& perm, nlohmann::json&& entry)
 {
+	assert(m_json.count("elements") > 0);
+
 	auto entry_jdoc(std::move(entry));
 	entry_jdoc.emplace("perm", perm.description());
 	entry_jdoc.emplace("owner", owner);
 	entry_jdoc.emplace("collection", coll);
-	m_json["elements"].emplace(to_hex(blob), std::move(entry_jdoc));
+	m_json.at("elements").emplace(to_hex(blob), std::move(entry_jdoc));
 }
 
 void BlobList::add(const BlobList::Entry& entry)
@@ -43,8 +60,10 @@ void BlobList::add(const BlobList::Entry& entry)
 
 std::vector<BlobList::Entry> BlobList::entries() const
 {
+	assert(m_json.count("elements") > 0);
+
 	std::vector<Entry> result;
-	for (auto&& kv : elements().items())
+	for (auto&& kv : m_json.at("elements").items())
 	{
 		auto&& key   = kv.key();
 		auto&& value = kv.value();
@@ -62,26 +81,33 @@ std::vector<BlobList::Entry> BlobList::entries() const
 
 std::size_t BlobList::size() const
 {
-	return elements().size();
+	return m_json.at("elements").size();
 }
 
 void to_json(nlohmann::json& dest, BlobList&& src)
 {
+	assert(src.m_json.count("elements") > 0);
+
 	dest = std::move(src.m_json);
+	src.m_json = nlohmann::json::object({{"elements", {}}});
+
 	if (!dest.is_object())
 		dest = nlohmann::json::object();
+
+	assert(src.m_json.count("elements") > 0);
 }
 
 void from_json(const nlohmann::json& src, BlobList& dest)
 {
-	dest.m_json = src;
-}
+	assert(dest.m_json.count("elements") > 0);
 
-const nlohmann::json& BlobList::elements() const
-{
-	static const auto empty = nlohmann::json::object();
-	auto it = m_json.find("elements");
-	return it == m_json.end() ? empty : *it;
+	dest.m_json = src;
+	if (!dest.m_json.is_object())
+		dest.m_json = nlohmann::json::object();
+	if (dest.m_json.find("elements") == dest.m_json.end())
+		dest.m_json.emplace("elements", nlohmann::json::object());
+
+	assert(dest.m_json.count("elements") > 0);
 }
 
 } // end of namespace hrb
