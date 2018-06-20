@@ -11,8 +11,10 @@
 //
 
 #include "UserID.hh"
+#include "Escape.hh"
 
 #include <cassert>
+#include <iostream>
 
 namespace hrb {
 
@@ -21,6 +23,12 @@ UserID::UserID(CookieID cookie, std::string_view user, bool guest) :
 {
 	if (m_user.empty())
 		m_cookie = CookieID{};
+}
+
+UserID::UserID(std::string_view cookie_id, std::string_view user) :
+	m_cookie{hex_to_array<CookieID{}.size()>(cookie_id).value_or(CookieID{})},
+	m_user{user}
+{
 }
 
 bool UserID::valid() const

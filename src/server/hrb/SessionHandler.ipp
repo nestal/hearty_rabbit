@@ -362,7 +362,7 @@ void SessionHandler::get_blob(const BlobRequest& req, Send&& send)
 		return send(std::move(res));
 	}
 
-	// Check if the user owns the blob
+	// Check if the user can access the blob
 	// Note: do not move-construct "req" to the lambda because the arguments of find() uses it.
 	// Otherwise, "req" will become dangled.
 	Ownership{req.owner()}.find(
@@ -386,8 +386,15 @@ void SessionHandler::get_blob(const BlobRequest& req, Send&& send)
 			if (!entry.permission().allow(m_auth.id(), req.owner()))
 				return send(http::response<http::empty_body>{http::status::forbidden, req.version()});
 
-			auto [rendition] = urlform.find(req.option(), "rendition");
-			return send(m_blob_db.response(*req.blob(), req.version(), req.etag(), rendition));
+			if (auto [json] = urlform.find_optional(req.option(), "json"); json)
+			{
+				return send(m_blob_db.meta(*req.blob(), req.version()));
+			}
+			else
+			{
+				auto [rendition] = urlform.find(req.option(), "rendition");
+				return send(m_blob_db.response(*req.blob(), req.version(), req.etag(), rendition));
+			}
 		}
 	);
 }
