@@ -14,6 +14,8 @@
 
 #include <boost/utility/string_view.hpp>
 
+#include <optional>
+
 #include <array>
 #include <iosfwd>
 #include <string_view>
