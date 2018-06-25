@@ -57,10 +57,19 @@ TEST_CASE("simple client login", "[normal]")
 				REQUIRE_FALSE(err);
 				REQUIRE_FALSE(content.empty());
 			});
+
+			subject.get_blob_meta("sumsum", "", *intent.blob(), [&tested](auto meta, auto err)
+			{
+				tested++;
+				INFO("blob meta is " << meta);
+
+				REQUIRE_FALSE(err);
+				REQUIRE(meta["mime"] == "text/x-c");
+			});
 		});
 
 		REQUIRE(ioc.run_for(10s) > 0);
-		REQUIRE(tested == 3);
+		REQUIRE(tested == 4);
 		ioc.restart();
 
 		subject.scan_collections([&tested](auto coll_list, auto err)
@@ -74,7 +83,7 @@ TEST_CASE("simple client login", "[normal]")
 		});
 
 		REQUIRE(ioc.run_for(10s) > 0);
-		REQUIRE(tested == 4);
+		REQUIRE(tested == 5);
 		ioc.restart();
 
 		// list default collection
@@ -87,7 +96,7 @@ TEST_CASE("simple client login", "[normal]")
 		});
 
 		REQUIRE(ioc.run_for(10s) > 0);
-		REQUIRE(tested == 5);
+		REQUIRE(tested == 6);
 		ioc.restart();
 	}
 	SECTION("login incorrect")
