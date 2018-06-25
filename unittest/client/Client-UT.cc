@@ -13,6 +13,7 @@
 #include <catch.hpp>
 
 #include "ServerInstance.hh"
+#include "TestImages.hh"
 
 #include "client/GenericHTTPRequest.hh"
 #include "client/HRBClient.hh"

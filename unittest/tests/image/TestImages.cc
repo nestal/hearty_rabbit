@@ -12,8 +12,17 @@
 
 #include "TestImages.hh"
 
+#include <opencv2/imgcodecs.hpp>
+
 namespace hrb {
 
 const fs::path test_images{fs::path{__FILE__}.parent_path()};
 
+cv::Mat random_lena()
+{
+	auto lena = cv::imread((test_images/"lena.png").string(), cv::IMREAD_COLOR);
+	randn(lena, cv::Mat{50, 50, 50}, cv::Mat{50, 50, 50});
+	return lena;
 }
+
+} // end of namespace

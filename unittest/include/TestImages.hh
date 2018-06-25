@@ -13,7 +13,13 @@
 #pragma once
 
 #include "common/FS.hh"
+#include <opencv2/core/mat.hpp>
 
 namespace hrb {
+
+	/// Location of the test images in the source code directory.
+	/// It is defined by a .cc file in the same directory as the test images.
 	extern const fs::path test_images;
+
+	cv::Mat random_lena();
 }
