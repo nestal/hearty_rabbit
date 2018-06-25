@@ -43,9 +43,41 @@ TEST_CASE("simple client login", "[normal]")
 		ioc.restart();
 
 		tested = false;
-		subject.scan_collections([&tested](auto json, auto err)
+
+		subject.upload("", __FILE__, [&tested](auto intent, auto err)
+		{
+			tested = true;
+			REQUIRE_FALSE(err);
+			REQUIRE_FALSE(intent.str().empty());
+
+
+		});
+
+		REQUIRE(ioc.run_for(10s) > 0);
+		REQUIRE(tested);
+		ioc.restart();
+
+		tested = false;
+		subject.scan_collections([&tested](auto coll_list, auto err)
 		{
 			REQUIRE_FALSE(err);
+//			auto it = coll_list.find("sumsum", "");
+//			REQUIRE(it != coll_list.end());
+//			REQUIRE(it->collection() == "");
+
+			tested = true;
+		});
+
+		REQUIRE(ioc.run_for(10s) > 0);
+		REQUIRE(tested);
+		ioc.restart();
+
+		// list default collection
+		subject.list_collection("", [&tested](auto coll, auto err)
+		{
+			REQUIRE_FALSE(err);
+			REQUIRE(coll.name() == "");
+			REQUIRE(coll.owner() == "sumsum");
 			tested = true;
 		});
 	}
@@ -56,23 +88,19 @@ TEST_CASE("simple client login", "[normal]")
 			tested = true;
 			REQUIRE(err == hrb::Error::login_incorrect);
 		});
+
+		REQUIRE(ioc.run_for(10s) > 0);
+		REQUIRE(tested);
+		ioc.restart();
+
+		tested = false;
+
+		subject.list_collection("", [&tested](auto coll, auto err)
+		{
+			REQUIRE_FALSE(err);
+			REQUIRE(coll.name() == "");
+			REQUIRE(coll.owner() == "");
+			tested = true;
+		});
 	}
-
-	REQUIRE(ioc.run_for(10s) > 0);
-	REQUIRE(tested);
-	ioc.restart();
-
-	tested = false;
-	subject.list_collection("", [&tested](auto refs, auto err)
-	{
-		REQUIRE_FALSE(err);
-		tested = true;
-
-		for (auto&& ref : refs)
-			std::cout << ref.second.filename << std::endl;
-	});
-
-	REQUIRE(ioc.run_for(10s) > 0);
-	REQUIRE(tested);
-	ioc.restart();
 }

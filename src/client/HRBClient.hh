@@ -13,11 +13,22 @@
 #pragma once
 
 #include "common/Cookie.hh"
+#include "common/UserID.hh"
+#include "common/FS.hh"
 
+#include <boost/beast/http/verb.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ssl.hpp>
 
+#include <memory>
+
 namespace hrb {
+
+class URLIntent;
+struct ObjectID;
+
+template <typename RequestBody, typename ResponseBody>
+class GenericHTTPRequest;
 
 class HRBClient
 {
@@ -33,6 +44,16 @@ public:
 	template <typename Complete>
 	void scan_collections(Complete&& comp);
 
+	template <typename Complete>
+	void upload(std::string_view coll, const fs::path& file, Complete&& comp);
+
+	template <typename Complete>
+	void get_blob(std::string_view owner, std::string_view coll, const ObjectID& blob);
+
+private:
+	template <typename RequestBody, typename ResponseBody>
+	auto request(const URLIntent& intent, boost::beast::http::verb method);
+
 private:
 	// connection to the server
 	boost::asio::io_context&    m_ioc;
@@ -42,9 +63,8 @@ private:
 	std::string m_host;
 	std::string m_port;
 
-	// session cookie
-	Cookie m_cookie;
-	std::string m_user;
+	// authenticated user
+	UserID  m_user;
 };
 
 }

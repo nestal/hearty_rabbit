@@ -17,7 +17,7 @@
 
 #include <boost/range/iterator_range.hpp>
 
-#include <json.hpp>
+#include <nlohmann/json.hpp>
 
 namespace hrb {
 

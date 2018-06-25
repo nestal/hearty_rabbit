@@ -24,6 +24,8 @@ enum class Error
 	redis_field_not_found,
 	redis_transaction_aborted,
 	login_incorrect,
+
+	unknown_error
 };
 
 const std::error_category& hrb_error_category();

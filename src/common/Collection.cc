@@ -35,11 +35,11 @@ void from_json(const nlohmann::json& src, Collection& dest)
 {
 	Collection result;
 
-	result.m_name   = src["collection"];
-	result.m_owner  = src["owner"];
-	result.m_meta   = src["meta"];
+	result.m_name   = src.at("collection");
+	result.m_owner  = src.at("owner");
+	result.m_meta   = src.at("meta");
 
-	for (auto&& item : src["elements"].items())
+	for (auto&& item : src.at("elements").items())
 	{
 		if (auto blob = ObjectID::from_hex(item.key()); blob.has_value())
 			result.m_blobs.emplace(*blob, item.value().template get<CollEntry>());
@@ -52,9 +52,9 @@ void from_json(const nlohmann::json& src, Collection& dest)
 void to_json(nlohmann::json& dest, const Collection& src)
 {
 	auto result = nlohmann::json::object();
-	result["collection"] = src.m_name;
-	result["owner"]      = src.m_owner;
-	result["meta"]       = src.m_meta;
+	result.emplace("collection",  src.m_name);
+	result.emplace("owner",       src.m_owner);
+	result.emplace("meta",        src.m_meta);
 
 	auto blobs = nlohmann::json::object();
 	for (auto&& [id, entry] : src.m_blobs)

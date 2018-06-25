@@ -14,12 +14,16 @@
 
 #include <boost/utility/string_view.hpp>
 
+#include <optional>
+
 #include <array>
 #include <iosfwd>
 #include <string_view>
 #include <vector>
 
 namespace hrb {
+
+struct ObjectID;
 
 // Deduce the intention of the user from the URL
 class URLIntent
@@ -62,7 +66,9 @@ public:
 	URLIntent& operator=(const URLIntent&) = default;
 
 	explicit URLIntent(boost::string_view target);
+	explicit URLIntent(Action act);
 	URLIntent(Action act, std::string_view user, std::string_view coll, std::string_view name, std::string_view option = "");
+	URLIntent(Action act, std::string_view user, std::string_view coll, const ObjectID& blob, std::string_view option = "");
 	URLIntent(QueryTarget target, std::string_view option);
 
 	Action action() const {return m_action;}
@@ -74,6 +80,8 @@ public:
 
 	void set_option(std::string_view option) {m_option = option;}
 	void add_option(std::string_view option);
+
+	std::optional<ObjectID> blob() const;
 
 	std::string path() const;
 

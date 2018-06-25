@@ -226,9 +226,11 @@ TEST_CASE("upload URL")
 
 	URLIntent trim_action_fn{URLIntent::Action::upload, "user", "", "read.me"};
 	REQUIRE(trim_action_fn.str() == "/upload/user/read.me");
+	REQUIRE(trim_action_fn.valid());
 
 	URLIntent trim_user{URLIntent::Action::view, "/user", "", ""};
 	REQUIRE(trim_user.str() == "/view/user/");
+	REQUIRE(trim_user.valid());
 
 	URLIntent upload_default{"/upload/nestal/DSC_1460.JPG"};
 	REQUIRE(upload_default.action() == URLIntent::Action::upload);

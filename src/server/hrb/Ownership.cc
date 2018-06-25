@@ -17,7 +17,7 @@
 #include "util/Log.hh"
 #include "common/Escape.hh"
 
-#include <json.hpp>
+#include <nlohmann/json.hpp>
 #include <sstream>
 
 namespace hrb {

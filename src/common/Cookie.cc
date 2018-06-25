@@ -57,15 +57,25 @@ std::string_view Cookie::field(std::string_view id) const
 void Cookie::add(std::string_view id, std::string_view value)
 {
 	if (!m_cookie.empty())
-		m_cookie += ";";
+		m_cookie += "; ";
+
 	m_cookie += id;
-	m_cookie += "=";
-	m_cookie += value;
+
+	if (!value.empty())
+	{
+		m_cookie += "=";
+		m_cookie += value;
+	}
 }
 
 bool Cookie::has(std::string_view id) const
 {
 	return std::get<0>(fields.find_optional(m_cookie, id)).has_value();
+}
+
+std::ostream& operator<<(std::ostream& os, const Cookie& cookie)
+{
+	return os << cookie.str();
 }
 
 } // end of namespace hrb

@@ -23,10 +23,10 @@ void from_json(const nlohmann::json& src, CollectionList& dest)
 {
 	CollectionList result;
 
-	for (auto item : src["colls"])
+	for (auto item : src.at("colls"))
 	{
-		std::string owner = item["owner"];
-		std::string coll  = item["coll"];
+		std::string owner = item.at("owner");
+		std::string coll  = item.at("coll");
 		item.erase("owner");
 		item.erase("coll");
 

@@ -23,7 +23,7 @@
 #include "util/MMap.hh"
 
 // JSON for saving meta data
-#include <json.hpp>
+#include <nlohmann/json.hpp>
 
 // OpenCV for calculating phash
 #include <opencv2/imgcodecs.hpp>
@@ -189,20 +189,7 @@ void BlobFile::update_meta() const
 		}
 
 		if (meta_file && meta.is_object())
-		{
-			m_meta.emplace();
-
-			using namespace std::chrono;
-			m_meta->mime = meta["mime"];
-			if (meta.find("original_datetime") != meta.end())
-				m_meta->original = meta["original_datetime"].get<Timestamp>();
-			else
-				m_meta->original = std::nullopt;
-			if (meta.find("phash") != meta.end())
-				m_meta->phash = PHash{meta["phash"].get<std::uint64_t>()};
-			else
-				m_meta->phash = std::nullopt;
-		}
+			m_meta.emplace(meta.get<Meta>());
 
 		// some meta field is still missing, we need to deduce the meta
 		deduce_meta({});
@@ -220,17 +207,8 @@ MMap BlobFile::deduce_meta(MMap&& master) const
 	master = deduce_uploaded(std::move(master));
 
 	// save the meta data to file
-	using namespace std::chrono;
-	nlohmann::json meta{
-		{"mime", m_meta->mime}
-	};
-	if (m_meta->original)
-		meta.emplace("original_datetime", *m_meta->original);
-	if (m_meta->phash)
-		meta.emplace("phash", m_meta->phash->value());
-
 	std::ofstream meta_file{(m_dir/"meta.json").string()};
-	meta_file << meta;
+	meta_file << nlohmann::json(*m_meta);
 
 	return std::move(master);
 }
@@ -268,7 +246,9 @@ MMap BlobFile::deduce_original(MMap&& master) const
 		{
 			auto field = exif.get(master.buffer(), EXIF2::Tag::date_time);
 			if (field.has_value())
-				m_meta->original = std::chrono::time_point_cast<Timestamp::duration>(EXIF2::parse_datetime(exif.get_value(master.buffer(), *field)));
+				m_meta->original = std::chrono::time_point_cast<Timestamp::duration>(
+					EXIF2::parse_datetime(exif.get_value(master.buffer(), *field))
+				);
 		}
 	}
 
@@ -305,6 +285,66 @@ MMap BlobFile::deduce_uploaded(MMap&& master) const
 	if (m_meta->uploaded == Timestamp{})
 		m_meta->uploaded = std::chrono::time_point_cast<Timestamp::duration>(Timestamp::clock::now());
 	return std::move(master);
+}
+
+nlohmann::json BlobFile::meta_json() const
+{
+	update_meta();
+	return nlohmann::json(*m_meta);
+}
+
+void to_json(nlohmann::json& dest, const BlobFile::Meta& src)
+{
+	// save the meta data to file
+	using namespace std::chrono;
+	nlohmann::json meta{
+		{"mime", src.mime}
+	};
+
+	// just to be sure
+	assert(meta.is_object());
+
+	if (src.original)
+		meta.emplace("original_datetime", *src.original);
+	if (src.phash)
+		meta.emplace("phash", src.phash->value());
+
+	dest = std::move(meta);
+}
+
+void from_json(const nlohmann::json& src, BlobFile::Meta& dest)
+{
+	if (src.is_object())
+	{
+		dest.mime = src["mime"];
+
+		if (src.count("original_datetime") > 0)
+			dest.original = src["original_datetime"].get<Timestamp>();
+		else
+			dest.original = std::nullopt;
+
+		if (src.count("phash") > 0)
+			dest.phash = PHash{src["phash"].get<std::uint64_t>()};
+		else
+			dest.phash = std::nullopt;
+	}
+}
+
+MMap BlobFile::meta() const
+{
+	std::error_code ec;
+	auto mmap = MMap::open(m_dir/"meta.json", ec);
+	if (ec)
+	{
+		deduce_meta({});
+		mmap = MMap::open(m_dir/"meta.json", ec);
+	}
+
+	// log error because we are going to ignore it
+	if (ec)
+		Log(LOG_WARNING, "cannot open meta.json for %3%: %1% (%2%)", ec, ec.message(), to_hex(m_id));
+
+	return std::move(mmap);
 }
 
 } // end of namespace hrb

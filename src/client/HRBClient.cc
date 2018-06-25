@@ -12,6 +12,9 @@
 
 #include "HRBClient.hh"
 
+#include "GenericHTTPRequest.hh"
+#include "common/URLIntent.hh"
+
 namespace hrb {
 
 HRBClient::HRBClient(

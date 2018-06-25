@@ -12,21 +12,26 @@
 
 #pragma once
 
+#include <chrono>
 #include <array>
+#include <optional>
 
 namespace hrb {
+
+class Cookie;
 
 class UserID
 {
 public:
-	using CookieID = std::array<unsigned char, 16>;
+	using SessionID = std::array<unsigned char, 16>;
 
 public:
 	UserID() = default;
-	UserID(CookieID cookie, std::string_view user, bool guest=false);
+	UserID(SessionID session, std::string_view user, bool guest=false);
+	UserID(const Cookie& cookie, std::string_view user);
 
-	const CookieID& cookie() const {return m_cookie;}
-	const std::string& user() const {return m_user;}
+	const SessionID& session() const {return m_session;}
+	const std::string& username() const {return m_user;}
 	bool is_guest() const {return m_guest;}
 
 	bool valid() const;
@@ -34,10 +39,15 @@ public:
 	bool operator==(const UserID& rhs) const;
 	bool operator!=(const UserID& rhs) const;
 
+	Cookie cookie() const;
+	Cookie set_cookie(std::chrono::seconds session_length = std::chrono::seconds{3600}) const;
+
+	static std::optional<SessionID> parse_cookie(const Cookie& cookie);
+
 private:
-	CookieID      m_cookie{};
-	std::string m_user;
-	bool        m_guest{false};
+	SessionID       m_session{};
+	std::string     m_user;
+	bool            m_guest{false};
 };
 
 } // end of namespace hrb
