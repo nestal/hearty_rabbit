@@ -139,10 +139,11 @@ target_include_directories(
 # Server will fail to built if any of these test cases failed.
 ###################################################################################################
 
-file(GLOB_RECURSE SRV_UT_SRC unittest/tests/*.cc unittest/tests/*/*.hh)
+file(GLOB_RECURSE SRV_UT_SRC unittest/include/*.hh unittest/tests/*.cc unittest/tests/*/*.hh)
 add_executable(unittest ${SRV_UT_SRC})
 target_include_directories(
 	unittest PRIVATE
+	unittest/include
 	unittest/Catch2/single_include
 	${PROJECT_SOURCE_DIR}/src/server
 	${EXIV2_INCLUDE_DIRS}
@@ -170,10 +171,11 @@ add_custom_command(
 # These test cases requires the server to be running.
 ###################################################################################################
 
-file(GLOB_RECURSE CLIENT_UT_SRC unittest/client/*.cc unittest/client/*/*.hh)
+file(GLOB_RECURSE CLIENT_UT_SRC unittest/include/*.hh unittest/client/*.cc unittest/client/*/*.hh)
 add_executable(clienttest ${CLIENT_UT_SRC})
 target_include_directories(
 	clienttest PRIVATE
+	unittest/include
 	unittest/Catch2/single_include
 	${PROJECT_SOURCE_DIR}/src/client
 	${PROJECT_SOURCE_DIR}/src/server
