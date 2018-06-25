@@ -44,13 +44,19 @@ TEST_CASE("simple client login", "[normal]")
 
 		tested = false;
 
-		subject.upload("", __FILE__, [&tested](auto intent, auto err)
+		// upload the source code of this unit test case
+		subject.upload("", __FILE__, [&tested, &subject](auto intent, auto err)
 		{
-			tested = true;
 			REQUIRE_FALSE(err);
 			REQUIRE_FALSE(intent.str().empty());
+			REQUIRE(intent.blob().has_value());
 
-
+			subject.get_blob("sumsum", "", *intent.blob(), [&tested](auto content, auto err)
+			{
+				tested = true;
+				REQUIRE_FALSE(err);
+				REQUIRE_FALSE(content.empty());
+			});
 		});
 
 		REQUIRE(ioc.run_for(10s) > 0);

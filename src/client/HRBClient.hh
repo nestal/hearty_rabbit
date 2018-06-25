@@ -48,7 +48,7 @@ public:
 	void upload(std::string_view coll, const fs::path& file, Complete&& comp);
 
 	template <typename Complete>
-	void get_blob(std::string_view owner, std::string_view coll, const ObjectID& blob);
+	void get_blob(std::string_view owner, std::string_view coll, const ObjectID& blob, Complete&& comp);
 
 private:
 	template <typename RequestBody, typename ResponseBody>

@@ -110,9 +110,17 @@ auto HRBClient::request(const URLIntent& intent, boost::beast::http::verb method
 }
 
 template <typename Complete>
-void HRBClient::get_blob(std::string_view owner, std::string_view coll, const ObjectID& blob)
+void HRBClient::get_blob(std::string_view owner, std::string_view coll, const ObjectID& blob, Complete&& comp)
 {
-
+	auto req = request<http::empty_body, http::string_body>({
+		URLIntent::Action::api, owner, coll, blob
+	}, http::verb::get);
+	req->on_load([this, comp=std::forward<Complete>(comp)](auto ec, auto& req)
+	{
+		comp(req.response().body(), ec);
+		req.shutdown();
+	});
+	req->run();
 }
 
 } // end of namespace
