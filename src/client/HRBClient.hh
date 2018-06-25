@@ -50,6 +50,9 @@ public:
 	template <typename Complete>
 	void get_blob(std::string_view owner, std::string_view coll, const ObjectID& blob, Complete&& comp);
 
+	template <typename Complete>
+	void get_blob_meta(std::string_view owner, std::string_view coll, const ObjectID& blob, Complete&& comp);
+
 private:
 	template <typename RequestBody, typename ResponseBody>
 	auto request(const URLIntent& intent, boost::beast::http::verb method);

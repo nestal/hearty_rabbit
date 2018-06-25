@@ -27,55 +27,54 @@ TEST_CASE("simple client login", "[normal]")
 	boost::asio::io_context ioc;
 	ssl::context ctx{ssl::context::sslv23_client};
 
-	bool tested = false;
+	int tested = 0;
 	HRBClient subject{ioc, ctx, "localhost", ServerInstance::listen_https_port()};
 
 	SECTION("login correct")
 	{
 		subject.login("sumsum", "bearbear", [&tested](auto err)
 		{
-			tested = true;
+			++tested;
 			REQUIRE_FALSE(err);
 		});
 
 		REQUIRE(ioc.run_for(10s) > 0);
-		REQUIRE(tested);
+		REQUIRE(tested == 1);
 		ioc.restart();
-
-		tested = false;
 
 		// upload the source code of this unit test case
 		subject.upload("", __FILE__, [&tested, &subject](auto intent, auto err)
 		{
+			tested++;
+
 			REQUIRE_FALSE(err);
 			REQUIRE_FALSE(intent.str().empty());
 			REQUIRE(intent.blob().has_value());
 
 			subject.get_blob("sumsum", "", *intent.blob(), [&tested](auto content, auto err)
 			{
-				tested = true;
+				tested++;
 				REQUIRE_FALSE(err);
 				REQUIRE_FALSE(content.empty());
 			});
 		});
 
 		REQUIRE(ioc.run_for(10s) > 0);
-		REQUIRE(tested);
+		REQUIRE(tested == 3);
 		ioc.restart();
 
-		tested = false;
 		subject.scan_collections([&tested](auto coll_list, auto err)
 		{
 			REQUIRE_FALSE(err);
-//			auto it = coll_list.find("sumsum", "");
-//			REQUIRE(it != coll_list.end());
-//			REQUIRE(it->collection() == "");
+			auto it = coll_list.find("sumsum", "");
+			REQUIRE(it != coll_list.end());
+			REQUIRE(it->collection() == "");
 
-			tested = true;
+			++tested;
 		});
 
 		REQUIRE(ioc.run_for(10s) > 0);
-		REQUIRE(tested);
+		REQUIRE(tested == 4);
 		ioc.restart();
 
 		// list default collection
@@ -84,29 +83,35 @@ TEST_CASE("simple client login", "[normal]")
 			REQUIRE_FALSE(err);
 			REQUIRE(coll.name() == "");
 			REQUIRE(coll.owner() == "sumsum");
-			tested = true;
+			++tested;
 		});
+
+		REQUIRE(ioc.run_for(10s) > 0);
+		REQUIRE(tested == 5);
+		ioc.restart();
 	}
 	SECTION("login incorrect")
 	{
 		subject.login("yungyung", "bunny", [&tested](auto err)
 		{
-			tested = true;
+			++tested;
 			REQUIRE(err == hrb::Error::login_incorrect);
 		});
 
 		REQUIRE(ioc.run_for(10s) > 0);
-		REQUIRE(tested);
+		REQUIRE(tested == 1);
 		ioc.restart();
-
-		tested = false;
 
 		subject.list_collection("", [&tested](auto coll, auto err)
 		{
 			REQUIRE_FALSE(err);
 			REQUIRE(coll.name() == "");
 			REQUIRE(coll.owner() == "");
-			tested = true;
+			++tested;
 		});
+
+		REQUIRE(ioc.run_for(10s) > 0);
+		REQUIRE(tested == 2);
+		ioc.restart();
 	}
 }

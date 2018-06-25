@@ -123,4 +123,19 @@ void HRBClient::get_blob(std::string_view owner, std::string_view coll, const Ob
 	req->run();
 }
 
+template <typename Complete>
+void HRBClient::get_blob_meta(std::string_view owner, std::string_view coll, const ObjectID& blob, Complete&& comp)
+{
+	auto req = request<http::empty_body, http::string_body>({
+		URLIntent::Action::api, owner, coll, blob, "&json"
+	}, http::verb::get);
+	req->on_load([this, comp=std::forward<Complete>(comp)](auto ec, auto& req)
+	{
+		comp(nlohmann::json::parse(req.response().body()), ec);
+		req.shutdown();
+	});
+	req->run();
+
+}
+
 } // end of namespace
