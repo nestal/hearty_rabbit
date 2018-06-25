@@ -13,8 +13,8 @@
 #pragma once
 
 #include "HRBClient.hh"
-
 #include "GenericHTTPRequest.hh"
+
 #include "common/Cookie.hh"
 #include "common/CollEntry.hh"
 #include "common/Collection.hh"
@@ -23,6 +23,8 @@
 #include "common/Escape.hh"
 #include "common/ObjectID.hh"
 #include "common/URLIntent.hh"
+
+#include <boost/beast/http/file_body.hpp>
 
 #include <nlohmann/json.hpp>
 
@@ -59,10 +61,7 @@ void HRBClient::login(std::string_view user, std::string_view password, Complete
 template <typename Complete>
 void HRBClient::list_collection(std::string_view coll, Complete&& comp)
 {
-	auto req = std::make_shared<GenericHTTPRequest<http::empty_body, http::string_body>>(m_ioc, m_ssl);
-	req->init(m_host, m_port, URLIntent{URLIntent::Action::api, m_user.username(), coll, ""}.str(), http::verb::get);
-	req->request().set(http::field::cookie, m_user.cookie().str());
-
+	auto req = request<http::empty_body, http::string_body>({URLIntent::Action::api, m_user.username(), coll, ""}, http::verb::get);
 	req->on_load([this, comp=std::forward<Complete>(comp)](auto ec, auto& req)
 	{
 		auto json = nlohmann::json::parse(req.response().body());
@@ -75,16 +74,45 @@ void HRBClient::list_collection(std::string_view coll, Complete&& comp)
 template <typename Complete>
 void HRBClient::scan_collections(Complete&& comp)
 {
-	auto req = std::make_shared<GenericHTTPRequest<http::empty_body, http::string_body>>(m_ioc, m_ssl);
-	req->init(m_host, m_port, URLIntent{URLIntent::QueryTarget::collection, "json&user=" + m_user.username()}.str(), http::verb::get);
-	req->request().set(http::field::cookie, m_user.cookie().str());
-
+	auto req = request<http::empty_body, http::string_body>({URLIntent::QueryTarget::collection, "json&user=" + m_user.username()}, http::verb::get);
 	req->on_load([this, comp=std::forward<Complete>(comp)](auto ec, auto& req)
 	{
 		comp(nlohmann::json::parse(req.response().body()).template get<CollectionList>(), ec);
 		req.shutdown();
 	});
 	req->run();
+}
+
+template <typename Complete>
+void HRBClient::upload(std::string_view coll, const fs::path& file, Complete&& comp)
+{
+	auto req = request<http::file_body, http::string_body>({
+		URLIntent::Action::upload, m_user.username(), coll, file.filename().string()
+	}, http::verb::put);
+
+	boost::system::error_code err;
+	req->request().body().open(file.string().c_str(), boost::beast::file_mode::read, err);
+	req->on_load([this, comp=std::forward<Complete>(comp)](auto ec, auto& req)
+	{
+		comp(URLIntent{req.response().at(http::field::location)}, ec);
+		req.shutdown();
+	});
+	req->run();
+}
+
+template <typename RequestBody, typename ResponseBody>
+auto HRBClient::request(const URLIntent& intent, boost::beast::http::verb method)
+{
+	auto req = std::make_shared<GenericHTTPRequest<RequestBody, ResponseBody>>(m_ioc, m_ssl);
+	req->init(m_host, m_port, intent.str(), method);
+	req->request().set(http::field::cookie, m_user.cookie().str());
+	return req;
+}
+
+template <typename Complete>
+void HRBClient::get_blob(std::string_view owner, std::string_view coll, const ObjectID& blob)
+{
+
 }
 
 } // end of namespace
