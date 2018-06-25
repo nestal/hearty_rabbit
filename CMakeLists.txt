@@ -171,7 +171,11 @@ add_custom_command(
 # These test cases requires the server to be running.
 ###################################################################################################
 
-file(GLOB_RECURSE CLIENT_UT_SRC unittest/include/*.hh unittest/client/*.cc unittest/client/*/*.hh)
+file(
+	GLOB_RECURSE CLIENT_UT_SRC
+	unittest/include/*.hh unittest/tests/image/TestImages.cc
+	unittest/client/*.cc unittest/client/*/*.hh
+)
 add_executable(clienttest ${CLIENT_UT_SRC})
 target_include_directories(
 	clienttest PRIVATE

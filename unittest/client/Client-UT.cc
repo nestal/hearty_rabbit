@@ -99,6 +99,19 @@ TEST_CASE("simple client login", "[normal]")
 		REQUIRE(ioc.run_for(10s) > 0);
 		REQUIRE(tested == 6);
 		ioc.restart();
+
+		auto lena = random_lena();
+		subject.upload("lena", "lena.jpg", lena.begin(), lena.end(), [&tested](auto intent, auto err)
+		{
+			++tested;
+			REQUIRE_FALSE(err);
+			REQUIRE_FALSE(intent.str().empty());
+			REQUIRE(intent.blob().has_value());
+		});
+
+		REQUIRE(ioc.run_for(10s) > 0);
+		REQUIRE(tested == 7);
+		ioc.restart();
 	}
 	SECTION("login incorrect")
 	{

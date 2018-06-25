@@ -47,6 +47,9 @@ public:
 	template <typename Complete>
 	void upload(std::string_view coll, const fs::path& file, Complete&& comp);
 
+	template <typename Complete, typename ByteIterator>
+	void upload(std::string_view coll, std::string_view filename, ByteIterator first_byte, ByteIterator last_byte, Complete&& comp);
+
 	template <typename Complete>
 	void get_blob(std::string_view owner, std::string_view coll, const ObjectID& blob, Complete&& comp);
 

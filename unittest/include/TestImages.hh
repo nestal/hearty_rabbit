@@ -13,7 +13,7 @@
 #pragma once
 
 #include "common/FS.hh"
-#include <opencv2/core/mat.hpp>
+#include <vector>
 
 namespace hrb {
 
@@ -21,5 +21,5 @@ namespace hrb {
 	/// It is defined by a .cc file in the same directory as the test images.
 	extern const fs::path test_images;
 
-	cv::Mat random_lena();
+	std::vector<unsigned char> random_lena();
 }
