@@ -23,7 +23,7 @@ std::vector<unsigned char> random_lena()
 	auto lena = cv::imread((test_images/"lena.png").string(), cv::IMREAD_COLOR);
 
 	cv::Mat noise{lena.size(), CV_8UC3};
-	randn(noise, 0, 5);
+	randn(noise, 0, 32);
 	lena += noise;
 
 	std::vector<unsigned char> out_buf;
