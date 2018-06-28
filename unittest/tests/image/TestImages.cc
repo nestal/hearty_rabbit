@@ -21,7 +21,10 @@ const fs::path test_images{fs::path{__FILE__}.parent_path()};
 std::vector<unsigned char> random_lena()
 {
 	auto lena = cv::imread((test_images/"lena.png").string(), cv::IMREAD_COLOR);
-	randn(lena, cv::Mat{50, 50, 50}, cv::Mat{50, 50, 50});
+
+	cv::Mat noise{lena.size(), CV_8UC3};
+	randn(noise, 0, 5);
+	lena += noise;
 
 	std::vector<unsigned char> out_buf;
 	cv::imencode(".jpg", lena, out_buf, {cv::IMWRITE_JPEG_QUALITY, 50});
