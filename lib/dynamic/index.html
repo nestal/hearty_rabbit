@@ -67,10 +67,7 @@
 	</div>
 </section>
 
-<section>
-	<input id="file-upload" type="file" multiple>
-</section>
-
+<!-- The light box contains an image to be presented to the user -->
 <section id="light-box" class="modal">
 	<div class="light-box-button-bar">
 		<i id="make-cover" class="tooltip light-box-button material-icons">face<span class="tooltiptext">Use it as cover image of the album</span></i>
@@ -81,7 +78,12 @@
 		<i id="delete-image" class="tooltip light-box-button material-icons">delete<span class="tooltiptext">Delete picture</span></i>
 		<i class="close-overlays tooltip light-box-button material-icons">close<span class="tooltiptext">Close</span></i>
 	</div>
+
 	<img id="light-box-image" class="modal-content hrb-blob-image" src="/lib/loading.svg">
+	<table class="image-meta">
+		<tr><td>Filename:</td><td id="meta-filename">image.jpeg</td></tr>
+		<tr><td>Date/Time:</td><td id="meta-datetime">not too long ago</td></tr>
+	</table>
 
 	<!-- Next/previous controls -->
 	<a class="prev" onclick="next_image(-1)">
@@ -147,6 +149,10 @@
 			via this link:</p>
 		<p><textarea id="share-link-textbox" readonly></textarea><i id="copy-shared-link" class="light-box-button material-icons">content_copy</i></p>
 	</div>
+</section>
+
+<section>
+	<input id="file-upload" type="file" multiple>
 </section>
 
 <section id="toast">Uploading stuff</section>

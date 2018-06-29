@@ -13,7 +13,7 @@ body {
 	font-size: 130%;
 }
 
-/* hide the legend */
+/* Hide the legend in dialogs. They are for accessibility only. */
 .dialog-container legend {
 	width: 1px;
 	height: 1px;
@@ -73,7 +73,6 @@ body {
 }
 
 .hrb-entry .text-overlay-box {
-
 	position: absolute;
 	bottom: 0;
 	left: 0;
@@ -81,6 +80,25 @@ body {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	max-width: 100%;
+}
+
+#light-box .image-meta {
+	position: absolute;
+	bottom: 0;
+	left: 0;
+	font-size: 1em;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	max-width: 100%;
+
+	color: rgba(0%, 20%, 20%, 1.0);
+	padding: 5px;
+	background-color: rgba(95%, 95%, 100%, 0.8);
+	z-index: 2;
+}
+
+#light-box .image-meta td {
+	padding: 5px;
 }
 
 .hrb-entry .text-overlay-box,
