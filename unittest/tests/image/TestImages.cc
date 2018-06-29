@@ -14,16 +14,24 @@
 
 #include <opencv2/imgcodecs.hpp>
 
+#include <random>
+
+// http://engineering.curalate.com/2017/04/13/content-based-intelligent-cropping.html
+
 namespace hrb {
 
 const fs::path test_images{fs::path{__FILE__}.parent_path()};
 
 std::vector<unsigned char> random_lena()
 {
+	thread_local std::mt19937_64 mt{std::random_device{}()};
+
 	auto lena = cv::imread((test_images/"lena.png").string(), cv::IMREAD_COLOR);
 
+	std::uniform_int_distribution<> dis{16, 64};
+
 	cv::Mat noise{lena.size(), CV_8UC3};
-	randn(noise, 0, 32);
+	randn(noise, 0, dis(mt));
 	lena += noise;
 
 	std::vector<unsigned char> out_buf;
