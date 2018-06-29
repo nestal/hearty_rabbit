@@ -46,7 +46,7 @@ std::string_view Magic::mime(const boost::filesystem::path& path) const
 
 const Magic& Magic::instance()
 {
-	static thread_local Magic inst;
+	thread_local Magic inst;
 	return inst;
 }
 
