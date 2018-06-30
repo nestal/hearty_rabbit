@@ -74,8 +74,9 @@ RUN \
 	&& make -j8 install \
 	&& cd .. && rm -rf build
 
+# AWS libraries: for future requirements to support S3 backup
 RUN git clone --depth 1 -b 1.4.60 https://github.com/aws/aws-sdk-cpp.git
-RUN cd aws-sdk-cpp; mkdir build; cd build; cmake -DBUILD_SHARED_LIBS=OFF ..; make -j8
+RUN cd aws-sdk-cpp && mkdir build && cd build && cmake -DBUILD_SHARED_LIBS=OFF .. && make -j8
 
-ADD https://github.com/nlohmann/json/releases/download/v3.1.2/json.hpp /opt/include/
+# nlohmann JSON library
 ADD https://github.com/nlohmann/json/releases/download/v3.1.2/json.hpp /opt/include/nlohmann/

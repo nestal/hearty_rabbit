@@ -98,9 +98,9 @@ from official CentOS repository to build HeartyRabbit:
 - libexif
 
 In addition, HeartyRabbit also requires [Boost libraries](http://boost.org),
-[CMake](https://cmake.org), [OpenCV](https://opencv.org/)
-and [libb2](https://github.com/BLAKE2/libb2) to
-build. However, the official packages of Boost, OpenCV and CMake from CentOS 7.4 is
+[CMake](https://cmake.org), [OpenCV](https://opencv.org/),
+[nlohmann JSON](https://github.com/nlohmann/json) and [libb2](https://github.com/BLAKE2/libb2)
+to build. However, the official packages of Boost, OpenCV and CMake from CentOS 7.4 is
 too old to build HeartyRabbit, and there's no official packages for libb2.
 These three packages are built from source.
 
