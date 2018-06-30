@@ -15,7 +15,7 @@ find_package(Boost REQUIRED COMPONENTS system filesystem program_options)
 find_package(Threads REQUIRED)
 find_package(PkgConfig REQUIRED)
 find_package(OpenSSL REQUIRED)
-find_package(OpenCV REQUIRED core imgproc imgcodecs)
+find_package(OpenCV REQUIRED core imgproc imgcodecs objdetect)
 find_package(Doxygen)
 
 # Find libb2
