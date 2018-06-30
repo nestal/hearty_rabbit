@@ -94,12 +94,13 @@ from official CentOS repository to build HeartyRabbit:
 - libmagic (file-devel)
 - libicu-devel/zlib-devel/bzip2-devel/xz-devel (optional dependencies for Boost)
 - autoconf/automake/libtool (for building libb2)
-- nasm (for building turbe-jpeg)
+- OpenCV
+- libexif
 
 In addition, HeartyRabbit also requires [Boost libraries](http://boost.org),
-[CMake](https://cmake.org), [turbo-jpeg](https://libjpeg-turbo.org/Documentation/Documentation )
+[CMake](https://cmake.org), [OpenCV](https://opencv.org/)
 and [libb2](https://github.com/BLAKE2/libb2) to
-build. However, the official packages of Boost, turbe-jpeg and CMake from CentOS 7.4 is
+build. However, the official packages of Boost, OpenCV and CMake from CentOS 7.4 is
 too old to build HeartyRabbit, and there's no official packages for libb2.
 These three packages are built from source.
 

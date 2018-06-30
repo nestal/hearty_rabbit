@@ -29,7 +29,6 @@ message(STATUS "found nlohmann/json at ${NLOHMANN_INCLUDE}")
 
 pkg_check_modules(HIREDIS REQUIRED hiredis)
 pkg_check_modules(LIBUNWIND libunwind)
-pkg_check_modules(EXIV2 exiv2)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CONFIG_FILENAME "hearty_rabbit.json")
@@ -146,12 +145,10 @@ target_include_directories(
 	unittest/include
 	unittest/Catch2/single_include
 	${PROJECT_SOURCE_DIR}/src/server
-	${EXIV2_INCLUDE_DIRS}
 )
 target_link_libraries(
 	unittest
 	hrbsrv
-	${EXIV2_LIBRARIES}		# exiv2 is used to verify the EXIF decoder
 )
 
 # Automatically run unit tests after the build
