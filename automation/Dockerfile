@@ -38,8 +38,8 @@ RUN \
 	&& rm -rf /build/boost_1_67_0
 
 # build libb2
-# Don't enable native CPU optimization because the build machine may be different from
-# the current one.
+# Don't enable native CPU optimization because the machine that builds this image may be different from
+# the machine that builds and run the code.
 RUN git clone --depth 1 -b v0.98 https://github.com/BLAKE2/libb2.git
 RUN cd libb2 \
 	&& ./autogen.sh \
