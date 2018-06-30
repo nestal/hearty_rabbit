@@ -65,9 +65,11 @@ not the current directory of the HeartyRabbit process.
 
 In order maintain a stable build environment to product predictable software
 builds, HeartyRabbit uses docker containers to build. The `hearty_rabbit_dev` image 
-contain a full snapshot of the build environment. It can be found in [docker hub](https://hub.docker.com/r/nestal/hearty_rabbit_dev/).
+contain a full snapshot of the build environment. It can be found in
+[docker hub](https://hub.docker.com/r/nestal/hearty_rabbit_dev/).
 
-The docker `hearty_rabbit_dev` image can be built by the dockerfile [`automation/Dockerfile`](automation/Dockerfile).
+The docker `hearty_rabbit_dev` image can be built by the dockerfile
+[`automation/Dockerfile`](automation/Dockerfile).
 
 Run
 
@@ -94,16 +96,21 @@ from official CentOS repository to build HeartyRabbit:
 - libmagic (file-devel)
 - libicu-devel/zlib-devel/bzip2-devel/xz-devel (optional dependencies for Boost)
 - autoconf/automake/libtool (for building libb2)
-- nasm (for building turbe-jpeg)
+- libexif
 
 In addition, HeartyRabbit also requires [Boost libraries](http://boost.org),
-[CMake](https://cmake.org), [turbo-jpeg](https://libjpeg-turbo.org/Documentation/Documentation )
-and [libb2](https://github.com/BLAKE2/libb2) to
-build. However, the official packages of Boost, turbe-jpeg and CMake from CentOS 7.4 is
+[CMake](https://cmake.org), [OpenCV](https://opencv.org/),
+[nlohmann JSON](https://github.com/nlohmann/json) and [libb2](https://github.com/BLAKE2/libb2)
+to build. However, the official packages of Boost, OpenCV and CMake from CentOS 7.4 is
 too old to build HeartyRabbit, and there's no official packages for libb2.
 These three packages are built from source.
 
 # Building Hearty Rabbit
+
+In production, Hearty Rabbit is expected to be running inside a docker container. When building
+the docker image, the Hearty Rabbit source code will be compiled inside the hearty_rabbit_dev
+image. In addition, it is of course possible to build the code in the host machine. In that case
+you will need to install or build all libraries required by Hearty Rabbit.
 
 Run
 

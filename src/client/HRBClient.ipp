@@ -100,6 +100,22 @@ void HRBClient::upload(std::string_view coll, const fs::path& file, Complete&& c
 	req->run();
 }
 
+template <typename Complete, typename ByteIterator>
+void HRBClient::upload(std::string_view coll, std::string_view filename, ByteIterator first_byte, ByteIterator last_byte, Complete&& comp)
+{
+	auto req = request<http::string_body, http::string_body>({
+		URLIntent::Action::upload, m_user.username(), coll, filename
+	}, http::verb::put);
+	req->request().body().assign(first_byte, last_byte);
+	req->on_load([this, comp=std::forward<Complete>(comp)](auto ec, auto& req)
+	{
+		comp(URLIntent{req.response().at(http::field::location)}, ec);
+		req.shutdown();
+	});
+	req->run();
+}
+
+
 template <typename RequestBody, typename ResponseBody>
 auto HRBClient::request(const URLIntent& intent, boost::beast::http::verb method)
 {
@@ -110,8 +126,31 @@ auto HRBClient::request(const URLIntent& intent, boost::beast::http::verb method
 }
 
 template <typename Complete>
-void HRBClient::get_blob(std::string_view owner, std::string_view coll, const ObjectID& blob)
+void HRBClient::get_blob(std::string_view owner, std::string_view coll, const ObjectID& blob, Complete&& comp)
 {
+	auto req = request<http::empty_body, http::string_body>({
+		URLIntent::Action::api, owner, coll, blob
+	}, http::verb::get);
+	req->on_load([this, comp=std::forward<Complete>(comp)](auto ec, auto& req)
+	{
+		comp(req.response().body(), ec);
+		req.shutdown();
+	});
+	req->run();
+}
+
+template <typename Complete>
+void HRBClient::get_blob_meta(std::string_view owner, std::string_view coll, const ObjectID& blob, Complete&& comp)
+{
+	auto req = request<http::empty_body, http::string_body>({
+		URLIntent::Action::api, owner, coll, blob, "&json"
+	}, http::verb::get);
+	req->on_load([this, comp=std::forward<Complete>(comp)](auto ec, auto& req)
+	{
+		comp(nlohmann::json::parse(req.response().body()), ec);
+		req.shutdown();
+	});
+	req->run();
 
 }
 

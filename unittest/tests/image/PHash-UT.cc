@@ -12,7 +12,7 @@
 
 #include <catch.hpp>
 
-#include "common/FS.hh"
+#include "TestImages.hh"
 
 #include "image/PHash.hh"
 
@@ -25,7 +25,7 @@ using namespace hrb;
 
 TEST_CASE("resize 150% up_f_rot90 produce the same phash as original", "[normal]")
 {
-	auto mat = cv::imread((fs::path{__FILE__}.parent_path()/"up_f_rot90.jpg").string(), cv::IMREAD_COLOR);
+	auto mat = cv::imread((test_images/"up_f_rot90.jpg").string(), cv::IMREAD_COLOR);
 	REQUIRE(mat.rows == 192);
 	REQUIRE(mat.cols == 160);
 
@@ -41,7 +41,7 @@ TEST_CASE("resize 150% up_f_rot90 produce the same phash as original", "[normal]
 
 TEST_CASE("phash of resized lena should be the same as the original", "[normal]")
 {
-	auto lena = cv::imread((fs::path{__FILE__}.parent_path()/"lena.png").string(), cv::IMREAD_COLOR);
+	auto lena = cv::imread((test_images/"lena.png").string(), cv::IMREAD_COLOR);
 
 	cv::Mat large_2x;
 	resize(lena, large_2x, {}, 2, 2);

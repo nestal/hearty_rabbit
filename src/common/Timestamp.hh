@@ -25,7 +25,10 @@ using TimePointBase = std::chrono::time_point<
 >;
 
 /// \brief  The unit of timestamp stored in database.
-/// It is currently the number of miniseconds since the unix epoch.
+/// It is currently the number of mini-seconds since the unix epoch. It's chosen because the Date constructor in
+/// Javasccript expects mini-seconds since epoch.
+///
+/// All REST API in HeartyRabbit uses mini-seconds since epoch to denote time stamps, unless otherwise specified.
 struct Timestamp : TimePointBase
 {
 	using time_point::time_point;

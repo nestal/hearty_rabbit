@@ -87,7 +87,7 @@ Blake2x::result_type Blake2x::operator()()
 
 Blake2x& Blake2x::instance()
 {
-	static thread_local Blake2x inst;
+	thread_local Blake2x inst;
 	return inst;
 }
 

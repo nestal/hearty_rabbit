@@ -29,7 +29,6 @@ message(STATUS "found nlohmann/json at ${NLOHMANN_INCLUDE}")
 
 pkg_check_modules(HIREDIS REQUIRED hiredis)
 pkg_check_modules(LIBUNWIND libunwind)
-pkg_check_modules(EXIV2 exiv2)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CONFIG_FILENAME "hearty_rabbit.json")
@@ -139,18 +138,17 @@ target_include_directories(
 # Server will fail to built if any of these test cases failed.
 ###################################################################################################
 
-file(GLOB_RECURSE SRV_UT_SRC unittest/tests/*.cc unittest/tests/*/*.hh)
+file(GLOB_RECURSE SRV_UT_SRC unittest/include/*.hh unittest/tests/*.cc unittest/tests/*/*.hh)
 add_executable(unittest ${SRV_UT_SRC})
 target_include_directories(
 	unittest PRIVATE
+	unittest/include
 	unittest/Catch2/single_include
 	${PROJECT_SOURCE_DIR}/src/server
-	${EXIV2_INCLUDE_DIRS}
 )
 target_link_libraries(
 	unittest
 	hrbsrv
-	${EXIV2_LIBRARIES}		# exiv2 is used to verify the EXIF decoder
 )
 
 # Automatically run unit tests after the build
@@ -170,10 +168,15 @@ add_custom_command(
 # These test cases requires the server to be running.
 ###################################################################################################
 
-file(GLOB_RECURSE CLIENT_UT_SRC unittest/client/*.cc unittest/client/*/*.hh)
+file(
+	GLOB_RECURSE CLIENT_UT_SRC
+	unittest/include/*.hh unittest/tests/image/TestImages.cc
+	unittest/client/*.cc unittest/client/*/*.hh
+)
 add_executable(clienttest ${CLIENT_UT_SRC})
 target_include_directories(
 	clienttest PRIVATE
+	unittest/include
 	unittest/Catch2/single_include
 	${PROJECT_SOURCE_DIR}/src/client
 	${PROJECT_SOURCE_DIR}/src/server
