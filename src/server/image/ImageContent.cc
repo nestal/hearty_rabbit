@@ -38,13 +38,24 @@ cv::Mat ImageContent::square_crop() const
 {
 	auto aspect_ratio = static_cast<double>(m_image.cols) / m_image.rows;
 
-	// horizontal axis is the principal axis
-	// try different points along the axis as the center of our resultant square
-	// and see if it can contain all the faces
-	if (aspect_ratio > 1.0)
+	struct InflectionPoint
 	{
+		int pos;
+		int size;
+	};
 
+	// convert all faces into inflection points by projecting them into
+	// the principal axis
+	std::vector<InflectionPoint> infections;
+	for (auto&& face : m_faces)
+	{
+		// horizontal axis is the principal axis
+		if (aspect_ratio > 1.0)
+			infections.push_back(InflectionPoint{face.x, face.width});
+		else
+			infections.push_back(InflectionPoint{face.y, face.height});
 	}
+
 
 	return cv::Mat();
 }
