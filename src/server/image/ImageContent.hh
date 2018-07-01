@@ -32,8 +32,9 @@ public:
 	cv::Mat square_crop() const;
 
 private:
-	cv::CascadeClassifier m_face_detect;
+	cv::Mat m_image;
 
+	cv::CascadeClassifier m_face_detect;
 	std::vector<cv::Rect> m_faces;
 };
 
