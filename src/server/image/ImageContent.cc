@@ -17,9 +17,9 @@
 
 namespace hrb {
 
-ImageContent::ImageContent(cv::Mat&& image)
+ImageContent::ImageContent(const cv::Mat& image)
 {
-	if (!m_face_detect.load("/usr/share/opencv/haarcascade/haarcascade_frontalface_default.xml"))
+	if (!m_face_detect.load("/usr/share/opencv/haarcascades/haarcascade_frontalface_default.xml"))
 		throw -1;
 
 	cv::Mat frame_gray;

@@ -20,7 +20,7 @@ namespace hrb {
 class ImageContent
 {
 public:
-	explicit ImageContent(cv::Mat&& image);
+	explicit ImageContent(const cv::Mat& image);
 
 private:
 	cv::CascadeClassifier m_face_detect;

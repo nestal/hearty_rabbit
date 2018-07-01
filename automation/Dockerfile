@@ -55,7 +55,7 @@ RUN \
 		-DCMAKE_BUILD_TYPE=Release \
 		-DCMAKE_INSTALL_PREFIX=/opt \
 		-DBUILD_SHARED_LIBS=OFF \
-		-DBUILD_LIST=core,imgproc,imgcodecs \
+		-DBUILD_LIST=core,imgproc,imgcodecs,objdetect,highgui \
 		-DBUILD_opencv_legacy=OFF \
 		-DBUILD_JASPER=OFF \
 		-DBUILD_WEBP=OFF \
