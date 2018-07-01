@@ -12,6 +12,8 @@
 
 #pragma once
 
+#include <boost/range/iterator_range.hpp>
+
 #include <opencv2/core.hpp>
 #include <opencv2/objdetect.hpp>
 
@@ -20,10 +22,19 @@ namespace hrb {
 class ImageContent
 {
 public:
+	using face_iterator = std::vector<cv::Rect>::const_iterator;
+
+public:
 	explicit ImageContent(const cv::Mat& image);
+
+	boost::iterator_range<face_iterator> faces() const {return {m_faces.begin(), m_faces.end()};}
+
+	cv::Mat square_crop() const;
 
 private:
 	cv::CascadeClassifier m_face_detect;
+
+	std::vector<cv::Rect> m_faces;
 };
 
 } // end of namespace hrb

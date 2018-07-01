@@ -23,9 +23,13 @@ ImageContent::ImageContent(const cv::Mat& image)
 		throw -1;
 
 	cv::Mat frame_gray;
-	cv::cvtColor( image, frame_gray, cv::COLOR_BGR2GRAY );
+	cvtColor( image, frame_gray, cv::COLOR_BGR2GRAY );
+	equalizeHist( frame_gray, frame_gray );
 
 	std::vector<cv::Rect> faces;
+	m_face_detect.detectMultiScale( frame_gray, faces, 1.1, 2, 0|cv::CASCADE_SCALE_IMAGE, cv::Size(30, 30) );
+
+	m_faces = std::move(faces);
 }
 
 } // end of namespace hrb
