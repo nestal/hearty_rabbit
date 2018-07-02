@@ -92,6 +92,9 @@ void HRBClient::upload(std::string_view coll, const fs::path& file, Complete&& c
 
 	boost::system::error_code err;
 	req->request().body().open(file.string().c_str(), boost::beast::file_mode::read, err);
+	if (err)
+		throw std::system_error{err.value(), err.category()};
+
 	req->on_load([this, comp=std::forward<Complete>(comp)](auto ec, auto& req)
 	{
 		comp(URLIntent{req.response().at(http::field::location)}, ec);
