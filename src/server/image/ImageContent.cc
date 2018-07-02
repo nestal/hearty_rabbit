@@ -88,19 +88,31 @@ cv::Mat ImageContent::square_crop() const
 	}
 	infections.erase(infections.begin(), start);
 
-	// find the point with maximum total score
-	auto max = std::max_element(infections.begin(), infections.end(), [](auto& p1, auto& p2)
+	// find the optimal inflection point with maximum total score
+	auto optimal = std::max_element(infections.begin(), infections.end(), [](auto& p1, auto& p2)
 	{
 		return p1.total < p2.total;
 	});
 
-	assert(max != infections.end());
+	assert(optimal != infections.end());
 
-	std::cout << "found " << max->pos << " " << max->total << std::endl;
+	std::cout << "found " << optimal->pos << " " << optimal->total << std::endl;
 
+	// deduce ROI rectangle from optimal inflection point
+	cv::Rect roi;
+	roi.height = roi.width = window_length;
+	if (aspect_ratio > 1.0)
+	{
+		roi.x = optimal->pos;
+		roi.y = 0;
+	}
+	else
+	{
+		roi.y = optimal->pos;
+		roi.x = 0;
+	}
 
-
-	return cv::Mat();
+	return m_image(roi);
 }
 
 } // end of namespace hrb
