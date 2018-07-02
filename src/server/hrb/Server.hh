@@ -50,7 +50,6 @@ public:
 		std::function<void(std::error_code)> complete
 	);
 
-private:
 	void drop_privileges() const;
 
 private:

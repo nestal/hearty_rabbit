@@ -60,9 +60,6 @@ void Server::listen()
 		&m_ssl,
 		m_cfg
 	)->run();
-
-	// make sure we load the certificates and listen before dropping root privileges
-	drop_privileges();
 }
 
 void Server::drop_privileges() const
