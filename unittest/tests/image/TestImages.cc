@@ -22,7 +22,7 @@ namespace hrb {
 
 const fs::path test_images{fs::path{__FILE__}.parent_path()};
 
-std::vector<unsigned char> random_lena()
+cv::Mat random_lena()
 {
 	thread_local std::mt19937_64 mt{std::random_device{}()};
 
@@ -33,6 +33,13 @@ std::vector<unsigned char> random_lena()
 	cv::Mat noise{lena.size(), CV_8UC3};
 	randn(noise, 0, dis(mt));
 	lena += noise;
+
+	return lena;
+}
+
+std::vector<unsigned char> random_lena_bytes()
+{
+	auto lena = random_lena();
 
 	std::vector<unsigned char> out_buf;
 	cv::imencode(".jpg", lena, out_buf, {cv::IMWRITE_JPEG_QUALITY, 50});

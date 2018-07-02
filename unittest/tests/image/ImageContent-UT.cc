@@ -21,7 +21,7 @@ using namespace hrb;
 
 TEST_CASE("crop at the center if no object is detected", "[normal]")
 {
-	auto image = cv::imread((test_images/"rgb_vertical.png").string(), cv::IMREAD_COLOR);
+	auto image = cv::imread(fs::path{test_images/"rgb-vertical.jpg"}.string(), cv::IMREAD_COLOR);
 	REQUIRE(image.cols == 100);
 	REQUIRE(image.rows == 200);
 
@@ -32,4 +32,17 @@ TEST_CASE("crop at the center if no object is detected", "[normal]")
 	REQUIRE(roi.height == 100);
 	REQUIRE(roi.x == 0);
 	REQUIRE(roi.y == 50);
+}
+
+TEST_CASE("square images will not be cropped", "[normal]")
+{
+	auto lena = random_lena();
+	REQUIRE(lena.cols == lena.rows);
+
+	ImageContent subject{lena};
+
+	auto roi = subject.square_crop();
+	REQUIRE(roi.width == roi.height);
+	REQUIRE(roi.x == 0);
+	REQUIRE(roi.y == 0);
 }
