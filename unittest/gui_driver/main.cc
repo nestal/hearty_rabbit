@@ -40,6 +40,8 @@ int main(int argc, char **argv)
 	else
 		out = std::move(image);
 
+	subject.square_crop();
+
 	cv::namedWindow( "imshow", cv::WINDOW_AUTOSIZE );
 	cv::imshow("imshow", out);
 	cv::waitKey(0);

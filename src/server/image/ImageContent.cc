@@ -14,6 +14,7 @@
 
 #include <opencv2/imgproc.hpp>
 #include <opencv2/objdetect.hpp>
+#include <iostream>
 
 namespace hrb {
 
@@ -36,26 +37,58 @@ ImageContent::ImageContent(const cv::Mat& image) : m_image{image}
 
 cv::Mat ImageContent::square_crop() const
 {
-	auto aspect_ratio = static_cast<double>(m_image.cols) / m_image.rows;
-
 	struct InflectionPoint
 	{
-		int pos;
-		int size;
+		int pos;        // position of the inflection point in the principal axis
+		int score;      // represents how important is the rectangle
+		int total;      // total score if this inflection point is chosen as the start of the crop
 	};
+
+	auto aspect_ratio  = static_cast<double>(m_image.cols) / m_image.rows;
+	auto window_length = std::min(m_image.cols, m_image.rows);
+	auto axis_length   = std::max(m_image.cols, m_image.rows);
 
 	// convert all faces into inflection points by projecting them into
 	// the principal axis
 	std::vector<InflectionPoint> infections;
 	for (auto&& face : m_faces)
 	{
-		// horizontal axis is the principal axis
-		if (aspect_ratio > 1.0)
-			infections.push_back(InflectionPoint{face.x, face.width});
-		else
-			infections.push_back(InflectionPoint{face.y, face.height});
+		// enter rectangular region: score increases
+		infections.push_back(InflectionPoint{
+			(aspect_ratio > 1.0 ? face.x + face.width : face.y + face.height) - window_length,
+			face.width * face.height
+		});
+
+		infections.push_back(InflectionPoint{
+			aspect_ratio > 1.0 ? face.x : face.y,
+			-face.width * face.height
+		});
 	}
 
+	// sort the inflect points in the order of their appearance in the principal axis
+	std::sort(infections.begin(), infections.end(), [](auto& p1, auto& p2){return p1.pos < p2.pos;});
+
+	// calculate the total score of each inflection point
+	auto score = 0;
+	for (auto&& pt : infections)
+	{
+		score += pt.score;
+		pt.total = score;
+	}
+
+	// ignore the points outside the image (i.e. pos < 0)
+	auto start = std::find_if(infections.begin(), infections.end(), [](auto&& p){return p.pos >= 0;});
+	infections.erase(infections.begin(), start);
+
+	// find the point with maximum total score
+	auto max = std::max_element(infections.begin(), infections.end(), [](auto& p1, auto& p2)
+	{
+		return p1.total < p2.total;
+	});
+
+	assert(max != infections.end());
+
+	std::cout << "found " << max->pos << " " << max->total << std::endl;
 
 	return cv::Mat();
 }
