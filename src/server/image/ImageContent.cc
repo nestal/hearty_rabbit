@@ -46,13 +46,13 @@ cv::Mat ImageContent::square_crop() const
 
 	auto aspect_ratio  = static_cast<double>(m_image.cols) / m_image.rows;
 	auto window_length = std::min(m_image.cols, m_image.rows);
-	auto axis_length   = std::max(m_image.cols, m_image.rows);
 
 	// convert all faces into inflection points by projecting them into
 	// the principal axis
 	std::vector<InflectionPoint> infections;
 	for (auto&& face : m_faces)
 	{
+		std::cout << "face @ " << face.x << " " << face.width << " " << std::endl;
 		// enter rectangular region: score increases
 		infections.push_back(InflectionPoint{
 			(aspect_ratio > 1.0 ? face.x + face.width : face.y + face.height) - window_length,
@@ -76,8 +76,16 @@ cv::Mat ImageContent::square_crop() const
 		pt.total = score;
 	}
 
-	// ignore the points outside the image (i.e. pos < 0)
+	// aggregate the points outside the image (i.e. pos < 0) into one point at pos = 0
 	auto start = std::find_if(infections.begin(), infections.end(), [](auto&& p){return p.pos >= 0;});
+	std::cout << "erasing " << (start - infections.begin()) << " points" << std::endl;
+
+	if (start != infections.begin() && start != infections.end())
+	{
+		start--;
+		if (start->pos < 0)
+			start->pos = 0;
+	}
 	infections.erase(infections.begin(), start);
 
 	// find the point with maximum total score
@@ -89,6 +97,8 @@ cv::Mat ImageContent::square_crop() const
 	assert(max != infections.end());
 
 	std::cout << "found " << max->pos << " " << max->total << std::endl;
+
+
 
 	return cv::Mat();
 }
