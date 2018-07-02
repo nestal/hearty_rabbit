@@ -12,15 +12,18 @@
 
 #include "ImageContent.hh"
 
+#include "config.hh"
+
 #include <opencv2/imgproc.hpp>
 #include <opencv2/objdetect.hpp>
+
 #include <iostream>
 
 namespace hrb {
 
 ImageContent::ImageContent(const cv::Mat& image) : m_image{image}
 {
-	if (!m_face_detect.load("/usr/share/opencv/haarcascades/haarcascade_frontalface_default.xml"))
+	if (!m_face_detect.load(std::string{constants::haarcascades_path}))
 		throw -1;
 
 	// convert to gray and equalize
