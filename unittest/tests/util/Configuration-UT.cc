@@ -118,6 +118,12 @@ TEST_CASE( "Multiple renditions", "[normal]" )
 	Configuration subject{0, nullptr, file.c_str()};
 	REQUIRE(subject.renditions().dimension(subject.renditions().default_rendition()) == Size2D{1024, 1024});
 
+	auto def_rendition = subject.renditions().find("default");
+	REQUIRE_FALSE(def_rendition.square_crop);
+
+	auto thumbnail = subject.renditions().find("thumbnail");
+	REQUIRE(thumbnail.square_crop);
+
 	REQUIRE(subject.listen_https().port() != 8964);
 	REQUIRE(subject.listen_http().port() != 6489);
 	subject.change_listen_ports(8964, 6489);
