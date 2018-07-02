@@ -35,6 +35,9 @@ void run(const Configuration& cfg)
 	Server server{cfg};
 	server.listen();
 
+	// make sure we load the certificates and listen before dropping root privileges
+	server.drop_privileges();
+
 	// Run the I/O service on the requested number of threads
 	std::vector<std::thread> v;
 	v.reserve(threads - 1);

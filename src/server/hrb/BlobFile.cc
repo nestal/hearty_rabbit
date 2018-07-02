@@ -45,11 +45,18 @@ BlobFile::BlobFile(const fs::path& dir, const ObjectID& id) : m_id{id}, m_dir{di
 /// \brief Creates a new blob from a uploaded file
 BlobFile::BlobFile(UploadFile&& tmp, const fs::path& dir, std::error_code& ec)  : m_id{tmp.ID()}, m_dir{dir}
 {
+	assert(tmp.native_handle() > 0);
+
 	// Note: closing the file before munmap() is OK: the mapped memory will still be there.
 	// Details: http://pubs.opengroup.org/onlinepubs/7908799/xsh/mmap.html
 	auto master = MMap::open(tmp.native_handle(), ec);
 	if (ec)
 	{
+		struct stat buf{};
+		if (auto r = ::fstat(tmp.native_handle(), &buf); r == 0)
+			Log(LOG_WARNING, "fstat %1%", buf.st_size);
+
+		// TODO: give more information about the file
 		Log(LOG_WARNING, "BlobFile::upload(): cannot mmap temporary file %1% %2%", ec, ec.message());
 		return;
 	}

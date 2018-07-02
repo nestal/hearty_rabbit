@@ -15,7 +15,7 @@ find_package(Boost REQUIRED COMPONENTS system filesystem program_options)
 find_package(Threads REQUIRED)
 find_package(PkgConfig REQUIRED)
 find_package(OpenSSL REQUIRED)
-find_package(OpenCV REQUIRED core imgproc imgcodecs)
+find_package(OpenCV REQUIRED core imgproc imgcodecs objdetect highgui)
 find_package(Doxygen)
 
 # Find libb2
@@ -211,6 +211,13 @@ add_dependencies(hearty_rabbit unittest clienttest)
 
 if (BUILD_CLIENT)
 	add_subdirectory(client/qt)
+	
+	add_executable(gui_driver unittest/gui_driver/main.cc unittest/tests/image/TestImages.cc)
+	target_link_libraries(gui_driver hrbclient hrbsrv)
+	target_include_directories(
+		gui_driver PUBLIC
+		${PROJECT_SOURCE_DIR}/unittest/include
+	)
 endif()
 
 ###################################################################################################

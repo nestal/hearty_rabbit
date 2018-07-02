@@ -112,6 +112,18 @@ TEST_CASE("simple client login", "[normal]")
 		REQUIRE(ioc.run_for(10s) > 0);
 		REQUIRE(tested == 7);
 		ioc.restart();
+
+		const char empty{};
+		subject.upload("empty", "empty.jpg", &empty, &empty, [&tested](auto intent, auto err)
+		{
+			++tested;
+			REQUIRE(err);
+			REQUIRE(intent.action() == URLIntent::Action::none);
+		});
+
+		REQUIRE(ioc.run_for(10s) > 0);
+		REQUIRE(tested == 8);
+		ioc.restart();
 	}
 	SECTION("login incorrect")
 	{
