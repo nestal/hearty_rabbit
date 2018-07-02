@@ -95,9 +95,9 @@ void HRBClient::upload(std::string_view coll, const fs::path& file, Complete&& c
 	if (err)
 		throw std::system_error{err.value(), err.category()};
 
-	req->on_load([this, comp=std::forward<Complete>(comp)](auto ec, auto& req)
+	req->on_load([this, comp=std::forward<Complete>(comp)](auto ec, auto& req) mutable
 	{
-		comp(URLIntent{req.response().at(http::field::location)}, ec);
+		handle_upload_response(req.response(), std::forward<Complete>(comp), ec);
 		req.shutdown();
 	});
 	req->run();
@@ -110,9 +110,9 @@ void HRBClient::upload(std::string_view coll, std::string_view filename, ByteIte
 		URLIntent::Action::upload, m_user.username(), coll, filename
 	}, http::verb::put);
 	req->request().body().assign(first_byte, last_byte);
-	req->on_load([this, comp=std::forward<Complete>(comp)](auto ec, auto& req)
+	req->on_load([this, comp=std::forward<Complete>(comp)](auto ec, auto& req) mutable
 	{
-		comp(URLIntent{req.response().at(http::field::location)}, ec);
+		handle_upload_response(req.response(), std::forward<Complete>(comp), ec);
 		req.shutdown();
 	});
 	req->run();
@@ -155,6 +155,16 @@ void HRBClient::get_blob_meta(std::string_view owner, std::string_view coll, con
 	});
 	req->run();
 
+}
+
+template <typename Complete, typename Response>
+void HRBClient::handle_upload_response(Response& response, Complete&& comp, std::error_code ec)
+{
+	// TODO: return better error code
+	if (response.result() != http::status::created)
+		ec.assign(ENOENT, std::generic_category());
+
+	comp(response.count(http::field::location) > 0 ? URLIntent{response.at(http::field::location)} : URLIntent{}, ec);
 }
 
 } // end of namespace

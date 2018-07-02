@@ -203,6 +203,15 @@ void SessionHandler::on_upload(UploadRequest&& req, EmptyResponseSender&& send)
 		return send(http::response<http::empty_body>{http::status::forbidden, req.version()});
 	}
 
+	// Reject empty file
+	boost::system::error_code err;
+	auto upload_size = req.body().size(err);
+	if (err)
+		return send(http::response<http::empty_body>{http::status::internal_server_error, req.version()});
+
+	else if (upload_size == 0)
+		return send(http::response<http::empty_body>{http::status::bad_request, req.version()});
+
 	std::error_code ec;
 	auto blob = m_blob_db.save(std::move(req.body()), ec);
 

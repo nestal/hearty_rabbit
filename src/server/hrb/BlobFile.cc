@@ -52,6 +52,10 @@ BlobFile::BlobFile(UploadFile&& tmp, const fs::path& dir, std::error_code& ec)  
 	auto master = MMap::open(tmp.native_handle(), ec);
 	if (ec)
 	{
+		struct stat buf{};
+		if (auto r = ::fstat(tmp.native_handle(), &buf); r == 0)
+			Log(LOG_WARNING, "fstat %1%", buf.st_size);
+
 		// TODO: give more information about the file
 		Log(LOG_WARNING, "BlobFile::upload(): cannot mmap temporary file %1% %2%", ec, ec.message());
 		return;
