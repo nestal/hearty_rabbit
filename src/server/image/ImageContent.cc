@@ -35,7 +35,7 @@ ImageContent::ImageContent(const cv::Mat& image) : m_image{image}
 	m_faces = std::move(faces);
 }
 
-cv::Mat ImageContent::square_crop() const
+cv::Rect ImageContent::square_crop() const
 {
 	struct InflectionPoint
 	{
@@ -78,8 +78,6 @@ cv::Mat ImageContent::square_crop() const
 
 	// aggregate the points outside the image (i.e. pos < 0) into one point at pos = 0
 	auto start = std::find_if(infections.begin(), infections.end(), [](auto&& p){return p.pos >= 0;});
-	std::cout << "erasing " << (start - infections.begin()) << " points" << std::endl;
-
 	if (start != infections.begin() && start != infections.end())
 	{
 		start--;
@@ -94,25 +92,25 @@ cv::Mat ImageContent::square_crop() const
 		return p1.total < p2.total;
 	});
 
-	assert(optimal != infections.end());
-
-	std::cout << "found " << optimal->pos << " " << optimal->total << std::endl;
-
 	// deduce ROI rectangle from optimal inflection point
-	cv::Rect roi;
-	roi.height = roi.width = window_length;
-	if (aspect_ratio > 1.0)
+	cv::Rect roi{0, 0, window_length, window_length};
+	if (optimal != infections.end())
 	{
-		roi.x = optimal->pos;
-		roi.y = 0;
+		std::cout << "found " << optimal->pos << " " << optimal->total << std::endl;
+		if (aspect_ratio > 1.0)
+			roi.x = optimal->pos;
+		else
+			roi.y = optimal->pos;
 	}
 	else
 	{
-		roi.y = optimal->pos;
-		roi.x = 0;
+		// crop at center
+		if (aspect_ratio > 1.0)
+			roi.x = m_image.cols / 2 - window_length/2;
+		else
+			roi.y = m_image.rows / 2 - window_length/2;
 	}
-
-	return m_image(roi);
+	return roi;
 }
 
 } // end of namespace hrb

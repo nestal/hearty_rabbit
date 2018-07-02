@@ -29,7 +29,7 @@ public:
 
 	boost::iterator_range<face_iterator> faces() const {return {m_faces.begin(), m_faces.end()};}
 
-	cv::Mat square_crop() const;
+	cv::Rect square_crop() const;
 
 private:
 	cv::Mat m_image;

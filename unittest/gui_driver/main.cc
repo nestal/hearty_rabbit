@@ -31,21 +31,22 @@ int main(int argc, char **argv)
 		ellipse(image, center, cv::Size(face.width / 2, face.height / 2), 0, 0, 360, cv::Scalar(255, 0, 255), 4, 8, 0);
 	}
 
-	auto optimal = subject.square_crop();
-	assert(optimal.cols == optimal.rows);
+	auto roi = subject.square_crop();
+	assert(roi.width == roi.height);
+	rectangle(image, roi, cv::Scalar{0, 255, 255}, 10);
 
-	// resize smaller if it's too big
-	auto xratio = 1024 / static_cast<double>(optimal.cols);
-	auto yratio = 1024 / static_cast<double>(optimal.rows);
+	auto xratio = 1024 / static_cast<double>(image.cols);
+	auto yratio = 1024 / static_cast<double>(image.rows);
 
 	cv::Mat out;
 	if (xratio < 1.0 || yratio < 1.0)
-		cv::resize(optimal.clone(), out, {}, std::min(xratio, yratio), std::min(xratio, yratio), cv::INTER_LINEAR);
+		cv::resize(image, out, {}, std::min(xratio, yratio), std::min(xratio, yratio), cv::INTER_LINEAR);
 	else
-		out = std::move(optimal);
+		out = std::move(image);
 
+	// write cropped image to disk
 	if (argc > 2)
-		cv::imwrite(argv[2], out);
+		cv::imwrite(argv[2], image(roi));
 
 	std::cout << "width = " << out.cols << " height = " << out.rows << std::endl;
 
