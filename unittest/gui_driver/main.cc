@@ -16,6 +16,7 @@
 #include <opencv2/highgui.hpp>
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/imgproc.hpp>
+#include <iostream>
 
 using namespace hrb ;
 
@@ -33,17 +34,20 @@ int main(int argc, char **argv)
 	auto optimal = subject.square_crop();
 	assert(optimal.cols == optimal.rows);
 
-	cv::imwrite("out.jpeg", optimal);
-
 	// resize smaller if it's too big
-	auto xratio = 2048 / static_cast<double>(optimal.cols);
-	auto yratio = 2048 / static_cast<double>(optimal.rows);
+	auto xratio = 1024 / static_cast<double>(optimal.cols);
+	auto yratio = 1024 / static_cast<double>(optimal.rows);
 
 	cv::Mat out;
 	if (xratio < 1.0 || yratio < 1.0)
-		cv::resize(optimal, out, {}, std::min(xratio, yratio), std::min(xratio, yratio), cv::INTER_LINEAR);
+		cv::resize(optimal.clone(), out, {}, std::min(xratio, yratio), std::min(xratio, yratio), cv::INTER_LINEAR);
 	else
 		out = std::move(optimal);
+
+	if (argc > 2)
+		cv::imwrite(argv[2], out);
+
+	std::cout << "width = " << out.cols << " height = " << out.rows << std::endl;
 
 	cv::namedWindow( "imshow", cv::WINDOW_AUTOSIZE );
 	cv::imshow("imshow", out);
