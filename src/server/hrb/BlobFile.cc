@@ -128,27 +128,24 @@ void BlobFile::generate_image_rendition(const JPEGRenditionSetting& cfg, const f
 		auto jpeg = cv::imread((m_dir/hrb::master_rendition).string(), cv::IMREAD_ANYCOLOR);
 		if (!jpeg.empty())
 		{
+			if (cfg.square_crop)
+			{
+				ImageContent content{jpeg};
+				auto square = jpeg(content.square_crop()).clone();
+				jpeg = std::move(square);
+			}
+
 			auto xratio = cfg.dim.width() / static_cast<double>(jpeg.cols);
 			auto yratio = cfg.dim.height() / static_cast<double>(jpeg.rows);
 
-			auto ratio = (cfg.square_crop ? std::max(xratio, yratio) : std::min(xratio, yratio));
-
-			cv::Mat resized;
+			cv::Mat out;
 			if (xratio < 1.0 || yratio < 1.0)
-				cv::resize(jpeg, resized, {}, ratio, ratio, cv::INTER_LINEAR);
+				cv::resize(jpeg, out, {}, std::min(xratio, yratio), std::min(xratio, yratio), cv::INTER_LINEAR);
 			else
-				resized = std::move(jpeg);
+				out = jpeg;
 
-			if (cfg.square_crop)
-			{
-				ImageContent content{resized};
-				auto square = resized(content.square_crop()).clone();
-				resized = std::move(square);
-			}
-
-			// imwrite() does not know how to write images without extension
 			std::vector<unsigned char> out_buf;
-			cv::imencode(mime() == "image/png" ? ".png" : ".jpg", resized, out_buf, {cv::IMWRITE_JPEG_QUALITY, cfg.quality});
+			cv::imencode(mime() == "image/png" ? ".png" : ".jpg", out, out_buf, {cv::IMWRITE_JPEG_QUALITY, cfg.quality});
 			save_blob(out_buf, dest, ec);
 		}
 	}
