@@ -37,6 +37,11 @@ void proc_image(const fs::path& path)
 		ellipse(image, center, cv::Size(face.width / 2, face.height / 2), 0, 0, 360, cv::Scalar(255, 0, 255), 4, 8, 0);
 	}
 
+	for (auto&& feature : subject.features())
+	{
+		ellipse(image, feature, cv::Size{5, 5}, 0, 0, 360, cv::Scalar(0, 0, 255), 4, 8, 0);
+	}
+
 	auto roi = subject.square_crop();
 	assert(roi.width == roi.height);
 	rectangle(image, roi, cv::Scalar{0, 255, 255}, 10);
