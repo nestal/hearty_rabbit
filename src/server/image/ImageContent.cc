@@ -17,12 +17,11 @@
 #include <opencv2/imgproc.hpp>
 #include <opencv2/objdetect.hpp>
 
-#include <iostream>
-
 namespace hrb {
 
 ImageContent::ImageContent(const cv::Mat& image) : m_image{image}
 {
+	// TODO: better error handling
 	if (!m_face_detect.load(std::string{constants::haarcascades_path}))
 		throw -1;
 
@@ -40,13 +39,6 @@ ImageContent::ImageContent(const cv::Mat& image) : m_image{image}
 
 cv::Rect ImageContent::square_crop() const
 {
-	struct InflectionPoint
-	{
-		int pos;        // position of the inflection point in the principal axis
-		int score;      // represents how important is the rectangle
-		int total;      // total score if this inflection point is chosen as the start of the crop
-	};
-
 	auto aspect_ratio  = static_cast<double>(m_image.cols) / m_image.rows;
 	auto window_length = std::min(m_image.cols, m_image.rows);
 
@@ -54,31 +46,10 @@ cv::Rect ImageContent::square_crop() const
 	// the principal axis
 	std::vector<InflectionPoint> infections;
 	for (auto&& face : m_faces)
-	{
-		std::cout << "face @ " << face.x << " " << face.width << " " << std::endl;
-		// enter rectangular region: score increases
-		infections.push_back(InflectionPoint{
-			(aspect_ratio > 1.0 ? face.x + face.width : face.y + face.height) - window_length,
-			face.width * face.height
-		});
+		add_content(infections, face);
 
-		infections.push_back(InflectionPoint{
-			aspect_ratio > 1.0 ? face.x : face.y,
-			-face.width * face.height
-		});
-	}
 	for (auto&& feature : m_features)
-	{
-		infections.push_back(InflectionPoint{
-			(aspect_ratio > 1.0 ? feature.x : feature.y) - window_length,
-			1
-		});
-
-		infections.push_back(InflectionPoint{
-			aspect_ratio > 1.0 ? feature.x : feature.y,
-			-1
-		});
-	}
+		add_content(infections, cv::Rect{feature.x, feature.y, 0, 0});
 
 	// sort the inflect points in the order of their appearance in the principal axis
 	std::sort(infections.begin(), infections.end(), [](auto& p1, auto& p2){return p1.pos < p2.pos;});
@@ -111,7 +82,6 @@ cv::Rect ImageContent::square_crop() const
 	cv::Rect roi{0, 0, window_length, window_length};
 	if (optimal != infections.end())
 	{
-		std::cout << "found " << optimal->pos << " " << optimal->total << std::endl;
 		if (aspect_ratio > 1.0)
 			roi.x = optimal->pos;
 		else
@@ -126,6 +96,77 @@ cv::Rect ImageContent::square_crop() const
 			roi.y = m_image.rows / 2 - window_length/2;
 	}
 	return roi;
+}
+
+/// Create two infection pints for each content rectangle.
+///
+/// The first infection point is the point where the content rectangle enters the sliding window. That means the
+/// content rectangle will start appearing in the cropped image, and so the score should be awarded. As shown in the
+/// diagram below, the position of this inflection point is rect.x + rect.width - window_size, where "rect" is the
+/// content rectangle's position.
+///
+/// \code
+///        rect.x + rect.width - window size
+///        |                              rect.x + rect.width
+///        |                              |
+///        v                              v
+/// /-------------------------------------------------------------\
+/// |      |                              |                       |
+/// |      |            /-----------------\                       |
+/// |      |            |                 |                       |
+/// |      |            |    content      |                       |
+/// |      |            |     rect        |                       |
+/// |      |            |                 |                       |
+/// |      |            \-----------------/                       |
+/// |      |                              |                       |
+/// |      |<------ Sliding Window------->|                       |
+/// |      ^                              |                       |
+/// |    Enter Window (add score)         |                       |
+/// |      |                              |                       |
+/// \-------------------------------------------------------------/
+/// \endcode
+///
+/// The second infection point is the point where the content rectangle exits the sliding window. This point is at
+/// rect.x. The score of the content rectangle will be subtracted.
+///
+/// \code
+///                     rect.x
+///                     |
+///                     v
+/// /-------------------------------------------------------------\
+/// |                   |                 |            |          |
+/// |                   /-----------------\            |          |
+/// |                   |                 |            |          |
+/// |                   |    content      |            |          |
+/// |                   |     rect        |            |          |
+/// |                   |                 |            |          |
+/// |                   \-----------------/            |          |
+/// |                   |                              |          |
+/// |                   |<------ Sliding Window------->|          |
+/// |                   ^                              |          |
+/// |                 Exit Window (subtract score)     |          |
+/// |                   |                              |          |
+/// \-------------------------------------------------------------/
+/// \endcode
+///
+/// \param infections
+/// \param content
+void ImageContent::add_content(std::vector<ImageContent::InflectionPoint>& infections, const cv::Rect& content) const
+{
+	auto window_size = std::min(m_image.cols, m_image.rows);
+	auto score = std::max(content.width * content.height, 1);
+
+	// enter rectangular region: score increases
+	infections.push_back(InflectionPoint{
+		(m_image.cols > m_image.rows ? content.x + content.width : content.y + content.height) - window_size,
+		score
+	});
+
+	// exit rectangular regio: score decreases
+	infections.push_back(InflectionPoint{
+		m_image.cols > m_image.rows ? content.x : content.y,
+		-score
+	});
 }
 
 } // end of namespace hrb

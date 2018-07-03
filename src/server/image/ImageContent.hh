@@ -34,6 +34,16 @@ public:
 	cv::Rect square_crop() const;
 
 private:
+	struct InflectionPoint
+	{
+		int pos;        // position of the inflection point in the principal axis
+		int score;      // represents how important is the rectangle
+		int total;      // total score if this inflection point is chosen as the start of the crop
+	};
+
+	void add_content(std::vector<InflectionPoint>& infections, const cv::Rect& content) const;
+
+private:
 	cv::Mat m_image;
 
 	cv::CascadeClassifier       m_face_detect;
