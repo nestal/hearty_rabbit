@@ -11,18 +11,24 @@
 //
 
 #include "image/ImageContent.hh"
-#include "TestImages.hh"
+#include "common/FS.hh"
 
 #include <opencv2/highgui.hpp>
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/imgproc.hpp>
+
+#include <boost/filesystem.hpp>
+
 #include <iostream>
 
 using namespace hrb ;
 
-int main(int argc, char **argv)
+void proc_image(const fs::path& path)
 {
-	auto image = cv::imread(argc < 2 ? (test_images/"lena.png").string() : std::string{argv[1]}, cv::IMREAD_COLOR);
+	auto image = cv::imread(path.string(), cv::IMREAD_COLOR);
+	if (image.empty())
+		return;
+
 	ImageContent subject{image};
 
 	for (auto&& face : subject.faces())
@@ -44,14 +50,21 @@ int main(int argc, char **argv)
 	else
 		out = std::move(image);
 
-	// write cropped image to disk
-	if (argc > 2)
-		cv::imwrite(argv[2], image(roi));
-
 	std::cout << "width = " << out.cols << " height = " << out.rows << std::endl;
 
 	cv::namedWindow( "imshow", cv::WINDOW_AUTOSIZE );
 	cv::imshow("imshow", out);
 	cv::waitKey(0);
+}
+
+int main(int argc, char **argv)
+{
+	boost::filesystem::directory_iterator di{boost::filesystem::current_path()};
+	for (auto&& path : di)
+	{
+		std::cout << path.path() << " " << path.path().extension() << std::endl;
+		if (path.path().extension() == ".jpeg" || path.path().extension() == ".jpg")
+			proc_image(path.path());
+	}
 	return 0;
 }
