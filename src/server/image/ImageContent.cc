@@ -33,7 +33,7 @@ ImageContent::ImageContent(const cv::Mat& image) : m_image{image}
 
 	// detect faces
 	std::vector<cv::Rect> faces;
-	m_face_detect.detectMultiScale( gray, faces, 1.1, 2, 0|cv::CASCADE_SCALE_IMAGE, cv::Size(30, 30) );
+	m_face_detect.detectMultiScale( gray, faces, 1.1, 3, cv::CASCADE_SCALE_IMAGE, cv::Size{m_image.cols/10, m_image.rows/10} );
 
 	m_faces = std::move(faces);
 }
