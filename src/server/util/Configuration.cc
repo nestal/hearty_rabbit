@@ -105,8 +105,11 @@ void Configuration::load_config(const boost::filesystem::path& path)
 			{
 				auto width  = rend.value().value("width", 0);
 				auto height = rend.value().value("height", 0);
+				auto quality = rend.value().value("quality", 70);
+				auto square_crop = rend.value().value("square_crop", false);
+
 				if (width > 0 && height > 0)
-					m_rendition.add(rend.key(), {width, height});
+					m_rendition.add(rend.key(), {width, height}, quality, square_crop);
 			}
 		}
 		m_session_length = std::chrono::seconds{json.value(jptr{"/session_length_in_sec"}, 3600L)};
@@ -176,9 +179,9 @@ bool RenditionSetting::valid(std::string_view rend) const
 	return m_renditions.find(std::string{rend}) != m_renditions.end();
 }
 
-void RenditionSetting::add(std::string_view rend, Size2D dim, int quality)
+void RenditionSetting::add(std::string_view rend, Size2D dim, int quality, bool square_crop)
 {
-	m_renditions.insert_or_assign(std::string{rend}, JPEGRenditionSetting{dim, quality});
+	m_renditions.insert_or_assign(std::string{rend}, JPEGRenditionSetting{dim, quality, square_crop});
 }
 
 } // end of namespace

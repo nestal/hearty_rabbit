@@ -33,6 +33,9 @@ pkg_check_modules(LIBUNWIND libunwind)
 set(CMAKE_CXX_STANDARD 17)
 set(CONFIG_FILENAME "hearty_rabbit.json")
 
+# OpenCV haarcascade model for unit test
+message(STATUS "using haarcascade at ${HAARCASCADE_PATH}")
+
 # use new C++ ABI
 add_definitions(-D_GLIBCXX_USE_CXX11_ABI=1)
 

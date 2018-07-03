@@ -14,10 +14,11 @@
 #include "UploadFile.hh"
 
 // HeartyRabbit headers
+#include "common/Escape.hh"
 #include "image/EXIF2.hh"
+#include "image/ImageContent.hh"
 #include "image/PHash.hh"
 #include "util/Configuration.hh"
-#include "common/Escape.hh"
 #include "util/Log.hh"
 #include "util/Magic.hh"
 #include "util/MMap.hh"
@@ -127,6 +128,13 @@ void BlobFile::generate_image_rendition(const JPEGRenditionSetting& cfg, const f
 		auto jpeg = cv::imread((m_dir/hrb::master_rendition).string(), cv::IMREAD_ANYCOLOR);
 		if (!jpeg.empty())
 		{
+			if (cfg.square_crop)
+			{
+				ImageContent content{jpeg};
+				auto square = jpeg(content.square_crop()).clone();
+				jpeg = std::move(square);
+			}
+
 			auto xratio = cfg.dim.width() / static_cast<double>(jpeg.cols);
 			auto yratio = cfg.dim.height() / static_cast<double>(jpeg.rows);
 

@@ -100,7 +100,7 @@ TEST_CASE("simple client login", "[normal]")
 		REQUIRE(tested == 6);
 		ioc.restart();
 
-		auto lena = random_lena();
+		auto lena = random_lena_bytes();
 		subject.upload("lena", "lena.jpg", lena.begin(), lena.end(), [&tested](auto intent, auto err)
 		{
 			++tested;
