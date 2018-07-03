@@ -31,10 +31,10 @@ ImageContent::ImageContent(const cv::Mat& image) : m_image{image}
 	equalizeHist(gray, gray);
 
 	// detect faces
-	m_face_detect.detectMultiScale(gray, m_faces, 1.1, 3, cv::CASCADE_SCALE_IMAGE, cv::Size{m_image.cols/10, m_image.rows/10} );
+	m_face_detect.detectMultiScale(gray, m_faces, 1.1, 2, cv::CASCADE_SCALE_IMAGE, cv::Size{100, 100} );
 
 	// detect features
-	cv::goodFeaturesToTrack(gray, m_features, 200, 0.01, 20);
+	cv::goodFeaturesToTrack(gray, m_features, 200, 0.05, 20);
 }
 
 cv::Rect ImageContent::square_crop() const
