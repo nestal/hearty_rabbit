@@ -45,7 +45,7 @@ void proc_image(const fs::path& path)
 
 	for (auto&& feature : subject.features())
 	{
-		ellipse(image, feature, cv::Size{5, 5}, 0, 0, 360, cv::Scalar(0, 0, 255), 4, 8, 0);
+		ellipse(image, {feature.x, feature.y}, cv::Size{5, 5}, 0, 0, 360, cv::Scalar(0, 0, 255), 4, 8, 0);
 	}
 
 	auto roi = subject.square_crop();

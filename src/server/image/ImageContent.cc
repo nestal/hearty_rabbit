@@ -38,9 +38,10 @@ ImageContent::ImageContent(const cv::Mat& image) : m_image{image}
 	equalizeHist(gray, gray);
 
 	// detect faces
-	face_detect.detectMultiScale(gray, m_faces, 1.1, 2, cv::CASCADE_SCALE_IMAGE, cv::Size{m_image.cols/10, m_image.rows/10});
+	std::vector<cv::Rect> potential_faces;
+	face_detect.detectMultiScale(gray, potential_faces, 1.1, 2, cv::CASCADE_SCALE_IMAGE, cv::Size{m_image.cols/20, m_image.rows/20});
 
-	for (auto&& rect : m_faces)
+	for (auto&& rect : potential_faces)
 	{
 		auto face_mat = m_image(rect);
 
@@ -49,10 +50,20 @@ ImageContent::ImageContent(const cv::Mat& image) : m_image{image}
 
 		for (auto&& eye : eyes)
 			m_eyes.emplace_back(eye.x + rect.x, eye.y + rect.y, eye.width, eye.height);
+
+		// treat faces without eyes as feature only
+		if (eyes.empty())
+			m_features.push_back(rect);
+		else
+			m_faces.push_back(rect);
+
 	}
 
 	// detect features
-	cv::goodFeaturesToTrack(gray, m_features, 200, 0.05, 20);
+	std::vector<cv::Point> features;
+	cv::goodFeaturesToTrack(gray, features, 200, 0.05, 20);
+	for (auto&& feature : features)
+		m_features.emplace_back(feature.x, feature.y, 0, 0);
 }
 
 cv::Rect ImageContent::square_crop() const
@@ -63,10 +74,10 @@ cv::Rect ImageContent::square_crop() const
 	// the principal axis
 	std::vector<InflectionPoint> infections;
 	for (auto&& face : m_faces)
-		add_content(infections, face);
+		add_content(infections, face, 1);
 
 	for (auto&& feature : m_features)
-		add_content(infections, cv::Rect{feature.x, feature.y, 0, 0});
+		add_content(infections, feature, 0);
 
 	// sort the inflect points in the order of their appearance in the principal axis
 	std::sort(infections.begin(), infections.end(), [](auto& p1, auto& p2){return p1.pos < p2.pos;});
@@ -168,10 +179,10 @@ cv::Rect ImageContent::square_crop() const
 ///
 /// \param infections
 /// \param content
-void ImageContent::add_content(std::vector<ImageContent::InflectionPoint>& infections, const cv::Rect& content) const
+void ImageContent::add_content(std::vector<ImageContent::InflectionPoint>& infections, const cv::Rect& content, int score_ratio) const
 {
 	auto window_size = std::min(m_image.cols, m_image.rows);
-	auto score = std::max(content.width * content.height, 1);
+	auto score = std::max(score_ratio * content.width * content.height, 1);
 
 	// enter rectangular region: score increases
 	infections.push_back(InflectionPoint{

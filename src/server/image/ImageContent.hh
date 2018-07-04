@@ -23,14 +23,13 @@ class ImageContent
 {
 public:
 	using rect_iterator = std::vector<cv::Rect>::const_iterator;
-	using point_iterator = std::vector<cv::Point>::const_iterator;
 
 public:
 	explicit ImageContent(const cv::Mat& image);
 
 	boost::iterator_range<rect_iterator>  faces()    const {return {m_faces.begin(), m_faces.end()};}
 	boost::iterator_range<rect_iterator>  eyes()     const {return {m_eyes.begin(), m_eyes.end()};}
-	boost::iterator_range<point_iterator> features() const {return {m_features.begin(), m_features.end()};}
+	boost::iterator_range<rect_iterator>  features() const {return {m_features.begin(), m_features.end()};}
 
 	cv::Rect square_crop() const;
 
@@ -42,13 +41,13 @@ private:
 		int total;      // total score if this inflection point is chosen as the start of the crop
 	};
 
-	void add_content(std::vector<InflectionPoint>& infections, const cv::Rect& content) const;
+	void add_content(std::vector<InflectionPoint>& infections, const cv::Rect& content, int score_ratio) const;
 
 private:
 	cv::Mat m_image;
 
 	std::vector<cv::Rect>       m_faces, m_eyes;
-	std::vector<cv::Point>      m_features;
+	std::vector<cv::Rect>       m_features;
 };
 
 } // end of namespace hrb
