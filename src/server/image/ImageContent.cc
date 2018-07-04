@@ -38,14 +38,14 @@ ImageContent::ImageContent(const cv::Mat& image) : m_image{image}
 	equalizeHist(gray, gray);
 
 	// detect faces
-	face_detect.detectMultiScale(gray, m_faces, 1.1, 2, cv::CASCADE_SCALE_IMAGE, cv::Size{100, 100} );
+	face_detect.detectMultiScale(gray, m_faces, 1.1, 2, cv::CASCADE_SCALE_IMAGE, cv::Size{m_image.cols/10, m_image.rows/10});
 
 	for (auto&& rect : m_faces)
 	{
 		auto face_mat = m_image(rect);
 
 		std::vector<cv::Rect> eyes;
-		eye_detect.detectMultiScale(face_mat, eyes, 1.1, 2, cv::CASCADE_SCALE_IMAGE, cv::Size{100, 100});
+		eye_detect.detectMultiScale(face_mat, eyes, 1.1, 2, cv::CASCADE_SCALE_IMAGE, cv::Size{rect.width/5, rect.height/5});
 
 		for (auto&& eye : eyes)
 			m_eyes.emplace_back(eye.x + rect.x, eye.y + rect.y, eye.width, eye.height);
