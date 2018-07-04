@@ -135,12 +135,14 @@ void BlobFile::generate_image_rendition(const JPEGRenditionSetting& cfg, const f
 				jpeg = std::move(square);
 			}
 
-			auto xratio = cfg.dim.width() / static_cast<double>(jpeg.cols);
-			auto yratio = cfg.dim.height() / static_cast<double>(jpeg.rows);
+			auto ratio = std::min(
+				cfg.dim.width() / static_cast<double>(jpeg.cols),
+				cfg.dim.height() / static_cast<double>(jpeg.rows)
+			);
 
 			cv::Mat out;
-			if (xratio < 1.0 || yratio < 1.0)
-				cv::resize(jpeg, out, {}, std::min(xratio, yratio), std::min(xratio, yratio), cv::INTER_LINEAR);
+			if (ratio < 1.0)
+				cv::resize(jpeg, out, {}, ratio, ratio, cv::INTER_LINEAR);
 			else
 				out = jpeg;
 

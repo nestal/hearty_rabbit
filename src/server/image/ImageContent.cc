@@ -11,18 +11,25 @@
 //
 
 #include "ImageContent.hh"
+#include "common/FS.hh"
 
 #include "config.hh"
 
 #include <opencv2/imgproc.hpp>
 #include <opencv2/objdetect.hpp>
+#include <iostream>
 
 namespace hrb {
 
 ImageContent::ImageContent(const cv::Mat& image) : m_image{image}
 {
+	fs::path model_path{std::string{constants::haarcascades_path}};
+
 	// TODO: better error handling
-	if (!m_face_detect.load(std::string{constants::haarcascades_path}))
+	cv::CascadeClassifier face_detect, eye_detect;
+	if (!face_detect.load((model_path/"haarcascade_frontalface_default.xml").string()))
+		throw -1;
+	if (!eye_detect.load((model_path/"haarcascade_eye_tree_eyeglasses.xml").string()))
 		throw -1;
 
 	// convert to gray and equalize
@@ -31,7 +38,22 @@ ImageContent::ImageContent(const cv::Mat& image) : m_image{image}
 	equalizeHist(gray, gray);
 
 	// detect faces
-	m_face_detect.detectMultiScale(gray, m_faces, 1.1, 2, cv::CASCADE_SCALE_IMAGE, cv::Size{100, 100} );
+	std::vector<cv::Rect> potential_faces;
+	face_detect.detectMultiScale(gray, potential_faces, 1.1, 2, cv::CASCADE_SCALE_IMAGE, cv::Size{100, 100} );
+
+	for (auto&& rect : potential_faces)
+	{
+		auto face_mat = m_image(rect);
+
+		std::vector<cv::Rect> eyes;
+		eye_detect.detectMultiScale(face_mat, eyes, 1.1, 2, cv::CASCADE_SCALE_IMAGE, cv::Size{100, 100});
+
+		// only consider faces with eyes
+		if (!eyes.empty())
+			m_faces.push_back(rect);
+		else
+			std::cout << "face rejected" << std::endl;
+	}
 
 	// detect features
 	cv::goodFeaturesToTrack(gray, m_features, 200, 0.05, 20);
@@ -39,7 +61,6 @@ ImageContent::ImageContent(const cv::Mat& image) : m_image{image}
 
 cv::Rect ImageContent::square_crop() const
 {
-	auto aspect_ratio  = static_cast<double>(m_image.cols) / m_image.rows;
 	auto window_length = std::min(m_image.cols, m_image.rows);
 
 	// convert all faces into inflection points by projecting them into
@@ -82,7 +103,7 @@ cv::Rect ImageContent::square_crop() const
 	cv::Rect roi{0, 0, window_length, window_length};
 	if (optimal != infections.end())
 	{
-		if (aspect_ratio > 1.0)
+		if (m_image.cols > m_image.rows)
 			roi.x = optimal->pos;
 		else
 			roi.y = optimal->pos;
@@ -90,7 +111,7 @@ cv::Rect ImageContent::square_crop() const
 	else
 	{
 		// crop at center
-		if (aspect_ratio > 1.0)
+		if (m_image.cols > m_image.rows)
 			roi.x = m_image.cols / 2 - window_length/2;
 		else
 			roi.y = m_image.rows / 2 - window_length/2;

@@ -46,7 +46,6 @@ private:
 private:
 	cv::Mat m_image;
 
-	cv::CascadeClassifier       m_face_detect;
 	std::vector<cv::Rect>       m_faces;
 	std::vector<cv::Point>      m_features;
 };
