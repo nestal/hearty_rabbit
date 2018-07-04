@@ -37,6 +37,12 @@ void proc_image(const fs::path& path)
 		ellipse(image, center, cv::Size(face.width / 2, face.height / 2), 0, 0, 360, cv::Scalar(255, 0, 255), 4, 8, 0);
 	}
 
+	for (auto&& eye : subject.eyes())
+	{
+		cv::Point center(eye.x + eye.width / 2, eye.y + eye.height / 2);
+		ellipse(image, center, cv::Size(eye.width / 2, eye.height / 2), 0, 0, 360, cv::Scalar(0, 0, 0), 4, 8, 0);
+	}
+
 	for (auto&& feature : subject.features())
 	{
 		ellipse(image, feature, cv::Size{5, 5}, 0, 0, 360, cv::Scalar(0, 0, 255), 4, 8, 0);

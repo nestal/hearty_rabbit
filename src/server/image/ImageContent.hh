@@ -22,14 +22,15 @@ namespace hrb {
 class ImageContent
 {
 public:
-	using face_iterator = std::vector<cv::Rect>::const_iterator;
-	using feature_iterator = std::vector<cv::Point>::const_iterator;
+	using rect_iterator = std::vector<cv::Rect>::const_iterator;
+	using point_iterator = std::vector<cv::Point>::const_iterator;
 
 public:
 	explicit ImageContent(const cv::Mat& image);
 
-	boost::iterator_range<face_iterator> faces()       const {return {m_faces.begin(), m_faces.end()};}
-	boost::iterator_range<feature_iterator> features() const {return {m_features.begin(), m_features.end()};}
+	boost::iterator_range<rect_iterator>  faces()    const {return {m_faces.begin(), m_faces.end()};}
+	boost::iterator_range<rect_iterator>  eyes()     const {return {m_eyes.begin(), m_eyes.end()};}
+	boost::iterator_range<point_iterator> features() const {return {m_features.begin(), m_features.end()};}
 
 	cv::Rect square_crop() const;
 
@@ -46,7 +47,7 @@ private:
 private:
 	cv::Mat m_image;
 
-	std::vector<cv::Rect>       m_faces;
+	std::vector<cv::Rect>       m_faces, m_eyes;
 	std::vector<cv::Point>      m_features;
 };
 

@@ -38,21 +38,17 @@ ImageContent::ImageContent(const cv::Mat& image) : m_image{image}
 	equalizeHist(gray, gray);
 
 	// detect faces
-	std::vector<cv::Rect> potential_faces;
-	face_detect.detectMultiScale(gray, potential_faces, 1.1, 2, cv::CASCADE_SCALE_IMAGE, cv::Size{100, 100} );
+	face_detect.detectMultiScale(gray, m_faces, 1.1, 2, cv::CASCADE_SCALE_IMAGE, cv::Size{100, 100} );
 
-	for (auto&& rect : potential_faces)
+	for (auto&& rect : m_faces)
 	{
 		auto face_mat = m_image(rect);
 
 		std::vector<cv::Rect> eyes;
 		eye_detect.detectMultiScale(face_mat, eyes, 1.1, 2, cv::CASCADE_SCALE_IMAGE, cv::Size{100, 100});
 
-		// only consider faces with eyes
-		if (!eyes.empty())
-			m_faces.push_back(rect);
-		else
-			std::cout << "face rejected" << std::endl;
+		for (auto&& eye : eyes)
+			m_eyes.emplace_back(eye.x + rect.x, eye.y + rect.y, eye.width, eye.height);
 	}
 
 	// detect features
