@@ -53,12 +53,16 @@ void from_json(const nlohmann::json& src, JPEGRenditionSetting& dest)
 	dest.dim.width(src.value("width", dest.dim.width()));
 	dest.dim.height(src.value("height", dest.dim.height()));
 	dest.quality = src.value("quality", dest.quality);
-	dest.square_crop = src.value("square_crop", dest.square_crop);
+
+	if (src.count("square_crop") > 0)
+		dest.square_crop.emplace(src.value("square_crop", *dest.square_crop));
 }
 
-void from_json(const nlohmann::json& src, ContentRecognitionSetting& dest)
+void from_json(const nlohmann::json& src, SquareCropSetting& dest)
 {
 	dest.model_path = src.value("model_path", dest.model_path);
+	dest.face_size_ratio = src.value("eye_size_ratio", dest.face_size_ratio);
+	dest.eye_size_ratio = src.value("eye_size_ratio", dest.eye_size_ratio);
 }
 
 Configuration::Configuration(int argc, const char *const *argv, const char *env)

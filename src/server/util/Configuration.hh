@@ -29,11 +29,20 @@
 
 namespace hrb {
 
+struct SquareCropSetting
+{
+	boost::filesystem::path model_path{std::string{constants::haarcascades_path}};
+
+	double face_size_ratio{0.05};
+	double eye_size_ratio{0.5};
+};
+
 struct JPEGRenditionSetting
 {
 	Size2D  dim;
 	int     quality{70};
-	bool    square_crop{false};
+
+	std::optional<SquareCropSetting> square_crop;
 };
 
 class RenditionSetting
@@ -55,16 +64,8 @@ public:
 private:
 	std::string m_default{"2048x2048"};
 	std::unordered_map<std::string, JPEGRenditionSetting> m_renditions{
-		{m_default, JPEGRenditionSetting{{2048, 2048}, 70, false}}
+		{m_default, JPEGRenditionSetting{{2048, 2048}, 70, std::nullopt}}
 	};
-};
-
-struct ContentRecognitionSetting
-{
-	boost::filesystem::path     model_path{std::string{constants::haarcascades_path}};
-
-	double face_size_ratio{0.05};
-	double eye_size_ratio{0.5};
 };
 
 /// \brief  Parsing command line options and configuration file

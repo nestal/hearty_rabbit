@@ -14,7 +14,7 @@
 #include "UploadFile.hh"
 
 // HeartyRabbit headers
-#include "common/Escape.hh"
+#include "common/StringFields.hh"
 #include "image/EXIF2.hh"
 #include "image/ImageContent.hh"
 #include "image/PHash.hh"
@@ -130,7 +130,7 @@ void BlobFile::generate_image_rendition(const JPEGRenditionSetting& cfg, const f
 		{
 			if (cfg.square_crop)
 			{
-				ImageContent content{jpeg};
+				ImageContent content{jpeg, *cfg.square_crop};
 				auto square = jpeg(content.square_crop()).clone();
 				jpeg = std::move(square);
 			}

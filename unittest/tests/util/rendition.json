@@ -6,7 +6,7 @@
   "server_name" : "example.com",
   "rendition" : {
     "default": {"width":1024, "height" : 1024},
-    "thumbnail": {"width":200, "height" : 300, "square_crop": true}
+    "thumbnail": {"width":200, "height" : 300, "square_crop": {}}
   },
   "default_rendition": "default",
   "http": {

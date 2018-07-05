@@ -19,13 +19,15 @@
 
 namespace hrb {
 
+struct SquareCropSetting;
+
 class ImageContent
 {
 public:
 	using rect_iterator = std::vector<cv::Rect>::const_iterator;
 
 public:
-	explicit ImageContent(const cv::Mat& image);
+	explicit ImageContent(const cv::Mat& image, const SquareCropSetting& setting);
 
 	boost::iterator_range<rect_iterator>  faces()    const {return {m_faces.begin(), m_faces.end()};}
 	boost::iterator_range<rect_iterator>  eyes()     const {return {m_eyes.begin(), m_eyes.end()};}
