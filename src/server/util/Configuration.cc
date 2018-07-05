@@ -40,6 +40,14 @@ void from_json(const nlohmann::json& src, tcp::endpoint& dest)
 
 namespace hrb {
 
+void from_json(const nlohmann::json& src, JPEGRenditionSetting& dest)
+{
+	dest.dim.width(src.value("width", dest.dim.width()));
+	dest.dim.height(src.value("height", dest.dim.height()));
+	dest.quality = src.value("quality", dest.quality);
+	dest.square_crop = src.value("square_crop", dest.square_crop);
+}
+
 Configuration::Configuration(int argc, const char *const *argv, const char *env)
 {
 	using namespace std::literals;
@@ -104,13 +112,9 @@ void Configuration::load_config(const boost::filesystem::path& path)
 		{
 			for (auto&& rend : json["rendition"].items())
 			{
-				auto width  = rend.value().value("width", 0);
-				auto height = rend.value().value("height", 0);
-				auto quality = rend.value().value("quality", 70);
-				auto square_crop = rend.value().value("square_crop", false);
-
-				if (width > 0 && height > 0)
-					m_rendition.add(rend.key(), {width, height}, quality, square_crop);
+				if (auto s = rend.value().get<JPEGRenditionSetting>();
+					s.dim.width() > 0 && s.dim.height() > 0)
+					m_rendition.add(rend.key(), s);
 			}
 		}
 		m_session_length = std::chrono::seconds{json.value(jptr{"/session_length_in_sec"}, 3600L)};
@@ -178,9 +182,9 @@ bool RenditionSetting::valid(std::string_view rend) const
 	return m_renditions.find(std::string{rend}) != m_renditions.end();
 }
 
-void RenditionSetting::add(std::string_view rend, Size2D dim, int quality, bool square_crop)
+void RenditionSetting::add(std::string_view rend, const JPEGRenditionSetting& s)
 {
-	m_renditions.insert_or_assign(std::string{rend}, JPEGRenditionSetting{dim, quality, square_crop});
+	m_renditions.insert_or_assign(std::string{rend}, s);
 }
 
 } // end of namespace

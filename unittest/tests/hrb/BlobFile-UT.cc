@@ -140,8 +140,8 @@ TEST_CASE_METHOD(BlobFileUTFixture, "upload big upright image as BlobFile", "[no
 	REQUIRE(std::memcmp(out.data(), src.data(), out.size()) == 0);
 
 	RenditionSetting cfg;
-	cfg.add("128x128",   {128, 128});
-	cfg.add("thumbnail", {64, 64});
+	cfg.add("128x128",   JPEGRenditionSetting{Size2D{128, 128}});
+	cfg.add("thumbnail", JPEGRenditionSetting{Size2D{64,  64}});
 	cfg.default_rendition("128x128");
 
 	auto rend128 = subject.rendition(cfg.default_rendition(), cfg, ec);
@@ -173,7 +173,7 @@ TEST_CASE_METHOD(BlobFileUTFixture, "upload big rot90 image as BlobFile", "[norm
 	REQUIRE(subject.is_image());
 
 	RenditionSetting cfg;
-	cfg.add("2048x2048",   {2048, 2048});
+	cfg.add("2048x2048",   JPEGRenditionSetting{Size2D{2048, 2048}});
 	cfg.default_rendition("2048x2048");
 
 	auto rotated = subject.rendition(cfg.default_rendition(), cfg, ec);
@@ -207,7 +207,7 @@ TEST_CASE_METHOD(BlobFileUTFixture, "upload lena.png as BlobFile", "[normal]")
 
 	// generate smaller rendition
 	RenditionSetting cfg;
-	cfg.add("256x256",   {256, 256});
+	cfg.add("256x256",   JPEGRenditionSetting{Size2D{256, 256}});
 	cfg.default_rendition("256x256");
 	auto rend = subject2.rendition("256x256", cfg, ec);
 	auto rend_mat = load_image(rend.buffer());

@@ -47,7 +47,7 @@ public:
 	const std::string& default_rendition() const {return m_default;}
 	void default_rendition(std::string_view rend) {m_default = rend;}
 
-	void add(std::string_view rend, Size2D dim, int quality=70, bool square_crop=false);
+	void add(std::string_view rend, const JPEGRenditionSetting& setting);
 
 private:
 	std::string m_default{"2048x2048"};
