@@ -14,6 +14,7 @@
 
 #include "Exception.hh"
 #include "Size2D.hh"
+#include "common/FS.hh"
 
 #include <boost/program_options/variables_map.hpp>
 #include <boost/program_options/options_description.hpp>
@@ -21,16 +22,27 @@
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/filesystem/path.hpp>
 
+#include "config.hh"
+
 #include <chrono>
 #include <iosfwd>
 
 namespace hrb {
 
+struct SquareCropSetting
+{
+	boost::filesystem::path model_path{std::string{constants::haarcascades_path}};
+
+	double face_size_ratio{0.05};
+	double eye_size_ratio{0.5};
+};
+
 struct JPEGRenditionSetting
 {
 	Size2D  dim;
 	int     quality{70};
-	bool    square_crop{false};
+
+	std::optional<SquareCropSetting> square_crop;
 };
 
 class RenditionSetting
@@ -47,12 +59,12 @@ public:
 	const std::string& default_rendition() const {return m_default;}
 	void default_rendition(std::string_view rend) {m_default = rend;}
 
-	void add(std::string_view rend, Size2D dim, int quality=70, bool square_crop=false);
+	void add(std::string_view rend, const JPEGRenditionSetting& setting);
 
 private:
 	std::string m_default{"2048x2048"};
 	std::unordered_map<std::string, JPEGRenditionSetting> m_renditions{
-		{m_default, JPEGRenditionSetting{{2048, 2048}, 70, false}}
+		{m_default, JPEGRenditionSetting{{2048, 2048}, 70, std::nullopt}}
 	};
 };
 

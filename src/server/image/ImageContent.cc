@@ -12,8 +12,7 @@
 
 #include "ImageContent.hh"
 #include "common/FS.hh"
-
-#include "config.hh"
+#include "util/Configuration.hh"
 
 #include <opencv2/imgproc.hpp>
 #include <opencv2/objdetect.hpp>
@@ -21,15 +20,13 @@
 
 namespace hrb {
 
-ImageContent::ImageContent(const cv::Mat& image) : m_image{image}
+ImageContent::ImageContent(const cv::Mat& image, const SquareCropSetting& setting) : m_image{image}
 {
-	fs::path model_path{std::string{constants::haarcascades_path}};
-
 	// TODO: better error handling
 	cv::CascadeClassifier face_detect, eye_detect;
-	if (!face_detect.load((model_path/"haarcascade_frontalface_default.xml").string()))
+	if (!face_detect.load((setting.model_path/"haarcascade_frontalface_default.xml").string()))
 		throw -1;
-	if (!eye_detect.load((model_path/"haarcascade_eye_tree_eyeglasses.xml").string()))
+	if (!eye_detect.load((setting.model_path/"haarcascade_eye_tree_eyeglasses.xml").string()))
 		throw -1;
 
 	// convert to gray and equalize
@@ -37,16 +34,25 @@ ImageContent::ImageContent(const cv::Mat& image) : m_image{image}
 	cvtColor(m_image, gray, cv::COLOR_BGR2GRAY);
 	equalizeHist(gray, gray);
 
+	auto min_face = static_cast<int>(std::max(
+		m_image.cols * setting.face_size_ratio,
+		m_image.rows * setting.face_size_ratio
+	));
+
 	// detect faces
 	std::vector<cv::Rect> potential_faces;
-	face_detect.detectMultiScale(gray, potential_faces, 1.1, 2, cv::CASCADE_SCALE_IMAGE, cv::Size{m_image.cols/20, m_image.rows/20});
+	face_detect.detectMultiScale(gray, potential_faces, 1.1, 2, cv::CASCADE_SCALE_IMAGE, cv::Size{min_face, min_face});
 
 	for (auto&& rect : potential_faces)
 	{
 		auto face_mat = m_image(rect);
+		auto min_eye = static_cast<int>(std::max(
+			rect.width  * setting.eye_size_ratio,
+			rect.height * setting.eye_size_ratio
+		));
 
 		std::vector<cv::Rect> eyes;
-		eye_detect.detectMultiScale(face_mat, eyes, 1.1, 2, cv::CASCADE_SCALE_IMAGE, cv::Size{rect.width/5, rect.height/5});
+		eye_detect.detectMultiScale(face_mat, eyes, 1.1, 2, cv::CASCADE_SCALE_IMAGE, cv::Size{min_eye, min_eye});
 
 		for (auto&& eye : eyes)
 			m_eyes.emplace_back(eye.x + rect.x, eye.y + rect.y, eye.width, eye.height);

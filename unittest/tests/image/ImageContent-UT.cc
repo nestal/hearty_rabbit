@@ -11,6 +11,7 @@
 //
 
 #include "image/ImageContent.hh"
+#include "util/Configuration.hh"
 #include "TestImages.hh"
 
 #include <opencv2/imgcodecs.hpp>
@@ -25,7 +26,7 @@ TEST_CASE("crop at the center if no object is detected", "[normal]")
 	REQUIRE(image.cols == 100);
 	REQUIRE(image.rows == 200);
 
-	ImageContent subject{image};
+	ImageContent subject{image, SquareCropSetting{}};
 
 	auto roi = subject.square_crop();
 	REQUIRE(roi.width == 100);
@@ -39,7 +40,7 @@ TEST_CASE("square images will not be cropped", "[normal]")
 	auto lena = random_lena();
 	REQUIRE(lena.cols == lena.rows);
 
-	ImageContent subject{lena};
+	ImageContent subject{lena, SquareCropSetting{}};
 
 	auto roi = subject.square_crop();
 	REQUIRE(roi.width == roi.height);

@@ -26,18 +26,44 @@
 namespace po = boost::program_options;
 namespace ip = boost::asio::ip;
 
-namespace hrb {
-namespace {
+namespace boost {
 
-ip::tcp::endpoint parse_endpoint(const nlohmann::json& json)
+namespace filesystem {
+void from_json(const nlohmann::json& src, path& dest)
 {
-	return {
-		ip::make_address(json["address"].get<std::string>()),
-		json["port"].get<unsigned short>()
-	};
+	dest = path{src.get<std::string>()};
+}
+} // end of namespace filesystem
+
+namespace asio {
+namespace ip {
+
+void from_json(const nlohmann::json& src, tcp::endpoint& dest)
+{
+	dest.address(make_address(src["address"].get<std::string>()));
+	dest.port(src["port"].get<unsigned short>());
 }
 
-} // end of local namespace
+}}}
+
+namespace hrb {
+
+void from_json(const nlohmann::json& src, JPEGRenditionSetting& dest)
+{
+	dest.dim.width(src.value("width", dest.dim.width()));
+	dest.dim.height(src.value("height", dest.dim.height()));
+	dest.quality = src.value("quality", dest.quality);
+
+	if (src.count("square_crop") > 0)
+		dest.square_crop.emplace(src.value("square_crop", *dest.square_crop));
+}
+
+void from_json(const nlohmann::json& src, SquareCropSetting& dest)
+{
+	dest.model_path = src.value("model_path", dest.model_path);
+	dest.face_size_ratio = src.value("eye_size_ratio", dest.face_size_ratio);
+	dest.eye_size_ratio = src.value("eye_size_ratio", dest.eye_size_ratio);
+}
 
 Configuration::Configuration(int argc, const char *const *argv, const char *env)
 {
@@ -103,13 +129,9 @@ void Configuration::load_config(const boost::filesystem::path& path)
 		{
 			for (auto&& rend : json["rendition"].items())
 			{
-				auto width  = rend.value().value("width", 0);
-				auto height = rend.value().value("height", 0);
-				auto quality = rend.value().value("quality", 70);
-				auto square_crop = rend.value().value("square_crop", false);
-
-				if (width > 0 && height > 0)
-					m_rendition.add(rend.key(), {width, height}, quality, square_crop);
+				if (auto s = rend.value().get<JPEGRenditionSetting>();
+					s.dim.width() > 0 && s.dim.height() > 0)
+					m_rendition.add(rend.key(), s);
 			}
 		}
 		m_session_length = std::chrono::seconds{json.value(jptr{"/session_length_in_sec"}, 3600L)};
@@ -119,11 +141,9 @@ void Configuration::load_config(const boost::filesystem::path& path)
 		if (m_user_id == 0 || m_group_id == 0)
 			BOOST_THROW_EXCEPTION(InvalidUserOrGroup());
 
-		m_listen_http   = parse_endpoint(json.at(jptr{"/http"}));
-		m_listen_https  = parse_endpoint(json.at(jptr{"/https"}));
-
-		if (auto redis = json.value(jptr{"/redis"}, nlohmann::json::object_t{}); !redis.empty())
-			m_redis = parse_endpoint(redis);
+		m_listen_http   = json.at(jptr{"/http"}).get<boost::asio::ip::tcp::endpoint>();
+		m_listen_https  = json.at(jptr{"/https"}).get<boost::asio::ip::tcp::endpoint>();
+		m_redis = json.value(jptr{"/redis"}, m_redis);
 	}
 	catch (nlohmann::json::exception& e)
 	{
@@ -179,9 +199,9 @@ bool RenditionSetting::valid(std::string_view rend) const
 	return m_renditions.find(std::string{rend}) != m_renditions.end();
 }
 
-void RenditionSetting::add(std::string_view rend, Size2D dim, int quality, bool square_crop)
+void RenditionSetting::add(std::string_view rend, const JPEGRenditionSetting& s)
 {
-	m_renditions.insert_or_assign(std::string{rend}, JPEGRenditionSetting{dim, quality, square_crop});
+	m_renditions.insert_or_assign(std::string{rend}, s);
 }
 
 } // end of namespace
