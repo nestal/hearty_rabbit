@@ -14,12 +14,15 @@
 
 #include "Exception.hh"
 #include "Size2D.hh"
+#include "common/FS.hh"
 
 #include <boost/program_options/variables_map.hpp>
 #include <boost/program_options/options_description.hpp>
 #include <boost/exception/error_info.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/filesystem/path.hpp>
+
+#include "config.hh"
 
 #include <chrono>
 #include <iosfwd>
@@ -54,6 +57,14 @@ private:
 	std::unordered_map<std::string, JPEGRenditionSetting> m_renditions{
 		{m_default, JPEGRenditionSetting{{2048, 2048}, 70, false}}
 	};
+};
+
+struct ContentRecognitionSetting
+{
+	boost::filesystem::path     model_path{std::string{constants::haarcascades_path}};
+
+	double face_size_ratio{0.05};
+	double eye_size_ratio{0.5};
 };
 
 /// \brief  Parsing command line options and configuration file

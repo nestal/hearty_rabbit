@@ -27,6 +27,14 @@ namespace po = boost::program_options;
 namespace ip = boost::asio::ip;
 
 namespace boost {
+
+namespace filesystem {
+void from_json(const nlohmann::json& src, path& dest)
+{
+	dest = path{src.get<std::string>()};
+}
+} // end of namespace filesystem
+
 namespace asio {
 namespace ip {
 
@@ -46,6 +54,11 @@ void from_json(const nlohmann::json& src, JPEGRenditionSetting& dest)
 	dest.dim.height(src.value("height", dest.dim.height()));
 	dest.quality = src.value("quality", dest.quality);
 	dest.square_crop = src.value("square_crop", dest.square_crop);
+}
+
+void from_json(const nlohmann::json& src, ContentRecognitionSetting& dest)
+{
+	dest.model_path = src.value("model_path", dest.model_path);
 }
 
 Configuration::Configuration(int argc, const char *const *argv, const char *env)
