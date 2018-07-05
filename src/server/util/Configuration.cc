@@ -26,18 +26,19 @@
 namespace po = boost::program_options;
 namespace ip = boost::asio::ip;
 
-namespace hrb {
-namespace {
+namespace boost {
+namespace asio {
+namespace ip {
 
-ip::tcp::endpoint parse_endpoint(const nlohmann::json& json)
+void from_json(const nlohmann::json& src, tcp::endpoint& dest)
 {
-	return {
-		ip::make_address(json["address"].get<std::string>()),
-		json["port"].get<unsigned short>()
-	};
+	dest.address(make_address(src["address"].get<std::string>()));
+	dest.port(src["port"].get<unsigned short>());
 }
 
-} // end of local namespace
+}}}
+
+namespace hrb {
 
 Configuration::Configuration(int argc, const char *const *argv, const char *env)
 {
@@ -119,11 +120,9 @@ void Configuration::load_config(const boost::filesystem::path& path)
 		if (m_user_id == 0 || m_group_id == 0)
 			BOOST_THROW_EXCEPTION(InvalidUserOrGroup());
 
-		m_listen_http   = parse_endpoint(json.at(jptr{"/http"}));
-		m_listen_https  = parse_endpoint(json.at(jptr{"/https"}));
-
-		if (auto redis = json.value(jptr{"/redis"}, nlohmann::json::object_t{}); !redis.empty())
-			m_redis = parse_endpoint(redis);
+		m_listen_http   = json.at(jptr{"/http"}).get<boost::asio::ip::tcp::endpoint>();
+		m_listen_https  = json.at(jptr{"/https"}).get<boost::asio::ip::tcp::endpoint>();
+		m_redis = json.value(jptr{"/redis"}, m_redis);
 	}
 	catch (nlohmann::json::exception& e)
 	{
