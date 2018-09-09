@@ -21,7 +21,7 @@ login_response = dest.post(
 	data="username=" + user + "&password=" + password,
 	headers={"Content-type": "application/x-www-form-urlencoded"}
 )
-if login_response.status_code != 200 or dest.cookies.get("id") == "":
+if login_response.status_code != 204 or dest.cookies.get("id") == "":
 	print("source site login incorrect: {0}".format(login_response.status_code))
 	exit(-1)
 
