@@ -1,4 +1,4 @@
-FROM centos/devtoolset-7-toolchain-centos7:7 as builder
+FROM centos:7 as builder
 MAINTAINER [Nestal Wan <me@nestal.net>]
 ENV container docker
 
@@ -11,40 +11,65 @@ RUN yum install -y deltarpm epel-release \
 	&& yum install -y --setopt=tsflags=nodocs openssl-devel git make hiredis-devel \
 		file-devel libicu-devel zlib-devel bzip2-devel xz-devel libunwind-devel which \
 		autoconf automake libtool exiv2-devel msgpack-devel libpng-devel nasm libcurl-devel \
-	&& source scl_source enable devtoolset-7 \
+		gmp-devel mpfr-devel libmpc-devel gcc-c++ \
 	&& yum clean all -y \
 	&& mkdir /build
 
 WORKDIR /build
 
-ENV PATH="/build/cmake-3.11.1-Linux-x86_64/bin:/opt/bin:/opt/bin:${PATH}"
-
 # download packages
 ADD \
-	1.5.3.tar.gz boost_1_67_0.tar.gz cmake-3.11.1-Linux-x86_64.tar.gz 3.4.1.tar.gz \
+	1.5.3.tar.gz boost_1_68_0.tar.gz cmake-3.12.2-Linux-x86_64.tar.gz 3.4.1.tar.gz gcc-8.2.0.tar.xz \
 #	https://github.com/libjpeg-turbo/libjpeg-turbo/archive/1.5.3.tar.gz \
 #	https://dl.bintray.com/boostorg/release/1.67.0/source/boost_1_67_0.tar.gz \
 #	https://cmake.org/files/v3.11/cmake-3.11.1-Linux-x86_64.tar.gz \
 #	https://github.com/opencv/opencv/archive/3.4.1.tar.gz \
+#   http://mirror-hk.koddos.net/gnu/gcc/gcc-8.2.0/gcc-8.2.0.tar.xz \
 		/build/
+
+# build gcc 8.2.0
+RUN \
+	mkdir gcc-build \
+	&& cd gcc-build \
+	&& ../gcc-8.2.0/configure \
+		--prefix=/opt/gcc-8.2.0-multilib \
+		--enable-languages=c,c++ \
+		--enable-lto \
+		--enable-multilib \
+		--with-multilib-list=m64 \
+		--enable-ld \
+		--enable-gold \
+		--with-system-zlib \
+		--build=x86_64-linux-gnu \
+	&& make -j8 \
+	&& make install
+
+ENV \
+	PATH="/opt/gcc-8.2.0-multilib/bin:/build/cmake-3.12.2-Linux-x86_64/bin:/opt/bin:/opt/bin:${PATH}" \
+	LD_LIBARY_PATH="/opt/gcc-8.2.0-multilib/lib64" \
+	CC=/opt/gcc-8.2.0-multilib/bin/gcc \
+	CXX=/opt/gcc-8.2.0-multilib/bin/g++
+
+# remove the system gcc so that our gcc 8.2 will always be used
+RUN rpm -e --nodeps gcc gcc-c++
 
 # libjpeg-turbo
 # The libjpeg-turbo package provided by CentOS 7 uses a different API version than
 # Fedora. For consistency, build the latest version from source and use that.
-RUN  \
-	cd libjpeg-turbo-1.5.3 \
-	&& autoreconf -fiv \
-	&& ./configure --prefix=/opt \
-	&& make -j8 install
+#RUN  \
+#	cd libjpeg-turbo-1.5.3 \
+#	&& autoreconf -fiv \
+#	&& ./configure --prefix=/opt \
+#	&& make -j8 install
 
 # build boost (>1.65 to support boost beast)
 RUN \
-	cd boost_1_67_0 \
+	cd boost_1_68_0 \
 	&& ./bootstrap.sh \
 		--with-libraries=program_options,filesystem,system \
-		--prefix=/opt/boost_1_67 \
+		--prefix=/opt/boost_1_68 \
 	&& (./b2 -j8 install; exit 0) \
-	&& rm -rf /build/boost_1_67_0
+	&& rm -rf /build/boost_1_68_0
 
 # build libb2
 # Don't enable native CPU optimization because the build machine may be different from
@@ -83,8 +108,8 @@ RUN \
 	&& make -j8 install \
 	&& cd .. && rm -rf build
 
-RUN git clone --depth 1 -b 1.4.60 https://github.com/aws/aws-sdk-cpp.git
-RUN cd aws-sdk-cpp; mkdir build; cd build; cmake -DBUILD_SHARED_LIBS=OFF ..; make -j8
+#RUN git clone --depth 1 -b 1.4.60 https://github.com/aws/aws-sdk-cpp.git
+#RUN cd aws-sdk-cpp; mkdir build; cd build; cmake -DBUILD_SHARED_LIBS=OFF ..; make -j8
 
 ADD https://github.com/nlohmann/json/releases/download/v3.1.2/json.hpp /opt/include/
 ADD https://github.com/nlohmann/json/releases/download/v3.1.2/json.hpp /opt/include/nlohmann/

@@ -67,6 +67,8 @@ public:
 
 	void move(const fs::path& dest, std::error_code& ec);
 
+	const std::string& path() const {return m_tmp_path;}
+
 private:
 	boost::beast::file_posix m_file{};
 	std::string m_tmp_path{};
