@@ -86,7 +86,6 @@ void HRBClient::scan_collections(Complete&& comp)
 	auto req = request<http::empty_body, http::string_body>({URLIntent::QueryTarget::collection, "json&user=" + m_user.username()}, http::verb::get);
 	req->on_load([this, comp=std::forward<Complete>(comp)](auto ec, auto& req)
 	{
-
 		comp(nlohmann::json::parse(req.response().body()).template get<CollectionList>(), ec);
 		req.shutdown();
 	});
@@ -127,7 +126,6 @@ void HRBClient::upload(std::string_view coll, std::string_view filename, ByteIte
 	});
 	req->run();
 }
-
 
 template <typename RequestBody, typename ResponseBody>
 auto HRBClient::request(const URLIntent& intent, boost::beast::http::verb method)

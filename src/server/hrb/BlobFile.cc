@@ -46,6 +46,9 @@ BlobFile::BlobFile(const fs::path& dir, const ObjectID& id) : m_id{id}, m_dir{di
 /// \brief Creates a new blob from a uploaded file
 BlobFile::BlobFile(UploadFile&& tmp, const fs::path& dir, std::error_code& ec)  : m_id{tmp.ID()}, m_dir{dir}
 {
+	assert(!ec);
+	assert(tmp.is_open());
+
 	assert(tmp.native_handle() > 0);
 
 	// Note: closing the file before munmap() is OK: the mapped memory will still be there.
