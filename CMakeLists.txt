@@ -15,7 +15,7 @@ find_package(Boost REQUIRED COMPONENTS system filesystem program_options)
 find_package(Threads REQUIRED)
 find_package(PkgConfig REQUIRED)
 find_package(OpenSSL REQUIRED)
-find_package(OpenCV REQUIRED core imgproc imgcodecs)
+find_package(OpenCV REQUIRED core imgproc imgcodecs objdetect highgui)
 find_package(Doxygen)
 
 # Find libb2
@@ -29,10 +29,12 @@ message(STATUS "found nlohmann/json at ${NLOHMANN_INCLUDE}")
 
 pkg_check_modules(HIREDIS REQUIRED hiredis)
 pkg_check_modules(LIBUNWIND libunwind)
-pkg_check_modules(EXIV2 exiv2)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CONFIG_FILENAME "hearty_rabbit.json")
+
+# OpenCV haarcascade model for unit test
+message(STATUS "using haarcascade at ${HAARCASCADE_PATH}")
 
 # use new C++ ABI
 add_definitions(-D_GLIBCXX_USE_CXX11_ABI=1)
@@ -139,18 +141,17 @@ target_include_directories(
 # Server will fail to built if any of these test cases failed.
 ###################################################################################################
 
-file(GLOB_RECURSE SRV_UT_SRC unittest/tests/*.cc unittest/tests/*/*.hh)
+file(GLOB_RECURSE SRV_UT_SRC unittest/include/*.hh unittest/tests/*.cc unittest/tests/*/*.hh)
 add_executable(unittest ${SRV_UT_SRC})
 target_include_directories(
 	unittest PRIVATE
+	unittest/include
 	unittest/Catch2/single_include
 	${PROJECT_SOURCE_DIR}/src/server
-	${EXIV2_INCLUDE_DIRS}
 )
 target_link_libraries(
 	unittest
 	hrbsrv
-	${EXIV2_LIBRARIES}		# exiv2 is used to verify the EXIF decoder
 )
 
 # Automatically run unit tests after the build
@@ -170,10 +171,15 @@ add_custom_command(
 # These test cases requires the server to be running.
 ###################################################################################################
 
-file(GLOB_RECURSE CLIENT_UT_SRC unittest/client/*.cc unittest/client/*/*.hh)
+file(
+	GLOB_RECURSE CLIENT_UT_SRC
+	unittest/include/*.hh unittest/tests/image/TestImages.cc
+	unittest/client/*.cc unittest/client/*/*.hh
+)
 add_executable(clienttest ${CLIENT_UT_SRC})
 target_include_directories(
 	clienttest PRIVATE
+	unittest/include
 	unittest/Catch2/single_include
 	${PROJECT_SOURCE_DIR}/src/client
 	${PROJECT_SOURCE_DIR}/src/server
@@ -208,6 +214,13 @@ add_dependencies(hearty_rabbit unittest clienttest)
 
 if (BUILD_CLIENT)
 	add_subdirectory(client/qt)
+	
+	add_executable(gui_driver unittest/gui_driver/main.cc unittest/tests/image/TestImages.cc)
+	target_link_libraries(gui_driver hrbclient hrbsrv)
+	target_include_directories(
+		gui_driver PUBLIC
+		${PROJECT_SOURCE_DIR}/unittest/include
+	)
 endif()
 
 ###################################################################################################

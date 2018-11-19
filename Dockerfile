@@ -19,6 +19,7 @@ RUN mkdir /build/docker-build \
 		-DCMAKE_PREFIX_PATH=/opt \
 		-DCMAKE_BUILD_TYPE=Release \
 		-DCMAKE_INSTALL_PREFIX=/build/hearty_rabbit \
+		-DHAARCASCADE_PATH="/build/opencv-3.4.1/data/haarcascades/" \
 			../src \
 	&& make -j8 install
 

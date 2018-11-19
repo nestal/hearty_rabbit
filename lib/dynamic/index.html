@@ -47,7 +47,7 @@
 	<span class="nav-level1 show-only-when-selected" id="move-image-nav" title="Move image">
 		<i class="nav-icons material-icons">move_to_inbox</i>
 	</span>
-	<span class="nav-level1 show-only-when-selected" id="make-image-private-nav" title="Move image to other album">
+	<span class="nav-level1 show-only-when-selected" id="make-image-private-nav" title="Make image private">
 		<i class="nav-icons material-icons">person</i>
 	</span>
 	<span class="nav-level1 show-only-when-selected" id="make-image-shared-nav" title="Share this image with other users">
@@ -74,10 +74,7 @@
 	</div>
 </section>
 
-<section>
-	<input id="file-upload" type="file" multiple>
-</section>
-
+<!-- The light box contains an image to be presented to the user -->
 <section id="light-box" class="modal">
 	<div class="light-box-button-bar">
 		<i id="make-cover" class="tooltip light-box-button material-icons">face<span class="tooltiptext">Use it as cover image of the album</span></i>
@@ -88,7 +85,13 @@
 		<i id="delete-image" class="tooltip light-box-button material-icons">delete<span class="tooltiptext">Delete picture</span></i>
 		<i class="close-overlays tooltip light-box-button material-icons">close<span class="tooltiptext">Close</span></i>
 	</div>
+
 	<img id="light-box-image" class="modal-content hrb-blob-image" src="/lib/loading.svg">
+	<table class="image-meta">
+		<tr><td>Filename:</td><td id="meta-filename"></td></tr>
+		<tr><td>Mime Type:</td><td id="meta-mime"></td></tr>
+		<tr><td>Date/Time:</td><td id="meta-datetime"></td></tr>
+	</table>
 
 	<!-- Next/previous controls -->
 	<a class="prev" onclick="next_image(-1)">
@@ -154,6 +157,10 @@
 			via this link:</p>
 		<p><textarea id="share-link-textbox" readonly></textarea><i id="copy-shared-link" class="light-box-button material-icons">content_copy</i></p>
 	</div>
+</section>
+
+<section>
+	<input id="file-upload" type="file" multiple>
 </section>
 
 <section id="toast">Uploading stuff</section>

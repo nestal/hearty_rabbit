@@ -14,10 +14,11 @@
 #include "UploadFile.hh"
 
 // HeartyRabbit headers
+#include "common/Escape.hh"
 #include "image/EXIF2.hh"
+#include "image/ImageContent.hh"
 #include "image/PHash.hh"
 #include "util/Configuration.hh"
-#include "common/Escape.hh"
 #include "util/Log.hh"
 #include "util/Magic.hh"
 #include "util/MMap.hh"
@@ -48,12 +49,19 @@ BlobFile::BlobFile(UploadFile&& tmp, const fs::path& dir, std::error_code& ec)  
 	assert(!ec);
 	assert(tmp.is_open());
 
+	assert(tmp.native_handle() > 0);
+
 	// Note: closing the file before munmap() is OK: the mapped memory will still be there.
 	// Details: http://pubs.opengroup.org/onlinepubs/7908799/xsh/mmap.html
 	auto master = MMap::open(tmp.native_handle(), ec);
 	if (ec)
 	{
-		Log(LOG_WARNING, "BlobFile::BlobFile(): cannot mmap temporary file %3% %1% %2%", ec, ec.message(), tmp.path());
+		struct stat buf{};
+		if (auto r = ::fstat(tmp.native_handle(), &buf); r == 0)
+			Log(LOG_WARNING, "fstat %1%", buf.st_size);
+
+		// TODO: give more information about the file
+		Log(LOG_WARNING, "BlobFile::upload(): cannot mmap temporary file %1% %2%", ec, ec.message());
 		return;
 	}
 
@@ -123,12 +131,21 @@ void BlobFile::generate_image_rendition(const JPEGRenditionSetting& cfg, const f
 		auto jpeg = cv::imread((m_dir/hrb::master_rendition).string(), cv::IMREAD_ANYCOLOR);
 		if (!jpeg.empty())
 		{
-			auto xratio = cfg.dim.width() / static_cast<double>(jpeg.cols);
-			auto yratio = cfg.dim.height() / static_cast<double>(jpeg.rows);
+			if (cfg.square_crop)
+			{
+				ImageContent content{jpeg};
+				auto square = jpeg(content.square_crop()).clone();
+				jpeg = std::move(square);
+			}
+
+			auto ratio = std::min(
+				cfg.dim.width() / static_cast<double>(jpeg.cols),
+				cfg.dim.height() / static_cast<double>(jpeg.rows)
+			);
 
 			cv::Mat out;
-			if (xratio < 1.0 || yratio < 1.0)
-				cv::resize(jpeg, out, {}, std::min(xratio, yratio), std::min(xratio, yratio), cv::INTER_LINEAR);
+			if (ratio < 1.0)
+				cv::resize(jpeg, out, {}, ratio, ratio, cv::INTER_LINEAR);
 			else
 				out = jpeg;
 

@@ -12,6 +12,8 @@
 
 #include <catch.hpp>
 
+#include "TestImages.hh"
+
 #include "hrb/BlobDatabase.hh"
 #include "hrb/BlobFile.hh"
 #include "hrb/UploadFile.hh"
@@ -68,7 +70,7 @@ TEST_CASE("Open temp file", "[normal]")
 TEST_CASE("Upload JPEG file to BlobDatabase", "[normal]")
 {
 	std::error_code ec;
-	auto black = MMap::open(fs::path{__FILE__}.parent_path().parent_path() / "image" / "black.jpg", ec);
+	auto black = MMap::open(test_images / "black.jpg", ec);
 	REQUIRE(!ec);
 
 	Configuration cfg;

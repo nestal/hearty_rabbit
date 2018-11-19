@@ -47,12 +47,21 @@ public:
 	template <typename Complete>
 	void upload(std::string_view coll, const fs::path& file, Complete&& comp);
 
+	template <typename Complete, typename ByteIterator>
+	void upload(std::string_view coll, std::string_view filename, ByteIterator first_byte, ByteIterator last_byte, Complete&& comp);
+
 	template <typename Complete>
-	void get_blob(std::string_view owner, std::string_view coll, const ObjectID& blob);
+	void get_blob(std::string_view owner, std::string_view coll, const ObjectID& blob, Complete&& comp);
+
+	template <typename Complete>
+	void get_blob_meta(std::string_view owner, std::string_view coll, const ObjectID& blob, Complete&& comp);
 
 private:
 	template <typename RequestBody, typename ResponseBody>
 	auto request(const URLIntent& intent, boost::beast::http::verb method);
+
+	template <typename Complete, typename Response>
+	void handle_upload_response(Response& response, Complete&& comp, std::error_code ec);
 
 private:
 	// connection to the server

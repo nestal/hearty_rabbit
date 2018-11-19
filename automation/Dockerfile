@@ -10,7 +10,7 @@ RUN yum install -y deltarpm epel-release \
 	&& yum update -y \
 	&& yum install -y --setopt=tsflags=nodocs openssl-devel git make hiredis-devel \
 		file-devel libicu-devel zlib-devel bzip2-devel xz-devel libunwind-devel which \
-		autoconf automake libtool exiv2-devel msgpack-devel libpng-devel nasm libcurl-devel \
+		autoconf automake libtool libexif-devel msgpack-devel libpng-devel nasm libcurl-devel \
 		gmp-devel mpfr-devel libmpc-devel gcc-c++ \
 	&& yum clean all -y \
 	&& mkdir /build
@@ -53,15 +53,6 @@ ENV \
 # remove the system gcc so that our gcc 8.2 will always be used
 RUN rpm -e --nodeps gcc gcc-c++
 
-# libjpeg-turbo
-# The libjpeg-turbo package provided by CentOS 7 uses a different API version than
-# Fedora. For consistency, build the latest version from source and use that.
-#RUN  \
-#	cd libjpeg-turbo-1.5.3 \
-#	&& autoreconf -fiv \
-#	&& ./configure --prefix=/opt \
-#	&& make -j8 install
-
 # build boost (>1.65 to support boost beast)
 RUN \
 	cd boost_1_68_0 \
@@ -72,8 +63,8 @@ RUN \
 	&& rm -rf /build/boost_1_68_0
 
 # build libb2
-# Don't enable native CPU optimization because the build machine may be different from
-# the current one.
+# Don't enable native CPU optimization because the machine that builds this image may be different from
+# the machine that builds and run the code.
 RUN git clone --depth 1 -b v0.98 https://github.com/BLAKE2/libb2.git
 RUN cd libb2 \
 	&& ./autogen.sh \
@@ -89,7 +80,7 @@ RUN \
 		-DCMAKE_BUILD_TYPE=Release \
 		-DCMAKE_INSTALL_PREFIX=/opt \
 		-DBUILD_SHARED_LIBS=OFF \
-		-DBUILD_LIST=core,imgproc,imgcodecs \
+		-DBUILD_LIST=core,imgproc,imgcodecs,objdetect,highgui \
 		-DBUILD_opencv_legacy=OFF \
 		-DBUILD_JASPER=OFF \
 		-DBUILD_WEBP=OFF \
@@ -108,8 +99,9 @@ RUN \
 	&& make -j8 install \
 	&& cd .. && rm -rf build
 
+# AWS libraries: for future requirements to support S3 backup
 #RUN git clone --depth 1 -b 1.4.60 https://github.com/aws/aws-sdk-cpp.git
-#RUN cd aws-sdk-cpp; mkdir build; cd build; cmake -DBUILD_SHARED_LIBS=OFF ..; make -j8
+#RUN cd aws-sdk-cpp && mkdir build && cd build && cmake -DBUILD_SHARED_LIBS=OFF .. && make -j8
 
-ADD https://github.com/nlohmann/json/releases/download/v3.1.2/json.hpp /opt/include/
+# nlohmann JSON library
 ADD https://github.com/nlohmann/json/releases/download/v3.1.2/json.hpp /opt/include/nlohmann/

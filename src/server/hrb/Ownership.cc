@@ -122,10 +122,10 @@ void Ownership::Collection::link(redis::Connection& db, const ObjectID& id, cons
 		m_list_prefix.data(), m_list_prefix.size(),
 		m_user.data(), m_user.size(),
 
-		id.data(), id.size(),        // ARGV[1]
-		entry.data(), entry.size(),  // ARGV[2]
-		hex.data(), hex.size(),      // ARGV[3]
-		m_path.data(), m_path.size()
+		id.data(), id.size(),        // ARGV[1]: blob
+		entry.data(), entry.size(),  // ARGV[2]: entry
+		hex.data(), hex.size(),      // ARGV[3]: cover
+		m_path.data(), m_path.size() // ARGV[4]: coll
 	);
 }
 
