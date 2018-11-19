@@ -3,17 +3,18 @@ MAINTAINER [Nestal Wan <me@nestal.net>]
 ARG BUILD_NUMBER
 ENV container docker
 
-ENV PATH=$PATH:/opt/rh/devtoolset-7/root/usr/bin:/opt/bin \
+ENV PATH="$PATH:/opt/bin" \
 	PKG_CONFIG_PATH=/opt/lib/pkgconfig/ \
-	LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/lib
+	LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/opt/lib:/opt/gcc-8.2.0-multilib/lib64"
 
 # Copy source code. Not using git clone because the code may not be committed
 # yet in development builds
 COPY . /build/src
 RUN mkdir /build/docker-build \
+	&& chmod -R a+rX /build/src \
 	&& cd docker-build \
 	&& cmake \
-		-DBOOST_ROOT=/opt/boost_1_67 \
+		-DBOOST_ROOT=/opt/boost_1_68 \
 		-DBUILD_NUMBER=$BUILD_NUMBER \
 		-DCMAKE_PREFIX_PATH=/opt \
 		-DCMAKE_BUILD_TYPE=Release \
@@ -33,9 +34,9 @@ COPY --from=builder \
 	/lib64/libssl.so.10  \
 	/lib64/libcrypto.so.10  \
 	/lib64/libpthread.so.0  \
-	/lib64/libstdc++.so.6  \
+	/opt/gcc-8.2.0-multilib/lib64/libstdc++.so.6  \
 	/lib64/libm.so.6  \
-	/lib64/libgcc_s.so.1  \
+	/opt/gcc-8.2.0-multilib/lib64/libgcc_s.so.1  \
 	/lib64/libc.so.6  \
 	/lib64/libz.so.1  \
 	/lib64/librt.so.1 \
