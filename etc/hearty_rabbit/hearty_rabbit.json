@@ -8,7 +8,7 @@
   "thread_count": 1,
   "rendition" : {
     "2048x2048": {"width":2048, "height" : 2048},
-    "thumbnail": {"width":768,  "height" : 768, "quality": 40}
+    "thumbnail": {"width":768,  "height" : 768, "quality": 40, "square_crop": true}
   },
   "http": {
     "address": "0.0.0.0",

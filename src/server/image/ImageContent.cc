@@ -28,9 +28,9 @@ ImageContent::ImageContent(const cv::Mat& image) : m_image{image}
 	// TODO: better error handling
 	cv::CascadeClassifier face_detect, eye_detect;
 	if (!face_detect.load((model_path/"haarcascade_frontalface_default.xml").string()))
-		throw -1;
+		throw std::runtime_error("cannot load frontalface model from " + (model_path/"haarcascade_frontalface_default.xml").string());
 	if (!eye_detect.load((model_path/"haarcascade_eye_tree_eyeglasses.xml").string()))
-		throw -1;
+		throw std::runtime_error("cannot load eye model from " + (model_path/"haarcascade_eye_tree_eyeglasses.xml").string());
 
 	// convert to gray and equalize
 	cv::Mat gray;
