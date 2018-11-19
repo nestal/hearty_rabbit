@@ -153,9 +153,18 @@ void BlobFile::generate_image_rendition(const JPEGRenditionSetting& cfg, const f
 			cv::imencode(mime() == "image/png" ? ".png" : ".jpg", out, out_buf, {cv::IMWRITE_JPEG_QUALITY, cfg.quality});
 			save_blob(out_buf, dest, ec);
 		}
+		else
+		{
+			Log(LOG_WARNING, "BlobFile::generate_image_rendition(): Cannot open master rendition at %1%", m_dir);
+		}
+	}
+	catch (std::exception& e)
+	{
+		Log(LOG_WARNING, "Exception at BlobFile::generate_image_rendition(): %1% at %2%", e.what(), m_dir);
 	}
 	catch (...)
 	{
+		Log(LOG_WARNING, "Unknown exception at BlobFile::generate_image_rendition(): at %2%", m_dir);
 	}
 }
 
