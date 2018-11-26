@@ -126,49 +126,49 @@ MMap BlobFile::rendition(std::string_view rendition, const RenditionSetting& cfg
 
 void BlobFile::generate_image_rendition(const JPEGRenditionSetting& cfg, const fs::path& dest, std::error_code& ec) const
 {
-	try
+	auto jpeg = cv::imread((m_dir/hrb::master_rendition).string(), cv::IMREAD_ANYCOLOR);
+	if (!jpeg.empty())
 	{
-		auto jpeg = cv::imread((m_dir/hrb::master_rendition).string(), cv::IMREAD_ANYCOLOR);
-		if (!jpeg.empty())
+		if (cfg.square_crop)
 		{
-			if (cfg.square_crop)
+			try
 			{
-				ImageContent content{jpeg};
+				ImageContent content{jpeg, haar_path};
 				auto square = jpeg(content.square_crop()).clone();
 				jpeg = std::move(square);
 			}
-
-			auto ratio = std::min(
-				cfg.dim.width() / static_cast<double>(jpeg.cols),
-				cfg.dim.height() / static_cast<double>(jpeg.rows)
-			);
-
-			cv::Mat out;
-			if (ratio < 1.0)
-				cv::resize(jpeg, out, {}, ratio, ratio, cv::INTER_LINEAR);
-			else
-				out = jpeg;
-
-			std::vector<unsigned char> out_buf;
-			cv::imencode(mime() == "image/png" ? ".png" : ".jpg", out, out_buf, {cv::IMWRITE_JPEG_QUALITY, cfg.quality});
-			save_blob(out_buf, dest, ec);
+			catch (cv::Exception& e)
+			{
+				Log(LOG_WARNING, "Exception at BlobFile::generate_image_rendition(): %1% at %2%", e.msg.c_str(), m_dir);
+			}
+			catch (std::exception& e)
+			{
+				Log(LOG_WARNING, "Exception at BlobFile::generate_image_rendition(): %1% at %2%", e.what(), m_dir);
+			}
+			catch (...)
+			{
+				Log(LOG_WARNING, "Unknown exception at BlobFile::generate_image_rendition(): at %1%", m_dir);
+			}
 		}
+
+		auto ratio = std::min(
+			cfg.dim.width() / static_cast<double>(jpeg.cols),
+			cfg.dim.height() / static_cast<double>(jpeg.rows)
+		);
+
+		cv::Mat out;
+		if (ratio < 1.0)
+			cv::resize(jpeg, out, {}, ratio, ratio, cv::INTER_LINEAR);
 		else
-		{
-			Log(LOG_WARNING, "BlobFile::generate_image_rendition(): Cannot open master rendition at %1%", m_dir);
-		}
+			out = jpeg;
+
+		std::vector<unsigned char> out_buf;
+		cv::imencode(mime() == "image/png" ? ".png" : ".jpg", out, out_buf, {cv::IMWRITE_JPEG_QUALITY, cfg.quality});
+		save_blob(out_buf, dest, ec);
 	}
-	catch (cv::Exception& e)
+	else
 	{
-		Log(LOG_WARNING, "Exception at BlobFile::generate_image_rendition(): %1% at %2%", e.msg.c_str(), m_dir);
-	}
-	catch (std::exception& e)
-	{
-		Log(LOG_WARNING, "Exception at BlobFile::generate_image_rendition(): %1% at %2%", e.what(), m_dir);
-	}
-	catch (...)
-	{
-		Log(LOG_WARNING, "Unknown exception at BlobFile::generate_image_rendition(): at %1%", m_dir);
+		Log(LOG_WARNING, "BlobFile::generate_image_rendition(): Cannot open master rendition at %1%", m_dir);
 	}
 }
 
