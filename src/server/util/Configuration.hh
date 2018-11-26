@@ -63,7 +63,6 @@ class Configuration
 public:
 	struct Error : virtual Exception {};
 	struct FileError : virtual Error {};
-	struct MissingUsername : virtual Error {};
 	struct InvalidUserOrGroup: virtual Error {};
 	using Path      = boost::error_info<struct tag_path,    fs::path>;
 	using Message   = boost::error_info<struct tag_message, std::string>;
@@ -78,10 +77,12 @@ public:
 	boost::asio::ip::tcp::endpoint listen_https() const { return m_listen_https;}
 	boost::asio::ip::tcp::endpoint redis() const {return m_redis;}
 
-	fs::path cert_chain() const {return m_cert_chain;}
-	fs::path private_key() const {return m_private_key;}
-	fs::path web_root() const {return m_root;}
-	fs::path blob_path() const {return m_blob_path;}
+	auto& cert_chain() const {return m_cert_chain;}
+	auto& private_key() const {return m_private_key;}
+	auto& web_root() const {return m_root;}
+	auto& blob_path() const {return m_blob_path;}
+	auto& haar_path() const {return m_haar_path;}
+
 	std::size_t thread_count() const {return m_thread_count;}
 	std::size_t upload_limit() const {return m_upload_limit;}
 	uid_t user_id() const {return m_user_id;}
@@ -115,7 +116,7 @@ public:
 	void change_listen_ports(std::uint16_t https, std::uint16_t http);
 
 private:
-	void load_config(const fs::path& path);
+	void load_config(const fs::path& config_file);
 
 private:
 	boost::program_options::options_description m_desc{"Allowed options"};
@@ -128,7 +129,7 @@ private:
 	};
 
 	fs::path m_cert_chain, m_private_key;
-	fs::path m_root, m_blob_path;
+	fs::path m_root, m_blob_path, m_haar_path;
 	std::string m_server_name;
 	std::size_t m_thread_count{1};
 	std::size_t m_upload_limit{10 * 1024 * 1024};

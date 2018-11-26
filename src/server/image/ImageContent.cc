@@ -21,16 +21,14 @@
 
 namespace hrb {
 
-ImageContent::ImageContent(const cv::Mat& image) : m_image{image}
+ImageContent::ImageContent(const cv::Mat& image, const fs::path& haar_path) : m_image{image}
 {
-	fs::path model_path{std::string{constants::haarcascades_path}};
-
 	// TODO: better error handling
 	cv::CascadeClassifier face_detect, eye_detect;
-	if (!face_detect.load((model_path/"haarcascade_frontalface_default.xml").string()))
-		throw std::runtime_error("cannot load frontalface model from " + (model_path/"haarcascade_frontalface_default.xml").string());
-	if (!eye_detect.load((model_path/"haarcascade_eye_tree_eyeglasses.xml").string()))
-		throw std::runtime_error("cannot load eye model from " + (model_path/"haarcascade_eye_tree_eyeglasses.xml").string());
+	if (!face_detect.load((haar_path/"haarcascade_frontalface_default.xml").string()))
+		throw std::runtime_error("cannot load frontalface model from " + (haar_path/"haarcascade_frontalface_default.xml").string());
+	if (!eye_detect.load((haar_path/"haarcascade_eye_tree_eyeglasses.xml").string()))
+		throw std::runtime_error("cannot load eye model from " + (haar_path/"haarcascade_eye_tree_eyeglasses.xml").string());
 
 	// convert to gray and equalize
 	cv::Mat gray;
