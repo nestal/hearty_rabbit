@@ -19,7 +19,6 @@
 #include <boost/program_options.hpp>
 #include <boost/exception/info.hpp>
 #include <boost/exception/diagnostic_information.hpp>
-#include <boost/filesystem.hpp>
 
 #include <fstream>
 
@@ -70,7 +69,7 @@ void Configuration::usage(std::ostream &out) const
 	out << m_desc;
 }
 
-void Configuration::load_config(const boost::filesystem::path& path)
+void Configuration::load_config(const fs::path& path)
 {
 	try
 	{

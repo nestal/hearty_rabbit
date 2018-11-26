@@ -13,8 +13,8 @@
 #pragma once
 
 #include "BufferView.hh"
+#include "common/FS.hh"
 
-#include <boost/filesystem/path.hpp>
 #include <boost/asio/buffer.hpp>
 
 #include <cstddef>
@@ -34,7 +34,7 @@ public:
 	~MMap();
 
 	static MMap open(int fd, std::error_code& ec);
-	static MMap open(const boost::filesystem::path& path, std::error_code& ec);
+	static MMap open(const fs::path& path, std::error_code& ec);
 	static MMap create(int fd, const void *data, std::size_t size, std::error_code& ec);
 	static MMap allocate(std::size_t size, std::error_code& ec);
 

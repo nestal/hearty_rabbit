@@ -31,6 +31,7 @@
 #include <opencv2/imgproc.hpp>
 
 #include <limits>
+#include <fstream>
 
 namespace hrb {
 
@@ -65,12 +66,10 @@ BlobFile::BlobFile(UploadFile&& tmp, const fs::path& dir, std::error_code& ec)  
 		return;
 	}
 
-	boost::system::error_code bec;
-	fs::create_directories(dir, bec);
-	if (bec)
+	create_directories(dir, ec);
+	if (ec)
 	{
-		Log(LOG_WARNING, "create create directory %1% (%2% %3%)", dir, bec, bec.message());
-		ec.assign(bec.value(), bec.category());
+		Log(LOG_WARNING, "create create directory %1% (%2% %3%)", dir, ec, ec.message());
 	}
 	else
 	{

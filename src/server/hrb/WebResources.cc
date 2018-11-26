@@ -35,7 +35,7 @@ const std::string_view meta_needle{R"(<meta property="og:title" content="Hearty 
 }
 
 template <typename Iterator>
-auto WebResources::load(const boost::filesystem::path& base, Iterator first, Iterator last)
+auto WebResources::load(const fs::path& base, Iterator first, Iterator last)
 {
 	std::error_code ec;
 	Container result;
@@ -61,7 +61,7 @@ auto WebResources::load(const boost::filesystem::path& base, Iterator first, Ite
 	return result;
 }
 
-WebResources::WebResources(const boost::filesystem::path& web_root) :
+WebResources::WebResources(const fs::path& web_root) :
 	m_static {load(web_root/"static",  static_resources.begin(),  static_resources.end())},
 	m_dynamic{load(web_root/"dynamic", dynamic_resources.begin(), dynamic_resources.end())}
 {
