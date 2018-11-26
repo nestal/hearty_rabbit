@@ -21,14 +21,26 @@
 
 namespace hrb {
 
+namespace {
+auto load_models(const fs::path& path, cv::CascadeClassifier& face_detect, cv::CascadeClassifier& eye_detect)
+{
+	auto face = path/"haarcascade_frontalface_default.xml";
+	auto eyes = path/"haarcascade_eye_tree_eyeglasses.xml";
+
+	// TODO: better error handling
+	if (!face_detect.load(face.string()))
+		throw std::runtime_error("cannot load frontal face model from " + face.string());
+	if (!eye_detect.load(eyes.string()))
+		throw std::runtime_error("cannot load eye model from " + eyes.string());
+
+	return std::tie(face_detect, eye_detect);
+}
+} // end of local namespace
+
 ImageContent::ImageContent(const cv::Mat& image, const fs::path& haar_path) : m_image{image}
 {
-	// TODO: better error handling
 	cv::CascadeClassifier face_detect, eye_detect;
-	if (!face_detect.load((haar_path/"haarcascade_frontalface_default.xml").string()))
-		throw std::runtime_error("cannot load frontalface model from " + (haar_path/"haarcascade_frontalface_default.xml").string());
-	if (!eye_detect.load((haar_path/"haarcascade_eye_tree_eyeglasses.xml").string()))
-		throw std::runtime_error("cannot load eye model from " + (haar_path/"haarcascade_eye_tree_eyeglasses.xml").string());
+	load_models(haar_path, face_detect, eye_detect);
 
 	// convert to gray and equalize
 	cv::Mat gray;
@@ -193,6 +205,12 @@ void ImageContent::add_content(std::vector<ImageContent::InflectionPoint>& infec
 		m_image.cols > m_image.rows ? content.x : content.y,
 		-score
 	});
+}
+
+void ImageContent::check_models(const fs::path& haar_path)
+{
+	cv::CascadeClassifier face_detect, eye_detect;
+	load_models(haar_path, face_detect, eye_detect);
 }
 
 } // end of namespace hrb

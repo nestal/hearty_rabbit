@@ -29,6 +29,8 @@ public:
 public:
 	explicit ImageContent(const cv::Mat& image, const fs::path& haar_path);
 
+	static void check_models(const fs::path& haar_path);
+
 	boost::iterator_range<rect_iterator>  faces()    const {return {m_faces.begin(), m_faces.end()};}
 	boost::iterator_range<rect_iterator>  eyes()     const {return {m_eyes.begin(), m_eyes.end()};}
 	boost::iterator_range<rect_iterator>  features() const {return {m_features.begin(), m_features.end()};}
