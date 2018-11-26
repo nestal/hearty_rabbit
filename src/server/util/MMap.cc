@@ -55,7 +55,7 @@ MMap MMap::open(int fd, std::error_code& ec)
 	return result;
 }
 
-MMap MMap::open(const boost::filesystem::path& path, std::error_code& ec)
+MMap MMap::open(const fs::path& path, std::error_code& ec)
 {
 	MMap result;
 

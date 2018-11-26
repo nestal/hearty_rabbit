@@ -31,6 +31,7 @@
 #include <opencv2/imgproc.hpp>
 
 #include <limits>
+#include <fstream>
 
 namespace hrb {
 
@@ -65,12 +66,10 @@ BlobFile::BlobFile(UploadFile&& tmp, const fs::path& dir, std::error_code& ec)  
 		return;
 	}
 
-	boost::system::error_code bec;
-	fs::create_directories(dir, bec);
-	if (bec)
+	create_directories(dir, ec);
+	if (ec)
 	{
-		Log(LOG_WARNING, "create create directory %1% (%2% %3%)", dir, bec, bec.message());
-		ec.assign(bec.value(), bec.category());
+		Log(LOG_WARNING, "create create directory %1% (%2% %3%)", dir, ec, ec.message());
 	}
 	else
 	{
@@ -106,7 +105,7 @@ void save_blob(const Blob& blob, const fs::path& dest, std::error_code& ec)
 		ec.assign(0, ec.category());
 }
 
-MMap BlobFile::rendition(std::string_view rendition, const RenditionSetting& cfg, std::error_code& ec) const
+MMap BlobFile::rendition(std::string_view rendition, const RenditionSetting& cfg, const fs::path& haar_path, std::error_code& ec) const
 {
 	if (rendition == hrb::master_rendition)
 		return master(ec);
@@ -119,12 +118,12 @@ MMap BlobFile::rendition(std::string_view rendition, const RenditionSetting& cfg
 
 	// generate the rendition if it doesn't exist
 	if (!exists(rend_path) && is_image())
-		generate_image_rendition(cfg.find(rendition), rend_path, ec);
+		generate_image_rendition(cfg.find(rendition), rend_path, haar_path, ec);
 
 	return exists(rend_path) ? MMap::open(rend_path, ec) : master(ec);
 }
 
-void BlobFile::generate_image_rendition(const JPEGRenditionSetting& cfg, const fs::path& dest, std::error_code& ec) const
+void BlobFile::generate_image_rendition(const JPEGRenditionSetting& cfg, const fs::path& dest, const fs::path& haar_path, std::error_code& ec) const
 {
 	try
 	{
@@ -133,7 +132,7 @@ void BlobFile::generate_image_rendition(const JPEGRenditionSetting& cfg, const f
 		{
 			if (cfg.square_crop)
 			{
-				ImageContent content{jpeg};
+				ImageContent content{jpeg, haar_path};
 				auto square = jpeg(content.square_crop()).clone();
 				jpeg = std::move(square);
 			}

@@ -47,6 +47,7 @@ include_directories(
 	${NLOHMANN_INCLUDE}
 	${CMAKE_BINARY_DIR}
 	${PROJECT_SOURCE_DIR}/src
+	/usr/include/x86_64-linux-gnu
 )
 
 # Post-processing

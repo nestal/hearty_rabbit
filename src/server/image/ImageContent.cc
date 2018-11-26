@@ -12,25 +12,78 @@
 
 #include "ImageContent.hh"
 #include "common/FS.hh"
+#include "util/Log.hh"
 
 #include "config.hh"
 
 #include <opencv2/imgproc.hpp>
 #include <opencv2/objdetect.hpp>
-#include <iostream>
+
+#include <optional>
 
 namespace hrb {
 
-ImageContent::ImageContent(const cv::Mat& image) : m_image{image}
-{
-	fs::path model_path{std::string{constants::haarcascades_path}};
+namespace {
 
-	// TODO: better error handling
-	cv::CascadeClassifier face_detect, eye_detect;
-	if (!face_detect.load((model_path/"haarcascade_frontalface_default.xml").string()))
-		throw std::runtime_error("cannot load frontalface model from " + (model_path/"haarcascade_frontalface_default.xml").string());
-	if (!eye_detect.load((model_path/"haarcascade_eye_tree_eyeglasses.xml").string()))
-		throw std::runtime_error("cannot load eye model from " + (model_path/"haarcascade_eye_tree_eyeglasses.xml").string());
+class HAARModel
+{
+public:
+	HAARModel(const fs::path& path)
+	{
+		auto face = path/"haarcascade_frontalface_default.xml";
+		auto eyes = path/"haarcascade_eye_tree_eyeglasses.xml";
+
+		if (exists(face))
+		{
+			m_face.emplace();
+			if (!m_face->load(face.string()))
+				throw std::runtime_error("cannot load frontal face model from " + face.string());
+		}
+
+		if (exists(eyes))
+		{
+			m_eyes.emplace();
+			if (!m_eyes->load(eyes.string()))
+				throw std::runtime_error("cannot load eye model from " + eyes.string());
+		}
+	}
+
+	auto detect_faces(const cv::Mat& gray)
+	{
+		std::vector<cv::Rect> potential_faces;
+		if (m_face)
+			m_face->detectMultiScale(
+				gray, potential_faces, 1.1, 2, cv::CASCADE_SCALE_IMAGE,
+				cv::Size{gray.cols/20, gray.rows/20}
+			);
+		return potential_faces;
+	}
+
+	auto detect_eyes(const cv::Mat& face)
+	{
+		std::vector<cv::Rect> potential_eyes;
+		if (m_eyes)
+			m_eyes->detectMultiScale(
+				face, potential_eyes, 1.1, 2, cv::CASCADE_SCALE_IMAGE,
+				cv::Size{face.cols/5, face.rows/5}
+			);
+		return potential_eyes;
+	}
+
+	explicit operator bool() const
+	{
+		return m_face.has_value() && m_eyes.has_value();
+	}
+
+private:
+	std::optional<cv::CascadeClassifier> m_face, m_eyes;
+};
+
+} // end of local namespace
+
+ImageContent::ImageContent(const cv::Mat& image, const fs::path& haar_path) : m_image{image}
+{
+	thread_local HAARModel model{haar_path};
 
 	// convert to gray and equalize
 	cv::Mat gray;
@@ -38,25 +91,17 @@ ImageContent::ImageContent(const cv::Mat& image) : m_image{image}
 	equalizeHist(gray, gray);
 
 	// detect faces
-	std::vector<cv::Rect> potential_faces;
-	face_detect.detectMultiScale(gray, potential_faces, 1.1, 2, cv::CASCADE_SCALE_IMAGE, cv::Size{m_image.cols/20, m_image.rows/20});
-
-	for (auto&& rect : potential_faces)
+	for (auto&& face : model.detect_faces(gray))
 	{
-		auto face_mat = m_image(rect);
-
-		std::vector<cv::Rect> eyes;
-		eye_detect.detectMultiScale(face_mat, eyes, 1.1, 2, cv::CASCADE_SCALE_IMAGE, cv::Size{rect.width/5, rect.height/5});
-
+		auto eyes = model.detect_eyes(m_image(face));
 		for (auto&& eye : eyes)
-			m_eyes.emplace_back(eye.x + rect.x, eye.y + rect.y, eye.width, eye.height);
+			m_eyes.emplace_back(eye.x + face.x, eye.y + face.y, eye.width, eye.height);
 
 		// treat faces without eyes as feature only
 		if (eyes.empty())
-			m_features.push_back(rect);
+			m_features.push_back(face);
 		else
-			m_faces.push_back(rect);
-
+			m_faces.push_back(face);
 	}
 
 	// detect features
@@ -190,11 +235,18 @@ void ImageContent::add_content(std::vector<ImageContent::InflectionPoint>& infec
 		score
 	});
 
-	// exit rectangular regio: score decreases
+	// exit rectangular region: score decreases
 	infections.push_back(InflectionPoint{
 		m_image.cols > m_image.rows ? content.x : content.y,
 		-score
 	});
+}
+
+void ImageContent::check_models(const fs::path& haar_path)
+{
+	HAARModel model{haar_path};
+	if (!model)
+		Log(LOG_WARNING, "Cannot load HAAR models in %1%. Face detection will be disabled.", haar_path);
 }
 
 } // end of namespace hrb

@@ -10,6 +10,7 @@
 #include "util/Configuration.hh"
 #include "util/Exception.hh"
 #include "util/Log.hh"
+#include "image/ImageContent.hh"
 #include "hrb/Server.hh"
 #include "net/Listener.hh"
 #include "net/Session.hh"
@@ -88,6 +89,9 @@ int main(int argc, char *argv[])
 		else if (cfg.blob_id([&cfg](auto&&)
 		{
 		})) { return EXIT_SUCCESS;}
+
+		// check if HAAR model path in configuration is valid
+		ImageContent::check_models(cfg.haar_path());
 
 		return StartServer(cfg);
 	}

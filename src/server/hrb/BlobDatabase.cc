@@ -91,7 +91,7 @@ BlobDatabase::BlobResponse BlobDatabase::response(
 
 	std::error_code ec;
 	BlobFile blob_obj{dest(id), id};
-	auto mmap = blob_obj.rendition(rendition, m_cfg.renditions(), ec);
+	auto mmap = blob_obj.rendition(rendition, m_cfg.renditions(), m_cfg.haar_path(), ec);
 	if (ec)
 		return BlobResponse{http::status::not_found, version};
 
