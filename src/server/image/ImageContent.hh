@@ -12,6 +12,8 @@
 
 #pragma once
 
+#include "common/FS.hh"
+
 #include <boost/range/iterator_range.hpp>
 
 #include <opencv2/core.hpp>
@@ -25,7 +27,9 @@ public:
 	using rect_iterator = std::vector<cv::Rect>::const_iterator;
 
 public:
-	explicit ImageContent(const cv::Mat& image);
+	explicit ImageContent(const cv::Mat& image, const fs::path& haar_path);
+
+	static void check_models(const fs::path& haar_path);
 
 	boost::iterator_range<rect_iterator>  faces()    const {return {m_faces.begin(), m_faces.end()};}
 	boost::iterator_range<rect_iterator>  eyes()     const {return {m_eyes.begin(), m_eyes.end()};}

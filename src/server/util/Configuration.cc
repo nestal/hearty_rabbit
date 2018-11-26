@@ -19,7 +19,6 @@
 #include <boost/program_options.hpp>
 #include <boost/exception/info.hpp>
 #include <boost/exception/diagnostic_information.hpp>
-#include <boost/filesystem.hpp>
 
 #include <fstream>
 
@@ -70,27 +69,30 @@ void Configuration::usage(std::ostream &out) const
 	out << m_desc;
 }
 
-void Configuration::load_config(const boost::filesystem::path& path)
+void Configuration::load_config(const fs::path& config_file)
 {
 	try
 	{
-		std::ifstream config_file;
-		config_file.open(path.string(), std::ios::in);
-		if (!config_file)
+		std::ifstream stream;
+		stream.open(config_file.string(), std::ios::in);
+		if (!stream)
 		{
-			BOOST_THROW_EXCEPTION(FileError()
-				<< ErrorCode({errno, std::system_category()})
-			);
+			BOOST_THROW_EXCEPTION(FileError() << ErrorCode({errno, std::system_category()}));
 		}
 
-		auto json = nlohmann::json::parse(config_file);
+		auto json = nlohmann::json::parse(stream);
 		using jptr = nlohmann::json::json_pointer;
 
 		// Paths are relative to the configuration file
-		m_cert_chain    = weakly_canonical(absolute(json.at(jptr{"/cert_chain"}).get<std::string>(),  path.parent_path()));
-		m_private_key   = weakly_canonical(absolute(json.at(jptr{"/private_key"}).get<std::string>(), path.parent_path()));
-		m_root          = weakly_canonical(absolute(json.at(jptr{"/web_root"}).get<std::string>(),    path.parent_path()));
-		m_blob_path     = weakly_canonical(absolute(json.at(jptr{"/blob_path"}).get<std::string>(),   path.parent_path()));
+		m_cert_chain    = weakly_canonical(absolute(json.at(jptr{"/cert_chain"}).get<std::string>(),  config_file.parent_path()));
+		m_private_key   = weakly_canonical(absolute(json.at(jptr{"/private_key"}).get<std::string>(), config_file.parent_path()));
+		m_root          = weakly_canonical(absolute(json.at(jptr{"/web_root"}).get<std::string>(),    config_file.parent_path()));
+		m_blob_path     = weakly_canonical(absolute(json.at(jptr{"/blob_path"}).get<std::string>(),   config_file.parent_path()));
+		m_haar_path     = weakly_canonical(absolute(
+			json.value(jptr{"/haar_path"}, std::string{constants::haarcascades_path}),
+			config_file.parent_path()
+		));
+
 		m_server_name   = json.at(jptr{"/server_name"});
 		m_thread_count  = json.value(jptr{"/thread_count"}, m_thread_count);
 		m_rendition.default_rendition(
@@ -131,12 +133,12 @@ void Configuration::load_config(const boost::filesystem::path& path)
 	}
 	catch (Exception& e)
 	{
-		e << Path{path};
+		e << Path{config_file};
 		throw;
 	}
 	catch (std::exception& e)
 	{
-		throw boost::enable_error_info(e) << Path{path};
+		throw boost::enable_error_info(e) << Path{config_file};
 	}
 }
 

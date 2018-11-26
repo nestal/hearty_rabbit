@@ -23,6 +23,9 @@ RUN mkdir /build/docker-build \
 			../src \
 	&& make -j8 install
 
+# chmod before copy
+RUN chmod a+rX -R /build/opencv-3.4.1/data/haarcascades/
+
 # Copy products to runtime docker image
 FROM scratch
 COPY --from=builder /build/hearty_rabbit/ /
@@ -34,9 +37,9 @@ COPY --from=builder \
 	/lib64/libssl.so.10  \
 	/lib64/libcrypto.so.10  \
 	/lib64/libpthread.so.0  \
-	/opt/gcc-8.2.0-multilib/lib64/libstdc++.so.6  \
 	/lib64/libm.so.6  \
 	/opt/gcc-8.2.0-multilib/lib64/libgcc_s.so.1  \
+	/opt/gcc-8.2.0-multilib/lib64/libstdc++.so.6  \
 	/lib64/libc.so.6  \
 	/lib64/libz.so.1  \
 	/lib64/librt.so.1 \
@@ -58,6 +61,12 @@ COPY --from=builder \
 
 # Copy the magic cookie file for libmagic
 COPY --from=builder /usr/share/misc/magic /usr/share/misc/magic
+
+# Copy HAAR-cascade models
+COPY --from=builder \
+	/build/opencv-3.4.1/data/haarcascades/haarcascade_frontalface_default.xml \
+	/build/opencv-3.4.1/data/haarcascades/haarcascade_eye_tree_eyeglasses.xml \
+		/build/opencv-3.4.1/data/haarcascades/
 
 # Use environment to specify config file location.
 # It works even when we run --add-user

@@ -13,9 +13,17 @@
 #pragma once
 
 #include <boost/filesystem.hpp>
+#include <system_error>
+
+// wrappers for std::error_code -> boost::error_code
+// injected to boost::filesystem to make namespace-dependent lookup works
+namespace boost::filesystem {
+
+void rename(const path& src, const path& dest, std::error_code& ec);
+void create_directories(const path& dir, std::error_code& ec);
+
+}
 
 namespace hrb {
-
 namespace fs = boost::filesystem;
-
 }

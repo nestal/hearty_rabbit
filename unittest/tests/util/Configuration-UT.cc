@@ -17,6 +17,7 @@
 #include <nlohmann/json.hpp>
 
 #include <fstream>
+#include <config.hh>
 
 using namespace hrb;
 
@@ -61,6 +62,7 @@ TEST_CASE( "Load normal.json", "[normal]" )
 	REQUIRE(cfg.session_length() == std::chrono::hours{1});
 	REQUIRE(cfg.user_id() == 65535);
 	REQUIRE(cfg.group_id() == 65535);
+	REQUIRE(cfg.haar_path()/"test.xml" == fs::path{std::string{constants::haarcascades_path}}/"test.xml");
 }
 
 TEST_CASE( "Missing server name", "[error]" )
