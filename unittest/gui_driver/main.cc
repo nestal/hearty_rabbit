@@ -21,6 +21,8 @@
 
 #include <iostream>
 
+#include <config.hh>
+
 using namespace hrb ;
 
 void proc_image(const fs::path& path)
@@ -29,7 +31,7 @@ void proc_image(const fs::path& path)
 	if (image.empty())
 		return;
 
-	ImageContent subject{image};
+	ImageContent subject{image, std::string{constants::haarcascades_path}};
 
 	for (auto&& face : subject.faces())
 	{

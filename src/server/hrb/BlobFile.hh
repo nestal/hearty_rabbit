@@ -49,7 +49,7 @@ public:
 	BlobFile(UploadFile&& tmp, const fs::path& dir, std::error_code& ec);
 
 	// if the rendition does not exists but it's a valid one, it will be generated dynamically
-	MMap rendition(std::string_view rendition, const RenditionSetting& cfg, std::error_code& ec) const;
+	MMap rendition(std::string_view rendition, const RenditionSetting& cfg, const fs::path& haar_path, std::error_code& ec) const;
 	MMap master(std::error_code& ec) const;
 
 	const ObjectID& ID() const {return m_id;}
@@ -66,7 +66,7 @@ public:
 
 private:
 	static bool is_image(std::string_view mime);
-	void generate_image_rendition(const JPEGRenditionSetting& cfg, const fs::path& dest, std::error_code& ec) const;
+	void generate_image_rendition(const JPEGRenditionSetting& cfg, const fs::path& dest, const fs::path& haar_path, std::error_code& ec) const;
 	void update_meta() const;
 	MMap deduce_meta(MMap&& master) const;
 	MMap deduce_mime(MMap&& master) const;

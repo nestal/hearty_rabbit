@@ -37,9 +37,9 @@ COPY --from=builder \
 	/lib64/libssl.so.10  \
 	/lib64/libcrypto.so.10  \
 	/lib64/libpthread.so.0  \
-	/opt/gcc-8.2.0-multilib/lib64/libstdc++.so.6  \
 	/lib64/libm.so.6  \
 	/opt/gcc-8.2.0-multilib/lib64/libgcc_s.so.1  \
+	/opt/gcc-8.2.0-multilib/lib64/libstdc++.so.6  \
 	/lib64/libc.so.6  \
 	/lib64/libz.so.1  \
 	/lib64/librt.so.1 \

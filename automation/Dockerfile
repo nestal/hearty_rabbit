@@ -45,7 +45,7 @@ RUN \
 	&& make install
 
 ENV \
-	PATH="/opt/gcc-8.2.0-multilib/bin:/build/cmake-3.12.2-Linux-x86_64/bin:/opt/bin:/opt/bin:${PATH}" \
+	PATH="/opt/gcc-8.2.0-multilib/bin:/build/cmake-3.12.2-Linux-x86_64/bin:/opt/bin:${PATH}" \
 	LD_LIBARY_PATH="/opt/gcc-8.2.0-multilib/lib64" \
 	CC=/opt/gcc-8.2.0-multilib/bin/gcc \
 	CXX=/opt/gcc-8.2.0-multilib/bin/g++

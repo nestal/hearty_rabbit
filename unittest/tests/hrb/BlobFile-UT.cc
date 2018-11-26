@@ -22,6 +22,8 @@
 
 #include "image/Image.hh"
 
+#include <config.hh>
+
 using namespace hrb;
 
 class BlobFileUTFixture
@@ -93,7 +95,7 @@ TEST_CASE_METHOD(BlobFileUTFixture, "upload non-image BlobFile", "[normal]")
 		std::error_code read_ec;
 		BlobFile subject2{m_blob_path, subject.ID()};
 
-		REQUIRE(out.buffer() == subject2.rendition("thumbnail", cfg, read_ec).buffer());
+		REQUIRE(out.buffer() == subject2.rendition("thumbnail", cfg, std::string{constants::haarcascades_path}, read_ec).buffer());
 		REQUIRE(!read_ec);
 		REQUIRE(subject2.mime() == "text/x-c++");
 		REQUIRE_FALSE(subject2.phash().has_value());
@@ -144,7 +146,7 @@ TEST_CASE_METHOD(BlobFileUTFixture, "upload big upright image as BlobFile", "[no
 	cfg.add("thumbnail", {64, 64});
 	cfg.default_rendition("128x128");
 
-	auto rend128 = subject.rendition(cfg.default_rendition(), cfg, ec);
+	auto rend128 = subject.rendition(cfg.default_rendition(), cfg, std::string{constants::haarcascades_path}, ec);
 	REQUIRE(!ec);
 	REQUIRE(rend128.buffer() != src.buffer());
 
@@ -154,7 +156,7 @@ TEST_CASE_METHOD(BlobFileUTFixture, "upload big upright image as BlobFile", "[no
 	REQUIRE(std::memcmp(out128.data(), src.data(), out128.size()) != 0);
 
 	BlobFile gen{m_blob_path, subject.ID()};
-	auto gen_mmap = gen.rendition("thumbnail", cfg, ec);
+	auto gen_mmap = gen.rendition("thumbnail", cfg, std::string{constants::haarcascades_path}, ec);
 	REQUIRE(gen_mmap.size() > 0);
 
 	auto gen_jpeg = load_image(gen_mmap.buffer());
@@ -176,7 +178,7 @@ TEST_CASE_METHOD(BlobFileUTFixture, "upload big rot90 image as BlobFile", "[norm
 	cfg.add("2048x2048",   {2048, 2048});
 	cfg.default_rendition("2048x2048");
 
-	auto rotated = subject.rendition(cfg.default_rendition(), cfg, ec);
+	auto rotated = subject.rendition(cfg.default_rendition(), cfg, std::string{constants::haarcascades_path}, ec);
 	REQUIRE_FALSE(ec);
 	REQUIRE(rotated.buffer() != src.buffer());
 
@@ -209,7 +211,7 @@ TEST_CASE_METHOD(BlobFileUTFixture, "upload lena.png as BlobFile", "[normal]")
 	RenditionSetting cfg;
 	cfg.add("256x256",   {256, 256});
 	cfg.default_rendition("256x256");
-	auto rend = subject2.rendition("256x256", cfg, ec);
+	auto rend = subject2.rendition("256x256", cfg, std::string{constants::haarcascades_path}, ec);
 	auto rend_mat = load_image(rend.buffer());
 	REQUIRE(phash(rend_mat).compare(*subject2.phash()) == 1.0);
 	REQUIRE(rend_mat.rows == 256);
