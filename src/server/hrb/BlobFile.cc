@@ -37,7 +37,36 @@ namespace hrb {
 
 namespace {
 const std::string master_rendition = "master";
+
+cv::Mat square_crop(const cv::Mat& image, const fs::path& haar_path)
+{
+	try
+	{
+		ImageContent content{image, haar_path};
+		return image(content.square_crop()).clone();
+	}
+	catch (cv::Exception& e)
+	{
+		Log(LOG_WARNING, "Exception at BlobFile::generate_image_rendition(): %1%", e.msg.c_str());
+	}
+	catch (std::exception& e)
+	{
+		Log(LOG_WARNING, "Exception at BlobFile::generate_image_rendition(): %1%", e.what());
+	}
+	catch (...)
+	{
+		Log(LOG_WARNING, "Unknown exception at BlobFile::generate_image_rendition()");
+	}
+
+	// fall back: crop at center
+	auto window_length = std::min(image.cols, image.rows);
+	cv::Rect roi = (image.cols > image.rows) ?
+		cv::Rect{image.cols / 2 - window_length/2, 0, window_length, window_length} :
+		cv::Rect{0, image.rows / 2 - window_length/2, window_length, window_length} ;
+	return image(roi).clone();
 }
+
+} // end of local namespace
 
 /// \brief Open an existing blob in its directory
 BlobFile::BlobFile(const fs::path& dir, const ObjectID& id) : m_id{id}, m_dir{dir}
@@ -128,28 +157,6 @@ void BlobFile::generate_image_rendition(const JPEGRenditionSetting& cfg, const f
 	auto jpeg = cv::imread((m_dir/hrb::master_rendition).string(), cv::IMREAD_ANYCOLOR);
 	if (!jpeg.empty())
 	{
-		if (cfg.square_crop)
-		{
-			try
-			{
-				ImageContent content{jpeg, haar_path};
-				auto square = jpeg(content.square_crop()).clone();
-				jpeg = std::move(square);
-			}
-			catch (cv::Exception& e)
-			{
-				Log(LOG_WARNING, "Exception at BlobFile::generate_image_rendition(): %1% at %2%", e.msg.c_str(), m_dir);
-			}
-			catch (std::exception& e)
-			{
-				Log(LOG_WARNING, "Exception at BlobFile::generate_image_rendition(): %1% at %2%", e.what(), m_dir);
-			}
-			catch (...)
-			{
-				Log(LOG_WARNING, "Unknown exception at BlobFile::generate_image_rendition(): at %1%", m_dir);
-			}
-		}
-
 		auto ratio = std::min(
 			cfg.dim.width() / static_cast<double>(jpeg.cols),
 			cfg.dim.height() / static_cast<double>(jpeg.rows)
@@ -160,6 +167,9 @@ void BlobFile::generate_image_rendition(const JPEGRenditionSetting& cfg, const f
 			cv::resize(jpeg, out, {}, ratio, ratio, cv::INTER_LINEAR);
 		else
 			out = jpeg;
+
+		if (cfg.square_crop)
+			out = square_crop(out, haar_path);
 
 		std::vector<unsigned char> out_buf;
 		cv::imencode(mime() == "image/png" ? ".png" : ".jpg", out, out_buf, {cv::IMWRITE_JPEG_QUALITY, cfg.quality});
