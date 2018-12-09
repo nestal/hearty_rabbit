@@ -5,13 +5,13 @@ ENV container docker
 USER 0
 
 # install development tools
-RUN yum install -y deltarpm epel-release \
+RUN yum install -y deltarpm epel-release centos-release-scl \
 	&& rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-EPEL-7 \
 	&& yum update -y \
 	&& yum install -y --setopt=tsflags=nodocs openssl-devel git make hiredis-devel \
 		file-devel libicu-devel zlib-devel bzip2-devel xz-devel libunwind-devel which \
 		autoconf automake libtool libexif-devel msgpack-devel libpng-devel nasm libcurl-devel \
-		gmp-devel mpfr-devel libmpc-devel gcc-c++ \
+		gmp-devel mpfr-devel libmpc-devel gcc-c++ cmake3 \
 	&& yum clean all -y \
 	&& mkdir /build
 
@@ -19,7 +19,7 @@ WORKDIR /build
 
 # download packages
 ADD \
-	1.5.3.tar.gz boost_1_68_0.tar.gz cmake-3.12.2-Linux-x86_64.tar.gz 3.4.1.tar.gz gcc-8.2.0.tar.xz \
+	1.5.3.tar.gz boost_1_68_0.tar.gz 3.4.1.tar.gz gcc-8.2.0.tar.xz \
 #	https://github.com/libjpeg-turbo/libjpeg-turbo/archive/1.5.3.tar.gz \
 #	https://dl.bintray.com/boostorg/release/1.67.0/source/boost_1_67_0.tar.gz \
 #	https://cmake.org/files/v3.11/cmake-3.11.1-Linux-x86_64.tar.gz \
@@ -76,7 +76,7 @@ RUN \
 	cd opencv-3.4.1 \
 	&& mkdir build \
 	&& cd build \
-	&& cmake \
+	&& cmake3 \
 		-DCMAKE_BUILD_TYPE=Release \
 		-DCMAKE_INSTALL_PREFIX=/opt \
 		-DBUILD_SHARED_LIBS=OFF \

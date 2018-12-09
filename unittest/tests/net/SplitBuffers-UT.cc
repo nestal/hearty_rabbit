@@ -13,8 +13,7 @@
 #include <catch.hpp>
 
 #include "net/SplitBuffers.hh"
-
-#include <boost/filesystem.hpp>
+#include "common/FS.hh"
 
 using namespace hrb;
 using Subject = hrb::SplitBuffers::value_type;
@@ -22,7 +21,7 @@ using Subject = hrb::SplitBuffers::value_type;
 TEST_CASE("injecting script in HTML", "[normal]")
 {
 	std::error_code ec;
-	auto html = hrb::MMap::open(boost::filesystem::path{__FILE__}.parent_path() / "../../../lib/dynamic/index.html", ec);
+	auto html = hrb::MMap::open(fs::path{__FILE__}.parent_path() / "../../../lib/dynamic/index.html", ec);
 	REQUIRE(ec == std::error_code{});
 
 	std::string extra{R"({"field": "value"})"};
@@ -50,7 +49,7 @@ TEST_CASE("injecting script in HTML", "[normal]")
 TEST_CASE("non-HTML has no <head>, append at-the-end", "[normal]")
 {
 	std::error_code ec;
-	auto css = hrb::MMap::open(boost::filesystem::path{__FILE__}.parent_path() / "../../../lib/static/hearty_rabbit.css", ec);
+	auto css = hrb::MMap::open(fs::path{__FILE__}.parent_path() / "../../../lib/static/hearty_rabbit.css", ec);
 	REQUIRE(ec == std::error_code{});
 
 	std::string extra{"hahaha"};
@@ -71,7 +70,7 @@ TEST_CASE("non-HTML has no <head>, append at-the-end", "[normal]")
 TEST_CASE("Not change content", "[normal]")
 {
 	std::error_code ec;
-	auto css = hrb::MMap::open(boost::filesystem::path{__FILE__}.parent_path() / "../../../lib/static/hearty_rabbit.js", ec);
+	auto css = hrb::MMap::open(fs::path{__FILE__}.parent_path() / "../../../lib/static/hearty_rabbit.js", ec);
 	REQUIRE(ec == std::error_code{});
 
 	std::string_view vs[] = {css.string(), ""};

@@ -15,13 +15,13 @@
 #include "hrb/WebResources.hh"
 #include "CheckResource.hh"
 
-#include <boost/filesystem/path.hpp>
+#include "common/FS.hh"
 
 using namespace hrb;
 
 TEST_CASE("web resource", "[normal]")
 {
-	auto web_root = boost::filesystem::path{__FILE__}.parent_path()/"../../../lib";
+	auto web_root = fs::path{__FILE__}.parent_path()/"../../../lib";
 	WebResources lib{web_root};
 
 	SECTION("dynamic resource")

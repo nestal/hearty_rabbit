@@ -26,7 +26,7 @@ namespace {
 // Put all test data (i.e. the configuration files in this test) in the same directory as
 // the source code, and use __FILE__ macro to find the test data.
 // Expect __FILE__ to give the absolute path so the unit test can be run in any directory.
-const boost::filesystem::path current_src = boost::filesystem::path{__FILE__}.parent_path();
+const fs::path current_src = fs::path{__FILE__}.parent_path();
 }
 
 TEST_CASE( "--help command line parsing", "[normal]" )

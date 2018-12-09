@@ -11,6 +11,7 @@
 //
 
 #include "FS.hh"
+#if !__has_include(<filesystem>)
 #include <boost/system/error_code.hpp>
 
 namespace boost::filesystem {
@@ -32,3 +33,4 @@ void create_directories(const path& dir, std::error_code& ec)
 }
 
 } // end of namespace
+#endif

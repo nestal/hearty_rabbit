@@ -13,9 +13,9 @@
 #pragma once
 
 #include "net/Request.hh"
+#include "common/FS.hh"
 
 #include <boost/beast/core/flat_buffer.hpp>
-#include <boost/filesystem/path.hpp>
 
 #include <cstring>
 #include <fstream>
@@ -46,7 +46,7 @@ auto flatten_content(http::response<Body, http::basic_fields<Allocator>>&& res)
 }
 
 template <typename ConstBuffer>
-bool check_file_content(const boost::filesystem::path& file, ConstBuffer content)
+bool check_file_content(const fs::path& file, ConstBuffer content)
 {
 	// open index.html and compare
 	std::ifstream index{file.string()};
@@ -65,7 +65,7 @@ bool check_file_content(const boost::filesystem::path& file, ConstBuffer content
 
 template <typename Body, typename Allocator>
 bool check_resource_content(
-	const boost::filesystem::path& file,
+	const fs::path& file,
 	http::response<Body, http::basic_fields<Allocator>>&& res
 )
 {

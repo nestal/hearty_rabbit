@@ -12,6 +12,14 @@
 
 #pragma once
 
+#if __has_include(<filesystem>)
+#include <filesystem>
+
+namespace hrb {
+namespace fs = std::filesystem;
+}
+#else
+
 #include <boost/filesystem.hpp>
 #include <system_error>
 
@@ -27,3 +35,4 @@ void create_directories(const path& dir, std::error_code& ec);
 namespace hrb {
 namespace fs = boost::filesystem;
 }
+#endif
