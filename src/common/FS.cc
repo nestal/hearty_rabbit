@@ -11,7 +11,7 @@
 //
 
 #include "FS.hh"
-#if !__has_include(<filesystem>)
+#if true//!__has_include(<filesystem>)
 #include <boost/system/error_code.hpp>
 
 namespace boost::filesystem {

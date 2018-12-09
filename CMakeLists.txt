@@ -88,7 +88,6 @@ add_library(hrbcommon ${COMMON_SRC})
 target_link_libraries(
 	hrbcommon
 	PUBLIC
-	stdc++fs
 	Boost::system Boost::program_options Boost::filesystem
 	${LIBB2_LIBRARY}
 	${CMAKE_THREAD_LIBS_INIT}
