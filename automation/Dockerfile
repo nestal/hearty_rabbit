@@ -4,61 +4,36 @@ ENV container docker
 
 USER 0
 
-# add devtoolset rpms
+# add devtoolset rpms and other required packages
+# Using devtoolset instead of custom-built gcc can save 4MB in the final hearty_rabbit image
+#	https://dl.bintray.com/boostorg/release/1.67.0/source/boost_1_67_0.tar.gz \
+#	https://github.com/opencv/opencv/archive/3.4.1.tar.gz \
 ADD \
 	devtoolset-8-gcc-8.2.1-3.el7.x86_64.rpm \
 	devtoolset-8-gcc-c++-8.2.1-3.el7.x86_64.rpm \
 	devtoolset-8-binutils-2.30-47.el7.x86_64.rpm \
 	devtoolset-8-libstdc++-devel-8.2.1-3.el7.x86_64.rpm \
 	devtoolset-8-runtime-8.0-2.el7.x86_64.rpm \
-	/tmp/
+	boost_1_68_0.tar.gz 3.4.1.tar.gz \
+	/build/
 
 # install development tools
 RUN yum install -y deltarpm epel-release centos-release-scl \
 	&& rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-EPEL-7 \
 	&& yum update -y \
-	&& cd /tmp && yum install -y *.rpm \
+	&& yum install -y /build/*.rpm \
 	&& yum install -y --setopt=tsflags=nodocs openssl-devel git make hiredis-devel \
 		file-devel libicu-devel zlib-devel bzip2-devel xz-devel libunwind-devel which \
-		autoconf automake libtool libexif-devel msgpack-devel libpng-devel nasm libcurl-devel \
-		gmp-devel mpfr-devel libmpc-devel cmake3 \
+		autoconf automake libtool libexif-devel msgpack-devel libpng-devel libcurl-devel \
+		cmake3 libb2-devel gperftools-devel \
 	&& yum clean all -y \
-	&& mkdir /build
+	&& rm /build/*.rpm
 
 WORKDIR /build
-
-# download packages
-ADD \
-	boost_1_68_0.tar.gz 3.4.1.tar.gz \
-#	https://dl.bintray.com/boostorg/release/1.67.0/source/boost_1_67_0.tar.gz \
-#	https://cmake.org/files/v3.11/cmake-3.11.1-Linux-x86_64.tar.gz \
-#	https://github.com/opencv/opencv/archive/3.4.1.tar.gz \
-#   http://mirror-hk.koddos.net/gnu/gcc/gcc-8.2.0/gcc-8.2.0.tar.xz \
-		/build/
-
-# build gcc 8.2.0
-#RUN \
-#	mkdir gcc-build \
-#	&& cd gcc-build \
-#	&& ../gcc-8.2.0/configure \
-#		--prefix=/opt/gcc-8.2.0-multilib \
-#		--enable-languages=c,c++ \
-#		--enable-lto \
-#		--enable-multilib \
-#		--with-multilib-list=m64 \
-#		--enable-ld \
-#		--enable-gold \
-#		--with-system-zlib \
-#		--build=x86_64-linux-gnu \
-#	&& make -j8 \
-#	&& make install
 
 ENV \
 	PATH="/opt/rh/devtoolset-8/root/usr/bin:/opt/bin:${PATH}" \
 	LD_LIBARY_PATH="/opt/rh/devtoolset-8/root/usr/lib64"
-
-# remove the system gcc so that our gcc 8.2 will always be used
-#RUN rpm -e --nodeps gcc gcc-c++
 
 # build boost (>1.65 to support boost beast)
 RUN \
@@ -68,15 +43,6 @@ RUN \
 		--prefix=/opt/boost_1_68 \
 	&& (./b2 -j8 install; exit 0) \
 	&& rm -rf /build/boost_1_68_0
-
-# build libb2
-# Don't enable native CPU optimization because the machine that builds this image may be different from
-# the machine that builds and run the code.
-RUN git clone --depth 1 -b v0.98 https://github.com/BLAKE2/libb2.git
-RUN cd libb2 \
-	&& ./autogen.sh \
-	&& ./configure --prefix=/opt --enable-native=no \
-	&& make install
 
 # OpenCV
 RUN \

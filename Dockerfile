@@ -57,6 +57,7 @@ COPY --from=builder \
 	/lib64/libunwind.so.8 \
 	/lib64/libtinfo.so.5  \
 	/lib64/libpng15.so.15 \
+	/lib64/libb2.so.0 \
 		/lib64/
 
 # Copy the magic cookie file for libmagic
