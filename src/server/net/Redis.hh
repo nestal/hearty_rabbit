@@ -260,6 +260,14 @@ public:
 		std::size_t N,
 		typename... Args
 	>
+	typename std::enable_if_t<
+		std::is_invocable<Callback, Reply, std::error_code>::value &&
+		std::is_copy_constructible<Callback>::value
+	>
+	command(Callback&& callback, const char (&cmd)[N], Args... args)
+	{
+		command(std::move(callback), CommandString{cmd, args...});
+	}
 
 	// Only enable this template if Callback is a copy-constructible
 	// function-like type that takes two argument: Reply, std::error_code.
@@ -267,16 +275,16 @@ public:
 	// capture directly. The other overload, which uses a shared_ptr to
 	// store the callback, does not require the callback to be copy-
 	// constructible, but will have more overhead from the shared_ptr.
+	template <typename Callback>
 	typename std::enable_if_t<
 		std::is_invocable<Callback, Reply, std::error_code>::value &&
 		std::is_copy_constructible<Callback>::value
 	>
-	command(Callback&& callback, const char (&cmd)[N], Args... args)
+	command(Callback&& callback, CommandString&& command)
 	{
 		try
 		{
-			do_write(
-				CommandString{cmd, args...},
+			do_write(std::move(command),
 				[
 					callback=std::forward<Callback>(callback),
 					self=shared_from_this()
@@ -291,6 +299,7 @@ public:
 			callback(Reply{}, std::error_code{Error::protocol});
 		}
 	}
+
 
 	template <
 		typename Callback,
