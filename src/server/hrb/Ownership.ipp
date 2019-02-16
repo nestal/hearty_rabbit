@@ -32,6 +32,7 @@
 #include <boost/range/adaptor/transformed.hpp>
 
 #include <vector>
+#include <iostream>
 
 #pragma once
 
@@ -49,20 +50,13 @@ public:
 	Collection(std::string_view user, std::string_view path);
 	explicit Collection(std::string_view redis_key);
 
-	void link(redis::Connection& db, const ObjectID& id, const CollEntryDB& entry);
-	void unlink(redis::Connection& db, const ObjectID& id);
 	std::string redis_key() const;
-	void update(redis::Connection& db, const ObjectID& id, const CollEntryDB& entry);
-	void update(redis::Connection& db, const ObjectID& id, const nlohmann::json& entry);
 
 	template <typename Complete>
 	void set_cover(redis::Connection& db, const ObjectID& cover, Complete&& complete);
 
 	template <typename Complete>
 	void set_permission(redis::Connection& db, const ObjectID& blob, const Permission& perm, Complete&& complete) const;
-
-	template <typename Complete>
-	void find(redis::Connection& db, const ObjectID& blob, Complete&& complete) const;
 
 	template <typename Complete>
 	void list(
@@ -77,19 +71,8 @@ public:
 		Complete&& complete
 	) const;
 
-	template <typename CollectionCallback, typename Complete>
-	static void scan(redis::Connection& db, std::string_view user, long cursor,
-		CollectionCallback&& callback,
-		Complete&& complete
-	);
-
-	template <typename Complete>
-	static void scan_all(redis::Connection& db, std::string_view owner, Complete&& complete);
-
 	const std::string& user() const {return m_user;}
 	const std::string& path() const {return m_path;}
-
-	void post_unlink(redis::Connection& db, const ObjectID& blob);
 
 private:
 	hrb::Collection from_reply(
@@ -102,111 +85,6 @@ private:
 	std::string m_user;
 	std::string m_path;
 };
-
-template <typename CollectionCallback, typename Complete>
-void Ownership::Collection::scan(
-	redis::Connection& db,
-	std::string_view user,
-	long cursor,
-	CollectionCallback&& callback,
-	Complete&& complete
-)
-{
-	db.command(
-		[
-			comp=std::forward<Complete>(complete),
-			cb=std::forward<CollectionCallback>(callback),
-			&db, user=std::string{user}
-		](redis::Reply&& reply, std::error_code&& ec) mutable
-		{
-			if (!ec)
-			{
-				auto [cursor_reply, dirs] = reply.as_tuple<2>(ec);
-				if (!ec)
-				{
-					// Repeat scanning only when the cycle is not completed yet (i.e.
-					// cursor != 0), and the completion callback return true.
-					auto cursor = cursor_reply.to_int();
-
-					// call the callback once to handle one collection
-					for (auto&& p : dirs.kv_pairs())
-					{
-						auto sv = p.value().as_string();
-						if (sv.empty())
-							return;
-
-						cb(p.key(), nlohmann::json::parse(sv));
-					};
-
-					// if comp return true, keep scanning with the same callback and
-					// comp as completion routine
-					if (comp(cursor, ec) && cursor != 0)
-						scan(db, user, cursor, std::move(cb), std::move(comp));
-					return;
-				}
-			}
-
-			comp(0, ec);
-		},
-		"HSCAN %b%b %d",
-		m_list_prefix.data(), m_list_prefix.size(),
-		user.data(), user.size(),
-		cursor
-	);
-}
-
-template <typename Complete>
-void Ownership::Collection::scan_all(
-	redis::Connection& db,
-	std::string_view owner,
-	Complete&& complete
-)
-{
-	auto coll_list = std::make_shared<CollectionList>();
-
-	scan(db, owner, 0,
-		[coll_list, owner=std::string{owner}](auto coll, auto&& json)
-		{
-			coll_list->add(owner, coll, std::move(json));
-		},
-		[coll_list, comp=std::forward<Complete>(complete), owner=std::string{owner}](long cursor, auto ec) mutable
-		{
-			if (cursor == 0)
-				comp(std::move(*coll_list), ec);
-			return true;
-		}
-	);
-}
-
-template <typename Complete>
-void Ownership::Collection::find(
-	redis::Connection& db,
-	const ObjectID& blob,
-	Complete&& complete
-) const
-{
-	db.command(
-		[
-			comp=std::forward<Complete>(complete)
-		](auto&& entry, std::error_code&& ec) mutable
-		{
-			if (!ec && entry.is_nil())
-				ec = Error::object_not_exist;
-
-			comp(
-				CollEntryDB{entry.as_string()},
-				std::move(ec)
-			);
-		},
-
-		"HGET %b%b:%b %b",
-		m_dir_prefix.data(), m_dir_prefix.size(),
-		m_user.data(), m_user.size(),
-		m_path.data(), m_path.size(),
-		blob.data(), blob.size()
-	);
-}
-
 
 template <typename Complete>
 void Ownership::Collection::set_permission(
@@ -398,10 +276,16 @@ void Ownership::link(
 	Complete&& complete
 )
 {
-	db.command([comp=std::forward<Complete>(complete)](auto&&, std::error_code ec)
-	{
-		comp(ec);
-	}, link_command(coll_name, blobid, entry));
+	auto cmd = link_command(coll_name, blobid, entry);
+	std::cout << "cmd = " << cmd.get() << std::endl;
+	db.command(
+		[comp=std::forward<Complete>(complete)](auto&& r, std::error_code ec)
+		{
+			std::cout << r.as_error() << std::endl;
+			comp(ec);
+		},
+		std::move(cmd)
+	);
 }
 
 template <typename Complete>
@@ -450,7 +334,29 @@ void Ownership::find(
 	Complete&& complete
 ) const
 {
-	return Collection{m_user, coll}.find(db, blob, std::forward<Complete>(complete));
+	auto blob_meta = key::blob_meta(m_user, blob);
+	static const char lua[] = R"__(
+		if redis.call('SISMEMBER', KEYS[1], blob) == 1 then
+			return redis.call('GET', KEYS[2])
+		else
+			return false
+		end
+	)__";
+	db.command(
+		[
+			comp=std::forward<Complete>(complete)
+		](auto&& entry, std::error_code&& ec) mutable
+		{
+			if (!ec && entry.is_nil())
+				ec = Error::object_not_exist;
+
+			comp(
+				CollEntryDB{entry.as_string()},
+				std::move(ec)
+			);
+		},
+		"EVAL %s 1 %b", lua, blob_meta.data(), blob_meta.size()
+	);
 }
 
 template <typename CollectionCallback, typename Complete>
@@ -461,9 +367,48 @@ void Ownership::scan_collections(
 	Complete&& complete
 ) const
 {
-	return Collection::scan(db, m_user, cursor,
-		std::forward<CollectionCallback>(callback),
-		std::forward<Complete>(complete)
+	auto coll_list = key::collection_list(m_user);
+	db.command(
+		[
+			comp=std::forward<Complete>(complete),
+			cb=std::forward<CollectionCallback>(callback),
+			&db, user=m_user
+		](redis::Reply&& reply, std::error_code&& ec) mutable
+		{
+			if (!ec)
+			{
+				auto [cursor_reply, dirs] = reply.as_tuple<2>(ec);
+				if (!ec)
+				{
+					// Repeat scanning only when the cycle is not completed yet (i.e.
+					// cursor != 0), and the completion callback return true.
+					auto cursor = cursor_reply.to_int();
+
+					// call the callback once to handle one collection
+					for (auto&& p : dirs.kv_pairs())
+					{
+						auto sv = p.value().as_string();
+						if (sv.empty())
+							return;
+
+						cb(p.key(), nlohmann::json::parse(sv));
+					};
+
+					std::cout << "cursor = " << cursor << std::endl;
+
+					// if comp return true, keep scanning with the same callback and
+					// comp as completion routine
+					if (comp(cursor, ec) && cursor != 0)
+						Ownership{user}.scan_collections(db, cursor, std::move(cb), std::move(comp));
+					return;
+				}
+			}
+
+			comp(0, ec);
+		},
+		"HSCAN %b %d",
+		coll_list.data(), coll_list.size(),
+		cursor
 	);
 }
 
@@ -473,7 +418,20 @@ void Ownership::scan_all_collections(
 	Complete&& complete
 ) const
 {
-	return Collection::scan_all(db, m_user, std::forward<Complete>(complete));
+	auto coll_list = std::make_shared<CollectionList>();
+
+	scan_collections(db, 0,
+		[coll_list, user=m_user](auto coll, auto&& json)
+		{
+			coll_list->add(user, coll, std::move(json));
+		},
+		[coll_list, comp=std::forward<Complete>(complete)](long cursor, auto ec) mutable
+		{
+			if (cursor == 0)
+				comp(std::move(*coll_list), ec);
+			return true;
+		}
+	);
 }
 
 template <typename Complete>
@@ -497,7 +455,7 @@ void Ownership::move_blob(
 	Complete&& complete
 )
 {
-	find(db, src_coll, blobid,
+/*	find(db, src_coll, blobid,
 		[
 			blobid,
 			db=db.shared_from_this(),
@@ -517,7 +475,8 @@ void Ownership::move_blob(
 				}, "EXEC");
 			}
 		}
-	);
+	);*/
+	// TODO: rewrite
 }
 
 template <typename Complete>

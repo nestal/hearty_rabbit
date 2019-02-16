@@ -56,104 +56,6 @@ std::string Ownership::Collection::redis_key() const
 	return std::string{m_dir_prefix} + m_user + ':' + m_path;
 }
 
-void Ownership::Collection::link(redis::Connection& db, const ObjectID& id, const CollEntryDB& entry)
-{
-	auto hex = to_hex(id);
-
-	static const char lua[] = R"__(
-		local blob, entry, cover, coll = ARGV[1], ARGV[2], ARGV[3], ARGV[4]
-		redis.call('HSET',   KEYS[1], blob, entry)
-		redis.call('HSETNX', KEYS[2], coll, cjson.encode({cover=cover}))
-	)__";
-	db.command(
-		[](auto&& reply, auto ec)
-		{
-			if (!reply || ec)
-				Log(LOG_WARNING, "Collection::link() returns %1% %2%", reply.as_error(), ec);
-		},
-		"EVAL %s 2 %b%b:%b %b%b %b %b %b %b", lua,
-
-		// KEYS[1]
-		m_dir_prefix.data(), m_dir_prefix.size(),
-		m_user.data(), m_user.size(),
-		m_path.data(), m_path.size(),
-
-		// KEYS[2]
-		m_list_prefix.data(), m_list_prefix.size(),
-		m_user.data(), m_user.size(),
-
-		id.data(), id.size(),        // ARGV[1]: blob
-		entry.data(), entry.size(),  // ARGV[2]: entry
-		hex.data(), hex.size(),      // ARGV[3]: cover
-		m_path.data(), m_path.size() // ARGV[4]: coll
-	);
-}
-
-void Ownership::Collection::unlink(redis::Connection& db, const ObjectID& id)
-{
-	// LUA script: delete the blob from the dir:<user>:<coll> hash table, and if
-	// the hash table is empty, remove the entry in dirs:<user> hash table.
-	// Also, remove the 'cover' field in the dirs:<user> hash table if the cover
-	// image is the one being removed.
-	static const char cmd[] = R"__(
-		-- convert binary to lowercase hex string
-		local tohex = function(str)
-			return (str:gsub('.', function (c)
-				return string.format('%02x', string.byte(c))
-			end))
-		end
-
-		local blob, coll = ARGV[1], ARGV[2]
-
-		-- delete the CollEntry in the collection hash
-		redis.call('HDEL', KEYS[1], blob)
-
-		-- if the collection has no more entries, delete the collection in the
-		-- user's list of collections
-		if redis.call('EXISTS', KEYS[1]) == 0 then
-			redis.call('HDEL', KEYS[2], coll)
-
-		-- if the collection still exists, check if the blob we are removing
-		-- is the cover of the collection
-		else
-			local album = cjson.decode(redis.call('HGET', KEYS[2], coll))
-
-			-- tohex() return upper case, so need to convert album[cover] to upper
-			-- case before comparing
-			if album['cover'] == tohex(blob) then
-				album['cover'] = tohex(redis.call('HKEYS', KEYS[1])[1])
-				redis.call('HSET', KEYS[2], coll, cjson.encode(album))
-			end
-		end
-	)__";
-
-	db.command(
-		[](auto&& reply, auto ec)
-		{
-			if (!reply || ec)
-				Log(LOG_WARNING, "Collection::unlink() lua script failure: %1% (%2%)", reply.as_error(), ec);
-		},
-		"EVAL %s 2 %b%b:%b %b%b %b %b",
-
-		cmd,
-
-		// KEYS[1] (hash table that stores the blob in a collection)
-		m_dir_prefix.data(), m_dir_prefix.size(),
-		m_user.data(), m_user.size(),
-		m_path.data(), m_path.size(),
-
-		// KEYS[2] (hash table that stores all collections owned by a user)
-		m_list_prefix.data(), m_list_prefix.size(),
-		m_user.data(), m_user.size(),
-
-		// ARGV[1] (name of the blob to unlink)
-		id.data(), id.size(),
-
-		// ARGV[2] (collection name)
-		m_path.data(), m_path.size()
-	);
-}
-
 hrb::Collection Ownership::Collection::from_reply(const redis::Reply& reply, const Authentication& requester, nlohmann::json&& meta) const
 {
 	assert(meta.is_object());
@@ -227,7 +129,7 @@ redis::CommandString Ownership::link_command(std::string_view coll, const Object
 	auto entry = CollEntryDB::create(coll_entry);
 
 	static const char lua[] = R"__(
-		local user, coll, blob, cover, entry = ARGV[1], ARGV[2], ARGV[3], ARGV[4], ARGV[5],
+		local user, coll, blob, cover, entry = ARGV[1], ARGV[2], ARGV[3], ARGV[4], ARGV[5]
 		redis.call('SADD', KEYS[1], coll)
 		redis.call('SADD', KEYS[2], user)
 		redis.call('SET',  KEYS[3], entry)

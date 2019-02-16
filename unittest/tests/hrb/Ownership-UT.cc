@@ -37,6 +37,8 @@ TEST_CASE("list of collection owned by user", "[normal]")
 	int tested = 0;
 	subject.link(*redis, "/", blobid, CollEntry{}, [&tested](std::error_code ec)
 	{
+		std::cout << "here!" << std::endl;
+
 		REQUIRE_FALSE(ec);
 		tested++;
 	});
@@ -62,7 +64,7 @@ TEST_CASE("list of collection owned by user", "[normal]")
 	REQUIRE(tested == 2);
 	REQUIRE(std::find(refs.begin(), refs.end(), "/") != refs.end());
 	ioc.restart();
-
+/*
 	// remove all blobs in the collection
 	subject.find_collection(*redis, Authentication{{}, "owner"}, "/", [&tested, redis](auto&& coll, auto ec)
 	{
@@ -91,8 +93,9 @@ TEST_CASE("list of collection owned by user", "[normal]")
 	});
 	REQUIRE(ioc.run_for(10s) > 0);
 	REQUIRE(tested == 4);
+*/
 }
-
+/*
 TEST_CASE("add blob to Ownership", "[normal]")
 {
 	auto blobid = insecure_random<ObjectID>();
@@ -549,3 +552,4 @@ TEST_CASE("Collection ctor", "[normal]")
 	REQUIRE(path_with_slash.path() == "/some/collection:path");
 	REQUIRE(path_with_slash.redis_key() == "dir:siuyung:/some/collection:path");
 }
+*/
