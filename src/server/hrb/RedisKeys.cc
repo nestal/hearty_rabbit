@@ -49,11 +49,9 @@ std::string collection_list(std::string_view user)
 	return s;
 }
 
-std::string public_blobs(std::string_view user)
+std::string public_blobs()
 {
-	std::string s{"public_blobs:"};
-	s.append(user.data(), user.size());
-	return s;
+	return std::string{"public_blobs"};
 }
 
 std::string blob_meta(std::string user, const ObjectID& blob)

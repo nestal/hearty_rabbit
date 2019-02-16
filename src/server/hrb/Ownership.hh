@@ -32,13 +32,13 @@ class CollEntry;
 class Ownership
 {
 public:
-	class BlobBackLink;
-
 	/// A set of blob objects represented by a redis set.
 	class Collection;
 
 private:
 	redis::CommandString link_command(std::string_view coll, const ObjectID& blob, const CollEntry& entry);
+	redis::CommandString unlink_command(std::string_view coll, const ObjectID& blob);
+	void update(redis::Connection& db, const ObjectID& blobid, const CollEntryDB& entry);
 
 public:
 	explicit Ownership(std::string_view name);
@@ -54,14 +54,12 @@ public:
 
 	void update(
 		redis::Connection& db,
-		std::string_view coll,
 		const ObjectID& blobid,
 		const CollEntry& entry
 	);
 
 	void update(
 		redis::Connection& db,
-		std::string_view coll,
 		const ObjectID& blobid,
 		const nlohmann::json& entry
 	);

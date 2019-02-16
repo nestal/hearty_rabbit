@@ -13,6 +13,7 @@
 #include "Ownership.hh"
 #include "BlobRef.hh"
 #include "CollEntryDB.hh"
+#include "RedisKeys.hh"
 
 #include "net/Redis.hh"
 
@@ -35,28 +36,6 @@
 #pragma once
 
 namespace hrb {
-
-class Ownership::BlobBackLink
-{
-public:
-	static const std::string_view m_prefix;
-
-public:
-	BlobBackLink(std::string_view user, std::string_view coll, const ObjectID& blob);
-
-	// expect to be done inside a transaction
-	void link(redis::Connection& db) const;
-	void unlink(redis::Connection& db) const;
-
-	std::string_view user() const {return m_user;}
-	const ObjectID& blob() const {return m_blob;}
-	std::string_view collection() const {return m_coll;}
-
-private:
-	std::string m_user;
-	std::string m_coll;
-	ObjectID    m_blob;
-};
 
 /// A set of blob objects represented by a redis set.
 class Ownership::Collection
@@ -419,24 +398,10 @@ void Ownership::link(
 	Complete&& complete
 )
 {
-	BlobBackLink blob{m_user, coll_name, blobid};
-	Collection   coll{m_user, coll_name};
-
-	auto en_str = CollEntryDB::create(entry);
-
-	db.command("MULTI");
-	blob.link(db);
-	coll.link(db, blob.blob(), CollEntryDB{en_str});
-	db.command([comp=std::forward<Complete>(complete)](auto&&, std::error_code ec)
-	{
-		comp(ec);
-	}, "EXEC");
-/*
 	db.command([comp=std::forward<Complete>(complete)](auto&&, std::error_code ec)
 	{
 		comp(ec);
 	}, link_command(coll_name, blobid, entry));
-*/
 }
 
 template <typename Complete>
@@ -447,24 +412,13 @@ void Ownership::unlink(
 	Complete&& complete
 )
 {
-	BlobBackLink  blob{m_user, coll_name, blobid};
-	Collection coll{m_user, coll_name};
-
-	db.command("MULTI");
-	blob.unlink(db);
-	coll.unlink(db, blob.blob());
-	db.command(
-		"LREM %b 1 %b",
-		Collection::m_public_blobs.data(), Collection::m_public_blobs.size(),
-		blobid.data(), blobid.size()
+	db.do_write(
+		unlink_command(coll_name, blobid),
+		[comp=std::forward<Complete>(complete)](auto&& reply, std::error_code ec)
+		{
+			comp(ec);
+		}
 	);
-	db.command([comp=std::forward<Complete>(complete)](auto&& reply, std::error_code ec)
-	{
-		assert(reply.array_size() == 3);
-		comp(ec);
-	}, "EXEC");
-
-	coll.post_unlink(db, blob.blob());
 }
 
 template <typename Complete>
@@ -624,13 +578,14 @@ void Ownership::list_public_blobs(
 template <typename Complete>
 void Ownership::query_blob(redis::Connection& db, const ObjectID& blob, Complete&& complete)
 {
+	auto blob_ref   = key::blob_refs(m_user, blob);
+	auto blob_meta  = key::blob_meta(m_user, blob);
+
 	static const char lua[] = R"__(
 		local dirs = {}
-		for k, mpack in ipairs(redis.call('SMEMBERS', KEYS[1])) do
-			local dir, user, coll = cmsgpack.unpack(mpack)
-			local coll_key = dir .. user .. ':' .. coll
-			table.insert(dirs, coll_key)
-			table.insert(dirs, redis.call('HGET', coll_key, ARGV[1]))
+		for k, coll in ipairs(redis.call('SMEMBERS', KEYS[1])) do
+			table.insert(dirs, coll)
+			table.insert(dirs, redis.call('GET', KEYS[2]))
 		end
 		return dirs
 	)__";
@@ -643,23 +598,17 @@ void Ownership::query_blob(redis::Connection& db, const ObjectID& blob, Complete
 
 			using namespace boost::adaptors;
 			comp(reply.kv_pairs() |
-				transformed([blob](auto&& kv)
+				transformed([blob, &user](auto&& kv)
 				{
-					Collection coll{kv.key()};
-					return BlobRef{coll.user(), coll.path(), blob, CollEntryDB{kv.value().as_string()}};
-				}) |
-				filtered([&user](auto&& blob)
-				{
-					return user.empty() ? blob.entry.permission() == Permission::public_() : user == blob.user;
+					return BlobRef{user, std::string{kv.key()}, blob, CollEntryDB{kv.value().as_string()}};
 				}),
 				ec
 			);
 		},
-		"EVAL %s 1 %b%b %b",
+		"EVAL %s 2 %b %b",
 		lua,
-		BlobBackLink::m_prefix.data(), BlobBackLink::m_prefix.size(),
-		blob.data(), blob.size(),
-		blob.data(), blob.size()
+		blob_ref.data(),  blob_ref.size(),
+		blob_meta.data(), blob_meta.size()
 	);
 }
 

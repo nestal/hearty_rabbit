@@ -320,7 +320,7 @@ void SessionHandler::validate_collection(Collection& coll)
 			new_entry.timestamp = blob_file.original_datetime();
 			coll.update_timestamp(id, new_entry.timestamp);
 
-			Ownership{m_auth.username()}.update(*m_db, coll.name(), id, new_entry);
+			Ownership{m_auth.username()}.update(*m_db, id, new_entry);
 		}
 	}
 }

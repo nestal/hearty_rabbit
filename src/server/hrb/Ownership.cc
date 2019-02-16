@@ -27,47 +27,6 @@ Ownership::Ownership(std::string_view name) : m_user{name}
 {
 }
 
-const std::string_view Ownership::BlobBackLink::m_prefix{"blob-ref:"};
-
-Ownership::BlobBackLink::BlobBackLink(std::string_view user, std::string_view coll, const ObjectID& blob) :
-	m_user{user}, m_coll{coll}, m_blob{blob}
-{
-}
-
-void Ownership::BlobBackLink::link(redis::Connection& db) const
-{
-	static const char lua[] = R"__(
-		redis.call('SADD', KEYS[1], cmsgpack.pack(ARGV[1], ARGV[2], ARGV[3]))
-	)__";
-	db.command(
-		"EVAL %s 1 %b%b %b %b %b", lua,
-		m_prefix.data(), m_prefix.size(),
-		m_blob.data(), m_blob.size(),
-
-		Collection::m_dir_prefix.data(), Collection::m_dir_prefix.size(),
-		m_user.data(), m_user.size(),
-		m_coll.data(), m_coll.size()
-	);
-}
-
-void Ownership::BlobBackLink::unlink(redis::Connection& db) const
-{
-	static const char lua[] = R"__(
-		redis.call('SREM', KEYS[1], cmsgpack.pack(ARGV[1], ARGV[2], ARGV[3]))
-	)__";
-	db.command(
-		"EVAL %s 1 %b%b %b %b %b", lua,
-
-		// KEYS[1]
-		m_prefix.data(), m_prefix.size(),
-		m_blob.data(), m_blob.size(),
-
-		Collection::m_dir_prefix.data(), Collection::m_dir_prefix.size(),
-		m_user.data(), m_user.size(),
-		m_coll.data(), m_coll.size()
-	);
-}
-
 const std::string_view Ownership::Collection::m_dir_prefix = "dir:";
 const std::string_view Ownership::Collection::m_list_prefix = "dirs:";
 const std::string_view Ownership::Collection::m_public_blobs = "public-blobs";
@@ -200,7 +159,8 @@ hrb::Collection Ownership::Collection::from_reply(const redis::Reply& reply, con
 	assert(meta.is_object());
 	hrb::Collection result{m_path, m_user, std::move(meta)};
 
-	for (auto&& kv : reply.kv_pairs())
+	for (
+		auto&& kv : reply.kv_pairs())
 	{
 		auto&& blob = kv.key();
 		auto&& perm = kv.value();
@@ -221,121 +181,42 @@ hrb::Collection Ownership::Collection::from_reply(const redis::Reply& reply, con
 	return result;
 }
 
-/// \brief  Called after a blob is deleted.
-/// This function will remove all references to the blob from all the indexes in the database
-/// after a blob is unlinked. These references are weak references so they don't need to be
-/// kept up-to-date at all times. Therefore it is not absolutely need to be updated atomically
-/// at the same time as unlinking them from the collection.
-void Ownership::Collection::post_unlink(redis::Connection& db, const ObjectID& blob)
-{
-	static const char lua[] = R"__(
-		local user, coll, blob = ARGV[1], ARGV[2], ARGV[3]
-
-		-- must check if the blob is really unlinked from the collection before
-		-- removing the references, because it may be possible that the same blob
-		-- is re-linked to the same collection again
-		if redis.call('HEXISTS', KEYS[1], blob) == 1 then
-
-			-- remove the blob from the public list
-			redis.call('LREM', KEYS[2], 0, cmsgpack.pack(user, coll, blob))
-		end
-	)__";
-	db.command(
-		[](auto&& reply, auto ec)
-		{
-			if (!reply || ec)
-				Log(LOG_WARNING, "Collection::unlink() lua script failure: %1% (%2%)", reply.as_error(), ec);
-		},
-		"EVAL %s 2 %b%b:%b %b %b %b %b",
-
-		lua,
-
-		// KEYS[1] (hash table that stores the blob in a collection)
-		m_dir_prefix.data(), m_dir_prefix.size(),
-		m_user.data(), m_user.size(),
-		m_path.data(), m_path.size(),
-
-		// KEYS[2] (list that stores public blobs)
-		m_public_blobs.data(), m_public_blobs.size(),
-		m_user.data(), m_user.size(),
-
-		// ARGV[1] (user name)
-		m_user.data(), m_user.size(),
-
-		// ARGV[2] (collection name)
-		m_path.data(), m_path.size(),
-
-		// ARGV[3] (blob ID)
-		blob.data(), blob.size()
-	);
-}
-
-void Ownership::update(
-	redis::Connection& db,
-	std::string_view coll,
-	const ObjectID& blobid,
-	const CollEntry& entry
-)
+void Ownership::update(redis::Connection& db, const ObjectID& blobid, const CollEntry& entry)
 {
 	// assume the blob is already in the collection, so there is no need to update
 	// blob backlink
 	auto s = CollEntryDB::create(entry);
-	Collection{m_user, coll}.update(db, blobid, CollEntryDB{s});
+	update(db, blobid, CollEntryDB{s});
 }
 
-void Ownership::update(
-	redis::Connection& db,
-	std::string_view coll,
-	const ObjectID& blobid,
-	const nlohmann::json& entry
-)
+void Ownership::update(redis::Connection& db, const ObjectID& blobid, const nlohmann::json& entry)
 {
 	// assume the blob is already in the collection, so there is no need to update
 	// blob backlink
-	Collection{m_user, coll}.update(db, blobid, entry);
+	auto en_str = CollEntryDB::create(Permission::from_description(entry["perm"].get<std::string>()), entry);
+	update(db, blobid, CollEntryDB{en_str});
 }
 
-void Ownership::Collection::update(
-	redis::Connection& db,
-	const ObjectID& id,
-	const CollEntryDB& entry
-)
+void Ownership::update(redis::Connection& db, const ObjectID& blob, const CollEntryDB& entry)
 {
-	static const char hsetex[] = R"__(
-		if redis.call('HEXISTS', KEYS[1], ARGV[1]) then
-			redis.call('HSET', KEYS[1], ARGV[1], ARGV[2])
-		end
+	auto blob_meta  = key::blob_meta(m_user, blob);
+
+	static const char lua[] = R"__(
+		local user, coll, blob, cover, entry = ARGV[1], ARGV[2], ARGV[3], ARGV[4], ARGV[5],
+		redis.call('SADD', KEYS[1], coll)
+		redis.call('SADD', KEYS[2], user)
+		redis.call('SET',  KEYS[3], entry)
+		redis.call('SADD', KEYS[4], blob)
+		redis.call('HSETNX', KEYS[5], coll, cjson.encode({cover=cover}))
 	)__";
 	db.command(
-		[](auto&& reply, auto ec)
-		{
-			if (!reply || ec)
-				Log(LOG_WARNING, "Collection::update() lua script failure: %1% (%2%)", reply.as_error(), ec);
-		},
-		"EVAL %s 1 %b%b:%b %b %b",
-		hsetex,
-
-		// KEYS[1] (hash table that stores the blob in a collection)
-		m_dir_prefix.data(), m_dir_prefix.size(),
-		m_user.data(), m_user.size(),
-		m_path.data(), m_path.size(),
-
-		id.data(), id.size(), // ARGV[1]
-		entry.data(),  entry.size()   // ARGV[2]
+		"SET %b %b",
+		blob_meta.data(), blob_meta.size(),
+		entry.data(), entry.size()
 	);
 }
 
-void Ownership::Collection::update(
-	redis::Connection& db,
-	const ObjectID& id,
-	const nlohmann::json& entry
-)
-{
-	auto en_str = CollEntryDB::create(Permission::from_description(entry["perm"].get<std::string>()), entry);
-	update(db, id, CollEntryDB{en_str});
-}
-
-redis::CommandString Ownership::link_command(std::string_view coll, const ObjectID& blob, const CollEntry& entry)
+redis::CommandString Ownership::link_command(std::string_view coll, const ObjectID& blob, const CollEntry& coll_entry)
 {
 	auto blob_ref   = key::blob_refs(m_user, blob);
 	auto blob_owner = key::blob_owners(blob);
@@ -343,7 +224,7 @@ redis::CommandString Ownership::link_command(std::string_view coll, const Object
 	auto coll_key   = key::collection(m_user, coll);
 	auto coll_list  = key::collection_list(m_user);
 	auto hex = to_hex(blob);
-	auto coll_entry = CollEntryDB::create(entry);
+	auto entry = CollEntryDB::create(coll_entry);
 
 	static const char lua[] = R"__(
 		local user, coll, blob, cover, entry = ARGV[1], ARGV[2], ARGV[3], ARGV[4], ARGV[5],
@@ -362,20 +243,79 @@ redis::CommandString Ownership::link_command(std::string_view coll, const Object
 		coll_key.data(), coll_key.size(),
 		coll_list.data(), coll_list.size(),
 
-		// ARGV[1]: user name
-		m_user.data(), m_user.size(),
+		m_user.data(), m_user.size(),       // ARGV[1]: user name
+		coll.data(), coll.size(),           // ARGV[2]: collection name
+		blob.data(), blob.size(),           // ARGV[3]: blob
+		hex.data(), hex.size(),             // ARGV[4]: blob in hex string
+		entry.data(), entry.size()          // ARGV[5]: blob entry
+	};
+}
 
-		// ARGV[2]: collection name
-		coll.data(), coll.size(),
+redis::CommandString Ownership::unlink_command(std::string_view coll, const ObjectID& blob)
+{
+	auto blob_ref   = key::blob_refs(m_user, blob);
+	auto blob_owner = key::blob_owners(blob);
+	auto blob_meta  = key::blob_meta(m_user, blob);
+	auto coll_key   = key::collection(m_user, coll);
+	auto coll_list  = key::collection_list(m_user);
+	auto public_blobs = key::public_blobs();
 
-		// ARGV[3]: blob
-		blob.data(), blob.size(),
+	static const char lua[] = R"__(
+		-- convert binary to lowercase hex string
+		local tohex = function(str)
+			return (str:gsub('.', function (c)
+				return string.format('%02x', string.byte(c))
+			end))
+		end
 
-		// ARGV[4]: blob in hex string
-		hex.data(), hex.size(),
+		local blob_ref, blob_owner, blob_meta, coll_set, coll_list, pub_list = KEYS[1], KEYS[2], KEYS[3], KEYS[4], KEYS[5], KEYS[6]
+		local user, coll, blob = ARGV[1], ARGV[2], ARGV[3]
 
-		// ARGV[5]: blob entry
-		coll_entry.data(), coll_entry.size()
+		-- delete the link from blob-refs
+		redis.call('SREM', blob_ref, coll)
+
+		-- if there is no more links to this blob to other collections, we can remove the blob
+		-- for this user and remove the blob from the public list
+		if redis.call('EXISTS', blob_ref) == 0 then
+			redis.call('SREM', blob_owner, user)
+			redis.call('DEL',  blob_meta, blob)
+			redis.call('LREM', KEYS[4], 0, cmsgpack.pack(user, blob))
+		end
+
+		-- delete the blob in the collection set
+		redis.call('SREM', KEYS[2], blob)
+
+		-- if the collection has no more entries, delete the collection in the
+		-- user's list of collections
+		if redis.call('EXISTS', KEYS[2]) == 0 then
+			redis.call('HDEL', KEYS[3], coll)
+
+		-- if the collection still exists, check if the blob we are removing
+		-- is the cover of the collection
+		else
+			local album = cjson.decode(redis.call('HGET', KEYS[3], coll))
+
+			-- tohex() return upper case, so need to convert album[cover] to upper
+			-- case before comparing
+			if album['cover'] == tohex(blob) then
+				album['cover'] = tohex(redis.call('SMEMBERS', KEYS[2])[1])
+				redis.call('HSET', KEYS[3], coll, cjson.encode(album))
+			end
+		end
+	)__";
+	return redis::CommandString{
+		"EVAL %s 6 %b %b %b %b %b %b   %b %b %b", lua,
+
+		blob_ref.data(), blob_ref.size(),
+		blob_owner.data(), blob_owner.size(),
+		blob_meta.data(), blob_meta.size(),
+		coll_key.data(), coll_key.size(),
+		coll_list.data(), coll_list.size(),
+		public_blobs.data(), public_blobs.size(),
+
+		m_user.data(), m_user.size(),       // ARGV[1]: user name
+		coll.data(), coll.size(),           // ARGV[2]: collection name
+		blob.data(), blob.size()            // ARGV[3]: blob
 	};
 }
 

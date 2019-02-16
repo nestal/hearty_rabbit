@@ -32,8 +32,8 @@ std::string collection(std::string_view user, std::string_view coll);
 // collection_list is a redis hash that contains a list of collections owned by a specific user.
 std::string collection_list(std::string_view user);
 
-// public_blobs is a redis list that contains a list of raw blob IDs that refers to a specific user's public blobs.
-std::string public_blobs(std::string_view user);
+// public_blobs is a redis list that contains a list of raw blob IDs are public.
+std::string public_blobs();
 
 // blob_meta is a redis hash that contains meta-data about a specific blob of a specific user
 std::string blob_meta(std::string user, const ObjectID& blob);

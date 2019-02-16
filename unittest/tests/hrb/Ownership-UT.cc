@@ -237,7 +237,7 @@ TEST_CASE("Load 3 images in json", "[normal]")
 	// update CollEntry of the blobs
 	CollEntry entry{Permission::public_(), "another_file.jpg", "application/json", Timestamp{std::chrono::milliseconds{100}}};
 	for (auto&& blobid : blobids)
-		subject.update(*redis, "some/collection", blobid, entry);
+		subject.update(*redis, blobid, entry);
 
 	bool tested = false;
 	subject.find_collection(*redis, {{},"testuser"}, "some/collection", [&tested, &blobids](auto&& coll, auto ec)
