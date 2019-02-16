@@ -13,6 +13,7 @@
 #include "Ownership.hh"
 #include "Ownership.ipp"
 #include "BlobDatabase.hh"
+#include "RedisKeys.hh"
 
 #include "util/Log.hh"
 #include "common/Escape.hh"
@@ -332,6 +333,50 @@ void Ownership::Collection::update(
 {
 	auto en_str = CollEntryDB::create(Permission::from_description(entry["perm"].get<std::string>()), entry);
 	update(db, id, CollEntryDB{en_str});
+}
+
+redis::CommandString Ownership::link_command(std::string_view coll, const ObjectID& blob, const CollEntry& entry)
+{
+	auto blob_ref   = key::blob_refs(m_user, blob);
+	auto blob_owner = key::blob_owners(blob);
+	auto blob_meta  = key::blob_meta(m_user, blob);
+	auto coll_key   = key::collection(m_user, coll);
+	auto coll_list  = key::collection_list(m_user);
+	auto hex = to_hex(blob);
+	auto coll_entry = CollEntryDB::create(entry);
+
+	static const char lua[] = R"__(
+		local user, coll, blob, cover, entry = ARGV[1], ARGV[2], ARGV[3], ARGV[4], ARGV[5],
+		redis.call('SADD', KEYS[1], coll)
+		redis.call('SADD', KEYS[2], user)
+		redis.call('SET',  KEYS[3], entry)
+		redis.call('SADD', KEYS[4], blob)
+		redis.call('HSETNX', KEYS[5], coll, cjson.encode({cover=cover}))
+	)__";
+	return redis::CommandString{
+		"EVAL %s 5 %b %b %b %b %b   %b %b %b %b %b", lua,
+
+		blob_ref.data(), blob_ref.size(),
+		blob_owner.data(), blob_owner.size(),
+		blob_meta.data(), blob_meta.size(),
+		coll_key.data(), coll_key.size(),
+		coll_list.data(), coll_list.size(),
+
+		// ARGV[1]: user name
+		m_user.data(), m_user.size(),
+
+		// ARGV[2]: collection name
+		coll.data(), coll.size(),
+
+		// ARGV[3]: blob
+		blob.data(), blob.size(),
+
+		// ARGV[4]: blob in hex string
+		hex.data(), hex.size(),
+
+		// ARGV[5]: blob entry
+		coll_entry.data(), coll_entry.size()
+	};
 }
 
 } // end of namespace hrb

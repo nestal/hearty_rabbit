@@ -14,14 +14,16 @@
 #include "BlobRef.hh"
 #include "CollEntryDB.hh"
 
+#include "net/Redis.hh"
+
 #include "common/Permission.hh"
 #include "common/Collection.hh"
 #include "common/CollectionList.hh"
+#include "common/Error.hh"
+#include "common/Escape.hh"
 
 #include "crypto/Authentication.hh"
-#include "common/Error.hh"
 #include "util/Log.hh"
-#include "common/Escape.hh"
 
 #include <nlohmann/json.hpp>
 
@@ -429,6 +431,12 @@ void Ownership::link(
 	{
 		comp(ec);
 	}, "EXEC");
+/*
+	db.command([comp=std::forward<Complete>(complete)](auto&&, std::error_code ec)
+	{
+		comp(ec);
+	}, link_command(coll_name, blobid, entry));
+*/
 }
 
 template <typename Complete>

@@ -195,6 +195,8 @@ private:
 class CommandString
 {
 public:
+	CommandString() = default;
+
 	/// The first argument MUST be the command string. For security
 	/// reason, this class does not accept std::string and const char*.
 	/// It expects a hard-coded string literal. However in C++ we can't
@@ -214,8 +216,8 @@ public:
 
 	void swap(CommandString& other) noexcept ;
 
-	char* get() const {return m_cmd;}
-	std::size_t length() const {return static_cast<std::size_t>(m_length);}
+	auto get() const {return m_cmd;}
+	auto length() const {return static_cast<std::size_t>(m_length);}
 	auto buffer() const {return boost::asio::buffer(m_cmd, length());}
 	std::string_view str() const {return {m_cmd, length()};}
 
@@ -243,6 +245,9 @@ public:
 class Connection : public std::enable_shared_from_this<Connection>
 {
 public:
+	using Completion = std::function<void(Reply, std::error_code)>;
+
+public:
 	explicit Connection(
 		PoolBase& parent,
 		boost::asio::ip::tcp::socket socket
@@ -266,7 +271,14 @@ public:
 	>
 	command(Callback&& callback, const char (&cmd)[N], Args... args)
 	{
-		command(std::move(callback), CommandString{cmd, args...});
+		try
+		{
+			command(std::move(callback), CommandString{cmd, args...});
+		}
+		catch (std::logic_error&)
+		{
+			callback(Reply{}, std::error_code{Error::protocol});
+		}
 	}
 
 	// Only enable this template if Callback is a copy-constructible
@@ -282,22 +294,15 @@ public:
 	>
 	command(Callback&& callback, CommandString&& command)
 	{
-		try
-		{
-			do_write(std::move(command),
-				[
-					callback=std::forward<Callback>(callback),
-					self=shared_from_this()
-				](auto&& r, auto ec) mutable
-				{
-					callback(std::move(r), std::move(ec));
-				}
-			);
-		}
-		catch (std::logic_error&)
-		{
-			callback(Reply{}, std::error_code{Error::protocol});
-		}
+		do_write(std::move(command),
+			[
+				callback=std::forward<Callback>(callback),
+				self=shared_from_this()
+			](auto&& r, auto ec) mutable
+			{
+				callback(std::forward<decltype(r)>(r), std::move(ec));
+			}
+		);
 	}
 
 
@@ -325,9 +330,9 @@ public:
 				[
 					cb=std::make_shared<std::remove_reference_t<Callback>>(std::forward<Callback>(callback)),
 					self=shared_from_this()
-				](auto&& r, auto ec)
+				](auto&& r, auto ec) mutable
 				{
-					(*cb)(std::move(r), std::move(ec));
+					(*cb)(std::forward<decltype(r)>(r), std::move(ec));
 				}
 			);
 		}
@@ -349,6 +354,7 @@ public:
 		}
 	}
 
+	void do_write(CommandString&& cmd, Completion&& completion);
 
 	boost::asio::io_context& get_io_context() {return m_socket.get_io_context();}
 
@@ -357,12 +363,8 @@ private:
 	void disconnect(std::error_code ec) ;
 
 private:
-	using Completion = std::function<void(Reply, std::error_code)>;
-
-	void do_write(CommandString&& cmd, Completion&& completion);
 	void do_read();
 	void on_read(boost::system::error_code ec, std::size_t bytes);
-
 	void on_exec_transaction(Reply&& reply, std::error_code ec);
 
 private:

@@ -15,12 +15,14 @@
 #include "common/ObjectID.hh"
 #include "CollEntryDB.hh"
 
-#include "net/Redis.hh"
-
 #include <string_view>
 #include <functional>
 
 namespace hrb {
+namespace redis {
+class Connection;
+class CommandString;
+}
 
 class Authentication;
 class Permission;
@@ -34,6 +36,9 @@ public:
 
 	/// A set of blob objects represented by a redis set.
 	class Collection;
+
+private:
+	redis::CommandString link_command(std::string_view coll, const ObjectID& blob, const CollEntry& entry);
 
 public:
 	explicit Ownership(std::string_view name);
