@@ -56,13 +56,17 @@ std::string Ownership::Collection::redis_key() const
 	return std::string{m_dir_prefix} + m_user + ':' + m_path;
 }
 
-hrb::Collection Ownership::Collection::from_reply(const redis::Reply& reply, const Authentication& requester, nlohmann::json&& meta) const
+hrb::Collection Ownership::from_reply(
+	const redis::Reply& reply,
+	std::string_view coll,
+	const Authentication& requester,
+	nlohmann::json&& meta
+) const
 {
 	assert(meta.is_object());
-	hrb::Collection result{m_path, m_user, std::move(meta)};
+	hrb::Collection result{coll, m_user, std::move(meta)};
 
-	for (
-		auto&& kv : reply.kv_pairs())
+	for (auto&& kv : reply.kv_pairs())
 	{
 		auto&& blob = kv.key();
 		auto&& perm = kv.value();
@@ -118,7 +122,7 @@ void Ownership::update(redis::Connection& db, const ObjectID& blob, const CollEn
 	);
 }
 
-redis::CommandString Ownership::link_command(std::string_view coll, const ObjectID& blob, const CollEntry& coll_entry)
+redis::CommandString Ownership::link_command(std::string_view coll, const ObjectID& blob, const CollEntry& coll_entry) const
 {
 	auto blob_ref   = key::blob_refs(m_user, blob);
 	auto blob_owner = key::blob_owners(blob);
@@ -153,7 +157,7 @@ redis::CommandString Ownership::link_command(std::string_view coll, const Object
 	};
 }
 
-redis::CommandString Ownership::unlink_command(std::string_view coll, const ObjectID& blob)
+redis::CommandString Ownership::unlink_command(std::string_view coll, const ObjectID& blob) const
 {
 	auto blob_ref   = key::blob_refs(m_user, blob);
 	auto blob_owner = key::blob_owners(blob);
@@ -218,6 +222,28 @@ redis::CommandString Ownership::unlink_command(std::string_view coll, const Obje
 		m_user.data(), m_user.size(),       // ARGV[1]: user name
 		coll.data(), coll.size(),           // ARGV[2]: collection name
 		blob.data(), blob.size()            // ARGV[3]: blob
+	};
+}
+
+redis::CommandString Ownership::scan_collection_command(std::string_view coll) const
+{
+	auto coll_key  = key::collection(m_user, coll);
+	auto coll_list = key::collection_list(m_user);
+	static const char lua[] = R"__(
+		local dirs = {}
+		for k, blob in ipairs(redis.call('SMEMBERS', KEYS[1])) do
+			table.insert(dirs, blob)
+			table.insert(dirs, redis.call('GET', "blob-meta:" .. ARGV[2] .. ':' .. blob))
+		end
+		return {dirs, redis.call('HGET', KEYS[2], ARGV[1])}
+	)__";
+	return redis::CommandString{
+		"EVAL %s 2 %b %b   %b %b", lua,
+		coll_key.data(), coll_key.size(),
+		coll_list.data(), coll_list.size(),
+
+		coll.data(), coll.size(),
+		m_user.data(), m_user.size()
 	};
 }
 

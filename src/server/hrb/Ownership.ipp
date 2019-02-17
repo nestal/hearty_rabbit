@@ -215,59 +215,6 @@ void Ownership::Collection::list(
 }
 
 template <typename Complete>
-void Ownership::Collection::list(
-	redis::Connection& db,
-	const Authentication& requester,
-	Complete&& complete
-) const
-{
-	static const char lua[] = R"__(
-		return {
-			redis.call('HGETALL', KEYS[1]),
-			redis.call('HGET', KEYS[2], ARGV[1])
-		}
-	)__";
-	db.command(
-		[
-			comp=std::forward<Complete>(complete),
-			*this, requester, path=m_path
-		](auto&& reply, std::error_code&& ec) mutable
-		{
-			if (!reply || ec)
-				Log(LOG_WARNING, "list() script reply %1% %2%", reply.as_error(), ec);
-
-			if (reply.array_size() == 2)
-			{
-				// in some error cases created by unit tests, the string is not valid JSON
-				// in the database
-				auto meta = nlohmann::json::parse(reply[1].as_string(), nullptr, false);
-				if (meta.is_discarded())
-					meta = nlohmann::json::object();
-
-				if (!meta.is_object())
-				{
-					Log(LOG_WARNING, "invalid meta data for collection %1%: %2%", path, reply[1].as_string());
-					meta = nlohmann::json::object();
-				}
-
-				comp(from_reply(reply[0], requester, std::move(meta)), std::move(ec));
-			}
-
-			// TODO: handle case where
-		},
-		"EVAL %s 2 %b%b:%b %b%b %b", lua,
-		m_dir_prefix.data(), m_dir_prefix.size(),
-		m_user.data(), m_user.size(),
-		m_path.data(), m_path.size(),
-
-		m_list_prefix.data(), m_list_prefix.size(),
-		m_user.data(), m_user.size(),
-
-		m_path.data(), m_path.size()
-	);
-}
-
-template <typename Complete>
 void Ownership::link(
 	redis::Connection& db,
 	std::string_view coll_name,
@@ -276,15 +223,12 @@ void Ownership::link(
 	Complete&& complete
 )
 {
-	auto cmd = link_command(coll_name, blobid, entry);
-	std::cout << "cmd = " << cmd.get() << std::endl;
 	db.command(
-		[comp=std::forward<Complete>(complete)](auto&& r, std::error_code ec)
+		[comp=std::forward<Complete>(complete)](auto&&, std::error_code ec)
 		{
-			std::cout << r.as_error() << std::endl;
 			comp(ec);
 		},
-		std::move(cmd)
+		link_command(coll_name, blobid, entry)
 	);
 }
 
@@ -300,6 +244,7 @@ void Ownership::unlink(
 		unlink_command(coll_name, blobid),
 		[comp=std::forward<Complete>(complete)](auto&& reply, std::error_code ec)
 		{
+			std::cout << "unlinked: " << reply.as_error() << std::endl;
 			comp(ec);
 		}
 	);
@@ -313,7 +258,37 @@ void Ownership::find_collection(
 	Complete&& complete
 ) const
 {
-	return Collection{m_user, coll}.list(db, requester, std::forward<Complete>(complete));
+	db.command(
+		[
+			comp=std::forward<Complete>(complete), *this,
+			requester, coll=std::string{coll}
+		](auto&& reply, std::error_code&& ec) mutable
+		{
+			if (!reply || ec)
+				Log(LOG_WARNING, "list() script reply %1% %2%", reply.as_error(), ec);
+
+			if (reply.array_size() == 2)
+			{
+				// in some error cases created by unit tests, the string is not valid JSON
+				// in the database
+				auto meta = nlohmann::json::parse(reply[1].as_string(), nullptr, false);
+				if (meta.is_discarded())
+					meta = nlohmann::json::object();
+
+				if (!meta.is_object())
+				{
+					Log(LOG_WARNING, "invalid meta data for collection %1%: %2%", coll, reply[1].as_string());
+					meta = nlohmann::json::object();
+				}
+
+				comp(from_reply(reply[0], coll, requester, std::move(meta)), std::move(ec));
+			}
+
+			// TODO: handle case where
+		},
+		scan_collection_command(coll)
+	);
+
 }
 
 template <typename Complete>

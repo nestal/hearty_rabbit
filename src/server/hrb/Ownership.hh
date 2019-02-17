@@ -22,11 +22,13 @@ namespace hrb {
 namespace redis {
 class Connection;
 class CommandString;
+class Reply;
 }
 
 class Authentication;
 class Permission;
 class CollEntry;
+class Collection;
 
 /// A set of blob objects represented by a redis set.
 class Ownership
@@ -36,9 +38,17 @@ public:
 	class Collection;
 
 private:
-	redis::CommandString link_command(std::string_view coll, const ObjectID& blob, const CollEntry& entry);
-	redis::CommandString unlink_command(std::string_view coll, const ObjectID& blob);
+	redis::CommandString link_command(std::string_view coll, const ObjectID& blob, const CollEntry& entry) const;
+	redis::CommandString unlink_command(std::string_view coll, const ObjectID& blob) const;
+	redis::CommandString scan_collection_command(std::string_view coll) const;
 	void update(redis::Connection& db, const ObjectID& blobid, const CollEntryDB& entry);
+
+	hrb::Collection from_reply(
+		const redis::Reply& hash_getall_reply,
+		std::string_view coll,
+		const Authentication& requester,
+		nlohmann::json&& meta
+	) const;
 
 public:
 	explicit Ownership(std::string_view name);
