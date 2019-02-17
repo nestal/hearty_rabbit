@@ -164,8 +164,12 @@ redis::CommandString Ownership::unlink_command(std::string_view coll, const Obje
 		else
 			local album = cjson.decode(redis.call('HGET', coll_list, coll))
 
-			-- tohex() return upper case, so need to convert album[cover] to upper
-			-- case before comparing
+			-- The intent here is to select a random image as the cover
+			-- as the original cover is removed.
+			-- However, we can't use SRANDMEMBER to select a random image
+			-- in the album because it is not deterministic, and non-deter-
+			-- ministic commands may break replication. We have no choice
+			-- but to use the slower SMEMBERS and take the first element.
 			if album['cover'] == tohex(blob) then
 				album['cover'] = tohex(redis.call('SMEMBERS', coll_set)[1])
 				redis.call('HSET', coll_list, coll, cjson.encode(album))
