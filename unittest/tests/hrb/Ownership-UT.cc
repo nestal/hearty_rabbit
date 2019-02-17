@@ -37,8 +37,6 @@ TEST_CASE("list of collection owned by user", "[normal]")
 	int tested = 0;
 	subject.link(*redis, "/", blobid, CollEntry{}, [&tested](std::error_code ec)
 	{
-		std::cout << "here!" << std::endl;
-
 		REQUIRE_FALSE(ec);
 		tested++;
 	});
@@ -48,7 +46,11 @@ TEST_CASE("list of collection owned by user", "[normal]")
 	{
 		REQUIRE_FALSE(ec);
 		REQUIRE(coll_list.find("owner", "/") != coll_list.end());
+		REQUIRE(coll_list.size() > 0);
 		tested++;
+
+		for (auto&& c : coll_list)
+			REQUIRE(c.owner() == "owner");
 	});
 
 	// assert the blob backlink points back to the collection

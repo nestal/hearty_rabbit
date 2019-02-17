@@ -65,16 +65,19 @@ hrb::Collection Ownership::from_reply(
 {
 	assert(meta.is_object());
 	hrb::Collection result{coll, m_user, std::move(meta)};
+	std::cout << "from_reply: " << reply.array_size() << " entries" << std::endl;
 
 	for (auto&& kv : reply.kv_pairs())
 	{
 		auto&& blob = kv.key();
 		auto&& perm = kv.value();
 
+		auto blob_id = ObjectID::from_raw(blob);
+		std::cout << "from_reply: " << to_hex(*blob_id) << " " << perm.as_string() << std::endl;
+
 		if (perm.as_string().empty())
 			continue;
 
-		auto blob_id = ObjectID::from_raw(blob);
 		CollEntryDB entry{perm.as_string()};
 
 		// check permission: allow allow owner (i.e. m_user)
@@ -184,28 +187,28 @@ redis::CommandString Ownership::unlink_command(std::string_view coll, const Obje
 		-- for this user and remove the blob from the public list
 		if redis.call('EXISTS', blob_ref) == 0 then
 			redis.call('SREM', blob_owner, user)
-			redis.call('DEL',  blob_meta, blob)
-			redis.call('LREM', KEYS[4], 0, cmsgpack.pack(user, blob))
+			redis.call('DEL',  blob_meta)
+			redis.call('LREM', pub_list, 0, cmsgpack.pack(user, blob))
 		end
 
 		-- delete the blob in the collection set
-		redis.call('SREM', KEYS[2], blob)
+		redis.call('SREM', coll_set, blob)
 
 		-- if the collection has no more entries, delete the collection in the
 		-- user's list of collections
-		if redis.call('EXISTS', KEYS[2]) == 0 then
-			redis.call('HDEL', KEYS[3], coll)
+		if redis.call('EXISTS', coll_set) == 0 then
+			redis.call('HDEL', coll_list, coll)
 
 		-- if the collection still exists, check if the blob we are removing
 		-- is the cover of the collection
 		else
-			local album = cjson.decode(redis.call('HGET', KEYS[3], coll))
+			local album = cjson.decode(redis.call('HGET', coll_list, coll))
 
 			-- tohex() return upper case, so need to convert album[cover] to upper
 			-- case before comparing
 			if album['cover'] == tohex(blob) then
-				album['cover'] = tohex(redis.call('SMEMBERS', KEYS[2])[1])
-				redis.call('HSET', KEYS[3], coll, cjson.encode(album))
+				album['cover'] = tohex(redis.call('SMEMBERS', coll_set)[1])
+				redis.call('HSET', coll_list, coll, cjson.encode(album))
 			end
 		end
 	)__";

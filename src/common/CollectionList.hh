@@ -65,6 +65,7 @@ public:
 
 	auto begin() const {return m_entries.begin();}
 	auto end() const {return m_entries.end();}
+	auto size() const {return m_entries.size();}
 
 	template <typename PropertiesOrCover>
 	void add(std::string_view owner, std::string_view coll, PropertiesOrCover&& prop)
