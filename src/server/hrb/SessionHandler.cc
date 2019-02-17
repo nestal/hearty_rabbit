@@ -175,7 +175,6 @@ void SessionHandler::post_blob(BlobRequest&& req, EmptyResponseSender&& send)
 	if (!perm_str.empty())
 		Ownership{req.owner()}.set_permission(
 			*m_db,
-			req.collection(),
 			*req.blob(),
 			Permission::from_description(perm_str),
 			std::move(on_complete)

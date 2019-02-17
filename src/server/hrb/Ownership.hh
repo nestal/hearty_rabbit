@@ -41,6 +41,7 @@ private:
 	redis::CommandString link_command(std::string_view coll, const ObjectID& blob, const CollEntry& entry) const;
 	redis::CommandString unlink_command(std::string_view coll, const ObjectID& blob) const;
 	redis::CommandString scan_collection_command(std::string_view coll) const;
+	redis::CommandString set_permission_command(const ObjectID& blobid, const Permission& perm) const;
 	void update(redis::Connection& db, const ObjectID& blobid, const CollEntryDB& entry);
 
 	hrb::Collection from_reply(
@@ -85,7 +86,6 @@ public:
 	template <typename Complete>
 	void set_permission(
 		redis::Connection& db,
-		std::string_view coll,
 		const ObjectID& blobid,
 		const Permission& perm,
 		Complete&& complete

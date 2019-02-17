@@ -97,7 +97,7 @@ TEST_CASE("list of collection owned by user", "[normal]")
 	REQUIRE(tested == 4);
 }
 
-/*
+
 TEST_CASE("add blob to Ownership", "[normal]")
 {
 	auto blobid = insecure_random<ObjectID>();
@@ -154,14 +154,27 @@ TEST_CASE("add blob to Ownership", "[normal]")
 	ioc.restart();
 
 	// set permission to public
-	subject.set_permission(*redis, "/", blobid, Permission::public_(), [&tested](std::error_code ec)
+	subject.set_permission(*redis, blobid, Permission::public_(), [&tested](std::error_code ec)
 	{
 		REQUIRE(!ec);
 		tested++;
 	});
 
+	std::cout << "blob = " << to_hex(blobid) << std::endl;
+
 	REQUIRE(ioc.run_for(10s) > 0);
 	REQUIRE(tested == 5);
+	ioc.restart();
+
+	// anonymous access is now allowed
+	subject.find(*redis, "/", blobid, [&tested](auto&& entry, std::error_code ec)
+	{
+		std::cout << "entry: " << entry.raw() << std::endl;
+
+		REQUIRE(!ec);
+		REQUIRE(entry.permission().allow({}, "owner"));
+	});
+	REQUIRE(ioc.run_for(10s) > 0);
 	ioc.restart();
 
 	// verify that the newly added blob is in the public list
@@ -179,6 +192,8 @@ TEST_CASE("add blob to Ownership", "[normal]")
 	// anonymous access is now allowed
 	subject.find(*redis, "/", blobid, [&tested](auto&& entry, std::error_code ec)
 	{
+		std::cout << "entry: " << entry.raw() << std::endl;
+
 		REQUIRE(!ec);
 		REQUIRE(entry.permission().allow({}, "owner"));
 		tested++;
@@ -210,7 +225,7 @@ TEST_CASE("add blob to Ownership", "[normal]")
 	REQUIRE(ioc.run_for(10s) > 0);
 	REQUIRE(tested == 8);
 }
-
+/*
 TEST_CASE("Load 3 images in json", "[normal]")
 {
 	const auto blobids = insecure_random<std::array<ObjectID, 3>>();

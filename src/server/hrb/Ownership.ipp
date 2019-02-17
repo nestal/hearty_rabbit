@@ -58,85 +58,15 @@ public:
 	template <typename Complete>
 	void set_permission(redis::Connection& db, const ObjectID& blob, const Permission& perm, Complete&& complete) const;
 
-	template <typename Complete>
-	void list(
-		redis::Connection& db,
-		Complete&& complete
-	) const;
-
-	template <typename Complete>
-	void list(
-		redis::Connection& db,
-		const Authentication& requester,
-		Complete&& complete
-	) const;
-
 	const std::string& user() const {return m_user;}
 	const std::string& path() const {return m_path;}
 
 private:
-	hrb::Collection from_reply(
-		const redis::Reply& hash_getall_reply,
-		const Authentication& requester,
-		nlohmann::json&& meta
-	) const;
 
 private:
 	std::string m_user;
 	std::string m_path;
 };
-
-template <typename Complete>
-void Ownership::Collection::set_permission(
-	redis::Connection& db,
-	const ObjectID& blob,
-	const Permission& perm,
-	Complete&& complete
-) const
-{
-	static const char lua[] = R"__(
-		local user, coll, blob, perm = ARGV[1], ARGV[2], ARGV[3], ARGV[4]
-		local coll_key = 'dir:' .. user .. ':' .. coll
-
-		local original = redis.call('HGET', coll_key, blob)
-		local updated  = perm .. string.sub(original, 2, -1)
-		redis.call('HSET', coll_key, blob, updated)
-
-		local msgpack = cmsgpack.pack(user, coll, blob)
-		if perm == '*' then
-			redis.call('LREM', KEYS[1], 0, msgpack)
-			if redis.call('RPUSH', KEYS[1], msgpack) > 100 then
-				redis.call('LPOP', KEYS[1])
-			end
-		else
-			redis.call('LREM', KEYS[1], 0, msgpack)
-		end
-	)__";
-	db.command(
-		[comp=std::forward<Complete>(complete)](auto&& reply, auto&& ec) mutable
-		{
-			if (!reply)
-				Log(LOG_WARNING, "Collection::set_permission(): script error: %1%", reply.as_error());
-			comp(std::move(ec));
-		},
-		"EVAL %s 1 %b %b %b %b %b", lua,
-
-		// KEYS[1]: list of public blob IDs
-		m_public_blobs.data(), m_public_blobs.size(),
-
-		// ARGV[1]: user
-		m_user.data(), m_user.size(),
-
-		// ARGV[2]: collection
-		m_path.data(), m_path.size(),
-
-		// ARGV[3]: blob ID
-		blob.data(), blob.size(),
-
-		// ARGV[4]: permission string
-		perm.data(), perm.size()
-	);
-}
 
 template <typename Complete>
 void Ownership::Collection::set_cover(redis::Connection& db, const ObjectID& cover, Complete&& complete)
@@ -181,36 +111,6 @@ void Ownership::Collection::set_cover(redis::Connection& db, const ObjectID& cov
 		m_path.data(), m_path.size(),
 		hex_id.data(), hex_id.size(),
 		cover.data(), cover.size()
-	);
-}
-
-template <typename Complete>
-void Ownership::Collection::list(
-	redis::Connection& db,
-	Complete&& complete
-) const
-{
-	db.command(
-		[
-			comp=std::forward<Complete>(complete)
-		](auto&& reply, std::error_code&& ec) mutable
-		{
-			if (!reply || ec)
-				Log(LOG_WARNING, "list() reply %1% %2%", reply.as_error(), ec);
-
-			using namespace boost::adaptors;
-			comp(
-				reply |
-				transformed([](auto&& reply){return ObjectID::from_raw(reply.as_string());}) |
-				filtered([](auto&& opt_oid){return opt_oid.has_value();}) |
-				transformed([](auto&& opt_oid){return *opt_oid;}),
-				ec
-			);
-		},
-		"HKEYS %b%b:%b",
-		m_dir_prefix.data(), m_dir_prefix.size(),
-		m_user.data(), m_user.size(),
-		m_path.data(), m_path.size()
 	);
 }
 
@@ -298,7 +198,26 @@ void Ownership::list(
 	Complete&& complete
 ) const
 {
-	return Collection{m_user, coll}.list(db, std::forward<Complete>(complete));
+	auto coll_set = key::collection(m_user, coll);
+	db.command(
+		[
+			comp=std::forward<Complete>(complete)
+		](auto&& reply, std::error_code&& ec) mutable
+		{
+			if (!reply || ec)
+				Log(LOG_WARNING, "list() reply %1% %2%", reply.as_error(), ec);
+
+			using namespace boost::adaptors;
+			comp(
+				reply |
+				transformed([](auto&& reply){return ObjectID::from_raw(reply.as_string());}) |
+				filtered([](auto&& opt_oid){return opt_oid.has_value();}) |
+				transformed([](auto&& opt_oid){return *opt_oid;}),
+				ec
+			);
+		},
+		"SMEMBERS %b", coll_set.data(), coll_set.size()
+	);
 }
 
 template <typename Complete>
@@ -309,9 +228,10 @@ void Ownership::find(
 	Complete&& complete
 ) const
 {
+	auto coll_set  = key::collection(m_user, coll);
 	auto blob_meta = key::blob_meta(m_user, blob);
 	static const char lua[] = R"__(
-		if redis.call('SISMEMBER', KEYS[1], blob) == 1 then
+		if redis.call('SISMEMBER', KEYS[1], ARGV[1]) == 1 then
 			return redis.call('GET', KEYS[2])
 		else
 			return false
@@ -330,7 +250,10 @@ void Ownership::find(
 				std::move(ec)
 			);
 		},
-		"EVAL %s 1 %b", lua, blob_meta.data(), blob_meta.size()
+		"EVAL %s 2 %b %b %b", lua,
+		coll_set.data(), coll_set.size(),
+		blob_meta.data(), blob_meta.size(),
+		blob.data(), blob.size()
 	);
 }
 
@@ -412,13 +335,20 @@ void Ownership::scan_all_collections(
 template <typename Complete>
 void Ownership::set_permission(
 	redis::Connection& db,
-	std::string_view coll,
 	const ObjectID& blobid,
 	const Permission& perm,
 	Complete&& complete
 )
 {
-	return Collection{m_user, coll}.set_permission(db, blobid, perm, std::forward<Complete>(complete));
+	db.command(
+		[comp=std::forward<Complete>(complete)](auto&& reply, auto&& ec) mutable
+		{
+			if (!reply)
+				Log(LOG_WARNING, "Collection::set_permission(): script error: %1%", reply.as_error());
+			comp(std::move(ec));
+		},
+		set_permission_command(blobid, perm)
+	);
 }
 
 template <typename Complete>
@@ -464,9 +394,9 @@ void Ownership::list_public_blobs(
 		local elements = {}
 		local pub_list = redis.call('LRANGE', KEYS[1], 0, -1)
 		for i, msgpack in ipairs(pub_list) do
-			local user, coll, blob = cmsgpack.unpack(msgpack)
-			if user and coll and blob then
-				table.insert(elements, {user, coll, blob, redis.call('HGET', 'dir:' .. user .. ':' .. coll, blob)})
+			local user, blob = cmsgpack.unpack(msgpack)
+			if user and blob then
+				table.insert(elements, {user, blob, redis.call('GET', 'blob-meta:' .. user .. ':' .. blob)})
 			end
 		end
 		return elements
@@ -484,13 +414,13 @@ void Ownership::list_public_blobs(
 				transformed([](const redis::Reply& row)
 				{
 					std::error_code err;
-					auto [owner, coll, blob, entry_str] = row.as_tuple<4>(err);
+					auto [owner, blob, entry_str] = row.as_tuple<3>(err);
 
 					std::optional<BlobRef> result;
 					if (auto blob_id = ObjectID::from_raw(blob.as_string()); !err && blob_id.has_value())
 						result = BlobRef{
 							std::string{owner.as_string()},
-							std::string{coll.as_string()},
+							"", // TODO: ???
 							*blob_id,
 							CollEntryDB{entry_str.as_string()}
 	                    };
@@ -504,7 +434,7 @@ void Ownership::list_public_blobs(
 		},
 		"EVAL %s 1 %b",
 		lua,
-		Collection::m_public_blobs.data(), Collection::m_public_blobs.size()
+		key::public_blobs().data(), key::public_blobs().size()
 	);
 }
 

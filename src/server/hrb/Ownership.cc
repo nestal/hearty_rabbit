@@ -250,4 +250,40 @@ redis::CommandString Ownership::scan_collection_command(std::string_view coll) c
 	};
 }
 
+redis::CommandString Ownership::set_permission_command(
+	const ObjectID& blobid,
+	const Permission& perm
+) const
+{
+	auto blob_meta = key::blob_meta(m_user, blobid);
+	auto pub_list  = key::public_blobs();
+
+	static const char lua[] = R"__(
+		local user, blob, perm = ARGV[1], ARGV[2], ARGV[3]
+
+		local original = redis.call('GET', KEYS[2])
+		local updated  = perm .. string.sub(original, 2, -1)
+		redis.call('SET', KEYS[2], updated)
+
+		local msgpack = cmsgpack.pack(user, blob)
+		if perm == '*' then
+			redis.call('LREM', KEYS[1], 0, msgpack)
+			if redis.call('RPUSH', KEYS[1], msgpack) > 100 then
+				redis.call('LPOP', KEYS[1])
+			end
+		else
+			redis.call('LREM', KEYS[1], 0, msgpack)
+		end
+	)__";
+	return redis::CommandString{
+		"EVAL %s 2 %b %b  %b %b %b", lua,
+		pub_list.data(), pub_list.size(),   // KEYS[1]: list of public blob IDs
+		blob_meta.data(), blob_meta.size(), // KEYS[2]: blob meta
+
+		m_user.data(), m_user.size(),       // ARGV[1]: user
+		blobid.data(), blobid.size(),       // ARGV[2]: blob ID
+		perm.data(), perm.size()            // ARGV[3]: permission string
+	};
+}
+
 } // end of namespace hrb
