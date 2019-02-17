@@ -225,7 +225,7 @@ TEST_CASE("add blob to Ownership", "[normal]")
 	REQUIRE(ioc.run_for(10s) > 0);
 	REQUIRE(tested == 8);
 }
-/*
+
 TEST_CASE("Load 3 images in json", "[normal]")
 {
 	const auto blobids = insecure_random<std::array<ObjectID, 3>>();
@@ -338,7 +338,7 @@ TEST_CASE("Query blob of testuser")
 	REQUIRE(ioc.run_for(10s) > 0);
 	REQUIRE(tested == 2);
 }
-
+/*
 TEST_CASE("set cover error cases", "[error]")
 {
 	boost::asio::io_context ioc;

@@ -55,9 +55,6 @@ public:
 	template <typename Complete>
 	void set_cover(redis::Connection& db, const ObjectID& cover, Complete&& complete);
 
-	template <typename Complete>
-	void set_permission(redis::Connection& db, const ObjectID& blob, const Permission& perm, Complete&& complete) const;
-
 	const std::string& user() const {return m_user;}
 	const std::string& path() const {return m_path;}
 
@@ -360,6 +357,16 @@ void Ownership::move_blob(
 	Complete&& complete
 )
 {
+	db.command(
+		[comp=std::forward<Complete>(complete)](auto&& reply, auto ec)
+		{
+			if (!reply)
+				Log(LOG_WARNING, "Collection::move_blob(): script error: %1%", reply.as_error());
+
+			comp(ec);
+		},
+		move_blob_command(src_coll, dest_coll, blobid)
+	);
 /*	find(db, src_coll, blobid,
 		[
 			blobid,

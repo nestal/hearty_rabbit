@@ -42,6 +42,7 @@ private:
 	redis::CommandString unlink_command(std::string_view coll, const ObjectID& blob) const;
 	redis::CommandString scan_collection_command(std::string_view coll) const;
 	redis::CommandString set_permission_command(const ObjectID& blobid, const Permission& perm) const;
+	redis::CommandString move_blob_command(std::string_view src, std::string_view dest, const ObjectID& blobid) const;
 	void update(redis::Connection& db, const ObjectID& blobid, const CollEntryDB& entry);
 
 	hrb::Collection from_reply(

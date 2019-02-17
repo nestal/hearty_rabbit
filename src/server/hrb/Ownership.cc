@@ -286,4 +286,33 @@ redis::CommandString Ownership::set_permission_command(
 	};
 }
 
+redis::CommandString Ownership::move_blob_command(std::string_view src, std::string_view dest, const ObjectID& blobid) const
+{
+	auto src_coll  = key::collection(m_user, src);
+	auto dest_coll = key::collection(m_user, dest);
+	auto blob_refs = key::blob_refs(m_user, blobid);
+
+	static const char lua[] = R"__(
+		local src_coll, dest_coll, blob_refs = KEYS[1], KEYS[2], KEYS[3]
+		local src, dest, blob = ARGV[1], ARGV[2], ARGV[3]
+
+		redis.call('SREM', blob_refs, src)
+		redis.call('SADD', blob_refs, dest)
+
+		redis.call('SREM', src_coll,  blob)
+		redis.call('SADD', dest_coll, blob)
+	)__";
+	return redis::CommandString{
+		"EVAL %s 3 %b %b %b    %b %b %b", lua,
+
+		src_coll.data(), src_coll.size(),
+		dest_coll.data(), dest_coll.size(),
+		blob_refs.data(), blob_refs.size(),
+
+		src.data(), src.size(),
+		dest.data(), dest.size(),
+		blobid.data(), blobid.size()
+	};
+}
+
 } // end of namespace hrb
