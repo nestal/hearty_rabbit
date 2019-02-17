@@ -143,8 +143,8 @@ target_include_directories(
 # Server will fail to built if any of these test cases failed.
 ###################################################################################################
 
-#file(GLOB_RECURSE SRV_UT_SRC unittest/include/*.hh unittest/tests/*.cc unittest/tests/*/*.hh)
-set(SRV_UT_SRC unittest/tests/hrb/Ownership-UT.cc unittest/tests/unittest.cc)
+file(GLOB_RECURSE SRV_UT_SRC unittest/include/*.hh unittest/tests/*.cc unittest/tests/*/*.hh)
+#set(SRV_UT_SRC unittest/tests/hrb/Ownership-UT.cc unittest/tests/unittest.cc)
 add_executable(unittest ${SRV_UT_SRC})
 target_include_directories(
 	unittest PRIVATE

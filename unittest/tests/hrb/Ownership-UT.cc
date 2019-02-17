@@ -338,7 +338,7 @@ TEST_CASE("Query blob of testuser")
 	REQUIRE(ioc.run_for(10s) > 0);
 	REQUIRE(tested == 2);
 }
-/*
+
 TEST_CASE("set cover error cases", "[error]")
 {
 	boost::asio::io_context ioc;
@@ -551,22 +551,3 @@ TEST_CASE("collection entry", "[normal]")
 	REQUIRE(same2.raw().substr(1) == subject.raw().substr(1));
 
 }
-
-TEST_CASE("Collection ctor", "[normal]")
-{
-	Ownership::Collection subject{"dir:user:path"};
-	REQUIRE(subject.user() == "user");
-	REQUIRE(subject.path() == "path");
-	REQUIRE(subject.redis_key() == "dir:user:path");
-
-	Ownership::Collection path_with_colon{"dir:sumsum::path::"};
-	REQUIRE(path_with_colon.user() == "sumsum");
-	REQUIRE(path_with_colon.path() == ":path::");
-	REQUIRE(path_with_colon.redis_key() == "dir:sumsum::path::");
-
-	Ownership::Collection path_with_slash{"dir:siuyung:/some/collection:path"};
-	REQUIRE(path_with_slash.user() == "siuyung");
-	REQUIRE(path_with_slash.path() == "/some/collection:path");
-	REQUIRE(path_with_slash.redis_key() == "dir:siuyung:/some/collection:path");
-}
-*/

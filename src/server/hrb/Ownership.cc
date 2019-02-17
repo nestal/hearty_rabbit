@@ -27,35 +27,6 @@ Ownership::Ownership(std::string_view name) : m_user{name}
 {
 }
 
-const std::string_view Ownership::Collection::m_dir_prefix = "dir:";
-const std::string_view Ownership::Collection::m_list_prefix = "dirs:";
-const std::string_view Ownership::Collection::m_public_blobs = "public-blobs";
-
-Ownership::Collection::Collection(std::string_view user, std::string_view path) :
-	m_user{user},
-	m_path{path}
-{
-}
-
-Ownership::Collection::Collection(std::string_view redis_reply)
-{
-	auto [prefix, colon] = split_left(redis_reply, ":");
-	if (colon != ':' || prefix != Collection::m_dir_prefix.substr(0, Collection::m_dir_prefix.size()-1))
-		return;
-
-	auto [user, colon2] = split_left(redis_reply, ":");
-	if (colon2 != ':')
-		return;
-
-	m_user = user;
-	m_path = redis_reply;
-}
-
-std::string Ownership::Collection::redis_key() const
-{
-	return std::string{m_dir_prefix} + m_user + ':' + m_path;
-}
-
 hrb::Collection Ownership::from_reply(
 	const redis::Reply& reply,
 	std::string_view coll,
@@ -65,20 +36,17 @@ hrb::Collection Ownership::from_reply(
 {
 	assert(meta.is_object());
 	hrb::Collection result{coll, m_user, std::move(meta)};
-	std::cout << "from_reply: " << reply.array_size() << " entries" << std::endl;
 
 	for (auto&& kv : reply.kv_pairs())
 	{
 		auto&& blob = kv.key();
 		auto&& perm = kv.value();
 
-		auto blob_id = ObjectID::from_raw(blob);
-		std::cout << "from_reply: " << to_hex(*blob_id) << " " << perm.as_string() << std::endl;
-
 		if (perm.as_string().empty())
 			continue;
 
 		CollEntryDB entry{perm.as_string()};
+		auto blob_id = ObjectID::from_raw(blob);
 
 		// check permission: allow allow owner (i.e. m_user)
 		if (blob_id && entry.permission().allow(requester.id(), m_user))
@@ -312,6 +280,42 @@ redis::CommandString Ownership::move_blob_command(std::string_view src, std::str
 		src.data(), src.size(),
 		dest.data(), dest.size(),
 		blobid.data(), blobid.size()
+	};
+}
+
+redis::CommandString Ownership::set_cover_command(std::string_view coll, const ObjectID& cover) const
+{
+	auto coll_list = key::collection_list(m_user);
+	auto coll_set  = key::collection(m_user, coll);
+	auto cover_hex = to_hex(cover);
+
+	// set the cover of the collection
+	// only set the cover if the collection is already in the dirs:<user> hash
+	// and only if the cover blob is already in the collection (i.e. dir:<user>:<collection> hash)
+	static const char lua[] = R"__(
+		local coll_list, coll_set = KEYS[1], KEYS[2]
+		local coll, cover_hex, cover = ARGV[1], ARGV[2], ARGV[3]
+
+		local json    = redis.call('HGET', coll_list, coll)
+		local in_coll = redis.call('SISMEMBER', coll_set, cover)
+		if json and in_coll == 1 then
+			local album = cjson.decode(json)
+			album['cover'] = cover_hex
+			redis.call('HSET', coll_list, coll, cjson.encode(album))
+
+			return 1
+		else
+			return 0
+		end
+	)__";
+	return redis::CommandString{
+	"EVAL %s 2 %b %b    %b %b %b", lua,
+		coll_list.data(), coll_list.size(),
+		coll_set.data(), coll_set.size(),
+
+		coll.data(), coll.size(),
+		cover_hex.data(), cover_hex.size(),
+		cover.data(), cover.size()
 	};
 }
 

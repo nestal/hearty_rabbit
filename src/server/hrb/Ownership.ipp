@@ -32,84 +32,10 @@
 #include <boost/range/adaptor/transformed.hpp>
 
 #include <vector>
-#include <iostream>
 
 #pragma once
 
 namespace hrb {
-
-/// A set of blob objects represented by a redis set.
-class Ownership::Collection
-{
-public:
-	static const std::string_view m_dir_prefix;
-	static const std::string_view m_list_prefix;
-	static const std::string_view m_public_blobs;
-
-public:
-	Collection(std::string_view user, std::string_view path);
-	explicit Collection(std::string_view redis_key);
-
-	std::string redis_key() const;
-
-	template <typename Complete>
-	void set_cover(redis::Connection& db, const ObjectID& cover, Complete&& complete);
-
-	const std::string& user() const {return m_user;}
-	const std::string& path() const {return m_path;}
-
-private:
-
-private:
-	std::string m_user;
-	std::string m_path;
-};
-
-template <typename Complete>
-void Ownership::Collection::set_cover(redis::Connection& db, const ObjectID& cover, Complete&& complete)
-{
-	// set the cover of the collection
-	// only set the cover if the collection is already in the dirs:<user> hash
-	// and only if the cover blob is already in the collection (i.e. dir:<user>:<collection> hash)
-	auto hex_id = to_hex(cover);
-	static const char lua[] = R"__(
-		local coll, blob_hex, blob = ARGV[1], ARGV[2], ARGV[3]
-		local json  = redis.call('HGET', KEYS[1], coll)
-		local entry = redis.call('HGET', KEYS[2], blob)
-		if json and entry then
-			local album = cjson.decode(json)
-			album['cover'] = blob_hex
-			redis.call('HSET', KEYS[1], coll, cjson.encode(album))
-
-			return 1
-		else
-			return 0
-		end
-	)__";
-	db.command(
-		[comp=std::forward<Complete>(complete)](auto&& reply, auto ec)
-		{
-			if (!reply || ec)
-				Log(LOG_WARNING, "set_cover(): reply %1% %2%", reply.as_error(), ec);
-
-			comp(reply.as_int() == 1, ec);
-		},
-		"EVAL %s 2 %b%b %b%b:%b %b %b %b", lua,
-
-		// KEYS[1]: dirs:<user>
-		m_list_prefix.data(), m_list_prefix.size(),
-		m_user.data(), m_user.size(),
-
-		// KEYS[2]: dir:<user>:<collection>
-		m_dir_prefix.data(), m_dir_prefix.size(),
-		m_user.data(), m_user.size(),
-		m_path.data(), m_path.size(),
-
-		m_path.data(), m_path.size(),
-		hex_id.data(), hex_id.size(),
-		cover.data(), cover.size()
-	);
-}
 
 template <typename Complete>
 void Ownership::link(
@@ -141,7 +67,8 @@ void Ownership::unlink(
 		unlink_command(coll_name, blobid),
 		[comp=std::forward<Complete>(complete)](auto&& reply, std::error_code ec)
 		{
-			std::cout << "unlinked: " << reply.as_error() << std::endl;
+			if (!reply || ec)
+				Log(LOG_WARNING, "Ownership::unlink() script reply %1% %2%", reply.as_error(), ec);
 			comp(ec);
 		}
 	);
@@ -162,7 +89,7 @@ void Ownership::find_collection(
 		](auto&& reply, std::error_code&& ec) mutable
 		{
 			if (!reply || ec)
-				Log(LOG_WARNING, "list() script reply %1% %2%", reply.as_error(), ec);
+				Log(LOG_WARNING, "Ownership::find_collection() script reply %1% %2%", reply.as_error(), ec);
 
 			if (reply.array_size() == 2)
 			{
@@ -289,8 +216,6 @@ void Ownership::scan_collections(
 						cb(p.key(), nlohmann::json::parse(sv));
 					};
 
-					std::cout << "cursor = " << cursor << std::endl;
-
 					// if comp return true, keep scanning with the same callback and
 					// comp as completion routine
 					if (comp(cursor, ec) && cursor != 0)
@@ -367,28 +292,7 @@ void Ownership::move_blob(
 		},
 		move_blob_command(src_coll, dest_coll, blobid)
 	);
-/*	find(db, src_coll, blobid,
-		[
-			blobid,
-			db=db.shared_from_this(),
-			dest=Collection{m_user, dest_coll},
-			src=Collection{m_user, src_coll},
-			comp=std::forward<Complete>(complete)
-		](CollEntryDB&& entry, auto ec) mutable
-		{
-			if (!ec)
-			{
-				db->command("MULTI");
-				dest.link(*db, blobid, entry);
-				src.unlink(*db, blobid);
-				db->command([comp=std::move(comp)](auto&&, auto ec)
-				{
-					comp(ec);
-				}, "EXEC");
-			}
-		}
-	);*/
-	// TODO: rewrite
+
 }
 
 template <typename Complete>
@@ -486,7 +390,16 @@ void Ownership::query_blob(redis::Connection& db, const ObjectID& blob, Complete
 template <typename Complete>
 void Ownership::set_cover(redis::Connection& db, std::string_view coll, const ObjectID& blob, Complete&& complete) const
 {
-	Collection{m_user, coll}.set_cover(db, blob, std::forward<Complete>(complete));
+	db.command(
+		[comp=std::forward<Complete>(complete)](auto&& reply, auto ec)
+		{
+			if (!reply || ec)
+				Log(LOG_WARNING, "set_cover(): reply %1% %2%", reply.as_error(), ec);
+
+			comp(reply.as_int() == 1, ec);
+		},
+		set_cover_command(coll, blob)
+	);
 }
 
 } // end of namespace
