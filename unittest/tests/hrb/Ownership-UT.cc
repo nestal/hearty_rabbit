@@ -21,6 +21,8 @@
 
 #include <boost/algorithm/string.hpp>
 
+#include <iostream>
+
 using namespace hrb;
 using namespace std::chrono_literals;
 using namespace boost::algorithm;
@@ -72,6 +74,7 @@ TEST_CASE("list of collection owned by user", "[normal]")
 	{
 		for (auto&& [id, blob] : coll.blobs())
 		{
+		std::cout << "removing: " << to_hex(id) << std::endl;
 			INFO("blob = " << to_hex(id));
 			Ownership{"owner"}.unlink(*redis, "/", id, [](auto&& ec)
 			{

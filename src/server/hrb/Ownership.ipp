@@ -153,10 +153,10 @@ void Ownership::find(
 ) const
 {
 	auto coll_set  = key::collection(m_user, coll);
-	auto blob_meta = key::blob_meta(m_user, blob);
+	auto blob_meta = key::blob_meta(m_user);
 	static const char lua[] = R"__(
 		if redis.call('SISMEMBER', KEYS[1], ARGV[1]) == 1 then
-			return redis.call('GET', KEYS[2])
+			return redis.call('HGET', KEYS[2], ARGV[1])
 		else
 			return false
 		end
@@ -307,7 +307,10 @@ void Ownership::list_public_blobs(
 		for i, msgpack in ipairs(pub_list) do
 			local user, blob = cmsgpack.unpack(msgpack)
 			if user and blob then
-				table.insert(elements, {user, blob, redis.call('GET', 'blob-meta:' .. user .. ':' .. blob)})
+				table.insert(elements, {
+					user, blob,
+					redis.call('HGET', 'blob-meta:' .. user, blob)
+				})
 			end
 		end
 		return elements
@@ -354,13 +357,13 @@ template <typename Complete>
 void Ownership::query_blob(redis::Connection& db, const ObjectID& blob, Complete&& complete)
 {
 	auto blob_ref   = key::blob_refs(m_user, blob);
-	auto blob_meta  = key::blob_meta(m_user, blob);
+	auto blob_meta  = key::blob_meta(m_user);
 
 	static const char lua[] = R"__(
 		local dirs = {}
 		for k, coll in ipairs(redis.call('SMEMBERS', KEYS[1])) do
 			table.insert(dirs, coll)
-			table.insert(dirs, redis.call('GET', KEYS[2]))
+			table.insert(dirs, redis.call('HGET', KEYS[2], ARGV[1]))
 		end
 		return dirs
 	)__";
@@ -380,10 +383,11 @@ void Ownership::query_blob(redis::Connection& db, const ObjectID& blob, Complete
 				ec
 			);
 		},
-		"EVAL %s 2 %b %b",
+		"EVAL %s 2 %b %b  %b",
 		lua,
 		blob_ref.data(),  blob_ref.size(),
-		blob_meta.data(), blob_meta.size()
+		blob_meta.data(), blob_meta.size(),
+		blob.data(), blob.size()
 	);
 }
 

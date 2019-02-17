@@ -76,19 +76,11 @@ void Ownership::update(redis::Connection& db, const ObjectID& blobid, const nloh
 
 void Ownership::update(redis::Connection& db, const ObjectID& blob, const CollEntryDB& entry)
 {
-	auto blob_meta  = key::blob_meta(m_user, blob);
-
-	static const char lua[] = R"__(
-		local user, coll, blob, cover, entry = ARGV[1], ARGV[2], ARGV[3], ARGV[4], ARGV[5],
-		redis.call('SADD', KEYS[1], coll)
-		redis.call('SADD', KEYS[2], user)
-		redis.call('SET',  KEYS[3], entry)
-		redis.call('SADD', KEYS[4], blob)
-		redis.call('HSETNX', KEYS[5], coll, cjson.encode({cover=cover}))
-	)__";
+	auto blob_meta  = key::blob_meta(m_user);
 	db.command(
-		"SET %b %b",
+		"HSET %b %b %b",
 		blob_meta.data(), blob_meta.size(),
+		blob.data(), blob.size(),
 		entry.data(), entry.size()
 	);
 }
@@ -97,7 +89,7 @@ redis::CommandString Ownership::link_command(std::string_view coll, const Object
 {
 	auto blob_ref   = key::blob_refs(m_user, blob);
 	auto blob_owner = key::blob_owners(blob);
-	auto blob_meta  = key::blob_meta(m_user, blob);
+	auto blob_meta  = key::blob_meta(m_user);
 	auto coll_key   = key::collection(m_user, coll);
 	auto coll_list  = key::collection_list(m_user);
 	auto hex = to_hex(blob);
@@ -107,7 +99,7 @@ redis::CommandString Ownership::link_command(std::string_view coll, const Object
 		local user, coll, blob, cover, entry = ARGV[1], ARGV[2], ARGV[3], ARGV[4], ARGV[5]
 		redis.call('SADD', KEYS[1], coll)
 		redis.call('SADD', KEYS[2], user)
-		redis.call('SET',  KEYS[3], entry)
+		redis.call('HSET', KEYS[3], blob, entry)
 		redis.call('SADD', KEYS[4], blob)
 		redis.call('HSETNX', KEYS[5], coll, cjson.encode({cover=cover}))
 	)__";
@@ -132,7 +124,7 @@ redis::CommandString Ownership::unlink_command(std::string_view coll, const Obje
 {
 	auto blob_ref   = key::blob_refs(m_user, blob);
 	auto blob_owner = key::blob_owners(blob);
-	auto blob_meta  = key::blob_meta(m_user, blob);
+	auto blob_meta  = key::blob_meta(m_user);
 	auto coll_key   = key::collection(m_user, coll);
 	auto coll_list  = key::collection_list(m_user);
 	auto public_blobs = key::public_blobs();
@@ -155,7 +147,7 @@ redis::CommandString Ownership::unlink_command(std::string_view coll, const Obje
 		-- for this user and remove the blob from the public list
 		if redis.call('EXISTS', blob_ref) == 0 then
 			redis.call('SREM', blob_owner, user)
-			redis.call('DEL',  blob_meta)
+			redis.call('HDEL', blob_meta, blob)
 			redis.call('LREM', pub_list, 0, cmsgpack.pack(user, blob))
 		end
 
@@ -198,23 +190,27 @@ redis::CommandString Ownership::unlink_command(std::string_view coll, const Obje
 
 redis::CommandString Ownership::scan_collection_command(std::string_view coll) const
 {
-	auto coll_key  = key::collection(m_user, coll);
+	auto coll_set  = key::collection(m_user, coll);
 	auto coll_list = key::collection_list(m_user);
+	auto blob_meta = key::blob_meta(m_user);
+
 	static const char lua[] = R"__(
+		local coll_set, coll_list, blob_meta = KEYS[1], KEYS[2], KEYS[3]
+		local coll = ARGV[1]
 		local dirs = {}
-		for k, blob in ipairs(redis.call('SMEMBERS', KEYS[1])) do
+		for k, blob in ipairs(redis.call('SMEMBERS', coll_set)) do
 			table.insert(dirs, blob)
-			table.insert(dirs, redis.call('GET', "blob-meta:" .. ARGV[2] .. ':' .. blob))
+			table.insert(dirs, redis.call('HGET', blob_meta, blob))
 		end
-		return {dirs, redis.call('HGET', KEYS[2], ARGV[1])}
+		return {dirs, redis.call('HGET', coll_list, coll)}
 	)__";
 	return redis::CommandString{
-		"EVAL %s 2 %b %b   %b %b", lua,
-		coll_key.data(), coll_key.size(),
+		"EVAL %s 3 %b %b %b   %b", lua,
+		coll_set.data(), coll_set.size(),
 		coll_list.data(), coll_list.size(),
+		blob_meta.data(), blob_meta.size(),
 
-		coll.data(), coll.size(),
-		m_user.data(), m_user.size()
+		coll.data(), coll.size()
 	};
 }
 
@@ -223,15 +219,15 @@ redis::CommandString Ownership::set_permission_command(
 	const Permission& perm
 ) const
 {
-	auto blob_meta = key::blob_meta(m_user, blobid);
+	auto blob_meta = key::blob_meta(m_user);
 	auto pub_list  = key::public_blobs();
 
 	static const char lua[] = R"__(
 		local user, blob, perm = ARGV[1], ARGV[2], ARGV[3]
 
-		local original = redis.call('GET', KEYS[2])
+		local original = redis.call('HGET', KEYS[2], blob)
 		local updated  = perm .. string.sub(original, 2, -1)
-		redis.call('SET', KEYS[2], updated)
+		redis.call('HSET', KEYS[2], blob, updated)
 
 		local msgpack = cmsgpack.pack(user, blob)
 		if perm == '*' then

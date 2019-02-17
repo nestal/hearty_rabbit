@@ -54,12 +54,10 @@ std::string_view public_blobs()
 	return std::string_view{"public_blobs"};
 }
 
-std::string blob_meta(std::string user, const ObjectID& blob)
+std::string blob_meta(std::string user)
 {
 	std::string s{"blob-meta:"};
 	s.append(user.data(), user.size());
-	s.push_back(':');
-	s.append(reinterpret_cast<const char*>(blob.data()), blob.size());
 	return s;
 }
 

@@ -36,6 +36,6 @@ std::string collection_list(std::string_view user);
 std::string_view public_blobs();
 
 // blob_meta is a redis hash that contains meta-data about a specific blob of a specific user
-std::string blob_meta(std::string user, const ObjectID& blob);
+std::string blob_meta(std::string user);
 
 } // end of namespace
