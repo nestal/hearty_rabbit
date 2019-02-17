@@ -184,6 +184,9 @@ TEST_CASE("add blob to Ownership", "[normal]")
 	{
 		auto it = std::find_if(brefs.begin(), brefs.end(), [blobid](auto&& bref){return bref.blob == blobid;});
 		found = (it != brefs.end());
+
+		if (found)
+			REQUIRE(it->coll == "/");
 	});
 
 	REQUIRE(ioc.run_for(10s) > 0);

@@ -301,21 +301,6 @@ void Ownership::list_public_blobs(
 	Complete&& complete
 )
 {
-	static const char lua[] = R"__(
-		local elements = {}
-		local pub_list = redis.call('LRANGE', KEYS[1], 0, -1)
-		for i, msgpack in ipairs(pub_list) do
-			local user, blob = cmsgpack.unpack(msgpack)
-			if user and blob then
-				table.insert(elements, {
-					user, blob,
-					redis.call('HGET', 'blob-meta:' .. user, blob)
-				})
-			end
-		end
-		return elements
-	)__";
-
 	db.command(
 		[user=m_user, comp=std::forward<Complete>(complete)](auto&& reply, auto ec) mutable
 		{
@@ -328,13 +313,13 @@ void Ownership::list_public_blobs(
 				transformed([](const redis::Reply& row)
 				{
 					std::error_code err;
-					auto [owner, blob, entry_str] = row.as_tuple<3>(err);
+					auto [owner, blob, coll, entry_str] = row.as_tuple<4>(err);
 
 					std::optional<BlobRef> result;
 					if (auto blob_id = ObjectID::from_raw(blob.as_string()); !err && blob_id.has_value())
 						result = BlobRef{
 							std::string{owner.as_string()},
-							"", // TODO: ???
+							std::string{coll.as_string()},
 							*blob_id,
 							CollEntryDB{entry_str.as_string()}
 	                    };
@@ -346,9 +331,7 @@ void Ownership::list_public_blobs(
 				ec
 			);
 		},
-		"EVAL %s 1 %b",
-		lua,
-		key::public_blobs().data(), key::public_blobs().size()
+		list_public_blob_command()
 	);
 }
 

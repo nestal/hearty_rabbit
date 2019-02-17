@@ -315,4 +315,28 @@ redis::CommandString Ownership::set_cover_command(std::string_view coll, const O
 	};
 }
 
+redis::CommandString Ownership::list_public_blob_command() const
+{
+		static const char lua[] = R"__(
+		local elements = {}
+		local pub_list = redis.call('LRANGE', KEYS[1], 0, -1)
+		for i, msgpack in ipairs(pub_list) do
+			local user, blob = cmsgpack.unpack(msgpack)
+			if user and blob then
+				table.insert(elements, {
+					user, blob,
+					redis.call('SRANDMEMBER', 'blob-refs:' .. user .. ':' .. blob),
+					redis.call('HGET', 'blob-meta:' .. user, blob)
+				})
+			end
+		end
+		return elements
+	)__";
+	return redis::CommandString{
+		"EVAL %s 1 %b",
+		lua,
+		key::public_blobs().data(), key::public_blobs().size()
+	};
+}
+
 } // end of namespace hrb
