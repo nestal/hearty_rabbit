@@ -4,16 +4,10 @@ ENV container docker
 
 USER 0
 
-# add devtoolset rpms and other required packages
-# Using devtoolset instead of custom-built gcc can save 4MB in the final hearty_rabbit image
+# add required packages
 #	https://dl.bintray.com/boostorg/release/1.67.0/source/boost_1_67_0.tar.gz \
 #	https://github.com/opencv/opencv/archive/3.4.1.tar.gz \
 ADD \
-	devtoolset-8-gcc-8.2.1-3.el7.x86_64.rpm \
-	devtoolset-8-gcc-c++-8.2.1-3.el7.x86_64.rpm \
-	devtoolset-8-binutils-2.30-47.el7.x86_64.rpm \
-	devtoolset-8-libstdc++-devel-8.2.1-3.el7.x86_64.rpm \
-	devtoolset-8-runtime-8.0-2.el7.x86_64.rpm \
 	boost_1_68_0.tar.gz 3.4.1.tar.gz \
 	/build/
 
@@ -21,13 +15,11 @@ ADD \
 RUN yum install -y deltarpm epel-release centos-release-scl \
 	&& rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-EPEL-7 \
 	&& yum update -y \
-	&& yum install -y /build/*.rpm \
 	&& yum install -y --setopt=tsflags=nodocs openssl-devel git make hiredis-devel \
 		file-devel libicu-devel zlib-devel bzip2-devel xz-devel libunwind-devel which \
 		autoconf automake libtool libexif-devel msgpack-devel libpng-devel libcurl-devel \
-		cmake3 libb2-devel gperftools-devel \
-	&& yum clean all -y \
-	&& rm /build/*.rpm
+		cmake3 libb2-devel gperftools-devel devtoolset-8 \
+	&& yum clean all -y
 
 WORKDIR /build
 
