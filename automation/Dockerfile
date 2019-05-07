@@ -4,13 +4,6 @@ ENV container docker
 
 USER 0
 
-# add required packages
-#	https://dl.bintray.com/boostorg/release/1.67.0/source/boost_1_67_0.tar.gz \
-#	https://github.com/opencv/opencv/archive/3.4.1.tar.gz \
-ADD \
-	boost_1_68_0.tar.gz 3.4.1.tar.gz \
-	/build/
-
 # install development tools
 RUN yum install -y deltarpm epel-release centos-release-scl \
 	&& rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-EPEL-7 \
@@ -21,6 +14,13 @@ RUN yum install -y deltarpm epel-release centos-release-scl \
 		cmake3 libb2-devel gperftools-devel devtoolset-8 \
 	&& yum clean all -y
 
+# add required packages after installing packages
+#	https://dl.bintray.com/boostorg/release/1.67.0/source/boost_1_67_0.tar.gz \
+#	https://github.com/opencv/opencv/archive/3.4.1.tar.gz \
+ADD \
+	boost_1_70_0.tar.gz 3.4.1.tar.gz \
+	/build/
+
 WORKDIR /build
 
 ENV \
@@ -29,12 +29,12 @@ ENV \
 
 # build boost (>1.65 to support boost beast)
 RUN \
-	cd boost_1_68_0 \
+	cd boost_1_70_0 \
 	&& ./bootstrap.sh \
 		--with-libraries=program_options,filesystem,system \
-		--prefix=/opt/boost_1_68 \
+		--prefix=/opt/boost_1_70 \
 	&& (./b2 -j8 install; exit 0) \
-	&& rm -rf /build/boost_1_68_0
+	&& rm -rf /build/boost_1_70_0
 
 # OpenCV
 RUN \
@@ -69,4 +69,4 @@ RUN \
 #RUN cd aws-sdk-cpp && mkdir build && cd build && cmake -DBUILD_SHARED_LIBS=OFF .. && make -j8
 
 # nlohmann JSON library
-ADD https://github.com/nlohmann/json/releases/download/v3.1.2/json.hpp /opt/include/nlohmann/
+ADD https://github.com/nlohmann/json/releases/download/v3.6.1/json.hpp /opt/include/nlohmann/
