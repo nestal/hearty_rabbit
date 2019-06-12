@@ -17,6 +17,7 @@
 #include "common/Error.hh"
 #include "util/Log.hh"
 
+#include <boost/asio/strand.hpp>
 #include <boost/exception/info.hpp>
 #include <boost/exception/errinfo_api_function.hpp>
 #include <boost/system/error_code.hpp>
@@ -53,7 +54,6 @@ Connection::Connection(
 	boost::asio::ip::tcp::socket socket
 ) :
 	m_socket{std::move(socket)},
-	m_strand{m_socket.get_executor()},
 	m_parent{parent}
 {
 }
@@ -83,21 +83,18 @@ void Connection::do_write(CommandString&& cmd, Completion&& completion)
 	async_write(
 		m_socket,
 		buffer,
-		boost::asio::bind_executor(
-			m_strand,
-			[
-				this,
-				cmd=std::move(cmd),
-				self=shared_from_this()
-			](auto ec, std::size_t bytes)
+		[
+			this,
+			cmd=std::move(cmd),
+			self=shared_from_this()
+		](auto ec, std::size_t bytes)
+		{
+			if (ec)
 			{
-				if (ec)
-				{
-					Log(LOG_WARNING, "redis write error %1% %2%", ec, ec.message());
-					disconnect(Error::protocol);
-				}
+				Log(LOG_WARNING, "redis write error %1% %2%", ec, ec.message());
+				disconnect(Error::protocol);
 			}
-		)
+		}
 	);
 }
 
@@ -105,10 +102,7 @@ void Connection::do_read()
 {
 	m_socket.async_read_some(
 		boost::asio::buffer(m_read_buf),
-		boost::asio::bind_executor(
-			m_strand,
-			[this, self=shared_from_this()](auto ec, auto read){ on_read(ec, read); }
-		)
+		[this, self=shared_from_this()](auto ec, auto read){ on_read(ec, read); }
 	);
 }
 void Connection::on_read(boost::system::error_code ec, std::size_t bytes)
@@ -445,7 +439,7 @@ boost::asio::ip::tcp::socket Pool::get_sock()
 		}
 	}
 
-	boost::asio::ip::tcp::socket sock{m_ioc};
+	boost::asio::ip::tcp::socket sock{boost::asio::make_strand(m_ioc)};
 	sock.connect(m_remote);
 
 	return sock;
@@ -459,7 +453,6 @@ std::shared_ptr<Connection> Pool::alloc()
 void Pool::dealloc(boost::asio::ip::tcp::socket socket)
 {
 	std::unique_lock<std::mutex> lock{m_mx};
-	assert(&socket.get_io_context() == &m_ioc);
 	m_socks.push_back(std::move(socket));
 }
 

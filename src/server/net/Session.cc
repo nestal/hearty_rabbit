@@ -26,7 +26,7 @@ using tcp = boost::asio::ip::tcp;       // from <boost/asio/ip/tcp.hpp>
 namespace http = boost::beast::http;    // from <boost/beast/http.hpp>
 
 Session::Session(
-	const std::function<SessionHandler()>& factory,
+	std::function<SessionHandler()> factory,
 	boost::asio::ip::tcp::socket socket,
 	boost::asio::ssl::context&  ssl_ctx,
 	std::size_t             nth,
@@ -35,8 +35,7 @@ Session::Session(
 ) :
 	m_socket{std::move(socket)},
 	m_stream{m_socket, ssl_ctx},
-	m_strand{m_socket.get_executor()},
-	m_factory{factory},
+	m_factory{std::move(factory)},
 	m_nth_session{nth},
 	m_login_session{login_session},
 	m_upload_size_limit{upload_limit}
@@ -49,10 +48,7 @@ void Session::run()
 	// Perform the SSL handshake
 	m_stream.async_handshake(
 		boost::asio::ssl::stream_base::server,
-		boost::asio::bind_executor(
-			m_strand,
-			[self = shared_from_this()](auto ec){self->on_handshake(ec);}
-		)
+		[self = shared_from_this()](auto ec){self->on_handshake(ec);}
 	);
 }
 
@@ -74,10 +70,10 @@ void Session::do_read()
 	m_parser->body_limit(m_upload_size_limit);
 
 	// Read the header of a request
-	async_read_header(m_stream, m_buffer, *m_parser, boost::asio::bind_executor(
-		m_strand,
+	async_read_header(
+		m_stream, m_buffer, *m_parser,
 		[self=shared_from_this()](auto ec, auto bytes) {self->on_read_header(ec, bytes);}
-	));
+	);
 }
 
 
@@ -110,12 +106,10 @@ void Session::on_read_header(boost::system::error_code ec, std::size_t bytes_tra
 				// Call async_read() using the chosen parser to read and parse the request body.
 				std::visit([this, self](auto&& parser)
 				{
-					async_read(
-						m_stream, m_buffer, parser.base(), boost::asio::bind_executor(
-							m_strand,
-							[self](auto ec, auto bytes)
-							{ self->on_read(ec, bytes); }
-						));
+					boost::beast::http::async_read(
+						m_stream, m_buffer, parser,
+						[self](auto ec, auto bytes){ self->on_read(ec, bytes); }
+					);
 				}, m_body);
 			}
 		);
@@ -203,11 +197,13 @@ void Session::send_response(Response&& response)
 	sp->keep_alive(m_keep_alive);
 	sp->prepare_payload();
 
-	async_write(m_stream, *sp, boost::asio::bind_executor(
-		m_strand,
+	async_write(
+		m_stream, *sp,
 		[self=shared_from_this(), sp](auto&& ec, auto bytes)
-		{ self->on_write(ec, bytes, sp->need_eof()); }
-	));
+		{
+			self->on_write(ec, bytes, sp->need_eof());
+		}
+	);
 }
 
 void Session::handle_read_error(std::string_view where, boost::system::error_code ec)
@@ -245,10 +241,7 @@ void Session::do_close()
 	// Send a TCP shutdown
 	boost::system::error_code ec;
 	m_stream.async_shutdown(
-		boost::asio::bind_executor(
-			m_strand,
-			[self=shared_from_this()](auto ec){self->on_shutdown(ec);}
-		)
+		[self=shared_from_this()](auto ec){self->on_shutdown(ec);}
 	);
 }
 

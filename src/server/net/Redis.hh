@@ -356,7 +356,7 @@ public:
 
 	void do_write(CommandString&& cmd, Completion&& completion);
 
-	boost::asio::io_context& get_io_context() {return m_socket.get_io_context();}
+//	boost::asio::io_context& get_io_context() {return m_socket.get_executor();}
 
 private:
 	// must not call disconnect() inside the callbacks in m_callbacks
@@ -369,7 +369,6 @@ private:
 
 private:
 	boost::asio::ip::tcp::socket m_socket;
-	boost::asio::strand<boost::asio::io_context::executor_type> m_strand;
 
 	char m_read_buf[8*1024];
 

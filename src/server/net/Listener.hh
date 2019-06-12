@@ -39,11 +39,11 @@ public:
 
 private:
 	void do_accept();
-	void on_accept(boost::system::error_code ec);
+	void on_accept(boost::system::error_code ec, boost::asio::ip::tcp::socket socket);
 
 private:
+	boost::asio::io_context&        m_ioc;
 	boost::asio::ip::tcp::acceptor  m_acceptor;
-	boost::asio::ip::tcp::socket    m_socket;
 	boost::asio::ssl::context       *m_ssl_ctx{};
 
 	std::function<SessionHandler()> m_session_factory;

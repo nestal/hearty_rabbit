@@ -40,12 +40,12 @@ class Session : public std::enable_shared_from_this<Session>
 public:
 	// Take ownership of the socket
 	Session(
-		const std::function<SessionHandler()>& factory,
-		boost::asio::ip::tcp::socket socket,
-		boost::asio::ssl::context& ssl_ctx,
-		std::size_t nth,
-		std::chrono::seconds    login_session,
-		std::size_t upload_limit
+		std::function<SessionHandler()> factory,
+		boost::asio::ip::tcp::socket    socket,
+		boost::asio::ssl::context&      ssl_ctx,
+		std::size_t                     nth,
+		std::chrono::seconds            login_session,
+		std::size_t                     upload_limit
 	);
 
 	// Start the asynchronous operation
@@ -69,17 +69,13 @@ private:
 	template <class Response>
 	void send_response(Response&& response);
 
-	template <typename Function>
-	void VisitParsers(Function&& func);
-
 	void handle_read_error(std::string_view where, boost::system::error_code ec);
 	void init_request_body(SessionHandler::RequestBodyType body_type, std::error_code& ec);
 
 private:
-	tcp::socket		                                            m_socket;
-	boost::asio::ssl::stream<tcp::socket&> 		                m_stream;
-	boost::asio::strand<boost::asio::io_context::executor_type> m_strand;
-	boost::beast::flat_buffer                                   m_buffer;
+	tcp::socket		                        m_socket;
+	boost::asio::ssl::stream<tcp::socket&>  m_stream;
+	boost::beast::flat_buffer               m_buffer;
 
 	bool m_keep_alive{false};
 

@@ -18,7 +18,6 @@ namespace hrb {
 
 InsecureSession::InsecureSession(boost::asio::ip::tcp::socket socket, std::string_view redirect) :
 	m_socket{std::move(socket)},
-	m_strand{m_socket.get_executor()},
 	m_response{http::status::moved_permanently, 11}
 {
 	m_response.set(http::field::location, redirect);
@@ -32,21 +31,19 @@ void InsecureSession::run()
 
 void InsecureSession::do_read()
 {
-	async_read(m_socket, m_buffer, m_request, boost::asio::bind_executor(
-		m_strand,
+	async_read(m_socket, m_buffer, m_request,
 		[self=shared_from_this()](auto ec, auto bytes) {self->on_read(ec, bytes);}
-	));
+	);
 }
 
 void InsecureSession::on_read(boost::beast::error_code ec, std::size_t)
 {
-	async_write(m_socket, m_response, boost::asio::bind_executor(
-		m_strand,
+	async_write(m_socket, m_response,
 		[self=shared_from_this()](auto&& ec, auto)
 		{
 			self->m_socket.shutdown(tcp::socket::shutdown_send, ec);
 		}
-	));
+	);
 }
 
 } // end of namespace hrb

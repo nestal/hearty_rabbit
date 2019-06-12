@@ -40,9 +40,8 @@ private:
 	void on_read(boost::beast::error_code ec, std::size_t);
 
 private:
-	tcp::socket		                                            m_socket;
-	boost::asio::strand<boost::asio::io_context::executor_type> m_strand;
-	boost::beast::flat_buffer                                   m_buffer;
+	tcp::socket		          m_socket;
+	boost::beast::flat_buffer m_buffer;
 
 	EmptyRequest                        m_request;
 	http::response<http::empty_body>    m_response;

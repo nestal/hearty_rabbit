@@ -17,6 +17,8 @@
 #include "util/Configuration.hh"
 #include "util/Log.hh"
 
+#include <boost/asio/strand.hpp>
+
 namespace hrb {
 
 Listener::Listener(
@@ -25,8 +27,8 @@ Listener::Listener(
 	boost::asio::ssl::context *ssl_ctx,
 	const Configuration& cfg
 ) :
-	m_acceptor{ioc},
-	m_socket{ioc},
+	m_ioc{ioc},
+	m_acceptor{boost::asio::make_strand(ioc)},
 	m_session_factory{session_factory},
 	m_ssl_ctx{ssl_ctx},
 	m_cfg{cfg}
@@ -61,15 +63,15 @@ void Listener::run()
 void Listener::do_accept()
 {
 	m_acceptor.async_accept(
-		m_socket,
-		[self = shared_from_this()](auto ec)
+		boost::asio::make_strand(m_ioc),
+		[self = shared_from_this()](auto ec, boost::asio::ip::tcp::socket socket)
 		{
-			self->on_accept(ec);
+			self->on_accept(ec, std::move(socket));
 		}
 	);
 }
 
-void Listener::on_accept(boost::system::error_code ec)
+void Listener::on_accept(boost::system::error_code ec, boost::asio::ip::tcp::socket socket)
 {
 	if (ec)
 	{
@@ -78,12 +80,16 @@ void Listener::on_accept(boost::system::error_code ec)
 	else if (m_ssl_ctx)
 	{
 		// Create the session and run it
-		std::make_shared<Session>(m_session_factory, std::move(m_socket), *m_ssl_ctx, m_session_count, m_cfg.session_length(), m_cfg.upload_limit())->run();
+		std::make_shared<Session>(
+			m_session_factory, std::move(socket),
+			*m_ssl_ctx, m_session_count,
+			m_cfg.session_length(), m_cfg.upload_limit()
+		)->run();
 		m_session_count++;
 	}
 	else
 	{
-		std::make_shared<InsecureSession>(std::move(m_socket), m_cfg.https_root())->run();
+		std::make_shared<InsecureSession>(std::move(socket), m_cfg.https_root())->run();
 	}
 
 	// Accept another connection
