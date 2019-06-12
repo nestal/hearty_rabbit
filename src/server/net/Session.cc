@@ -66,7 +66,7 @@ void Session::do_read()
 	// Destroy and re-construct the parser for a new HTTP transaction
 	m_parser.emplace();
 
-	m_server.emplace(m_factory());
+	m_handler.emplace(m_factory());
 	m_parser->body_limit(m_upload_size_limit);
 
 	// Read the header of a request
@@ -77,7 +77,7 @@ void Session::do_read()
 }
 
 
-void Session::on_read_header(boost::system::error_code ec, std::size_t bytes_transferred)
+void Session::on_read_header(boost::system::error_code ec, std::size_t)
 {
 	if (ec)
 		handle_read_error(__PRETTY_FUNCTION__, {ec.value(), ec.category()});
@@ -91,8 +91,8 @@ void Session::on_read_header(boost::system::error_code ec, std::size_t bytes_tra
 		if (!validate_request(header))
 			return;
 
-		assert(m_server.has_value());
-		m_server->on_request_header(
+		assert(m_handler.has_value());
+		m_handler->on_request_header(
 			header,
 			[self=shared_from_this(), this](SessionHandler::RequestBodyType body_type, std::error_code ec)
 			{
@@ -100,7 +100,7 @@ void Session::on_read_header(boost::system::error_code ec, std::size_t bytes_tra
 				if (ec)
 				{
 					Log(LOG_WARNING, "cannot initialize request parser: %1% (%2%)", ec.message(), ec);
-					return send_response(m_server->server_error("internal server error", 11));
+					return send_response(m_handler->server_error("internal server error", 11));
 				}
 
 				// Call async_read() using the chosen parser to read and parse the request body.
@@ -119,7 +119,7 @@ void Session::on_read_header(boost::system::error_code ec, std::size_t bytes_tra
 
 void Session::on_read(boost::system::error_code ec, std::size_t)
 {
-	assert(m_server.has_value());
+	assert(m_handler.has_value());
 
 	// This means they closed the connection
 	if (ec)
@@ -128,15 +128,15 @@ void Session::on_read(boost::system::error_code ec, std::size_t)
 	{
 		std::visit([this, self=shared_from_this()](auto&& parser)
 		{
-			m_server->on_request_body(
+			m_handler->on_request_body(
 				parser.release(), [this, self](auto&& response)
 				{
 					// server must not set session cookie
 					assert(response.count(http::field::set_cookie) == 0);
 
 					// check if auth is renewed. if yes, set it to cookie before sending
-					if (m_server->renewed_auth())
-						response.set(http::field::set_cookie, m_server->auth().set_cookie(m_login_session).str());
+					if (m_handler->renewed_auth())
+						response.set(http::field::set_cookie, m_handler->auth().set_cookie(m_login_session).str());
 
 					send_response(std::forward<decltype(response)>(response));
 				}
@@ -153,7 +153,7 @@ void Session::on_read(boost::system::error_code ec, std::size_t)
 template<class Request>
 bool Session::validate_request(const Request& req)
 {
-	assert(m_server.has_value());
+	assert(m_handler.has_value());
 
 	boost::system::error_code ec;
 	auto endpoint = m_socket.remote_endpoint(ec);
@@ -167,7 +167,7 @@ bool Session::validate_request(const Request& req)
 		req.method() != http::verb::delete_ &&
 		req.method() != http::verb::head)
 	{
-		send_response(m_server->bad_request("Unknown HTTP-method", req.version()));
+		send_response(m_handler->bad_request("Unknown HTTP-method", req.version()));
 		return false;
 	}
 
@@ -176,11 +176,10 @@ bool Session::validate_request(const Request& req)
 	    req.target()[0] != '/' ||
 	    req.target().find("..") != boost::beast::string_view::npos)
 	{
-		send_response(m_server->bad_request("Illegal request-target", req.version()));
+		send_response(m_handler->bad_request("Illegal request-target", req.version()));
 		return false;
 	}
 	return true;
-
 }
 
 template <class Response>
@@ -208,14 +207,14 @@ void Session::send_response(Response&& response)
 
 void Session::handle_read_error(std::string_view where, boost::system::error_code ec)
 {
-	assert(m_server.has_value());
+	assert(m_handler.has_value());
 	// This means they closed the connection
 	if (ec == boost::beast::http::error::end_of_stream)
 		return do_close();
 
 	else if (ec)
 	{
-		return send_response(m_server->bad_request(ec.message(), 11));
+		return send_response(m_handler->bad_request(ec.message(), 11));
 	}
 }
 
@@ -254,10 +253,17 @@ void Session::init_request_body(SessionHandler::RequestBodyType body_type, std::
 {
 	switch (body_type)
 	{
-	case SessionHandler::RequestBodyType::empty: m_body.emplace<EmptyRequestParser>(std::move(*m_parser)); break;
-	case SessionHandler::RequestBodyType::string: m_body.emplace<StringRequestParser>(std::move(*m_parser)); break;
+	case SessionHandler::RequestBodyType::empty:
+		m_body.emplace<EmptyRequestParser>(std::move(*m_parser));
+		break;
+
+	case SessionHandler::RequestBodyType::string:
+		m_body.emplace<StringRequestParser>(std::move(*m_parser));
+		break;
+
 	case SessionHandler::RequestBodyType::upload:
-		m_server->prepare_upload(m_body.emplace<UploadRequestParser>(std::move(*m_parser)).get().body(), ec);
+		auto& parser = m_body.emplace<UploadRequestParser>(std::move(*m_parser));
+		m_handler->prepare_upload(parser.get().body(), ec);
 		break;
 	}
 

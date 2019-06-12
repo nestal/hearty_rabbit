@@ -85,7 +85,7 @@ private:
 	std::variant<EmptyRequestParser, StringRequestParser, UploadRequestParser> m_body;
 
 	std::function<SessionHandler()> m_factory;
-	std::optional<SessionHandler>   m_server;
+	std::optional<SessionHandler>   m_handler;
 
 	// configurations
 	std::chrono::seconds    m_login_session;
