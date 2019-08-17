@@ -11,26 +11,17 @@
 //
 
 #include "FS.hh"
-#if true//!__has_include(<filesystem>)
-#include <boost/system/error_code.hpp>
 
-namespace boost::filesystem {
+namespace hrb {
 
-void rename(const path& src, const path& dest, std::error_code& ec)
+fs::path absolute(const fs::path& p, const fs::path& base)
 {
-	boost::system::error_code bec;
-	rename(src, dest, bec);
+	// copy from boost::absolute()
+	if (p.has_root_directory())
+		return p.has_root_name() ? p : absolute(base).root_name() / p;
 
-	ec.assign(bec.value(), bec.category());
+	else
+		return p.root_name() / absolute(base).root_directory() / absolute(base).relative_path() / p.relative_path();
 }
 
-void create_directories(const path& dir, std::error_code& ec)
-{
-	boost::system::error_code bec;
-	create_directories(dir, bec);
-
-	ec.assign(bec.value(), bec.category());
 }
-
-} // end of namespace
-#endif

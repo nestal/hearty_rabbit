@@ -12,27 +12,13 @@
 
 #pragma once
 
-#if false//__has_include(<filesystem>)
 #include <filesystem>
 
 namespace hrb {
+
 namespace fs = std::filesystem;
-}
-#else
 
-#include <boost/filesystem.hpp>
-#include <system_error>
-
-// wrappers for std::error_code -> boost::error_code
-// injected to boost::filesystem to make namespace-dependent lookup works
-namespace boost::filesystem {
-
-void rename(const path& src, const path& dest, std::error_code& ec);
-void create_directories(const path& dir, std::error_code& ec);
+// polyfill for boost::filesystem::absolute()
+fs::path absolute(const fs::path& p, const fs::path& base);
 
 }
-
-namespace hrb {
-namespace fs = boost::filesystem;
-}
-#endif

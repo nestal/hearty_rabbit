@@ -72,7 +72,7 @@ void proc_image(const fs::path& path)
 
 int main(int argc, char **argv)
 {
-	boost::filesystem::directory_iterator di{boost::filesystem::current_path()};
+	fs::directory_iterator di{fs::current_path()};
 	for (auto&& path : di)
 	{
 		std::cout << path.path() << " " << path.path().extension() << std::endl;

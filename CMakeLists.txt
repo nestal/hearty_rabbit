@@ -11,7 +11,7 @@ endif()
 message(STATUS "Building HeartyRabbit ${VERSION}.${BUILD_NUMBER}")
 
 set(Boost_USE_STATIC_LIBS  ON)
-find_package(Boost REQUIRED COMPONENTS system filesystem program_options)
+find_package(Boost REQUIRED COMPONENTS system program_options)
 find_package(Threads REQUIRED)
 find_package(PkgConfig REQUIRED)
 find_package(OpenSSL REQUIRED)
@@ -40,7 +40,6 @@ message(STATUS "using haarcascade at ${HAARCASCADE_PATH}")
 add_definitions(-D_GLIBCXX_USE_CXX11_ABI=1)
 
 include_directories(
-	${Boost_INCLUDE_DIR}
 	${HIREDIS_INCLUDE_DIRS}
 	${LIBUNWIND_INCLUDE_DIRS}
 	${LIBB2_INCLUDE}
@@ -88,7 +87,7 @@ add_library(hrbcommon ${COMMON_SRC})
 target_link_libraries(
 	hrbcommon
 	PUBLIC
-	Boost::system Boost::program_options Boost::filesystem
+	Boost::system Boost::program_options stdc++fs
 	${LIBB2_LIBRARY}
 	${CMAKE_THREAD_LIBS_INIT}
 )
@@ -104,7 +103,6 @@ target_link_libraries(
 	hrbsrv
 	hrbcommon
 	magic
-	${Boost_LIBRARIES}
 	${HIREDIS_LIBRARIES}
 	OpenSSL::SSL
 	OpenSSL::Crypto
@@ -126,7 +124,6 @@ add_library(hrbclient ${CLIENT_SRC})
 target_link_libraries(
 	hrbclient
 	hrbcommon
-	${Boost_LIBRARIES}
 	OpenSSL::SSL
 	OpenSSL::Crypto
 	${OpenCV_LIBS}
