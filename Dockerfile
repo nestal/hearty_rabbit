@@ -14,7 +14,6 @@ RUN mkdir /build/docker-build \
 	&& chmod -R a+rX /build/src \
 	&& cd docker-build \
 	&& cmake3 \
-		-DBOOST_ROOT=/opt/boost_1_68 \
 		-DBUILD_NUMBER=$BUILD_NUMBER \
 		-DCMAKE_PREFIX_PATH=/opt \
 		-DCMAKE_BUILD_TYPE=Release \

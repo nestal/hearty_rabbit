@@ -61,13 +61,13 @@ public:
 	/// Write to the open file
 	std::size_t write(void const* buffer, std::size_t n, boost::system::error_code& ec);
 
-	ObjectID ID() const;
+	[[nodiscard]] ObjectID ID() const;
 
-	native_handle_type native_handle() const;
+	[[nodiscard]] native_handle_type native_handle() const;
 
 	void move(const fs::path& dest, std::error_code& ec);
 
-	const std::string& path() const {return m_tmp_path;}
+	[[nodiscard]] const std::string& path() const {return m_tmp_path;}
 
 private:
 	boost::beast::file_posix m_file{};
