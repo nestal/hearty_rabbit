@@ -18,7 +18,6 @@
 
 #include <boost/program_options.hpp>
 #include <boost/exception/info.hpp>
-#include <boost/exception/diagnostic_information.hpp>
 
 #include <fstream>
 
