@@ -305,6 +305,22 @@ public:
 		);
 	}
 
+	template <typename Callback>
+	typename std::enable_if_t<
+		std::is_invocable_v<Callback, Reply, std::error_code> &&
+		std::is_copy_constructible_v<Callback>
+	>
+	command(Callback&& callback, std::vector<CommandString>&& commands)
+	{
+		for (auto&& cmd : commands)
+		{
+			if (&cmd == &commands.back())
+				do_write(std::move(cmd), std::forward<Callback>(callback));
+			else
+				do_write(std::move(cmd), [](auto&&, auto){});
+		}
+	}
+
 	template <
 		typename Callback,
 		std::size_t N,
