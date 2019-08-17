@@ -24,9 +24,6 @@ namespace hrb {
 
 struct CollEntry;
 
-// along with from_json(CollEntryFields) and to_json(CollEntryFields), CollEntryFields should
-// be moved to a separate header
-
 class CollEntryDB
 {
 public:
@@ -40,17 +37,17 @@ public:
 	static std::string create(Permission perm, const nlohmann::json& json);
 	static std::string create(const CollEntry& fields);
 
-	std::string filename() const;
-	std::string mime() 	const;
-	Timestamp timestamp() const;
-	std::optional<CollEntry> fields() const;
+	[[nodiscard]] std::string filename() const;
+	[[nodiscard]] std::string mime() 	const;
+	[[nodiscard]] Timestamp timestamp() const;
+	[[nodiscard]] std::optional<CollEntry> fields() const;
 
-	std::string_view json() const;
-	Permission permission() const;
+	[[nodiscard]] std::string_view json() const;
+	[[nodiscard]] Permission permission() const;
 
-	std::string_view raw() const {return m_raw;}
-	auto data() const {return m_raw.data();}
-	auto size() const {return m_raw.size();}
+	[[nodiscard]] std::string_view raw() const {return m_raw;}
+	[[nodiscard]] auto data() const {return m_raw.data();}
+	[[nodiscard]] auto size() const {return m_raw.size();}
 
 private:
 	std::string_view	m_raw{" {}"};
