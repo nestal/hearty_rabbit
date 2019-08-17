@@ -32,6 +32,7 @@
 #include <boost/range/adaptor/transformed.hpp>
 
 #include <vector>
+#include <iostream>
 
 #pragma once
 
@@ -47,7 +48,7 @@ void Ownership::link(
 )
 {
 	db.command(
-		[comp=std::forward<Complete>(complete)](auto&&, std::error_code ec)
+		[comp=std::forward<Complete>(complete)](auto&& r, std::error_code ec)
 		{
 			comp(ec);
 		},
@@ -283,14 +284,28 @@ void Ownership::move_blob(
 )
 {
 	db.command(
-		[comp=std::forward<Complete>(complete)](auto&& reply, auto ec)
+		[
+			comp=std::forward<Complete>(complete),
+		    src_coll=std::string{src_coll},
+		    db=db.shared_from_this(),
+		    blobid, *this
+        ](auto&& reply, auto ec) mutable
 		{
 			if (!reply)
 				Log(LOG_WARNING, "Collection::move_blob(): script error: %1%", reply.as_error());
 
-			comp(ec);
+			if (ec)
+				comp(ec);
+			else
+				db->command(
+					[comp=std::forward<Complete>(comp)](auto&& reply, auto ec)
+					{
+						comp(ec);
+					},
+					unlink_command(src_coll, blobid)
+				);
 		},
-		move_blob_command(src_coll, dest_coll, blobid)
+		link_command(dest_coll, blobid, std::nullopt)
 	);
 
 }

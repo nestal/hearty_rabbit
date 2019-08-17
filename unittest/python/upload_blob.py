@@ -289,6 +289,13 @@ class NormalTestCase(unittest.TestCase):
 			404
 		)
 
+		# another collection is created
+		self.assertTrue(blob_id in self.get_collection(self.user1, "sumsum", "another/collection")["elements"])
+		r2 = self.user1.get("https://localhost:4433/query/collection?user=sumsum&json")
+		self.assertEqual(r2.status_code, 200)
+		self.assertTrue("colls" in r2.json())
+		self.assertIsNotNone(self.find_coll(r2.json()["colls"], "another/collection"))
+
 		# invalid post data
 		self.assertEqual(self.user1.post(
 			"https://localhost:4433/api/sumsum/another/collection/" + blob_id,

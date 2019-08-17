@@ -216,10 +216,10 @@ public:
 
 	void swap(CommandString& other) noexcept ;
 
-	auto get() const {return m_cmd;}
-	auto length() const {return static_cast<std::size_t>(m_length);}
-	auto buffer() const {return boost::asio::buffer(m_cmd, length());}
-	std::string_view str() const {return {m_cmd, length()};}
+	[[nodiscard]] auto get() const {return m_cmd;}
+	[[nodiscard]] auto length() const {return static_cast<std::size_t>(m_length);}
+	[[nodiscard]] auto buffer() const {return boost::asio::buffer(m_cmd, length());}
+	[[nodiscard]] std::string_view str() const {return {m_cmd, length()};}
 
 private:
 	char    *m_cmd{};
@@ -273,7 +273,7 @@ public:
 	{
 		try
 		{
-			command(std::move(callback), CommandString{cmd, args...});
+			command(std::forward<Callback>(callback), CommandString{cmd, args...});
 		}
 		catch (std::logic_error&)
 		{
@@ -289,8 +289,8 @@ public:
 	// constructible, but will have more overhead from the shared_ptr.
 	template <typename Callback>
 	typename std::enable_if_t<
-		std::is_invocable<Callback, Reply, std::error_code>::value &&
-		std::is_copy_constructible<Callback>::value
+		std::is_invocable_v<Callback, Reply, std::error_code> &&
+		std::is_copy_constructible_v<Callback>
 	>
 	command(Callback&& callback, CommandString&& command)
 	{
@@ -305,7 +305,6 @@ public:
 		);
 	}
 
-
 	template <
 		typename Callback,
 		std::size_t N,
@@ -317,9 +316,9 @@ public:
 	// This function will move the passed callback into a shared_ptr,
 	// which will be stored in a lambda capture.
 	typename std::enable_if_t<
-		std::is_invocable<Callback, Reply, std::error_code>::value &&
-		std::is_move_constructible<Callback>::value &&
-		!std::is_copy_constructible<Callback>::value
+		std::is_invocable_v<Callback, Reply, std::error_code> &&
+		std::is_move_constructible_v<Callback> &&
+		!std::is_copy_constructible_v<Callback>
 	>
 	command(Callback&& callback, const char (&cmd)[N], Args... args)
 	{
@@ -355,8 +354,6 @@ public:
 	}
 
 	void do_write(CommandString&& cmd, Completion&& completion);
-
-//	boost::asio::io_context& get_io_context() {return m_socket.get_executor();}
 
 private:
 	// must not call disconnect() inside the callbacks in m_callbacks

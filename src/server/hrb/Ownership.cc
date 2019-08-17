@@ -85,7 +85,7 @@ void Ownership::update(redis::Connection& db, const ObjectID& blob, const CollEn
 	);
 }
 
-redis::CommandString Ownership::link_command(std::string_view coll, const ObjectID& blob, const CollEntry& coll_entry) const
+redis::CommandString Ownership::link_command(std::string_view coll, const ObjectID& blob, std::optional<CollEntry> coll_entry) const
 {
 	auto blob_ref   = key::blob_refs(m_user, blob);
 	auto blob_owner = key::blob_owners(blob);
@@ -93,15 +93,21 @@ redis::CommandString Ownership::link_command(std::string_view coll, const Object
 	auto coll_key   = key::collection(m_user, coll);
 	auto coll_list  = key::collection_list(m_user);
 	auto hex = to_hex(blob);
-	auto entry = CollEntryDB::create(coll_entry);
+	auto entry = coll_entry ? CollEntryDB::create(*coll_entry) : "";
 
 	static const char lua[] = R"__(
+		local blob_ref, blob_owner, blob_meta, coll_key, coll_list = KEYS[1], KEYS[2], KEYS[3], KEYS[4], KEYS[5]
 		local user, coll, blob, cover, entry = ARGV[1], ARGV[2], ARGV[3], ARGV[4], ARGV[5]
-		redis.call('SADD', KEYS[1], coll)
-		redis.call('SADD', KEYS[2], user)
-		redis.call('HSET', KEYS[3], blob, entry)
-		redis.call('SADD', KEYS[4], blob)
-		redis.call('HSETNX', KEYS[5], coll, cjson.encode({cover=cover}))
+
+		redis.call('SADD',   blob_ref,   coll)
+		redis.call('SADD',   blob_owner, user)
+
+		if entry ~= nil and entry ~= '' then
+			redis.call('HSETNX', blob_meta,  blob, entry)
+		end
+
+		redis.call('SADD',   coll_key,   blob)
+		redis.call('HSETNX', coll_list, coll, cjson.encode({cover=cover}))
 	)__";
 	return redis::CommandString{
 		"EVAL %s 5 %b %b %b %b %b   %b %b %b %b %b", lua,
@@ -256,12 +262,13 @@ redis::CommandString Ownership::set_permission_command(
 
 redis::CommandString Ownership::move_blob_command(std::string_view src, std::string_view dest, const ObjectID& blobid) const
 {
+	auto coll_list = key::collection_list(m_user);
 	auto src_coll  = key::collection(m_user, src);
 	auto dest_coll = key::collection(m_user, dest);
 	auto blob_refs = key::blob_refs(m_user, blobid);
 
 	static const char lua[] = R"__(
-		local src_coll, dest_coll, blob_refs = KEYS[1], KEYS[2], KEYS[3]
+		local src_coll, dest_coll, blob_refs, coll_list = KEYS[1], KEYS[2], KEYS[3], KEYS[4]
 		local src, dest, blob = ARGV[1], ARGV[2], ARGV[3]
 
 		redis.call('SREM', blob_refs, src)
@@ -271,11 +278,12 @@ redis::CommandString Ownership::move_blob_command(std::string_view src, std::str
 		redis.call('SADD', dest_coll, blob)
 	)__";
 	return redis::CommandString{
-		"EVAL %s 3 %b %b %b    %b %b %b", lua,
+		"EVAL %s 4 %b %b %b %b    %b %b %b", lua,
 
 		src_coll.data(), src_coll.size(),
 		dest_coll.data(), dest_coll.size(),
 		blob_refs.data(), blob_refs.size(),
+		coll_list.data(), coll_list.size(),
 
 		src.data(), src.size(),
 		dest.data(), dest.size(),

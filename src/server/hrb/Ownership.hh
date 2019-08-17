@@ -38,13 +38,13 @@ public:
 	class Collection;
 
 private:
-	redis::CommandString link_command(std::string_view coll, const ObjectID& blob, const CollEntry& entry) const;
-	redis::CommandString unlink_command(std::string_view coll, const ObjectID& blob) const;
-	redis::CommandString scan_collection_command(std::string_view coll) const;
-	redis::CommandString set_permission_command(const ObjectID& blobid, const Permission& perm) const;
-	redis::CommandString move_blob_command(std::string_view src, std::string_view dest, const ObjectID& blobid) const;
-	redis::CommandString set_cover_command(std::string_view coll, const ObjectID& cover) const;
-	redis::CommandString list_public_blob_command() const;
+	[[nodiscard]] redis::CommandString link_command(std::string_view coll, const ObjectID& blob, std::optional<CollEntry> entry) const;
+	[[nodiscard]] redis::CommandString unlink_command(std::string_view coll, const ObjectID& blob) const;
+	[[nodiscard]] redis::CommandString scan_collection_command(std::string_view coll) const;
+	[[nodiscard]] redis::CommandString set_permission_command(const ObjectID& blobid, const Permission& perm) const;
+	[[nodiscard]] redis::CommandString move_blob_command(std::string_view src, std::string_view dest, const ObjectID& blobid) const;
+	[[nodiscard]] redis::CommandString set_cover_command(std::string_view coll, const ObjectID& cover) const;
+	[[nodiscard]] redis::CommandString list_public_blob_command() const;
 	void update(redis::Connection& db, const ObjectID& blobid, const CollEntryDB& entry);
 
 	hrb::Collection from_reply(
