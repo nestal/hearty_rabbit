@@ -26,19 +26,27 @@ class Collection:
 
 
 class Session:
-	m_site = "localhost:4433"
+	m_site = urllib.parse.urlparse("https://localhost:4433")
 	m_user = ""
 	m_session = requests.Session()
 
-	def __init__(self, site):
-		self.m_site = "https://" + site
-		if site == "localhost:4433":
+	def __init__(self, site = "localhost:4433", cert = None):
+		self.m_site = self.m_site._replace(netloc = site)
+
+		# This is a hack for testing purpose.
+		if self.m_site.netloc == "localhost:4433" and cert is None:
 			self.m_session.verify = "../../etc/hearty_rabbit/certificate.pem"
 
+	def url(self, path, query = None):
+		url = self.m_site._replace(path = path)
+		if query is not None:
+			url = url._replace(query = urllib.parse.urlencode(query))
+
+		return urllib.parse.urlunparse(url)
 
 	def login(self, user, password):
 		response = self.m_session.post(
-			self.m_site + "/login",
+			self.url("/login"),
 			data="username=" + user + "&password=" + password,
 			headers={"Content-type": "application/x-www-form-urlencoded"}
 		)
@@ -55,7 +63,7 @@ class Session:
 		if user is None:
 			user = self.m_user
 
-		response = self.m_session.get(self.m_site + "/query/collection?user=" + user + "&json")
+		response = self.m_session.get(self.url("/query/collection", {"user": user}))
 		if response.status_code != 200:
 			raise ValueError("cannot query album list: {0}".format(response.status_code))
 
@@ -69,7 +77,7 @@ class Session:
 		if user is None:
 			user = self.m_user
 
-		response = self.m_session.get(self.m_site + "/api/" + user + "/" + urllib.parse.quote_plus(collection))
+		response = self.m_session.get(self.url("/api/" + user + "/" + urllib.parse.quote_plus(collection)))
 		if response.status_code != 200:
 			raise ValueError("cannot get blobs from collections \"{}\": {}".format(
 				collection,
@@ -83,7 +91,7 @@ class Session:
 
 	def upload(self, collection, filename, data):
 		response = self.m_session.put(
-			"{}/upload/{}/{}/{}".format(self.m_site, self.m_user, collection, filename),
+			self.url("/upload/{}/{}/{}".format(self.m_user, collection, filename)),
 			data=data
 		)
 		if response.status_code != 201:
@@ -97,11 +105,11 @@ class Session:
 		if user is None:
 			user = self.m_user
 
-		url = "{}/api/{}/{}/{}".format(self.m_site, user, collection, id)
+		query = {}
 		if rendition != "":
-			url += ("?" + urllib.parse.urlencode({"rendition": rendition}))
+			query["rendition"] = rendition
 
-		response = self.m_session.get(url)
+		response = self.m_session.get(self.url("/api/{}/{}/{}".format(user, collection, id), query))
 		if response.status_code != 200:
 			raise FileNotFoundError("cannot get blob {} from user \"{}\": {}".format(
 				id, user, response.status_code
@@ -109,11 +117,10 @@ class Session:
 		return {"id":id, "mime":response.headers["Content-type"], "data":response.content}
 
 	def query_blob(self, blob, rendition = ""):
-		url = "{}/query/blob?id={}".format(self.m_site, blob)
+		query = {"id": blob}
 		if rendition != "":
-			url += ("&" + urllib.parse.urlencode({"rendition": rendition}))
-
-		response = self.m_session.get(url)
+			query["rendition"] = rendition
+		response = self.m_session.get(self.url("/query/blob", query))
 		if response.status_code != 200:
 			raise FileNotFoundError("cannot find blob {}".format(blob))
 		return {"id":blob, "mime":response.headers["Content-type"], "data":response.content}
