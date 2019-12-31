@@ -1,5 +1,6 @@
 import requests
 import urllib.parse
+import os
 
 class HrbException(Exception):
 	pass
@@ -68,12 +69,17 @@ class Session:
 
 		return urllib.parse.urlunparse(url)
 
+	@staticmethod
+	def __quote_path(path):
+		comp = os.path.split(path)
+		return os.path.join(*[urllib.parse.quote_plus(x) for x in comp])
+
 	def __format_url(self, action, owner, path, filename, query = None):
 		return self.__url(
 			"/{}/{}/{}/{}".format(
 				action,
 				"" if owner is None else urllib.parse.quote_plus(owner),
-				"" if path is None else urllib.parse.quote_plus(path),
+				"" if path is None else self.__quote_path(path),
 				"" if filename is None else urllib.parse.quote_plus(filename)
 			),
 			query=query
@@ -123,6 +129,10 @@ class Session:
 
 		return result
 
+	def find_collection(self, collection, user = None):
+		coll_list = self.list_collections(user)
+		return next((x for x in coll_list if x.name() == collection), None)
+
 	def list_blobs(self, collection, user = None):
 		if user is None:
 			user = self.m_user
@@ -155,7 +165,7 @@ class Session:
 			))
 		return response.headers["Location"][-40:]
 
-	def get_blob(self, collection, id, user = None, rendition = ""):
+	def get_blob(self, collection, blobid, user = None, rendition = ""):
 		if user is None:
 			user = self.m_user
 
@@ -163,50 +173,50 @@ class Session:
 		if rendition != "":
 			query["rendition"] = rendition
 
-		response = self.m_session.get(self.__format_url("api", user, collection, id, query=query))
+		response = self.m_session.get(self.__format_url("api", user, collection, blobid, query=query))
 		if response.status_code != 200:
 			self.raise_exception(response.status_code, "cannot get blob {} from user \"{}\": {}".format(
-				id, user, response.status_code
+				blobid, user, response.status_code
 			))
 
-		return {"id":id, "mime":response.headers["Content-type"], "data":response.content}
+		return {"id":blobid, "mime":response.headers["Content-type"], "data":response.content}
 
-	def query_blob(self, blob, rendition = ""):
-		query = {"id": blob}
+	def query_blob(self, blobid, rendition = ""):
+		query = {"id": blobid}
 		if rendition != "":
 			query["rendition"] = rendition
 		response = self.m_session.get(self.__url("/query/blob", query))
 		if response.status_code != 200:
 			self.raise_exception(response.status_code, "cannot query blob {}: {}".format(
-				blob, response.status_code
+				blobid, response.status_code
 			))
-		return {"id":blob, "mime":response.headers["Content-type"], "data":response.content}
+		return {"id":blobid, "mime":response.headers["Content-type"], "data":response.content}
 
-	def delete_blob(self, collection, blob):
-		response = self.m_session.delete(self.__format_url("api", self.m_user, collection, blob))
+	def delete_blob(self, collection, blobid):
+		response = self.m_session.delete(self.__format_url("api", self.m_user, collection, blobid))
 		if response.status_code != 204:
 			self.raise_exception(response.status_code, "cannot delete blob {}: {}".format(
-				blob, response.status_code
+				blobid, response.status_code
 			))
 
-	def move_blob(self, src, blob, dest):
+	def move_blob(self, src, blobid, dest):
 		response = self.m_session.post(
-			self.__format_url("api", self.m_user, src, blob),
+			self.__format_url("api", self.m_user, src, blobid),
 			data="move=another/collection",
 			headers={"Content-type": "application/x-www-form-urlencoded"}
 		)
 		if response.status_code != 204:
 			self.raise_exception(response.status_code, "cannot move blob {} from {} to {}: {}".format(
-				blob, src, dest, response.status_code
+				blobid, src, dest, response.status_code
 			))
 
-	def set_permission(self, collection, blob, perm):
+	def set_permission(self, collection, blobid, perm):
 		response = self.m_session.post(
-			self.__format_url("api", self.m_user, collection, blob),
+			self.__format_url("api", self.m_user, collection, blobid),
 			data="perm=" + perm,
 			headers={"Content-type": "application/x-www-form-urlencoded"}
 		)
 		if response.status_code != 204:
 			self.raise_exception(response.status_code, "cannot set permission of blob {} from {} to {}: {}".format(
-				blob, collection, perm, response.status_code
+				blobid, collection, perm, response.status_code
 			))

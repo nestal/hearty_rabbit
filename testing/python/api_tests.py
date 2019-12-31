@@ -65,7 +65,7 @@ class NormalTestCase(unittest.TestCase):
 
 		# Collection "test_api" is created
 		coll_list = self.user1.list_collections()
-		self.assertEqual(next(x for x in coll_list if x.name() == "test_api").owner(), "sumsum")
+		self.assertEqual(self.user1.find_collection("test_api").owner(), "sumsum")
 
 		# get the blob we just uploaded
 		lena1 = self.user1.get_blob("test_api", id)
@@ -221,9 +221,7 @@ class NormalTestCase(unittest.TestCase):
 		# another collection is created
 		dest_coll = self.user1.list_blobs("another/collection")
 		self.assertEqual(next(x for x in dest_coll if x.id() == blob_id).filename(), "happy😆faces😄.jpg")
-
-		coll_list = self.user1.list_collections()
-		self.assertEqual(next(x for x in coll_list if x.name() == "another/collection").owner(), "sumsum")
+		self.assertEqual(self.user1.find_collection("another/collection").owner(), "sumsum")
 
 		# invalid post data
 		self.assertEqual(self.user1.m_session.post(
@@ -241,23 +239,18 @@ class NormalTestCase(unittest.TestCase):
 
 	def test_set_permission(self):
 		# upload to server
-		blob_id = self.user1.upload("some/collection", "random%F0%9F%98%8A.jpg", data=self.random_image(1000, 1200))
+		blob_id = self.user1.upload("some/collection", "random😊.jpg", data=self.random_image(1000, 1200))
 
 		# owner get successfully
 		self.assertEqual(self.user1.get_blob("some/collection", blob_id)["mime"], "image/jpeg")
 
 		# owner set permission to public
-# 		r3 = self.user1.post(
-# 			"https://localhost:4433" + r1.headers["Location"],
-# 			data="perm=public",
-# 			headers={"Content-type": "application/x-www-form-urlencoded"}
-# 		)
-# 		self.assertEqual(r3.status_code, 204)
-#
-# 		# other user can get the image
-# 		self.assertEqual(self.user2.get("https://localhost:4433" + r1.headers["Location"]).status_code, 200)
-# 		self.assertTrue(blob_id in self.get_collection(self.user2, "sumsum", "some/collection")["elements"])
-#
+		self.user1.set_permission("some/collection", blob_id, "public")
+
+		# other user can get the image
+		self.assertEqual(self.user2.get_blob("some/collection", blob_id, self.user1.user())["id"], blob_id)
+#		self.assertTrue(blob_id in self.get_collection(self.user2, "sumsum", "some/collection")["elements"])
+
 # 		# new blob can be found in the public list
 # 		self.assertTrue(blob_id in self.get_public_blobs()["elements"].keys())
 #

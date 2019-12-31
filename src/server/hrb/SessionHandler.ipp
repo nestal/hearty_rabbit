@@ -263,22 +263,22 @@ void SessionHandler::on_request_body(Request&& req, Send&& send)
 			return m_auth.valid() ?
 				Ownership{m_auth.username()}.scan_all_collections(
 					*m_db,
-					SendJSON{std::move(send), req.version(), std::nullopt, *this, &m_lib}
+					SendJSON{std::forward<Send>(send), req.version(), std::nullopt, *this, &m_lib}
 				) :
 				list_public_blobs(false, req.version(), std::forward<Send>(send));
 
 		if (intent.action() == URLIntent::Action::query)
-			return on_query({std::move(req), std::move(intent)}, std::forward<Send>(send));
+			return on_query({std::forward<Request>(req), std::move(intent)}, std::forward<Send>(send));
 
 		if (intent.action() == URLIntent::Action::logout)
 			return on_logout(std::forward<Request>(req), std::forward<Send>(send));
 	}
 
 	// Upload requests for /upload URL only
-	if constexpr (std::is_same<std::remove_reference_t<Request>, UploadRequest>::value)
+	if constexpr (std::is_same_v<std::decay_t<Request>, UploadRequest>)
 	{
 		if (intent.action() == URLIntent::Action::upload)
-			return on_upload(std::move(req), std::forward<Send>(send));
+			return on_upload(std::forward<Request>(req), std::forward<Send>(send));
 	}
 
 	return send(not_found(req.target(), req.version()));
