@@ -86,8 +86,7 @@ class NormalTestCase(unittest.TestCase):
 		self.assertEqual(query["data"], lena1["data"])
 
 		# The newly uploaded image should be in the "test_api" collection
-		colls = self.user1.list_blobs("test_api")
-		self.assertEqual(len([x for x in colls if x.id() == id]), 1)
+		self.assertTrue(id in self.user1.list_blobs("test_api"))
 
 	def test_upload_png(self):
 		# upload random PNG to server
@@ -193,7 +192,8 @@ class NormalTestCase(unittest.TestCase):
 
 		# should find it in the new collection
 		r2 = self.user1.list_blobs("some/collection")
-		abc = next(x for x in r2 if x.id() == blob_id)
+		self.assertTrue(blob_id in r2)
+		abc = r2[blob_id]
 		self.assertEqual(abc.filename(), "abc.jpg")
 		self.assertEqual(abc.mime(), "image/jpeg")
 		self.assertTrue(abc.mime() is not None)
@@ -203,7 +203,7 @@ class NormalTestCase(unittest.TestCase):
 
 		# not found in collection
 		r4 = self.user1.list_blobs("some/collection")
-		self.assertRaises(StopIteration, next, (x for x in r4 if x.id() == blob_id))
+		self.assertFalse(blob_id in r4)
 
 
 	def test_move_blob(self):
@@ -220,7 +220,8 @@ class NormalTestCase(unittest.TestCase):
 
 		# another collection is created
 		dest_coll = self.user1.list_blobs("another/collection")
-		self.assertEqual(next(x for x in dest_coll if x.id() == blob_id).filename(), "happy😆faces😄.jpg")
+		self.assertTrue(blob_id in dest_coll)
+		self.assertEqual(dest_coll[blob_id].filename(), "happy😆faces😄.jpg")
 		self.assertEqual(self.user1.find_collection("another/collection").owner(), "sumsum")
 
 		# invalid post data
@@ -239,7 +240,7 @@ class NormalTestCase(unittest.TestCase):
 
 	def test_set_permission(self):
 		# upload to server
-		blob_id = self.user1.upload("some/collection", "random😊.jpg", data=self.random_image(1000, 1200))
+		blob_id = self.user1.upload("some/collection", "派石😊.jpg", data=self.random_image(1000, 1200))
 
 		# owner get successfully
 		self.assertEqual(self.user1.get_blob("some/collection", blob_id)["mime"], "image/jpeg")
