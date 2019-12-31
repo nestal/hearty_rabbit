@@ -151,5 +151,27 @@ class NormalTestCase(unittest.TestCase):
 		self.assertEqual(self.anon.m_session.get("https://localhost:4433/lib/login.html").status_code, 404)
 
 
+	def test_not_found(self):
+		# resource not exist
+		r1 = self.user1.m_session.get("https://localhost:4433/index.html")
+		self.assertEqual(r1.status_code, 404)
+
+		# Is all-zero blob ID really invalid? <- Yes, it's valid.
+		# Requesting with a valid object ID on an object that doesn't exists will return "Not Found"
+		self.assertRaises(FileNotFoundError, self.user1.get_blob, "", "0000000000000000000000000000000000000000")
+
+		# # other user's blob: no matter the target exists or not will give you "forbidden"
+		# r3 = self.user1.get("https://localhost:4433/api/nestal/0100000000000000000000000000000000000003")
+		# self.assertEqual(r3.status_code, 403)
+		#
+		# # 10-digit blob ID is really invalid: it will be treated as collection name
+		# r4 = self.user1.get("https://localhost:4433/api/sumsum/FF0000000000000000FF")
+		# self.assertEqual(r4.status_code, 200)
+		#
+		# # invalid blob ID with funny characters: it will be treated as collection name
+		# r5 = self.user1.get("https://localhost:4433/api/nestal/0L00000000000000000PP0000000000000000003")
+		# self.assertEqual(r5.status_code, 200)
+
+
 if __name__ == '__main__':
 	unittest.main()

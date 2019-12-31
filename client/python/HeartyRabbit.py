@@ -45,6 +45,16 @@ class Session:
 
 		return urllib.parse.urlunparse(url)
 
+	@staticmethod
+	def raise_exception(status_code, format_string):
+		message = format_string.format(status_code)
+		if status_code == 404:
+			raise FileNotFoundError(message)
+		elif status_code == 403:
+			raise PermissionError(message)
+		else:
+			raise Exception(message)
+
 	def login(self, user, password):
 		response = self.m_session.post(
 			self.url("/login"),
@@ -53,7 +63,7 @@ class Session:
 		)
 
 		if response.status_code != 204 or self.m_session.cookies.get("id") == "":
-			raise PermissionError("source site login incorrect: {0}".format(response.status_code))
+			self.raise_exception(response.status_code, "source site login incorrect: {0}")
 
 		self.m_user = user
 
@@ -66,7 +76,7 @@ class Session:
 
 		response = self.m_session.get(self.url("/query/collection", {"user": user}))
 		if response.status_code != 200:
-			raise ValueError("cannot query album list: {0}".format(response.status_code))
+			self.raise_exception(response.status_code, "cannot query album list: {0}")
 
 		result = []
 		for coll in response.json()["colls"]:
@@ -80,7 +90,7 @@ class Session:
 
 		response = self.m_session.get(self.url("/api/" + user + "/" + urllib.parse.quote_plus(collection)))
 		if response.status_code != 200:
-			raise ValueError("cannot get blobs from collections \"{}\": {}".format(
+			self.raise_exception(response.status_code, "cannot get blobs from collections \"{}\": {}".format(
 				collection,
 				response.status_code
 			))
@@ -96,7 +106,7 @@ class Session:
 			data=data
 		)
 		if response.status_code != 201:
-			raise ValueError("cannot upload blobs to collections \"{}\": {}".format(
+			self.raise_exception(response.status_code, "cannot upload blobs to collections \"{}\": {}".format(
 				collection,
 				response.status_code
 			))
@@ -112,9 +122,10 @@ class Session:
 
 		response = self.m_session.get(self.url("/api/{}/{}/{}".format(user, collection, id), query))
 		if response.status_code != 200:
-			raise FileNotFoundError("cannot get blob {} from user \"{}\": {}".format(
+			self.raise_exception(response.status_code, "cannot get blob {} from user \"{}\": {}".format(
 				id, user, response.status_code
 			))
+
 		return {"id":id, "mime":response.headers["Content-type"], "data":response.content}
 
 	def query_blob(self, blob, rendition = ""):
@@ -123,5 +134,7 @@ class Session:
 			query["rendition"] = rendition
 		response = self.m_session.get(self.url("/query/blob", query))
 		if response.status_code != 200:
-			raise FileNotFoundError("cannot find blob {}".format(blob))
+			self.raise_exception(response.status_code, "cannot query blob {}: {}".format(
+				blob, response.status_code
+			))
 		return {"id":blob, "mime":response.headers["Content-type"], "data":response.content}
