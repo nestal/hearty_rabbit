@@ -68,6 +68,17 @@ class Session:
 
 		return urllib.parse.urlunparse(url)
 
+	def __format_url(self, action, owner, path, filename, query = None):
+		return self.__url(
+			"/{}/{}/{}/{}".format(
+				action,
+				"" if owner is None else urllib.parse.quote_plus(owner),
+				"" if path is None else urllib.parse.quote_plus(path),
+				"" if filename is None else urllib.parse.quote_plus(filename)
+			),
+			query=query
+		)
+
 	def user(self):
 		return self.m_user
 
@@ -116,7 +127,7 @@ class Session:
 		if user is None:
 			user = self.m_user
 
-		response = self.m_session.get(self.__url("/api/" + user + "/" + urllib.parse.quote_plus(collection)))
+		response = self.m_session.get(self.__format_url("api", user, collection, ""))
 		if response.status_code != 200:
 			self.raise_exception(response.status_code, "cannot get blobs from collections \"{}\": {}".format(
 				collection,
@@ -134,7 +145,7 @@ class Session:
 
 	def upload(self, collection, filename, data):
 		response = self.m_session.put(
-			self.__url("/upload/{}/{}/{}".format(self.m_user, collection, filename)),
+			self.__format_url("upload", self.m_user, collection, filename),
 			data=data
 		)
 		if response.status_code != 201:
@@ -152,7 +163,7 @@ class Session:
 		if rendition != "":
 			query["rendition"] = rendition
 
-		response = self.m_session.get(self.__url("/api/{}/{}/{}".format(user, collection, id), query))
+		response = self.m_session.get(self.__format_url("api", user, collection, id, query=query))
 		if response.status_code != 200:
 			self.raise_exception(response.status_code, "cannot get blob {} from user \"{}\": {}".format(
 				id, user, response.status_code
@@ -172,7 +183,7 @@ class Session:
 		return {"id":blob, "mime":response.headers["Content-type"], "data":response.content}
 
 	def delete_blob(self, collection, blob):
-		response = self.m_session.delete(self.__url("/api/{}/{}/{}".format(self.m_user, collection, blob)))
+		response = self.m_session.delete(self.__format_url("api", self.m_user, collection, blob))
 		if response.status_code != 204:
 			self.raise_exception(response.status_code, "cannot delete blob {}: {}".format(
 				blob, response.status_code
@@ -180,7 +191,7 @@ class Session:
 
 	def move_blob(self, src, blob, dest):
 		response = self.m_session.post(
-			self.__url("/api/{}/{}/{}".format(self.m_user, src, blob)),
+			self.__format_url("api", self.m_user, src, blob),
 			data="move=another/collection",
 			headers={"Content-type": "application/x-www-form-urlencoded"}
 		)
@@ -191,7 +202,7 @@ class Session:
 
 	def set_permission(self, collection, blob, perm):
 		response = self.m_session.post(
-			self.__url("/api/{}/{}/{}".format(self.m_user, collection, blob)),
+			self.__format_url("api", self.m_user, collection, blob),
 			data="perm=" + perm,
 			headers={"Content-type": "application/x-www-form-urlencoded"}
 		)

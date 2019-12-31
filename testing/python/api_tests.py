@@ -78,7 +78,7 @@ class NormalTestCase(unittest.TestCase):
 		self.assertEqual(jpeg.height, 768)
 
 		# cannot get the same image without credential
-		self.assertRaises(hrb.Forbidden, self.anon.get_blob, "test_api", id)
+		self.assertRaises(hrb.NotFound, self.anon.get_blob, "test_api", id)
 
 		# query the blob. It should be the same as the one we just get
 		query = self.user1.query_blob(id)
@@ -207,7 +207,7 @@ class NormalTestCase(unittest.TestCase):
 
 
 	def test_move_blob(self):
-		blob_id = self.user1.upload("some/collection", "happy%F0%9F%98%86%F0%9F%98%84.jpg", data=self.random_image(800, 600))
+		blob_id = self.user1.upload("some/collection", "happy😆faces😄.jpg", data=self.random_image(800, 600))
 
 		# move to another collection
 		self.user1.move_blob("some/collection", blob_id, "another/collection")
@@ -220,7 +220,7 @@ class NormalTestCase(unittest.TestCase):
 
 		# another collection is created
 		dest_coll = self.user1.list_blobs("another/collection")
-		self.assertEqual(next(x for x in dest_coll if x.id() == blob_id).filename(), "happy😆😄.jpg")
+		self.assertEqual(next(x for x in dest_coll if x.id() == blob_id).filename(), "happy😆faces😄.jpg")
 
 		coll_list = self.user1.list_collections()
 		self.assertEqual(next(x for x in coll_list if x.name() == "another/collection").owner(), "sumsum")
