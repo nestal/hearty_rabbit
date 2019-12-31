@@ -46,12 +46,14 @@ private:
 	[[nodiscard]] redis::CommandString list_public_blob_command() const;
 	void update(redis::Connection& db, const ObjectID& blobid, const CollEntryDB& entry);
 
-	hrb::Collection from_reply(
+	[[nodiscard]] hrb::Collection from_reply(
 		const redis::Reply& hash_getall_reply,
 		std::string_view coll,
 		const Authentication& requester,
 		nlohmann::json&& meta
 	) const;
+
+	[[nodiscard]] static hrb::Collection no_collection();
 
 public:
 	explicit Ownership(std::string_view name);

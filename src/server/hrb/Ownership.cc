@@ -27,6 +27,11 @@ Ownership::Ownership(std::string_view name) : m_user{name}
 {
 }
 
+hrb::Collection Ownership::no_collection()
+{
+	return hrb::Collection{};
+}
+
 hrb::Collection Ownership::from_reply(
 	const redis::Reply& reply,
 	std::string_view coll,

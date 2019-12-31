@@ -152,7 +152,9 @@ class Session:
 			))
 		# Server should return our username and put it in the JSON, so they should match.
 		# This is just a sanity check.
-		if response.json()["username"] == self.m_user:
+		# That is, unless we have not yet login (i.e. m_user is None). In that case "username" should not be
+		# in the JSON.
+		if response.json().get("username") == self.m_user:
 			return self.__elements_to_blobs(response.json())
 		else:
 			return {}
@@ -226,7 +228,7 @@ class Session:
 			))
 
 	def list_public_blobs(self, user = ""):
-		response = self.m_session.get(self.__url("/query/blob_set", {"public":"", "json":""}))
+		response = self.m_session.get(self.__url("/query/blob_set", {"public":user, "json":""}))
 		if response.status_code != 200:
 			self.raise_exception(response.status_code, "cannot public blobs: {}")
 		return self.__elements_to_blobs(response.json())

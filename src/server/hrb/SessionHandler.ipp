@@ -76,6 +76,12 @@ public:
 
 	auto send_json(nlohmann::json&& json, std::error_code ec) const
 	{
+		// Ignore JSON if error occurs (i.e. internal server error) for security reasons.
+		if (ec)
+			return m_send(http::response<http::empty_body>{
+				http::status::internal_server_error, m_version
+			});
+
 		assert(json.is_object());
 		using namespace std::chrono;
 
@@ -93,7 +99,6 @@ public:
 				>(high_resolution_clock::now() - m_parent.m_on_header).count()
 			);
 
-		auto result = ec ? http::status::internal_server_error : http::status::ok;
 		if (m_lib)
 		{
 			// TODO: catch exception here
@@ -119,7 +124,7 @@ public:
 			cover_url.add_option("rendition=thumbnail");
 
 			return m_send(m_lib->inject(
-				result,
+				http::status::ok,
 				json.dump(),
 				(
 					boost::format{fmt} % m_parent.server_root() %
@@ -135,7 +140,7 @@ public:
 			http::response<http::string_body> res{
 				std::piecewise_construct,
 				std::make_tuple(json.dump()),
-				std::make_tuple(result, m_version)
+				std::make_tuple(http::status::ok, m_version)
 			};
 			res.set(http::field::content_type, "application/json");
 			return m_send(std::move(res));

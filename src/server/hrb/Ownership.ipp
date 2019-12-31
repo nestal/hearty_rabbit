@@ -109,7 +109,10 @@ void Ownership::find_collection(
 				comp(from_reply(reply[0], coll, requester, std::move(meta)), ec);
 			}
 
-			// TODO: handle case where
+			// This should never happen unless the redis server has bugs. According to redis
+			// documentation, the "SCAN" command always return an array of two reply objects.
+			else
+				comp(no_collection(), hrb::make_error_code(Error::redis_command_error));
 		},
 		scan_collection_command(coll)
 	);

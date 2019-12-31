@@ -19,9 +19,9 @@ const std::error_category& hrb_error_category()
 	struct Cat : std::error_category
 	{
 		Cat() = default;
-		const char *name() const noexcept override { return "hrb"; }
+		[[nodiscard]] const char *name() const noexcept override { return "hrb"; }
 
-		std::string message(int ev) const override
+		[[nodiscard]] std::string message(int ev) const override
 		{
 			switch (static_cast<Error>(ev))
 			{

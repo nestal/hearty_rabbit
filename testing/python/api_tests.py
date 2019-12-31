@@ -13,6 +13,7 @@ spec = importlib.util.spec_from_file_location("hrb", "../../client/python/Hearty
 hrb = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(hrb)
 
+
 class NormalTestCase(unittest.TestCase):
 
 	m_site = "localhost:4433"
@@ -250,13 +251,17 @@ class NormalTestCase(unittest.TestCase):
 
 		# other user can get the image
 		self.assertEqual(self.user2.get_blob("some/collection", blob_id, self.user1.user())["id"], blob_id)
-		print(self.user2.list_public_blobs())
-		self.assertTrue(blob_id in self.user2.list_public_blobs())
 
-# 		# new blob can be found in the public list
-# 		self.assertTrue(blob_id in self.get_public_blobs()["elements"].keys())
-#
-# 		# anonymous user can find it in collection
+		# new blob can be found in the public list from sumsum
+		self.assertTrue(blob_id in self.user2.list_public_blobs())
+		self.assertTrue(blob_id in self.user2.list_public_blobs(user="sumsum"))
+
+		# user "unknown" has not yet uploaded any public blobs
+		self.assertEqual(len(self.user2.list_public_blobs(user="unknown")), 0)
+
+		# anonymous user can find it in collection
+		self.assertEqual(self.anon.get_blob("some/collection", blob_id, self.user1.user())["id"], blob_id)
+		self.assertTrue(blob_id in self.anon.list_blobs("some/collection", user="sumsum"))
 # 		self.assertEqual(self.anon.get("https://localhost:4433" + r1.headers["Location"]).status_code, 200)
 # 		self.assertTrue(blob_id in self.get_collection(self.anon,  "sumsum", "some/collection")["elements"])
 #
