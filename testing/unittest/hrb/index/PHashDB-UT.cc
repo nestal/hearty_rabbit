@@ -18,8 +18,7 @@
 #include "common/Escape.hh"
 
 #include "net/Redis.hh"
-
-#include <iostream>
+#include "TestImages.hh"
 
 using namespace hrb;
 using namespace std::chrono_literals;
@@ -31,7 +30,7 @@ TEST_CASE("find duplicated image in database", "[normal]")
 
 	PHashDb subject{*redis};
 
-	auto lena = phash(fs::path{__FILE__}.parent_path().parent_path().parent_path() / "image" / "lena.png");
+	auto lena = phash(hrb::test_images / "lena.png");
 	REQUIRE(lena.value() > 0);
 
 	auto lena_blob = insecure_random<ObjectID>();

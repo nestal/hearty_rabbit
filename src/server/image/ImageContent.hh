@@ -31,11 +31,11 @@ public:
 
 	static void check_models(const fs::path& haar_path);
 
-	boost::iterator_range<rect_iterator>  faces()    const {return {m_faces.begin(), m_faces.end()};}
-	boost::iterator_range<rect_iterator>  eyes()     const {return {m_eyes.begin(), m_eyes.end()};}
-	boost::iterator_range<rect_iterator>  features() const {return {m_features.begin(), m_features.end()};}
+	[[nodiscard]] boost::iterator_range<rect_iterator>  faces()    const {return {m_faces.begin(), m_faces.end()};}
+	[[nodiscard]] boost::iterator_range<rect_iterator>  eyes()     const {return {m_eyes.begin(), m_eyes.end()};}
+	[[nodiscard]] boost::iterator_range<rect_iterator>  features() const {return {m_features.begin(), m_features.end()};}
 
-	cv::Rect square_crop() const;
+	[[nodiscard]] cv::Rect square_crop() const;
 
 private:
 	struct InflectionPoint

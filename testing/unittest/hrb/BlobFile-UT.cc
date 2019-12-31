@@ -21,6 +21,7 @@
 #include "util/Configuration.hh"
 
 #include "image/Image.hh"
+#include "TestImages.hh"
 
 #include <config.hh>
 
@@ -55,7 +56,7 @@ protected:
 
 protected:
 	const fs::path  m_blob_path{"/tmp/BlobFile-UT"};
-	const fs::path  m_image_path{fs::path{__FILE__}.parent_path().parent_path() / "image"};
+	const fs::path  m_image_path{hrb::test_images};
 };
 
 TEST_CASE_METHOD(BlobFileUTFixture, "upload non-image BlobFile", "[normal]")
