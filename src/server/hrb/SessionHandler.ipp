@@ -336,7 +336,7 @@ void SessionHandler::on_request_view(Request&& req, URLIntent&& intent, Send&& s
 			*m_db,
 			m_auth,
 			breq.collection(),
-			SendJSON{std::move(send), breq.version(), breq.blob(), *this, &m_lib}
+			SendJSON{std::forward<Send>(send), breq.version(), breq.blob(), *this, &m_lib}
 		);
 	}
 	else

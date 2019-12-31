@@ -32,12 +32,12 @@ public:
 
 	bool allow(const UserID& requester, std::string_view owner);
 
-	std::string_view str() const {return {&m_perm, 1};}
-	std::string_view description() const;
+	[[nodiscard]] std::string_view str() const {return {&m_perm, 1};}
+	[[nodiscard]] std::string_view description() const;
 
-	constexpr const char* data() const {return &m_perm;}
-	constexpr std::size_t size() const {return 1;}
-	constexpr char perm() const {return m_perm;}
+	[[nodiscard]] constexpr const char* data() const {return &m_perm;}
+	[[nodiscard]] constexpr std::size_t size() const {return 1;}
+	[[nodiscard]] constexpr char perm() const {return m_perm;}
 
 	bool operator==(const Permission& other) const;
 	bool operator!=(const Permission& other) const;

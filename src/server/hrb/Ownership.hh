@@ -160,7 +160,7 @@ public:
 		Complete&& complete
 	);
 
-	const std::string& user() const {return m_user;}
+	[[nodiscard]] auto& user() const {return m_user;}
 
 private:
 	std::string m_user;

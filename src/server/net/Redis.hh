@@ -71,37 +71,37 @@ public:
 	using reference = std::vector<Reply>::reference;
 	using iterator = std::vector<Reply>::const_iterator;
 	using const_iterator = std::vector<Reply>::const_iterator;
-	iterator begin() const;
-	iterator end() const;
+	[[nodiscard]] iterator begin() const;
+	[[nodiscard]] iterator end() const;
 
-	bool is_string() const {return m_reply->type == REDIS_REPLY_STRING;}
-	bool is_nil() const {return m_reply->type == REDIS_REPLY_NIL;}
+	[[nodiscard]] bool is_string() const {return m_reply->type == REDIS_REPLY_STRING;}
+	[[nodiscard]] bool is_nil() const {return m_reply->type == REDIS_REPLY_NIL;}
 
-	std::string_view as_string() const noexcept;
-	std::string_view as_status() const noexcept;
-	std::string_view as_error() const noexcept;
-	std::string_view as_any_string() const noexcept;
-	boost::asio::const_buffer as_buffer() const noexcept;
-	auto type() const {return m_reply->type;}
-	std::size_t length() const;
+	[[nodiscard]] std::string_view as_string() const noexcept;
+	[[nodiscard]] std::string_view as_status() const noexcept;
+	[[nodiscard]] std::string_view as_error() const noexcept;
+	[[nodiscard]] std::string_view as_any_string() const noexcept;
+	[[nodiscard]] boost::asio::const_buffer as_buffer() const noexcept;
+	[[nodiscard]] auto type() const {return m_reply->type;}
+	[[nodiscard]] std::size_t length() const;
 
 	explicit operator bool() const noexcept ;
 
-	long as_int() const noexcept;
-	long to_int() const noexcept;
+	[[nodiscard]] long as_int() const noexcept;
+	[[nodiscard]] long to_int() const noexcept;
 
-	Reply as_array(std::size_t i) const noexcept;
-	Reply as_array(std::size_t i, std::error_code& ec) const noexcept;
-	Reply operator[](std::size_t i) const noexcept;
-	std::size_t array_size() const noexcept;
+	[[nodiscard]] Reply as_array(std::size_t i) const noexcept;
+	[[nodiscard]] Reply as_array(std::size_t i, std::error_code& ec) const noexcept;
+	[[nodiscard]] Reply operator[](std::size_t i) const noexcept;
+	[[nodiscard]] std::size_t array_size() const noexcept;
 
 	class KeyValue
 	{
 	public:
-		KeyValue(iterator current) : m_current{current} {}
+		explicit KeyValue(iterator current) : m_current{current} {}
 
-		auto key() const {return m_current->as_string();}
-		auto value() const {auto i = m_current; return *++i;}
+		[[nodiscard]] auto key() const {return m_current->as_string();}
+		[[nodiscard]] auto value() const {auto i = m_current; return *++i;}
 
 	private:
 		iterator m_current;
@@ -116,12 +116,12 @@ public:
 	{
 	public:
 		kv_iterator() = default;
-		kv_iterator(iterator it) : kv_iterator::iterator_adaptor_{it} {}
+		explicit kv_iterator(iterator it) : kv_iterator::iterator_adaptor_{it} {}
 	private:
 		friend class boost::iterator_core_access;
 		void increment() {this->base_reference() += 2;}
-		KeyValue dereference() const {return KeyValue{this->base()};}
-		typename iterator_adaptor::difference_type distance_to(kv_iterator other) const
+		[[nodiscard]] auto dereference() const {return KeyValue{this->base()};}
+		[[nodiscard]] auto distance_to(kv_iterator other) const
 		{
 			return (other.base() - base()) / 2;
 		}
@@ -131,7 +131,7 @@ public:
 		}
 	};
 
-	auto kv_pairs() const
+	[[nodiscard]] auto kv_pairs() const
 	{
 		return boost::iterator_range<kv_iterator>{
 			kv_iterator{begin()},
@@ -168,6 +168,8 @@ private:
 private:
 	std::shared_ptr<::redisReply> m_reply;
 
+	// If m_reply represents an array, each element in the "element" array in redisReply
+	// will be moved to m_array.
 	std::vector<Reply> m_array;
 };
 

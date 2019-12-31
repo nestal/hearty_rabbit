@@ -106,7 +106,7 @@ void Ownership::find_collection(
 					meta = nlohmann::json::object();
 				}
 
-				comp(from_reply(reply[0], coll, requester, std::move(meta)), std::move(ec));
+				comp(from_reply(reply[0], coll, requester, std::move(meta)), ec);
 			}
 
 			// TODO: handle case where
@@ -165,15 +165,12 @@ void Ownership::find(
 	db.command(
 		[
 			comp=std::forward<Complete>(complete)
-		](auto&& entry, std::error_code&& ec) mutable
+		](auto&& entry, std::error_code ec) mutable
 		{
 			if (!ec && entry.is_nil())
 				ec = Error::object_not_exist;
 
-			comp(
-				CollEntryDB{entry.as_string()},
-				std::move(ec)
-			);
+			comp(CollEntryDB{entry.as_string()}, ec);
 		},
 		"EVAL %s 2 %b %b %b", lua,
 		coll_set.data(), coll_set.size(),
@@ -194,9 +191,9 @@ void Ownership::scan_collections(
 	db.command(
 		[
 			comp=std::forward<Complete>(complete),
-			cb=std::forward<CollectionCallback>(callback),
-			&db, user=m_user
-		](redis::Reply&& reply, std::error_code&& ec) mutable
+			callback=std::forward<CollectionCallback>(callback),
+			&db, *this
+		](redis::Reply&& reply, std::error_code ec) mutable
 		{
 			if (!ec)
 			{
@@ -209,18 +206,13 @@ void Ownership::scan_collections(
 
 					// call the callback once to handle one collection
 					for (auto&& p : dirs.kv_pairs())
-					{
-						auto sv = p.value().as_string();
-						if (sv.empty())
-							return;
-
-						cb(p.key(), nlohmann::json::parse(sv));
-					};
+						if (auto sv = p.value().as_string(); !sv.empty())
+							callback(p.key(), nlohmann::json::parse(sv));
 
 					// if comp return true, keep scanning with the same callback and
 					// comp as completion routine
 					if (comp(cursor, ec) && cursor != 0)
-						Ownership{user}.scan_collections(db, cursor, std::move(cb), std::move(comp));
+						scan_collections(db, cursor, std::move(callback), std::move(comp));
 					return;
 				}
 			}

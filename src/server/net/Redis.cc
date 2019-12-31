@@ -83,11 +83,7 @@ void Connection::do_write(CommandString&& cmd, Completion&& completion)
 	async_write(
 		m_socket,
 		buffer,
-		[
-			this,
-			cmd=std::move(cmd),
-			self=shared_from_this()
-		](auto ec, std::size_t bytes)
+		[this, cmd=std::move(cmd), self=shared_from_this()](auto ec, std::size_t bytes)
 		{
 			if (ec)
 			{
@@ -222,7 +218,7 @@ void Connection::on_exec_transaction(Reply&& reply, std::error_code ec)
 
 	// run the callback for the "EXEC" command
 	assert(!m_callbacks.empty());
-	m_callbacks.front()(std::move(reply), std::move(ec));
+	m_callbacks.front()(std::move(reply), ec);
 
 	m_queued_callbacks.clear();
 }

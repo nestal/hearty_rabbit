@@ -71,22 +71,22 @@ public:
 	URLIntent(Action act, std::string_view user, std::string_view coll, const ObjectID& blob, std::string_view option = "");
 	URLIntent(QueryTarget target, std::string_view option);
 
-	Action action() const {return m_action;}
-	std::string_view user() const {return m_user;}
-	std::string_view collection() const {return m_coll;}
-	std::string_view filename() const {return m_filename;}
-	std::string_view option() const {return m_option;}
-	QueryTarget query_target() const {return m_query_target;}
+	[[nodiscard]] Action action() const {return m_action;}
+	[[nodiscard]] std::string_view user() const {return m_user;}
+	[[nodiscard]] std::string_view collection() const {return m_coll;}
+	[[nodiscard]] std::string_view filename() const {return m_filename;}
+	[[nodiscard]] std::string_view option() const {return m_option;}
+	[[nodiscard]] QueryTarget query_target() const {return m_query_target;}
 
 	void set_option(std::string_view option) {m_option = option;}
 	void add_option(std::string_view option);
 
-	std::optional<ObjectID> blob() const;
+	[[nodiscard]] std::optional<ObjectID> blob() const;
 
-	std::string path() const;
+	[[nodiscard]] std::string path() const;
 
-	std::string str() const;
-	bool valid() const;
+	[[nodiscard]] std::string str() const;
+	[[nodiscard]] bool valid() const;
 	explicit operator bool() const {return valid();}
 
 private:
