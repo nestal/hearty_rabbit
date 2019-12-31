@@ -24,7 +24,7 @@ class NormalTestCase(unittest.TestCase):
 	# without the "test" prefix in the method, it is not treated as a test routine
 	@staticmethod
 	def random_image(width, height, format="jpeg"):
-		lena = Image.open("../tests/image/lena.png").convert("RGBA").resize((width, height), Image.ANTIALIAS)
+		lena = Image.open("../common/lena.png").convert("RGBA").resize((width, height), Image.ANTIALIAS)
 
 		# random noise
 		random_array = numpy.random.rand(128, 128, 4) * 255
@@ -73,7 +73,7 @@ class NormalTestCase(unittest.TestCase):
 	def setUp(self):
 		# set up a session with valid credential
 		self.user1 = requests.Session()
-		self.user1.verify = False
+		self.user1.verify = "../../etc/hearty_rabbit/certificate.pem"
 
 		login_response = self.user1.post(
 			"https://localhost:4433/login",
@@ -84,7 +84,7 @@ class NormalTestCase(unittest.TestCase):
 		self.assertNotEqual(self.user1.cookies.get("id"), "")
 
 		self.user2 = requests.Session()
-		self.user2.verify = False
+		self.user2.verify = "../../etc/hearty_rabbit/certificate.pem"
 		login_response = self.user2.post(
 			"https://localhost:4433/login",
 			data="username=siuyung&password=rabbit",

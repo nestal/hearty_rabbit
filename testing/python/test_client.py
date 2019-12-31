@@ -23,7 +23,7 @@ class NormalTestCase(unittest.TestCase):
 	# without the "test" prefix in the method, it is not treated as a test routine
 	@staticmethod
 	def random_image(width, height, format="jpeg"):
-		lena = Image.open("../tests/image/lena.png").convert("RGBA").resize((width, height), Image.ANTIALIAS)
+		lena = Image.open("../common/lena.png").convert("RGBA").resize((width, height), Image.ANTIALIAS)
 
 		# random noise
 		random_array = numpy.random.rand(128, 128, 4) * 255
