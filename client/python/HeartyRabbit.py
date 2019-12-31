@@ -42,10 +42,15 @@ class Collection:
 	def name(self):
 		return self.m_json["coll"]
 
+	def cover(self):
+		return self.m_json["cover"]
+
+	def owner(self):
+		return self.m_json["owner"]
 
 class Session:
 	m_site = None
-	m_user = ""
+	m_user = None
 	m_session = None
 
 	def __init__(self, site = "localhost:4433", cert = None):
@@ -56,12 +61,15 @@ class Session:
 		if self.m_site.netloc == "localhost:4433" and cert is None:
 			self.m_session.verify = "../../etc/hearty_rabbit/certificate.pem"
 
-	def url(self, path, query = None):
+	def __url(self, path, query = None):
 		url = self.m_site._replace(path = path)
 		if query is not None:
 			url = url._replace(query = urllib.parse.urlencode(query))
 
 		return urllib.parse.urlunparse(url)
+
+	def user(self):
+		return self.m_user
 
 	@staticmethod
 	def raise_exception(status_code, format_string):
@@ -77,7 +85,7 @@ class Session:
 
 	def login(self, user, password):
 		response = self.m_session.post(
-			self.url("/login"),
+			self.__url("/login"),
 			data="username=" + user + "&password=" + password,
 			headers={"Content-type": "application/x-www-form-urlencoded"}
 		)
@@ -94,7 +102,7 @@ class Session:
 		if user is None:
 			user = self.m_user
 
-		response = self.m_session.get(self.url("/query/collection", {"user": user}))
+		response = self.m_session.get(self.__url("/query/collection", {"user": user, "json": None}))
 		if response.status_code != 200:
 			self.raise_exception(response.status_code, "cannot query album list: {0}")
 
@@ -108,7 +116,7 @@ class Session:
 		if user is None:
 			user = self.m_user
 
-		response = self.m_session.get(self.url("/api/" + user + "/" + urllib.parse.quote_plus(collection)))
+		response = self.m_session.get(self.__url("/api/" + user + "/" + urllib.parse.quote_plus(collection)))
 		if response.status_code != 200:
 			self.raise_exception(response.status_code, "cannot get blobs from collections \"{}\": {}".format(
 				collection,
@@ -126,7 +134,7 @@ class Session:
 
 	def upload(self, collection, filename, data):
 		response = self.m_session.put(
-			self.url("/upload/{}/{}/{}".format(self.m_user, collection, filename)),
+			self.__url("/upload/{}/{}/{}".format(self.m_user, collection, filename)),
 			data=data
 		)
 		if response.status_code != 201:
@@ -144,7 +152,7 @@ class Session:
 		if rendition != "":
 			query["rendition"] = rendition
 
-		response = self.m_session.get(self.url("/api/{}/{}/{}".format(user, collection, id), query))
+		response = self.m_session.get(self.__url("/api/{}/{}/{}".format(user, collection, id), query))
 		if response.status_code != 200:
 			self.raise_exception(response.status_code, "cannot get blob {} from user \"{}\": {}".format(
 				id, user, response.status_code
@@ -156,7 +164,7 @@ class Session:
 		query = {"id": blob}
 		if rendition != "":
 			query["rendition"] = rendition
-		response = self.m_session.get(self.url("/query/blob", query))
+		response = self.m_session.get(self.__url("/query/blob", query))
 		if response.status_code != 200:
 			self.raise_exception(response.status_code, "cannot query blob {}: {}".format(
 				blob, response.status_code
@@ -164,8 +172,19 @@ class Session:
 		return {"id":blob, "mime":response.headers["Content-type"], "data":response.content}
 
 	def delete_blob(self, collection, blob):
-		response = self.m_session.delete(self.url("/api/{}/{}/{}".format(self.m_user, collection, blob)))
+		response = self.m_session.delete(self.__url("/api/{}/{}/{}".format(self.m_user, collection, blob)))
 		if response.status_code != 204:
 			self.raise_exception(response.status_code, "cannot delete blob {}: {}".format(
 				blob, response.status_code
+			))
+
+	def move_blob(self, src, blob, dest):
+		response = self.m_session.post(
+			self.__url("/api/{}/{}/{}".format(self.m_user, src, blob)),
+			data="move=another/collection",
+			headers={"Content-type": "application/x-www-form-urlencoded"}
+		)
+		if response.status_code != 204:
+			self.raise_exception(response.status_code, "cannot move blob {} from {} to {}: {}".format(
+				blob, src, dest, response.status_code
 			))

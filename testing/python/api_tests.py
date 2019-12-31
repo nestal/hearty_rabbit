@@ -42,10 +42,14 @@ class NormalTestCase(unittest.TestCase):
 		# set up a session with valid credential
 		self.user1 = hrb.Session(self.m_site)
 		self.user1.login("sumsum", "bearbear")
+		self.assertEqual(self.user1.user(), "sumsum")
+
 		self.user2 = hrb.Session(self.m_site)
 		self.user2.login("siuyung", "rabbit")
+		self.assertEqual(self.user2.user(), "siuyung")
 
 		self.anon = hrb.Session(self.m_site)
+		self.assertEqual(self.anon.user(), None)
 
 	def tearDown(self):
 		self.user1.close()
@@ -53,13 +57,15 @@ class NormalTestCase(unittest.TestCase):
 		self.anon.close()
 
 	def test_login_incorrect(self):
-		bad_session = hrb.Session(self.m_site)
-		self.assertRaises(hrb.Forbidden, bad_session.login, "sumsum", "rabbit")
-		bad_session.close()
+		self.assertRaises(hrb.Forbidden, self.anon.login, "sumsum", "rabbit")
 
 	def test_upload_jpeg(self):
 		id = self.user1.upload("test_api", "test_lena.jpg", self.random_image(1024, 768))
 		self.assertEqual(len(id), 40)
+
+		# Collection "test_api" is created
+		coll_list = self.user1.list_collections()
+		self.assertEqual(next(x for x in coll_list if x.name() == "test_api").owner(), "sumsum")
 
 		# get the blob we just uploaded
 		lena1 = self.user1.get_blob("test_api", id)
@@ -72,7 +78,7 @@ class NormalTestCase(unittest.TestCase):
 		self.assertEqual(jpeg.height, 768)
 
 		# cannot get the same image without credential
-		self.assertRaises(hrb.NotFound, self.anon.get_blob, "test_api", id)
+		self.assertRaises(hrb.Forbidden, self.anon.get_blob, "test_api", id)
 
 		# query the blob. It should be the same as the one we just get
 		query = self.user1.query_blob(id)
@@ -198,6 +204,40 @@ class NormalTestCase(unittest.TestCase):
 		# not found in collection
 		r4 = self.user1.list_blobs("some/collection")
 		self.assertRaises(StopIteration, next, (x for x in r4 if x.id() == blob_id))
+
+
+	def test_move_blob(self):
+		blob_id = self.user1.upload("some/collection", "happy%F0%9F%98%86%F0%9F%98%84.jpg", data=self.random_image(800, 600))
+
+		# move to another collection
+		self.user1.move_blob("some/collection", blob_id, "another/collection")
+
+		# get it from another collection successfully
+		self.assertEqual(self.user1.get_blob("another/collection", blob_id)["id"], blob_id)
+
+		# can't get it from original collection any more
+		self.assertRaises(hrb.NotFound, self.user1.get_blob, "some/collection", blob_id)
+
+		# another collection is created
+		dest_coll = self.user1.list_blobs("another/collection")
+		self.assertEqual(next(x for x in dest_coll if x.id() == blob_id).filename(), "happy😆😄.jpg")
+
+		coll_list = self.user1.list_collections()
+		self.assertEqual(next(x for x in coll_list if x.name() == "another/collection").owner(), "sumsum")
+
+		# invalid post data
+		self.assertEqual(self.user1.m_session.post(
+			"https://localhost:4433/api/sumsum/another/collection/" + blob_id,
+			data="invalid=parameters",
+			headers={"Content-type": "application/x-www-form-urlencoded"}
+		).status_code, 400)
+
+		# invalid content type
+		self.assertEqual(self.user1.m_session.post(
+			"https://localhost:4433/api/sumsum/another/collection/" + blob_id,
+			data="invalid=parameters",
+			headers={"Content-type": "multipart/form-data; boundary=something"}
+		).status_code, 400)
 
 if __name__ == '__main__':
 	unittest.main()
