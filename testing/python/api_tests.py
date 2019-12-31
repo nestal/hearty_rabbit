@@ -250,7 +250,8 @@ class NormalTestCase(unittest.TestCase):
 
 		# other user can get the image
 		self.assertEqual(self.user2.get_blob("some/collection", blob_id, self.user1.user())["id"], blob_id)
-#		self.assertTrue(blob_id in self.get_collection(self.user2, "sumsum", "some/collection")["elements"])
+		print(self.user2.list_public_blobs())
+		self.assertTrue(blob_id in self.user2.list_public_blobs())
 
 # 		# new blob can be found in the public list
 # 		self.assertTrue(blob_id in self.get_public_blobs()["elements"].keys())

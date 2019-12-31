@@ -265,7 +265,7 @@ void SessionHandler::on_request_body(Request&& req, Send&& send)
 					*m_db,
 					SendJSON{std::forward<Send>(send), req.version(), std::nullopt, *this, &m_lib}
 				) :
-				list_public_blobs(false, req.version(), std::forward<Send>(send));
+				list_public_blobs(false, "", req.version(), std::forward<Send>(send));
 
 		if (intent.action() == URLIntent::Action::query)
 			return on_query({std::forward<Request>(req), std::move(intent)}, std::forward<Send>(send));
@@ -469,7 +469,7 @@ void SessionHandler::query_blob_set(const URLIntent& intent, unsigned version, S
 
 	if (pub.has_value())
 	{
-		list_public_blobs(json.has_value(), version, std::forward<Send>(send));
+		list_public_blobs(json.has_value(), *pub, version, std::forward<Send>(send));
 	}
 	else if (dup_coll.has_value())
 	{
@@ -569,18 +569,18 @@ void SessionHandler::post_view(BlobRequest&& req, Send&& send)
 }
 
 template <typename Send>
-void SessionHandler::list_public_blobs(bool is_json, unsigned version, Send&& send)
+void SessionHandler::list_public_blobs(bool is_json, std::string_view user, unsigned version, Send&& send)
 {
 	Ownership{m_auth.username()}.list_public_blobs(
 		*m_db,
-		[send=std::forward<Send>(send), version, this, is_json](auto&& blob_refs, auto ec) mutable
+		[send=std::forward<Send>(send), version, this, is_json, user=std::string{user}](auto&& blob_refs, auto ec) mutable
 		{
 			BlobList blob_list;
 			for (auto&& bref : blob_refs)
 			{
 				// filter by "user" if it is not empty: that means we want all public blobs from all users
 				// if "user" is empty string.
-				if ((m_auth.username().empty() || m_auth.username() == bref.user) &&
+				if ((user.empty() || user == bref.user) &&
 					bref.entry.permission() == Permission::public_())
 				{
 					if (auto json = nlohmann::json::parse(bref.entry.json(), nullptr, false); !json.is_discarded())

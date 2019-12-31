@@ -133,14 +133,11 @@ class Session:
 		coll_list = self.list_collections(user)
 		return next((x for x in coll_list if x.name() == collection), None)
 
-	def __elements_to_blobs(self, json):
+	@staticmethod
+	def __elements_to_blobs(json):
 		blobs = {}
-
-		# Server should return our username and put it in the JSON, so they should match.
-		# This is just a sanity check.
-		if json["username"] == self.m_user:
-			for id, blob in json["elements"].items():
-				blobs[id] = Blob(id, blob)
+		for id, blob in json["elements"].items():
+			blobs[id] = Blob(id, blob)
 		return blobs
 
 	def list_blobs(self, collection, user = None):
@@ -153,8 +150,12 @@ class Session:
 				collection,
 				response.status_code
 			))
-
-		return self.__elements_to_blobs(response.json())
+		# Server should return our username and put it in the JSON, so they should match.
+		# This is just a sanity check.
+		if response.json()["username"] == self.m_user:
+			return self.__elements_to_blobs(response.json())
+		else:
+			return {}
 
 	def upload(self, collection, filename, data):
 		response = self.m_session.put(
@@ -224,8 +225,8 @@ class Session:
 				blobid, collection, perm, response.status_code
 			))
 
-	def list_public_blobs(self):
-		response = self.m_session.get(self.__url("/query/blob_set", {"public":None, "json":None}))
+	def list_public_blobs(self, user = ""):
+		response = self.m_session.get(self.__url("/query/blob_set", {"public":"", "json":""}))
 		if response.status_code != 200:
 			self.raise_exception(response.status_code, "cannot public blobs: {}")
 		return self.__elements_to_blobs(response.json())
