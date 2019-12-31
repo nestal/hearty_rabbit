@@ -1,6 +1,18 @@
 import requests
 import urllib.parse
 
+class HrbException(Exception):
+	pass
+
+class Forbidden(HrbException):
+	pass
+
+class NotFound(HrbException):
+	pass
+
+class BadRequest(HrbException):
+	pass
+
 class Blob:
 	m_json = None
 	m_id = None
@@ -11,6 +23,12 @@ class Blob:
 
 	def filename(self):
 		return self.m_json["filename"]
+
+	def mime(self):
+		return self.m_json["mime"]
+
+	def timestamp(self):
+		return self.m_json["timestamp"]
 
 	def id(self):
 		return self.m_id
@@ -49,11 +67,13 @@ class Session:
 	def raise_exception(status_code, format_string):
 		message = format_string.format(status_code)
 		if status_code == 404:
-			raise FileNotFoundError(message)
+			raise NotFound(message)
 		elif status_code == 403:
-			raise PermissionError(message)
+			raise Forbidden(message)
+		elif status_code == 400:
+			raise BadRequest(message)
 		else:
-			raise Exception(message)
+			raise HrbException(message)
 
 	def login(self, user, password):
 		response = self.m_session.post(
@@ -96,8 +116,12 @@ class Session:
 			))
 
 		blobs = []
-		for id, blob in response.json()["elements"].items():
-			blobs.append(Blob(id, blob))
+
+		# Server should return our username and put it in the JSON, so they should match.
+		# This is just a sanity check.
+		if response.json()["username"] == self.m_user:
+			for id, blob in response.json()["elements"].items():
+				blobs.append(Blob(id, blob))
 		return blobs
 
 	def upload(self, collection, filename, data):
@@ -138,3 +162,10 @@ class Session:
 				blob, response.status_code
 			))
 		return {"id":blob, "mime":response.headers["Content-type"], "data":response.content}
+
+	def delete_blob(self, collection, blob):
+		response = self.m_session.delete(self.url("/api/{}/{}/{}".format(self.m_user, collection, blob)))
+		if response.status_code != 204:
+			self.raise_exception(response.status_code, "cannot delete blob {}: {}".format(
+				blob, response.status_code
+			))

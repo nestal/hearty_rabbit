@@ -54,7 +54,7 @@ class NormalTestCase(unittest.TestCase):
 
 	def test_login_incorrect(self):
 		bad_session = hrb.Session(self.m_site)
-		self.assertRaises(PermissionError, bad_session.login, "sumsum", "rabbit")
+		self.assertRaises(hrb.Forbidden, bad_session.login, "sumsum", "rabbit")
 		bad_session.close()
 
 	def test_upload_jpeg(self):
@@ -72,7 +72,7 @@ class NormalTestCase(unittest.TestCase):
 		self.assertEqual(jpeg.height, 768)
 
 		# cannot get the same image without credential
-		self.assertRaises(FileNotFoundError, self.anon.get_blob, "test_api", id)
+		self.assertRaises(hrb.NotFound, self.anon.get_blob, "test_api", id)
 
 		# query the blob. It should be the same as the one we just get
 		query = self.user1.query_blob(id)
@@ -158,20 +158,46 @@ class NormalTestCase(unittest.TestCase):
 
 		# Is all-zero blob ID really invalid? <- Yes, it's valid.
 		# Requesting with a valid object ID on an object that doesn't exists will return "Not Found"
-		self.assertRaises(FileNotFoundError, self.user1.get_blob, "", "0000000000000000000000000000000000000000")
+		self.assertRaises(hrb.NotFound, self.user1.get_blob, "", "0000000000000000000000000000000000000000")
 
-		# # other user's blob: no matter the target exists or not will give you "forbidden"
-		# r3 = self.user1.get("https://localhost:4433/api/nestal/0100000000000000000000000000000000000003")
-		# self.assertEqual(r3.status_code, 403)
-		#
-		# # 10-digit blob ID is really invalid: it will be treated as collection name
-		# r4 = self.user1.get("https://localhost:4433/api/sumsum/FF0000000000000000FF")
-		# self.assertEqual(r4.status_code, 200)
-		#
-		# # invalid blob ID with funny characters: it will be treated as collection name
-		# r5 = self.user1.get("https://localhost:4433/api/nestal/0L00000000000000000PP0000000000000000003")
-		# self.assertEqual(r5.status_code, 200)
+		# other user's blob: no matter the target exists or not will give you "forbidden"
+		r3 = self.user1.m_session.get("https://localhost:4433/api/nestal/0100000000000000000000000000000000000003")
+		self.assertEqual(r3.status_code, 403)
 
+		# 10-digit blob ID is really invalid: it will be treated as collection name
+		r4 = self.user1.m_session.get("https://localhost:4433/api/sumsum/FF0000000000000000FF")
+		self.assertEqual(r4.status_code, 200)
+
+		# invalid blob ID with funny characters: it will be treated as collection name
+		r5 = self.user1.m_session.get("https://localhost:4433/api/nestal/0L00000000000000000PP0000000000000000003")
+		self.assertEqual(r5.status_code, 200)
+
+
+	def test_upload_to_other_users_collection(self):
+		self.user1.m_user = "yungyung"
+		self.assertRaises(hrb.Forbidden, self.user1.upload, "abc", "image.jpg", data=self.random_image(640, 640))
+
+		self.anon.m_user = "sumsum"
+		self.assertRaises(hrb.BadRequest, self.anon.upload, "abc", "image.jpg", data=self.random_image(640, 640))
+
+
+	def test_upload_jpeg_to_other_collection(self):
+		# upload to server
+		blob_id = self.user1.upload("some/collection", "abc.jpg", data=self.random_image(800, 800))
+
+		# should find it in the new collection
+		r2 = self.user1.list_blobs("some/collection")
+		abc = next(x for x in r2 if x.id() == blob_id)
+		self.assertEqual(abc.filename(), "abc.jpg")
+		self.assertEqual(abc.mime(), "image/jpeg")
+		self.assertTrue(abc.mime() is not None)
+
+		# delete it afterwards
+		self.user1.delete_blob("some/collection", blob_id)
+
+		# not found in collection
+		r4 = self.user1.list_blobs("some/collection")
+		self.assertRaises(StopIteration, next, (x for x in r4 if x.id() == blob_id))
 
 if __name__ == '__main__':
 	unittest.main()

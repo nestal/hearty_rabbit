@@ -251,7 +251,7 @@ void SessionHandler::on_request_body(Request&& req, Send&& send)
 		return on_request_api(std::forward<Request>(req), std::move(intent), std::forward<Send>(send));
 
 	// The following URL only support EmptyRequests, i.e. requests without body.
-	if constexpr (std::is_same<std::remove_reference_t<Request>, EmptyRequest>::value)
+	if constexpr (std::is_same_v<std::decay_t<Request>, EmptyRequest>)
 	{
 		if (req.method() != http::verb::get)
 			return send(bad_request("unsupported HTTP method", req.version()));
@@ -291,19 +291,19 @@ void SessionHandler::on_request_api(Request&& req, URLIntent&& intent, Send&& se
 
 	if (req.method() == http::verb::delete_)
 	{
-		return unlink(std::move(breq), std::move(send));
+		return unlink(std::move(breq), std::forward<Send>(send));
 	}
 	else if (req.method() == http::verb::get)
 	{
 		if (breq.blob())
-			return get_blob(std::move(breq), std::move(send));
+			return get_blob(std::move(breq), std::forward<Send>(send));
 		else
 			return Ownership{breq.owner()}.find_collection(
 				*m_db,
 				m_auth,
 				breq.collection(),
 				[
-					send=SendJSON{std::move(send), req.version(), std::nullopt, *this}, this
+					send=SendJSON{std::forward<Send>(send), req.version(), std::nullopt, *this}, this
 				](auto&& coll, std::error_code ec) mutable
 				{
 					validate_collection(coll);
