@@ -69,10 +69,10 @@ class Session:
 		if user is None:
 			user = self.m_user
 
-		response = self.m_session.get(self.m_site + "/api/" + user + "/" + urllib.parse.quote_plus(collection.name()))
+		response = self.m_session.get(self.m_site + "/api/" + user + "/" + urllib.parse.quote_plus(collection))
 		if response.status_code != 200:
 			raise ValueError("cannot get blobs from collections \"{}\": {}".format(
-				collection.name(),
+				collection,
 				response.status_code
 			))
 
@@ -93,13 +93,27 @@ class Session:
 			))
 		return response.headers["Location"][-40:]
 
-	def get_blob(self, collection, id, user = None):
+	def get_blob(self, collection, id, user = None, rendition = ""):
 		if user is None:
 			user = self.m_user
 
-		response = self.m_session.get("{}/api/{}/{}/{}".format(self.m_site, user, collection, id))
+		url = "{}/api/{}/{}/{}".format(self.m_site, user, collection, id)
+		if rendition != "":
+			url += ("?" + urllib.parse.urlencode({"rendition": rendition}))
+
+		response = self.m_session.get(url)
 		if response.status_code != 200:
-			raise FileNotFoundError("cannot get blobs {} from user \"{}\": {}".format(
+			raise FileNotFoundError("cannot get blob {} from user \"{}\": {}".format(
 				id, user, response.status_code
 			))
 		return {"id":id, "mime":response.headers["Content-type"], "data":response.content}
+
+	def query_blob(self, blob, rendition = ""):
+		url = "{}/query/blob?id={}".format(self.m_site, blob)
+		if rendition != "":
+			url += ("&" + urllib.parse.urlencode({"rendition": rendition}))
+
+		response = self.m_session.get(url)
+		if response.status_code != 200:
+			raise FileNotFoundError("cannot find blob {}".format(blob))
+		return {"id":blob, "mime":response.headers["Content-type"], "data":response.content}
