@@ -137,18 +137,20 @@ target_include_directories(
 )
 
 ###################################################################################################
+# unit test common library
+###################################################################################################
+add_library(test_common testing/common/TestImages.cc testing/common/TestImages.hh)
+target_include_directories(test_common PUBLIC ${PROJECT_SOURCE_DIR}/testing/common)
+
+###################################################################################################
 # server-side unit tests: test cases for the server-side code
 # Server will fail to built if any of these test cases failed.
 ###################################################################################################
 
-file(GLOB_RECURSE SRV_UT_SRC testing/include/*.hh testing/tests/*.cc testing/tests/*/*.hh)
+file(GLOB_RECURSE SRV_UT_SRC testing/unittest/*.cc testing/unittest/*.hh)
 #set(SRV_UT_SRC testing/unittest/hrb/Ownership-UT.cc testing/unittest/testing.cc)
 add_executable(unittest ${SRV_UT_SRC})
-target_include_directories(
-	unittest PRIVATE
-	unittest/include
-)
-target_link_libraries(unittest PUBLIC Catch2::Catch2 hrbsrv)
+target_link_libraries(unittest PUBLIC Catch2::Catch2 test_common hrbsrv)
 
 # Automatically run unit tests after the build
 # Although we specified the ${CMAKE_BINARY_DIR} as the current directory when running unit tests,
@@ -173,11 +175,7 @@ file(
 	testing/client/*.cc testing/client/*/*.hh
 )
 add_executable(clienttest ${CLIENT_UT_SRC})
-target_include_directories(
-	clienttest PRIVATE
-	unittest/include
-)
-target_link_libraries(clienttest PRIVATE Catch2::Catch2 hrbclient hrbsrv)
+target_link_libraries(clienttest PRIVATE Catch2::Catch2 test_common hrbclient hrbsrv)
 
 # Automatically run unit tests after the build
 # Although we specified the ${CMAKE_BINARY_DIR} as the current directory when running unit tests,
@@ -205,12 +203,8 @@ add_dependencies(hearty_rabbit unittest clienttest)
 if (BUILD_CLIENT)
 	add_subdirectory(client/qt)
 	
-	add_executable(gui_driver testing/gui_driver/main.cc testing/tests/image/TestImages.cc)
-	target_link_libraries(gui_driver hrbclient hrbsrv)
-	target_include_directories(
-		gui_driver PUBLIC
-		${PROJECT_SOURCE_DIR}/unittest/include
-	)
+	add_executable(gui_driver testing/gui_driver/main.cc)
+	target_link_libraries(gui_driver hrbclient hrbsrv test_common)
 endif()
 
 ###################################################################################################
