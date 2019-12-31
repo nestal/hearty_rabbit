@@ -21,7 +21,7 @@ login_response = source.post(
 	data="username=" + user + "&password=" + password,
 	headers={"Content-type": "application/x-www-form-urlencoded"}
 )
-if login_response.status_code != 200 or source.cookies.get("id") == "":
+if login_response.status_code != 204 or source.cookies.get("id") == "":
 	print("source site login incorrect: {0}".format(login_response.status_code))
 	exit(-1)
 
@@ -30,17 +30,17 @@ if album_list.status_code != 200:
 	print("cannot query album list: {0}".format(album_list.status_code))
 	exit(-1)
 
-for album_name in album_list.json()["colls"].keys():
+for album in album_list.json()["colls"]:
 
-	print("downloading album: {0}".format(album_name))
-	album = source.get(site + "/view/" + user + "/" + urllib.parse.quote_plus(album_name) + "?json")
+	print("downloading album: {0}".format(album["coll"]))
+	coll = source.get(site + "/api/" + user + "/" + urllib.parse.quote_plus(album["coll"])).json()
 
-	album_dir = os.path.join(blob_dir, album_name)
+	album_dir = os.path.join(blob_dir, album["coll"])
 	if not os.path.isdir(album_dir):
 		os.mkdir(album_dir, 0o0700)
 
-	for blobid, coll_entry in album.json()["elements"].items():
-		source_url = site + "/view/" + user + "/" + urllib.parse.quote_plus(album_name) + "/" + blobid + "?master"
+	for blobid, coll_entry in coll["elements"].items():
+		source_url = site + "/view/" + user + "/" + urllib.parse.quote_plus(album["coll"]) + "/" + blobid + "?master"
 		permission = coll_entry["perm"]
 
 		downloaded_file = os.path.join(album_dir, coll_entry["filename"])
