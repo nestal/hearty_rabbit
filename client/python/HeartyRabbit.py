@@ -26,12 +26,13 @@ class Collection:
 
 
 class Session:
-	m_site = urllib.parse.urlparse("https://localhost:4433")
+	m_site = None
 	m_user = ""
-	m_session = requests.Session()
+	m_session = None
 
 	def __init__(self, site = "localhost:4433", cert = None):
-		self.m_site = self.m_site._replace(netloc = site)
+		self.m_session = requests.Session()
+		self.m_site = urllib.parse.urlparse("https://" + site)
 
 		# This is a hack for testing purpose.
 		if self.m_site.netloc == "localhost:4433" and cert is None:

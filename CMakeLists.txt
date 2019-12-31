@@ -27,8 +27,11 @@ message(STATUS "found libb2 at ${LIBB2_LIBRARY} ${LIBB2_INCLUDE}")
 find_path(NLOHMANN_INCLUDE nlohmann/json.hpp PATHS include)
 message(STATUS "found nlohmann/json at ${NLOHMANN_INCLUDE}")
 
-pkg_check_modules(HIREDIS REQUIRED hiredis)
-pkg_check_modules(LIBUNWIND libunwind)
+# Catch2
+add_subdirectory(testing/Catch2)
+
+pkg_check_modules(HIREDIS REQUIRED IMPORTED_TARGET hiredis)
+pkg_check_modules(LIBUNWIND IMPORTED_TARGET libunwind)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CONFIG_FILENAME "hearty_rabbit.json")
@@ -40,7 +43,6 @@ message(STATUS "using haarcascade at ${HAARCASCADE_PATH}")
 add_definitions(-D_GLIBCXX_USE_CXX11_ABI=1)
 
 include_directories(
-	${HIREDIS_INCLUDE_DIRS}
 	${LIBUNWIND_INCLUDE_DIRS}
 	${LIBB2_INCLUDE}
 	${NLOHMANN_INCLUDE}
@@ -99,11 +101,10 @@ target_link_libraries(
 
 file(GLOB_RECURSE SERVER_SRC src/server/*.cc src/server/*.hh src/server/*.ipp)
 add_library(hrbsrv ${SERVER_SRC} ${CMAKE_CURRENT_BINARY_DIR}/config.hh)
-target_link_libraries(
-	hrbsrv
+target_link_libraries(hrbsrv PUBLIC
 	hrbcommon
 	magic
-	${HIREDIS_LIBRARIES}
+	PkgConfig::HIREDIS
 	OpenSSL::SSL
 	OpenSSL::Crypto
 	${OpenCV_LIBS}
@@ -140,19 +141,14 @@ target_include_directories(
 # Server will fail to built if any of these test cases failed.
 ###################################################################################################
 
-file(GLOB_RECURSE SRV_UT_SRC unittest/include/*.hh unittest/tests/*.cc unittest/tests/*/*.hh)
-#set(SRV_UT_SRC unittest/tests/hrb/Ownership-UT.cc unittest/tests/unittest.cc)
+file(GLOB_RECURSE SRV_UT_SRC testing/include/*.hh testing/tests/*.cc testing/tests/*/*.hh)
+#set(SRV_UT_SRC testing/unittest/hrb/Ownership-UT.cc testing/unittest/testing.cc)
 add_executable(unittest ${SRV_UT_SRC})
 target_include_directories(
 	unittest PRIVATE
 	unittest/include
-	unittest/Catch2/single_include
-	${PROJECT_SOURCE_DIR}/src/server
 )
-target_link_libraries(
-	unittest
-	hrbsrv
-)
+target_link_libraries(unittest PUBLIC Catch2::Catch2 hrbsrv)
 
 # Automatically run unit tests after the build
 # Although we specified the ${CMAKE_BINARY_DIR} as the current directory when running unit tests,
@@ -173,22 +169,16 @@ add_custom_command(
 
 file(
 	GLOB_RECURSE CLIENT_UT_SRC
-	unittest/include/*.hh unittest/tests/image/TestImages.cc
-	unittest/client/*.cc unittest/client/*/*.hh
+	testing/include/*.hh testing/tests/image/TestImages.cc
+	testing/client/*.cc testing/client/*/*.hh
 )
 add_executable(clienttest ${CLIENT_UT_SRC})
 target_include_directories(
 	clienttest PRIVATE
 	unittest/include
-	unittest/Catch2/single_include
-	${PROJECT_SOURCE_DIR}/src/client
-	${PROJECT_SOURCE_DIR}/src/server
 )
-target_link_libraries(
-	clienttest
-	hrbclient
-	hrbsrv
-)
+target_link_libraries(clienttest PRIVATE Catch2::Catch2 hrbclient hrbsrv)
+
 # Automatically run unit tests after the build
 # Although we specified the ${CMAKE_BINARY_DIR} as the current directory when running unit tests,
 # the test cases should not use absolute path when referring to test data. The test cases
@@ -215,7 +205,7 @@ add_dependencies(hearty_rabbit unittest clienttest)
 if (BUILD_CLIENT)
 	add_subdirectory(client/qt)
 	
-	add_executable(gui_driver unittest/gui_driver/main.cc unittest/tests/image/TestImages.cc)
+	add_executable(gui_driver testing/gui_driver/main.cc testing/tests/image/TestImages.cc)
 	target_link_libraries(gui_driver hrbclient hrbsrv)
 	target_include_directories(
 		gui_driver PUBLIC
