@@ -239,5 +239,53 @@ class NormalTestCase(unittest.TestCase):
 			headers={"Content-type": "multipart/form-data; boundary=something"}
 		).status_code, 400)
 
+	def test_set_permission(self):
+		# upload to server
+		blob_id = self.user1.upload("some/collection", "random%F0%9F%98%8A.jpg", data=self.random_image(1000, 1200))
+
+		# owner get successfully
+		self.assertEqual(self.user1.get_blob("some/collection", blob_id)["mime"], "image/jpeg")
+
+		# owner set permission to public
+# 		r3 = self.user1.post(
+# 			"https://localhost:4433" + r1.headers["Location"],
+# 			data="perm=public",
+# 			headers={"Content-type": "application/x-www-form-urlencoded"}
+# 		)
+# 		self.assertEqual(r3.status_code, 204)
+#
+# 		# other user can get the image
+# 		self.assertEqual(self.user2.get("https://localhost:4433" + r1.headers["Location"]).status_code, 200)
+# 		self.assertTrue(blob_id in self.get_collection(self.user2, "sumsum", "some/collection")["elements"])
+#
+# 		# new blob can be found in the public list
+# 		self.assertTrue(blob_id in self.get_public_blobs()["elements"].keys())
+#
+# 		# anonymous user can find it in collection
+# 		self.assertEqual(self.anon.get("https://localhost:4433" + r1.headers["Location"]).status_code, 200)
+# 		self.assertTrue(blob_id in self.get_collection(self.anon,  "sumsum", "some/collection")["elements"])
+#
+# 		# anonymous user can query the blob
+# #		self.assertEqual(self.anon.get("https://localhost:4433/query/blob?id=" + blob_id).status_code, 200)
+#
+# 		# owner set permission to shared
+# 		self.assertEqual(self.user1.post(
+# 			"https://localhost:4433" + r1.headers["Location"],
+# 			data="perm=shared",
+# 			headers={"Content-type": "application/x-www-form-urlencoded"}
+# 		).status_code, 204)
+#
+# 		# other user can get the image
+# 		self.assertEqual(self.user2.get("https://localhost:4433" + r1.headers["Location"]).status_code, 200)
+# 		self.assertTrue(blob_id in self.get_collection(self.user2,  "sumsum", "some/collection")["elements"])
+#
+# 		# anonymous user cannot
+# 		self.assertEqual(self.anon.get("https://localhost:4433" + r1.headers["Location"]).status_code, 403)
+# 		self.assertFalse(blob_id in self.get_collection(self.anon,  "sumsum", "some/collection")["elements"])
+#
+# 		# new blob can no longer be found in the public list
+# 		self.assertFalse(blob_id in self.get_public_blobs()["elements"].keys())
+
+
 if __name__ == '__main__':
 	unittest.main()

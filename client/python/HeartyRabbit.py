@@ -188,3 +188,14 @@ class Session:
 			self.raise_exception(response.status_code, "cannot move blob {} from {} to {}: {}".format(
 				blob, src, dest, response.status_code
 			))
+
+	def set_permission(self, collection, blob, perm):
+		response = self.m_session.post(
+			self.__url("/api/{}/{}/{}".format(self.m_user, collection, blob)),
+			data="perm=" + perm,
+			headers={"Content-type": "application/x-www-form-urlencoded"}
+		)
+		if response.status_code != 204:
+			self.raise_exception(response.status_code, "cannot set permission of blob {} from {} to {}: {}".format(
+				blob, collection, perm, response.status_code
+			))
