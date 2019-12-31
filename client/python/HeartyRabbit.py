@@ -44,10 +44,12 @@ class Session:
 		)
 
 		if response.status_code != 204 or self.m_session.cookies.get("id") == "":
-			raise ValueError("source site login incorrect: {0}".format(response.status_code))
+			raise PermissionError("source site login incorrect: {0}".format(response.status_code))
 
 		self.m_user = user
 
+	def close(self):
+		self.m_session.close()
 
 	def list_collections(self, user = None):
 		if user is None:
@@ -71,10 +73,33 @@ class Session:
 		if response.status_code != 200:
 			raise ValueError("cannot get blobs from collections \"{}\": {}".format(
 				collection.name(),
-				response.status_code)
-			)
+				response.status_code
+			))
 
 		blobs = []
 		for id, blob in response.json()["elements"].items():
 			blobs.append(Blob(id, blob))
-		return blobs;
+		return blobs
+
+	def upload(self, collection, filename, data):
+		response = self.m_session.put(
+			"{}/upload/{}/{}/{}".format(self.m_site, self.m_user, collection, filename),
+			data=data
+		)
+		if response.status_code != 201:
+			raise ValueError("cannot upload blobs to collections \"{}\": {}".format(
+				collection,
+				response.status_code
+			))
+		return response.headers["Location"][-40:]
+
+	def get_blob(self, collection, id, user = None):
+		if user is None:
+			user = self.m_user
+
+		response = self.m_session.get("{}/api/{}/{}/{}".format(self.m_site, user, collection, id))
+		if response.status_code != 200:
+			raise FileNotFoundError("cannot get blobs {} from user \"{}\": {}".format(
+				id, user, response.status_code
+			))
+		return {"id":id, "mime":response.headers["Content-type"], "data":response.content}
