@@ -244,7 +244,7 @@ class Session:
 			))
 		return response.headers["Location"][-40:]
 
-	def stream_blob(self, collection, blobid, user = None, rendition = "", stream = True):
+	def get_blob(self, collection, blobid, user = None, rendition = ""):
 		if user is None:
 			user = self.m_user
 
@@ -252,10 +252,7 @@ class Session:
 		if rendition != "":
 			query["rendition"] = rendition
 
-		return self.m_session.get(self.__format_url("api", user, collection, blobid, query=query), stream=stream)
-
-	def get_blob(self, collection, blobid, user = None, rendition = ""):
-		response = self.stream_blob(collection, blobid, user=user, rendition=rendition, stream=False)
+		response = self.m_session.get(self.__format_url("api", user, collection, blobid, query=query))
 		if response.status_code != 200:
 			self.raise_exception(response.status_code, "cannot get blob {} from user \"{}\": {}".format(
 				blobid, user, response.status_code
