@@ -192,6 +192,39 @@ class Session:
 		else:
 			return None
 
+	def delete_collection(self, collection):
+		coll = self.get_collection(collection, self.m_user)
+
+		for blobid, blob in coll.m_blobs.items():
+			self.delete_blob(collection, blobid)
+
+	def share_collection(self, collection):
+		response = self.m_session.post(
+			self.__format_url("api", self.m_user, collection, ""),
+			data="share=create",
+			headers={"Content-type": "application/x-www-form-urlencoded"}
+		)
+		if response.status_code != 204:
+			self.raise_exception(response.status_code, "cannot share collections \"{}\": {}".format(
+				collection,
+				response.status_code
+			))
+		# return response.headers["Location"][-32:]
+		return response.headers["Location"]
+
+	def list_shares(self, collection):
+		response = self.m_session.post(
+			self.__format_url("api", self.m_user, collection, ""),
+			data="share=list",
+			headers={"Content-type": "application/x-www-form-urlencoded"}
+		)
+		if response.status_code != 200:
+			self.raise_exception(response.status_code, "cannot list shares of collection \"{}\": {}".format(
+				collection,
+				response.status_code
+			))
+		return response.json()
+
 	def upload(self, collection, filename, data):
 		response = self.m_session.put(
 			self.__format_url("upload", self.m_user, collection, filename),

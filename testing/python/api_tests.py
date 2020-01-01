@@ -4,7 +4,7 @@ import unittest
 from PIL import Image, ImageFilter
 from io import BytesIO
 import numpy
-import random
+import urllib.parse
 import string
 import time
 
@@ -327,10 +327,75 @@ class NormalTestCase(unittest.TestCase):
 
 		# should find it in the new collection
 		coll = self.user1.get_collection("神座之靈央神")
-		#self.assertIsNotNone(coll.timestamp())
 		self.assertIsNotNone(coll.blob(blobid))
 		self.assertEqual(coll.blob(blobid).filename(), "食哂啲甘荀?_carrot.jpg")
 		self.assertEqual(coll.blob(blobid).mime(), "image/jpeg")
+
+	def test_remove_cover(self):
+		test_cover_album = "あまた光る祝い星"
+
+		# delete all images in test_cover_album
+		self.user1.delete_collection(test_cover_album)
+
+		# upload one image, and it will become the cover of the album
+		cover_id = self.user1.upload(test_cover_album, "cover.jpg", data=self.random_image(1000, 1000))
+
+		# verify the first image will become the cover of the album
+		self.assertEqual(self.user1.get_collection(test_cover_album).cover(), cover_id)
+
+		# upload another image, but the cover will stay the same
+		not_cover_id = self.user1.upload(test_cover_album, "not_cover.jpg", data=self.random_image(700, 700))
+		self.assertNotEqual(not_cover_id, cover_id)
+		self.assertEqual(self.user1.get_collection(test_cover_album).cover(), cover_id)
+
+		# delete the cover image and the cover will become the second image
+		self.user1.delete_blob(test_cover_album, cover_id)
+		self.assertEqual(self.user1.get_collection(test_cover_album).cover(), not_cover_id)
+
+		# delete the other image as well, and the whole album will be gone
+		self.user1.delete_blob(test_cover_album, not_cover_id)
+		self.assertEqual(len(self.user1.get_collection(test_cover_album).m_blobs), 0)
+
+	def test_share_link(self):
+		# upload to default album
+		new_blob = self.user1.upload("", "new.jpg", data=self.random_image(1000, 1200))
+
+		# set permission to shared and share it
+		self.user1.set_permission("", new_blob, "shared")
+		self.user1.share_collection("")
+
+		# share link of default album
+		slink = self.user1.share_collection("")
+		auth_key = slink[-32:]
+
+		# list all shared links
+		slist = self.user1.list_shares("")
+		self.assertTrue(auth_key in slist)
+
+		# anonymous user can fetch the shared link
+		view_slink = self.anon.m_session.get(("https://localhost:4433" + slink).replace("/view", "/api"))
+		self.assertNotEqual(self.anon.m_session.cookies.get("id"), "")
+		self.assertEqual(view_slink.status_code, 200)
+		self.assertTrue("auth" in view_slink.json())
+		self.assertTrue(new_blob in view_slink.json()["elements"])
+
+		# verify auth key
+		auth_key = view_slink.json()["auth"]
+		self.assertEqual(slink[-len(auth_key):], auth_key)
+
+		# the same auth key does not work for other collections
+		other_response = self.anon.m_session.get("https://localhost:4433/api/sumsum/other/?auth=" + auth_key)
+		self.assertNotEqual(self.anon.m_session.cookies.get("id"), "")
+		self.assertFalse(new_blob in other_response.json()["elements"])
+
+		somecoll_response = self.anon.m_session.get("https://localhost:4433/api/sumsum/some/collection/?auth=" + auth_key)
+		self.assertNotEqual(self.anon.m_session.cookies.get("id"), "")
+		self.assertFalse(new_blob in somecoll_response.json()["elements"])
+
+		# the auth key can't be used for upload
+		up2 = self.anon.m_session.put("https://localhost:4433/upload/sumsum/new.jpg?auth=" + auth_key, data=self.random_image(1000, 1200))
+		self.assertNotEqual(self.anon.m_session.cookies.get("id"), "")
+		self.assertEqual(up2.status_code, 400)
 
 
 if __name__ == '__main__':
