@@ -19,12 +19,16 @@ if len(sys.argv) > 5:
 elif sys.argv[1] == "localhost:4433":
 	cert = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../etc/hearty_rabbit/certificate.pem")
 
+# TODO: read password from stdin to avoid being saved to command history
+site = "https://" + sys.argv[1]
+blob_dir = sys.argv[2]
+user = sys.argv[3]
+password = sys.argv[4]
+
 # connect to the source site
 # TODO: read password from stdin to avoid being saved to command history
-source = hrb.Session(sys.argv[1], cert)
-source.login(sys.argv[3], sys.argv[4])
-
-blob_dir = sys.argv[2]
+source = hrb.Session(site, cert)
+source.login(user, password)
 
 album_list = source.list_collections()
 
