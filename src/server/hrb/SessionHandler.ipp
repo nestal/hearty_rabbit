@@ -398,8 +398,6 @@ void SessionHandler::get_blob(const BlobRequest& req, Send&& send)
 			{
 				auto [rendition] = urlform.find(req.option(), "rendition");
 				auto response = m_blob_db.response(*req.blob(), req.version(), req.etag(), rendition);
-
-				// set filename to HTTP header
 				response.set(http::field::content_disposition, "inline; filename=" + url_encode(entry.filename()));
 				return send(std::move(response));
 			}

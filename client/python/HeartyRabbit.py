@@ -22,22 +22,27 @@ class BadRequest(HrbException):
 class Blob:
 	m_json = None
 	m_id = None
+	m_data = None
 
-	def __init__(self, id, json):
-		self.m_id = id
+	def __init__(self, blobid, json, data = None):
+		self.m_id = blobid
 		self.m_json = json
+		self.m_data = data
 
 	def filename(self):
-		return self.m_json["filename"]
+		return self.m_json.get("filename")
 
 	def mime(self):
-		return self.m_json["mime"]
+		return self.m_json.get("mime")
 
 	def timestamp(self):
-		return self.m_json["timestamp"]
+		return self.m_json.get("timestamp")
 
 	def id(self):
 		return self.m_id
+
+	def data(self):
+		return self.m_data
 
 
 class Collection:
@@ -200,10 +205,11 @@ class Session:
 		disposition = response.headers['content-disposition']
 		fname = re.findall("filename=(.+)", disposition)[0]
 
-		return {
-			"id": blobid, "mime": response.headers["Content-type"], "data": response.content,
-			"filename": urllib.parse.unquote_plus(fname)
-		}
+		return Blob(
+			blobid,
+			{"mime": response.headers["Content-type"], "filename": urllib.parse.unquote_plus(fname)},
+			data=response.content
+		)
 
 	def query_blob(self, blobid, rendition = ""):
 		query = {"id": blobid}
@@ -214,7 +220,11 @@ class Session:
 			self.raise_exception(response.status_code, "cannot query blob {}: {}".format(
 				blobid, response.status_code
 			))
-		return {"id": blobid, "mime": response.headers["Content-type"], "data": response.content}
+		return Blob(
+			blobid,
+			{"mime": response.headers["Content-type"]},
+			data=response.content
+		)
 
 	def delete_blob(self, collection, blobid):
 		response = self.m_session.delete(self.__format_url("api", self.m_user, collection, blobid))

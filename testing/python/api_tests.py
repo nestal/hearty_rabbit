@@ -70,9 +70,9 @@ class NormalTestCase(unittest.TestCase):
 
 		# get the blob we just uploaded
 		lena1 = self.user1.get_blob("test_api", id)
-		self.assertEqual(lena1["mime"], "image/jpeg")
-		self.assertEqual(lena1["filename"], "test_lena.jpg")
-		jpeg = Image.open(BytesIO(lena1["data"]))
+		self.assertEqual(lena1.mime(), "image/jpeg")
+		self.assertEqual(lena1.filename(), "test_lena.jpg")
+		jpeg = Image.open(BytesIO(lena1.data()))
 
 		# the size of the images should be the same
 		self.assertEqual(jpeg.format, "JPEG")
@@ -84,38 +84,36 @@ class NormalTestCase(unittest.TestCase):
 
 		# query the blob. It should be the same as the one we just get
 		query = self.user1.query_blob(id)
-		self.assertEqual(query["mime"], "image/jpeg")
-		self.assertEqual(query["data"], lena1["data"])
+		self.assertEqual(query.mime(), "image/jpeg")
+		self.assertEqual(query.data(), lena1.data())
 
 		# The newly uploaded image should be in the "test_api" collection
 		self.assertTrue(id in self.user1.list_blobs("test_api"))
 
 	def test_upload_png(self):
 		# upload random PNG to server
-		id = self.user1.upload("", "black.png", data=self.random_image(800, 600, format="png"))
-		self.assertEqual(len(id), 40)
+		blobid = self.user1.upload("", "black.png", data=self.random_image(800, 600, format="png"))
+		self.assertEqual(len(blobid), 40)
 
 		# read back the upload image
-		r2 = self.user1.get_blob("", id)
-		self.assertEqual(r2["mime"], "image/png")
+		blob = self.user1.get_blob("", blobid)
+		self.assertEqual(blob.mime(), "image/png")
 
-		png = Image.open(BytesIO(r2["data"]))
+		png = Image.open(BytesIO(blob.data()))
 
 		# the size of the images should be the same
 		self.assertEqual(png.format, "PNG")
 		self.assertEqual(png.width, 800)
 		self.assertEqual(png.height, 600)
 
-
 	def test_resize_jpeg(self):
 		# upload a big JPEG image to server
-		r1 = self.user1.upload("big_dir", "big_image.jpg", data=self.random_image(4096, 2048))
-		self.assertEqual(len(r1), 40)
+		blobid = self.user1.upload("big_dir", "big_image.jpg", data=self.random_image(4096, 2048))
 
 		# read back the upload image
-		r2 = self.user1.get_blob("big_dir", r1)
-		self.assertEqual(r2["mime"], "image/jpeg")
-		jpeg = Image.open(BytesIO(r2["data"]))
+		blob = self.user1.get_blob("big_dir", blobid)
+		self.assertEqual(blob.mime(), "image/jpeg")
+		jpeg = Image.open(BytesIO(blob.data()))
 
 		# the size of the images should be the same
 		self.assertEqual(jpeg.format, "JPEG")
@@ -123,28 +121,27 @@ class NormalTestCase(unittest.TestCase):
 		self.assertEqual(jpeg.height, 1024)
 
 		# read back some renditions of the upload image
-		self.assertEqual(self.user1.get_blob("big_dir", r1, rendition="2048x2048")["id"], r1)
+		self.assertEqual(self.user1.get_blob("big_dir", blobid, rendition="2048x2048").id(), blobid)
 
 		# the master rendition should have the same width and height
-		r3 = self.user1.get_blob("big_dir", r1, rendition="master")
+		master = self.user1.get_blob("big_dir", blobid, rendition="master")
+		self.assertEqual(master.filename(), "big_image.jpg")
 
-		master = Image.open(BytesIO(r3["data"]))
+		master = Image.open(BytesIO(master.data()))
 		self.assertEqual(master.width, 4096)
 		self.assertEqual(master.height, 2048)
 
 		# generated thumbnail should be less than 768x768
-		r4 = self.user1.get_blob("big_dir", r1, rendition="thumbnail")
-		self.assertEqual(len(r4["id"]), 40)
+		thumb = self.user1.get_blob("big_dir", blobid, rendition="thumbnail")
 
-		thumb = Image.open(BytesIO(r4["data"]))
+		thumb = Image.open(BytesIO(thumb.data()))
 		self.assertLessEqual(thumb.width, 768)
 		self.assertLessEqual(thumb.height, 768)
 
 		# query the thumbnail by the blob ID
-		r5 = self.user1.query_blob(r1, rendition="thumbnail")
-		self.assertEqual(len(r4["id"]), 40)
+		r5 = self.user1.query_blob(blobid, rendition="thumbnail")
 
-		thumb = Image.open(BytesIO(r5["data"]))
+		thumb = Image.open(BytesIO(r5.data()))
 		self.assertLessEqual(thumb.width, 768)
 		self.assertLessEqual(thumb.height, 768)
 
@@ -179,14 +176,12 @@ class NormalTestCase(unittest.TestCase):
 		r5 = self.user1.m_session.get("https://localhost:4433/api/nestal/0L00000000000000000PP0000000000000000003")
 		self.assertEqual(r5.status_code, 200)
 
-
 	def test_upload_to_other_users_collection(self):
 		self.user1.m_user = "yungyung"
 		self.assertRaises(hrb.Forbidden, self.user1.upload, "abc", "image.jpg", data=self.random_image(640, 640))
 
 		self.anon.m_user = "sumsum"
 		self.assertRaises(hrb.BadRequest, self.anon.upload, "abc", "image.jpg", data=self.random_image(640, 640))
-
 
 	def test_upload_jpeg_to_other_collection(self):
 		# upload to server
@@ -215,7 +210,7 @@ class NormalTestCase(unittest.TestCase):
 		self.user1.move_blob("some/collection", blob_id, "another/collection")
 
 		# get it from another collection successfully
-		self.assertEqual(self.user1.get_blob("another/collection", blob_id)["filename"], "happy😆faces😄.jpg")
+		self.assertEqual(self.user1.get_blob("another/collection", blob_id).filename(), "happy😆faces😄.jpg")
 
 		# can't get it from original collection any more
 		self.assertRaises(hrb.NotFound, self.user1.get_blob, "some/collection", blob_id)
@@ -245,13 +240,13 @@ class NormalTestCase(unittest.TestCase):
 		blob_id = self.user1.upload("some/collection", "派石😊.jpg", data=self.random_image(1000, 1200))
 
 		# owner get successfully
-		self.assertEqual(self.user1.get_blob("some/collection", blob_id)["filename"], "派石😊.jpg")
+		self.assertEqual(self.user1.get_blob("some/collection", blob_id).filename(), "派石😊.jpg")
 
 		# owner set permission to public
 		self.user1.set_permission("some/collection", blob_id, "public")
 
 		# other user can get the image
-		self.assertEqual(self.user2.get_blob("some/collection", blob_id, self.user1.user())["id"], blob_id)
+		self.assertEqual(self.user2.get_blob("some/collection", blob_id, self.user1.user()).id(), blob_id)
 
 		# new blob can be found in the public list from sumsum
 		self.assertTrue(blob_id in self.user2.list_public_blobs())
@@ -261,7 +256,7 @@ class NormalTestCase(unittest.TestCase):
 		self.assertEqual(len(self.user2.list_public_blobs(user="unknown")), 0)
 
 		# anonymous user can find it in collection
-		self.assertEqual(self.anon.get_blob("some/collection", blob_id, self.user1.user())["id"], blob_id)
+		self.assertEqual(self.anon.get_blob("some/collection", blob_id, self.user1.user()).id(), blob_id)
 		self.assertTrue(blob_id in self.anon.list_blobs("some/collection", user="sumsum"))
 
 		# anonymous user can query the blob
@@ -273,7 +268,7 @@ class NormalTestCase(unittest.TestCase):
 		self.user1.set_permission("some/collection", blob_id, "shared")
 
 		# other user can get the image
-		self.assertEqual(self.user2.get_blob("some/collection", blob_id, "sumsum")["id"], blob_id)
+		self.assertEqual(self.user2.get_blob("some/collection", blob_id, "sumsum").id(), blob_id)
 		self.assertTrue(blob_id in self.user2.list_blobs("some/collection", "sumsum"))
 
 		# anonymous user cannot
@@ -324,7 +319,17 @@ class NormalTestCase(unittest.TestCase):
 
 		# upload a random image with Japanese filename
 		blobid = self.user1.upload("No.5849", "初雪の大魔女・リーチェ.jpg", data=self.random_image(1200, 1000))
-		self.assertEqual(self.user1.get_blob("No.5849", blobid)["filename"], "初雪の大魔女・リーチェ.jpg")
+		self.assertEqual(self.user1.get_blob("No.5849", blobid).filename(), "初雪の大魔女・リーチェ.jpg")
+
+	def test_percent_filename(self):
+		blobid = self.user1.upload("神座之靈央神", "食哂啲甘荀?_carrot.jpg", data=self.random_image(1200, 1000))
+
+		# should find it in the new collection
+		coll = self.user1.list_blobs("神座之靈央神")
+		self.assertTrue(blobid in coll)
+		self.assertEqual(coll[blobid].filename(), "食哂啲甘荀?_carrot.jpg")
+		self.assertEqual(coll[blobid].mime(), "image/jpeg")
+
 
 if __name__ == '__main__':
 	unittest.main()
