@@ -35,6 +35,7 @@ add_subdirectory(testing/Catch2)
 
 pkg_check_modules(HIREDIS REQUIRED IMPORTED_TARGET hiredis)
 pkg_check_modules(LIBUNWIND IMPORTED_TARGET libunwind)
+pkg_check_modules(LIBEXIF IMPORTED_TARGET libexif)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CONFIG_FILENAME "hearty_rabbit.json")
