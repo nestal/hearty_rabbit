@@ -319,9 +319,9 @@ void SessionHandler::on_request_api(Request&& req, URLIntent&& intent, Send&& se
 	else if (req.method() == http::verb::post)
 	{
 		if (breq.blob())
-			return post_blob(std::move(breq), std::move(send));
+			return post_blob(std::move(breq), std::forward<Send>(send));
 		else
-			return post_view(std::move(breq), std::move(send));
+			return post_view(std::move(breq), std::forward<Send>(send));
 	}
 	else
 	{
@@ -373,7 +373,7 @@ void SessionHandler::get_blob(const BlobRequest& req, Send&& send)
 		*m_db, req.collection(), *req.blob(),
 		[
 			req, this,
-			send=std::move(send)
+			send=std::forward<Send>(send)
 		](CollEntryDB entry, auto ec) mutable
 		{
 			// Only allow the owner to know whether an object exists or not.
@@ -436,7 +436,7 @@ void SessionHandler::scan_collection(const URLIntent& intent, unsigned version, 
 
 	Ownership{*user}.scan_all_collections(
 		*m_db,
-		SendJSON{std::move(send), version, std::nullopt, *this, json.has_value() ? nullptr : &m_lib}
+		SendJSON{std::forward<Send>(send), version, std::nullopt, *this, json.has_value() ? nullptr : &m_lib}
 	);
 }
 

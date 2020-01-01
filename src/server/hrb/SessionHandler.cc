@@ -153,6 +153,7 @@ void SessionHandler::unlink(BlobRequest&& req, EmptyResponseSender&& send)
 
 void SessionHandler::post_blob(BlobRequest&& req, EmptyResponseSender&& send)
 {
+	// Only owners can change blob permission
 	if (!req.request_by_owner(m_auth))
 		return send(http::response<http::empty_body>{http::status::forbidden, req.version()});
 

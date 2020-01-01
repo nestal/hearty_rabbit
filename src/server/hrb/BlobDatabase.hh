@@ -40,17 +40,17 @@ public:
 
 	void prepare_upload(UploadFile& result, std::error_code& ec) const;
 	BlobFile save(UploadFile&& tmp, std::error_code& ec);
-	BlobFile find(const ObjectID& id) const;
+	[[nodiscard]] BlobFile find(const ObjectID& id) const;
 
-	fs::path dest(const ObjectID& id, std::string_view rendition = {}) const;
+	[[nodiscard]] fs::path dest(const ObjectID& id, std::string_view rendition = {}) const;
 
-	BlobResponse response(
+	[[nodiscard]] BlobResponse response(
 		const ObjectID& id,
 		unsigned version,
 		std::string_view etag,
 		std::string_view rendition = {}
 	) const;
-	BlobResponse meta(const ObjectID& id, unsigned version) const;
+	[[nodiscard]] BlobResponse meta(const ObjectID& id, unsigned version) const;
 
 	template <class FwdIt>
 	auto find_similar(FwdIt first, FwdIt last, double threshold)
@@ -72,7 +72,7 @@ public:
 
 private:
 	static void set_cache_control(BlobResponse& res, const ObjectID& id);
-	double compare(const ObjectID& id1, const ObjectID& id2) const;
+	[[nodiscard]] double compare(const ObjectID& id1, const ObjectID& id2) const;
 
 private:
 	const Configuration&    m_cfg;

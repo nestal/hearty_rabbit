@@ -262,30 +262,68 @@ class NormalTestCase(unittest.TestCase):
 		# anonymous user can find it in collection
 		self.assertEqual(self.anon.get_blob("some/collection", blob_id, self.user1.user())["id"], blob_id)
 		self.assertTrue(blob_id in self.anon.list_blobs("some/collection", user="sumsum"))
-# 		self.assertEqual(self.anon.get("https://localhost:4433" + r1.headers["Location"]).status_code, 200)
-# 		self.assertTrue(blob_id in self.get_collection(self.anon,  "sumsum", "some/collection")["elements"])
-#
-# 		# anonymous user can query the blob
-# #		self.assertEqual(self.anon.get("https://localhost:4433/query/blob?id=" + blob_id).status_code, 200)
-#
-# 		# owner set permission to shared
-# 		self.assertEqual(self.user1.post(
-# 			"https://localhost:4433" + r1.headers["Location"],
-# 			data="perm=shared",
-# 			headers={"Content-type": "application/x-www-form-urlencoded"}
-# 		).status_code, 204)
-#
-# 		# other user can get the image
-# 		self.assertEqual(self.user2.get("https://localhost:4433" + r1.headers["Location"]).status_code, 200)
-# 		self.assertTrue(blob_id in self.get_collection(self.user2,  "sumsum", "some/collection")["elements"])
-#
-# 		# anonymous user cannot
-# 		self.assertEqual(self.anon.get("https://localhost:4433" + r1.headers["Location"]).status_code, 403)
-# 		self.assertFalse(blob_id in self.get_collection(self.anon,  "sumsum", "some/collection")["elements"])
-#
-# 		# new blob can no longer be found in the public list
-# 		self.assertFalse(blob_id in self.get_public_blobs()["elements"].keys())
 
+		# anonymous user can query the blob
+		# TODO: allow anonymous user to query public blob
+		# TODO: add "query_blob_ref" to support querying which collection has the blob
+		# self.assertEqual(self.anon.query_blob(blob_id)["id"], blob_id)
+
+		# owner set permission to shared
+		self.user1.set_permission("some/collection", blob_id, "shared")
+
+		# other user can get the image
+		self.assertEqual(self.user2.get_blob("some/collection", blob_id, "sumsum")["id"], blob_id)
+		self.assertTrue(blob_id in self.user2.list_blobs("some/collection", "sumsum"))
+
+		# anonymous user cannot
+		self.assertRaises(hrb.Forbidden, self.anon.get_blob, "some/collection", blob_id, "sumsum")
+		self.assertFalse(blob_id in self.anon.list_blobs("some/collection", "sumsum"))
+
+		# new blob can no longer be found in the public list
+		self.assertFalse(blob_id in self.user1.list_public_blobs())
+
+	def test_scan_collections(self):
+		covers = {}
+
+		# upload random image to 10 different collections
+		for x in range(10):
+			coll = "collection{}".format(x)
+			covers[x] = self.user1.upload(coll, "random.jpg", data=self.random_image(480, 480))
+
+			# set the cover to the newly added image
+			self.user1.set_cover(coll, covers[x])
+
+		colls = self.user1.list_collections()
+		self.assertEqual(next(x for x in colls if x.name() == "collection1").cover(), covers[1])
+
+		for x in range(10):
+			self.assertEqual(next(i for i in colls if i.name() == "collection{}".format(x)).cover(), covers[x])
+
+		# error case: try setting the covers using images from other collections
+		for x in range(10):
+			comp = 9 - x
+			if comp != x:
+				self.assertRaises(hrb.BadRequest, self.user1.set_cover, "sumsum/collection{}".format(x), covers[comp])
+
+	def test_session_expired(self):
+		old_session = self.user1.m_session.cookies["id"]
+		self.user1.logout()
+
+		# should give 404 instead of 403 if still login
+		self.assertRaises(hrb.Forbidden, self.user1.get_blob, "", "0000000000000000000000000000000000000000")
+
+		# reuse old cookie to simulate session expired
+		self.user1.m_session.cookies["id"] = old_session
+		self.assertRaises(hrb.Forbidden, self.user1.get_blob, "", "0000000000000000000000000000000000000000")
+
+	def test_japanese(self):
+		# upload a random image to a collection with a Japanese name
+		self.user1.upload("女神ハイリア", "test.jpg", data=self.random_image(1200, 1000))
+		self.assertTrue("女神ハイリア", self.user1.list_collections())
+
+		# upload a random image with Japanese filename
+		blobid = self.user1.upload("No.5849", "初雪の大魔女・リーチェ.jpg", data=self.random_image(1200, 1000))
+		self.assertEqual(self.user1.get_blob("No.5849", blobid)["mime"], "image/jpeg")
 
 if __name__ == '__main__':
 	unittest.main()

@@ -367,8 +367,8 @@ void Ownership::query_blob(redis::Connection& db, const ObjectID& blob, Complete
 		},
 		"EVAL %s 2 %b %b  %b",
 		lua,
-		blob_ref.data(),  blob_ref.size(),
-		blob_meta.data(), blob_meta.size(),
+		blob_ref.data(),  blob_ref.size(),      // KEYS[1]
+		blob_meta.data(), blob_meta.size(),     // KEYS[2]
 		blob.data(), blob.size()
 	);
 }

@@ -2,17 +2,22 @@ import requests
 import urllib.parse
 import os
 
+
 class HrbException(Exception):
 	pass
+
 
 class Forbidden(HrbException):
 	pass
 
+
 class NotFound(HrbException):
 	pass
 
+
 class BadRequest(HrbException):
 	pass
+
 
 class Blob:
 	m_json = None
@@ -34,6 +39,7 @@ class Blob:
 	def id(self):
 		return self.m_id
 
+
 class Collection:
 	m_json = None
 
@@ -48,6 +54,7 @@ class Collection:
 
 	def owner(self):
 		return self.m_json["owner"]
+
 
 class Session:
 	m_site = None
@@ -111,6 +118,11 @@ class Session:
 			self.raise_exception(response.status_code, "source site login incorrect: {0}")
 
 		self.m_user = user
+
+	def logout(self):
+		response = self.m_session.get(self.__url("/logout"))
+		if response.status_code != 200:
+			self.raise_exception("cannot logout: {}", response.status_code)
 
 	def close(self):
 		self.m_session.close()
@@ -185,7 +197,7 @@ class Session:
 				blobid, user, response.status_code
 			))
 
-		return {"id":blobid, "mime":response.headers["Content-type"], "data":response.content}
+		return {"id": blobid, "mime": response.headers["Content-type"], "data": response.content}
 
 	def query_blob(self, blobid, rendition = ""):
 		query = {"id": blobid}
@@ -196,7 +208,7 @@ class Session:
 			self.raise_exception(response.status_code, "cannot query blob {}: {}".format(
 				blobid, response.status_code
 			))
-		return {"id":blobid, "mime":response.headers["Content-type"], "data":response.content}
+		return {"id": blobid, "mime": response.headers["Content-type"], "data": response.content}
 
 	def delete_blob(self, collection, blobid):
 		response = self.m_session.delete(self.__format_url("api", self.m_user, collection, blobid))
@@ -225,6 +237,17 @@ class Session:
 		if response.status_code != 204:
 			self.raise_exception(response.status_code, "cannot set permission of blob {} from {} to {}: {}".format(
 				blobid, collection, perm, response.status_code
+			))
+
+	def set_cover(self, collection, cover):
+		response = self.m_session.post(
+				self.__format_url("api", self.m_user, collection, ""),
+				data="cover=" + cover,
+				headers={"Content-type": "application/x-www-form-urlencoded"}
+			)
+		if response.status_code != 204:
+			self.raise_exception(response.status_code, "cannot set cover of collection {} to {}: {}".format(
+				collection, cover, response.status_code
 			))
 
 	def list_public_blobs(self, user = ""):
