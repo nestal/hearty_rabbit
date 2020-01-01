@@ -284,10 +284,11 @@ MMap BlobFile::deduce_original(MMap&& master) const
 	{
 		master = this->master(std::move(master));
 
-		std::error_code ec;
-
-		if (auto exif = ::exif_data_new_from_data(
-			static_cast<const unsigned char*>(master.data()), master.size()); exif
+		// Use unique_ptr to ensure the ExifData will be freed.
+		if (std::unique_ptr<::ExifData, decltype(&::exif_data_unref)> exif{
+			::exif_data_new_from_data(static_cast<const unsigned char*>(master.data()), master.size()),
+			&::exif_data_unref};
+			exif
 		)
 		{
 			if (auto entry = ::exif_content_get_entry(exif->ifd[EXIF_IFD_0], EXIF_TAG_DATE_TIME); entry)

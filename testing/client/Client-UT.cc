@@ -15,10 +15,8 @@
 #include "ServerInstance.hh"
 #include "TestImages.hh"
 
-#include "client/GenericHTTPRequest.hh"
 #include "client/HRBClient.hh"
 #include "client/HRBClient.ipp"
-#include <iostream>
 
 using namespace hrb;
 using namespace std::chrono_literals;
