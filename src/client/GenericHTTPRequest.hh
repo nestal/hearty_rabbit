@@ -86,7 +86,9 @@ public:
 		m_resolver.async_resolve(
 			m_host,
 			m_port,
-			[self=this->shared_from_this()](auto ec, auto&& results){self->on_resolve(ec, std::move(results));}
+			[self=this->shared_from_this()](auto ec, auto&& results){
+				self->on_resolve(ec, std::forward<decltype(results)>(results));
+			}
 		);
 	}
 

@@ -85,9 +85,11 @@ std::string url_encode(std::string_view in)
 	{
 		if (need_escape(c))
 		{
+			auto uc = static_cast<unsigned>(static_cast<unsigned char>(c));
+
 			result.push_back('%');
-			result.push_back(hex[(c >> 4) & 0xf]);
-			result.push_back(hex[c & 0xf]);
+			result.push_back(hex[(uc >> 4U) & 0xfU]);
+			result.push_back(hex[uc & 0xfU]);
 		}
 		else
 			result.push_back(c);

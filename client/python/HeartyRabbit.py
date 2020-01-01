@@ -1,7 +1,7 @@
 import requests
 import urllib.parse
 import os
-
+import re
 
 class HrbException(Exception):
 	pass
@@ -197,7 +197,13 @@ class Session:
 				blobid, user, response.status_code
 			))
 
-		return {"id": blobid, "mime": response.headers["Content-type"], "data": response.content}
+		disposition = response.headers['content-disposition']
+		fname = re.findall("filename=(.+)", disposition)[0]
+
+		return {
+			"id": blobid, "mime": response.headers["Content-type"], "data": response.content,
+			"filename": urllib.parse.unquote_plus(fname)
+		}
 
 	def query_blob(self, blobid, rendition = ""):
 		query = {"id": blobid}

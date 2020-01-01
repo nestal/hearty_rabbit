@@ -270,16 +270,17 @@ std::string_view URLIntent::trim(std::string_view s)
 
 URLIntent::Action URLIntent::parse_action(std::string_view str)
 {
-	// if the order of occurrence frequency
-	     if (str == "view")     return Action::view;
-	else if (str == "upload")   return Action::upload;
-	else if (str == "login")    return Action::login;
-	else if (str == "logout")   return Action::logout;
-	else if (str == "lib")      return Action::lib;
-	else if (str == "query")    return Action::query;
-	else if (str == "api")      return Action::api;
-	else if (str.empty())       return Action::home;
-	else                        return Action::none;
+	// In the order of occurrence frequency
+	if (str == "view")     return Action::view;
+	if (str == "upload")   return Action::upload;
+	if (str == "login")    return Action::login;
+	if (str == "logout")   return Action::logout;
+	if (str == "lib")      return Action::lib;
+	if (str == "query")    return Action::query;
+	if (str == "api")      return Action::api;
+	if (str.empty())       return Action::home;
+
+	return Action::none;
 }
 
 bool URLIntent::valid() const

@@ -71,6 +71,7 @@ class NormalTestCase(unittest.TestCase):
 		# get the blob we just uploaded
 		lena1 = self.user1.get_blob("test_api", id)
 		self.assertEqual(lena1["mime"], "image/jpeg")
+		self.assertEqual(lena1["filename"], "test_lena.jpg")
 		jpeg = Image.open(BytesIO(lena1["data"]))
 
 		# the size of the images should be the same
@@ -214,7 +215,7 @@ class NormalTestCase(unittest.TestCase):
 		self.user1.move_blob("some/collection", blob_id, "another/collection")
 
 		# get it from another collection successfully
-		self.assertEqual(self.user1.get_blob("another/collection", blob_id)["id"], blob_id)
+		self.assertEqual(self.user1.get_blob("another/collection", blob_id)["filename"], "happy😆faces😄.jpg")
 
 		# can't get it from original collection any more
 		self.assertRaises(hrb.NotFound, self.user1.get_blob, "some/collection", blob_id)
@@ -244,7 +245,7 @@ class NormalTestCase(unittest.TestCase):
 		blob_id = self.user1.upload("some/collection", "派石😊.jpg", data=self.random_image(1000, 1200))
 
 		# owner get successfully
-		self.assertEqual(self.user1.get_blob("some/collection", blob_id)["mime"], "image/jpeg")
+		self.assertEqual(self.user1.get_blob("some/collection", blob_id)["filename"], "派石😊.jpg")
 
 		# owner set permission to public
 		self.user1.set_permission("some/collection", blob_id, "public")
@@ -323,7 +324,7 @@ class NormalTestCase(unittest.TestCase):
 
 		# upload a random image with Japanese filename
 		blobid = self.user1.upload("No.5849", "初雪の大魔女・リーチェ.jpg", data=self.random_image(1200, 1000))
-		self.assertEqual(self.user1.get_blob("No.5849", blobid)["mime"], "image/jpeg")
+		self.assertEqual(self.user1.get_blob("No.5849", blobid)["filename"], "初雪の大魔女・リーチェ.jpg")
 
 if __name__ == '__main__':
 	unittest.main()
