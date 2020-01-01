@@ -35,6 +35,8 @@ struct Timestamp : TimePointBase
 	Timestamp(TimePointBase tp) : Timestamp{tp.time_since_epoch()} {}
 
 	static Timestamp now();
+
+	[[nodiscard]] std::string http_format() const;
 };
 
 void to_json(nlohmann::json& json, const Timestamp& input);
