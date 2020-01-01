@@ -15,7 +15,6 @@
 
 // HeartyRabbit headers
 #include "common/Escape.hh"
-#include "image/EXIF2.hh"
 #include "image/ImageContent.hh"
 #include "image/PHash.hh"
 #include "util/Configuration.hh"
@@ -29,6 +28,9 @@
 // OpenCV for calculating phash
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/imgproc.hpp>
+
+// libexif to read EXIF2 tags
+#include <libexif/exif-data.h>
 
 #include <limits>
 #include <fstream>
@@ -283,14 +285,23 @@ MMap BlobFile::deduce_original(MMap&& master) const
 		master = this->master(std::move(master));
 
 		std::error_code ec;
-		EXIF2 exif{master.buffer(), ec};
-		if (!ec)
+
+		if (auto exif = ::exif_data_new_from_data(
+			static_cast<const unsigned char*>(master.data()), master.size()); exif
+		)
 		{
-			auto field = exif.get(master.buffer(), EXIF2::Tag::date_time);
-			if (field.has_value())
-				m_meta->original = std::chrono::time_point_cast<Timestamp::duration>(
-					EXIF2::parse_datetime(exif.get_value(master.buffer(), *field))
-				);
+			if (auto entry = ::exif_content_get_entry(exif->ifd[EXIF_IFD_0], EXIF_TAG_DATE_TIME); entry)
+			{
+				char buf[1024];
+		        ::exif_entry_get_value(entry, buf, sizeof(buf));
+
+		        struct std::tm result{};
+        		auto p = strptime(reinterpret_cast<const char*>(buf), "%Y:%m:%d %H:%M:%S", &result);
+				if (p)
+					m_meta->original = std::chrono::time_point_cast<Timestamp::duration>(
+						std::chrono::system_clock::from_time_t(::timegm(&result))
+					);
+			}
 		}
 	}
 

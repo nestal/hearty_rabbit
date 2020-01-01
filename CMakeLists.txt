@@ -52,7 +52,6 @@ include_directories(
 	${NLOHMANN_INCLUDE}
 	${CMAKE_BINARY_DIR}
 	${PROJECT_SOURCE_DIR}/src
-	/usr/include/x86_64-linux-gnu
 )
 
 # Post-processing
@@ -109,6 +108,7 @@ target_link_libraries(hrbsrv PUBLIC
 	hrbcommon
 	magic
 	PkgConfig::HIREDIS
+	PkgConfig::LIBEXIF
 	OpenSSL::SSL
 	OpenSSL::Crypto
 	${OpenCV_LIBS}

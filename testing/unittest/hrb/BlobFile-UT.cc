@@ -24,6 +24,7 @@
 #include "TestImages.hh"
 
 #include <config.hh>
+#include <iostream>
 
 using namespace hrb;
 
@@ -217,6 +218,34 @@ TEST_CASE_METHOD(BlobFileUTFixture, "upload lena.png as BlobFile", "[normal]")
 	REQUIRE(phash(rend_mat).compare(*subject2.phash()) == 1.0);
 	REQUIRE(rend_mat.rows == 256);
 	REQUIRE(rend_mat.cols == 256);
+}
+
+TEST_CASE_METHOD(BlobFileUTFixture, "upload image from camera as BlobFile", "[normal]")
+{
+	if (fs::exists(test_images/"DSC_7926.JPG"))
+	{
+		auto [tmp, src] = upload(m_image_path/"DSC_7926.JPG");
+		std::error_code ec;
+		BlobFile subject{std::move(tmp), m_blob_path, ec};
+		REQUIRE(subject.original_datetime() != Timestamp{});
+
+		auto dt = subject.original_datetime();
+		auto tt = std::chrono::system_clock::to_time_t(dt);
+
+		struct std::tm tm{};
+		REQUIRE(::gmtime_r(&tt, &tm));
+
+		// Wed Jul 18 10:00:48 2018
+		INFO(asctime(&tm));
+
+		REQUIRE(tm.tm_year == 118);     // year 2018
+		REQUIRE(tm.tm_mon == 6);        // July
+		REQUIRE(tm.tm_mday == 18);
+		REQUIRE(tm.tm_hour == 10);
+		REQUIRE(tm.tm_min == 0);
+		REQUIRE(tm.tm_sec == 48);
+
+	}
 }
 
 TEST_CASE("ObjectID::from_hex() error cases", "[error]")
