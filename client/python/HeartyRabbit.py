@@ -3,6 +3,7 @@ import urllib.parse
 import os
 import re
 
+
 class HrbException(Exception):
 	pass
 
@@ -46,19 +47,28 @@ class Blob:
 
 
 class Collection:
-	m_json = None
+	m_name = None
+	m_cover = None
+	m_owner = None
+	m_blobs = None
 
-	def __init__(self, json):
-		self.m_json = json
+	def __init__(self, name, cover, owner, blobs = None):
+		self.m_name = name
+		self.m_cover = cover
+		self.m_owner = owner
+		self.m_blobs = blobs
 
 	def name(self):
-		return self.m_json["coll"]
+		return self.m_name
 
 	def cover(self):
-		return self.m_json["cover"]
+		return self.m_cover
 
 	def owner(self):
-		return self.m_json["owner"]
+		return self.m_owner
+
+	def blob(self, blob):
+		return self.m_blobs.get(blob)
 
 
 class Session:
@@ -142,13 +152,9 @@ class Session:
 
 		result = []
 		for coll in response.json()["colls"]:
-			result.append(Collection(coll))
+			result.append(Collection(coll["coll"], coll["cover"], coll["owner"]))
 
 		return result
-
-	def find_collection(self, collection, user = None):
-		coll_list = self.list_collections(user)
-		return next((x for x in coll_list if x.name() == collection), None)
 
 	@staticmethod
 	def __elements_to_blobs(json):
@@ -157,7 +163,7 @@ class Session:
 			blobs[id] = Blob(id, blob)
 		return blobs
 
-	def list_blobs(self, collection, user = None):
+	def get_collection(self, collection, user = None):
 		if user is None:
 			user = self.m_user
 
@@ -167,14 +173,20 @@ class Session:
 				collection,
 				response.status_code
 			))
+
 		# Server should return our username and put it in the JSON, so they should match.
 		# This is just a sanity check.
 		# That is, unless we have not yet login (i.e. m_user is None). In that case "username" should not be
 		# in the JSON.
 		if response.json().get("username") == self.m_user:
-			return self.__elements_to_blobs(response.json())
+			return Collection(
+				response.json()["collection"],
+				response.json().get("meta").get("cover"),
+				response.json()["owner"],
+				blobs=self.__elements_to_blobs(response.json())
+			)
 		else:
-			return {}
+			return None
 
 	def upload(self, collection, filename, data):
 		response = self.m_session.put(

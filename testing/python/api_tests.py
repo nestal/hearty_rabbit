@@ -66,7 +66,7 @@ class NormalTestCase(unittest.TestCase):
 
 		# Collection "test_api" is created
 		coll_list = self.user1.list_collections()
-		self.assertEqual(self.user1.find_collection("test_api").owner(), "sumsum")
+		self.assertEqual(self.user1.get_collection("test_api").owner(), "sumsum")
 
 		# get the blob we just uploaded
 		lena1 = self.user1.get_blob("test_api", id)
@@ -88,7 +88,7 @@ class NormalTestCase(unittest.TestCase):
 		self.assertEqual(query.data(), lena1.data())
 
 		# The newly uploaded image should be in the "test_api" collection
-		self.assertTrue(id in self.user1.list_blobs("test_api"))
+		self.assertIsNotNone(self.user1.get_collection("test_api").blob(id))
 
 	def test_upload_png(self):
 		# upload random PNG to server
@@ -188,9 +188,11 @@ class NormalTestCase(unittest.TestCase):
 		blob_id = self.user1.upload("some/collection", "abc.jpg", data=self.random_image(800, 800))
 
 		# should find it in the new collection
-		r2 = self.user1.list_blobs("some/collection")
-		self.assertTrue(blob_id in r2)
-		abc = r2[blob_id]
+		coll = self.user1.get_collection("some/collection")
+		self.assertIsNotNone(coll.blob(blob_id))
+		self.assertEqual(coll.owner(), "sumsum")
+
+		abc = coll.blob(blob_id)
 		self.assertEqual(abc.filename(), "abc.jpg")
 		self.assertEqual(abc.mime(), "image/jpeg")
 		self.assertTrue(abc.mime() is not None)
@@ -199,9 +201,8 @@ class NormalTestCase(unittest.TestCase):
 		self.user1.delete_blob("some/collection", blob_id)
 
 		# not found in collection
-		r4 = self.user1.list_blobs("some/collection")
-		self.assertFalse(blob_id in r4)
-
+		r4 = self.user1.get_collection("some/collection")
+		self.assertIsNone(r4.blob(blob_id))
 
 	def test_move_blob(self):
 		blob_id = self.user1.upload("some/collection", "happy😆faces😄.jpg", data=self.random_image(800, 600))
@@ -216,10 +217,10 @@ class NormalTestCase(unittest.TestCase):
 		self.assertRaises(hrb.NotFound, self.user1.get_blob, "some/collection", blob_id)
 
 		# another collection is created
-		dest_coll = self.user1.list_blobs("another/collection")
-		self.assertTrue(blob_id in dest_coll)
-		self.assertEqual(dest_coll[blob_id].filename(), "happy😆faces😄.jpg")
-		self.assertEqual(self.user1.find_collection("another/collection").owner(), "sumsum")
+		dest_coll = self.user1.get_collection("another/collection")
+		self.assertEqual(dest_coll.owner(), "sumsum")
+		self.assertIsNotNone(dest_coll.blob(blob_id))
+		self.assertEqual(dest_coll.blob(blob_id).filename(), "happy😆faces😄.jpg")
 
 		# invalid post data
 		self.assertEqual(self.user1.m_session.post(
@@ -257,7 +258,7 @@ class NormalTestCase(unittest.TestCase):
 
 		# anonymous user can find it in collection
 		self.assertEqual(self.anon.get_blob("some/collection", blob_id, self.user1.user()).id(), blob_id)
-		self.assertTrue(blob_id in self.anon.list_blobs("some/collection", user="sumsum"))
+		self.assertIsNotNone(self.anon.get_collection("some/collection", user="sumsum").blob(blob_id))
 
 		# anonymous user can query the blob
 		# TODO: allow anonymous user to query public blob
@@ -269,11 +270,11 @@ class NormalTestCase(unittest.TestCase):
 
 		# other user can get the image
 		self.assertEqual(self.user2.get_blob("some/collection", blob_id, "sumsum").id(), blob_id)
-		self.assertTrue(blob_id in self.user2.list_blobs("some/collection", "sumsum"))
+		self.assertIsNotNone(self.user2.get_collection("some/collection", "sumsum").blob(blob_id))
 
 		# anonymous user cannot
 		self.assertRaises(hrb.Forbidden, self.anon.get_blob, "some/collection", blob_id, "sumsum")
-		self.assertFalse(blob_id in self.anon.list_blobs("some/collection", "sumsum"))
+		self.assertIsNone(self.anon.get_collection("some/collection", "sumsum").blob(blob_id))
 
 		# new blob can no longer be found in the public list
 		self.assertFalse(blob_id in self.user1.list_public_blobs())
@@ -325,10 +326,11 @@ class NormalTestCase(unittest.TestCase):
 		blobid = self.user1.upload("神座之靈央神", "食哂啲甘荀?_carrot.jpg", data=self.random_image(1200, 1000))
 
 		# should find it in the new collection
-		coll = self.user1.list_blobs("神座之靈央神")
-		self.assertTrue(blobid in coll)
-		self.assertEqual(coll[blobid].filename(), "食哂啲甘荀?_carrot.jpg")
-		self.assertEqual(coll[blobid].mime(), "image/jpeg")
+		coll = self.user1.get_collection("神座之靈央神")
+		#self.assertIsNotNone(coll.timestamp())
+		self.assertIsNotNone(coll.blob(blobid))
+		self.assertEqual(coll.blob(blobid).filename(), "食哂啲甘荀?_carrot.jpg")
+		self.assertEqual(coll.blob(blobid).mime(), "image/jpeg")
 
 
 if __name__ == '__main__':
