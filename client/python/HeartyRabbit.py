@@ -21,23 +21,27 @@ class BadRequest(HrbException):
 
 
 class Blob:
-	m_json = None
 	m_id = None
+	m_filename = None
+	m_mime = None
+	m_timestamp = None
 	m_data = None
 
-	def __init__(self, blobid, json, data = None):
+	def __init__(self, blobid, filename, mime, timestamp, data = None):
 		self.m_id = blobid
-		self.m_json = json
+		self.m_filename = filename
+		self.m_mime = mime
+		self.m_timestamp = timestamp
 		self.m_data = data
 
 	def filename(self):
-		return self.m_json.get("filename")
+		return self.m_filename
 
 	def mime(self):
-		return self.m_json.get("mime")
+		return self.m_mime
 
 	def timestamp(self):
-		return self.m_json.get("timestamp")
+		return self.m_timestamp
 
 	def id(self):
 		return self.m_id
@@ -160,7 +164,7 @@ class Session:
 	def __elements_to_blobs(json):
 		blobs = {}
 		for id, blob in json["elements"].items():
-			blobs[id] = Blob(id, blob)
+			blobs[id] = Blob(id, blob.get("filename"), blob["mime"], blob.get("timestamp"))
 		return blobs
 
 	def get_collection(self, collection, user = None):
@@ -219,7 +223,9 @@ class Session:
 
 		return Blob(
 			blobid,
-			{"mime": response.headers["Content-type"], "filename": urllib.parse.unquote_plus(fname)},
+			urllib.parse.unquote_plus(fname),
+			response.headers["Content-type"],
+			None,
 			data=response.content
 		)
 
@@ -234,7 +240,9 @@ class Session:
 			))
 		return Blob(
 			blobid,
-			{"mime": response.headers["Content-type"]},
+			None,
+			response.headers["Content-type"],
+			None,
 			data=response.content
 		)
 
