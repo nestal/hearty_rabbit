@@ -44,10 +44,7 @@ std::string Timestamp::http_format() const
 {
 	auto tt = std::chrono::system_clock::to_time_t(*this);
 
-	// put_time() is locale dependent, so choose the English locale to avoid surprises.
 	std::ostringstream ss;
-	ss.imbue(std::locale{"en_US.UTF-8"});
-
 	std::tm tm_{};
 	if (auto tm = ::gmtime_r(&tt, &tm_); tm)
 		ss << std::put_time(tm, "%a, %d %b %Y %H:%M:%S GMT");
