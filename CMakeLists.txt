@@ -28,6 +28,9 @@ find_path(NLOHMANN_INCLUDE nlohmann/json.hpp PATHS include)
 message(STATUS "found nlohmann/json at ${NLOHMANN_INCLUDE}")
 
 # Catch2
+set(CATCH_BUILD_TESTING OFF)
+set(CATCH_INSTALL_DOCS OFF)
+set(CATCH_INSTALL_HELPERS OFF)
 add_subdirectory(testing/Catch2)
 
 pkg_check_modules(HIREDIS REQUIRED IMPORTED_TARGET hiredis)

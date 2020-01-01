@@ -109,8 +109,7 @@ void Ownership::find_collection(
 				comp(from_reply(reply[0], coll, requester, std::move(meta)), ec);
 			}
 
-			// This should never happen unless the redis server has bugs. According to redis
-			// documentation, the "SCAN" command always return an array of two reply objects.
+			// This should never happen unless the redis server has bugs.
 			else
 				comp(no_collection(), hrb::make_error_code(Error::redis_command_error));
 		},
@@ -254,7 +253,7 @@ template <typename Complete>
 void Ownership::set_permission(
 	redis::Connection& db,
 	const ObjectID& blobid,
-	const Permission& perm,
+	Permission perm,
 	Complete&& complete
 )
 {
@@ -293,7 +292,6 @@ void Ownership::move_blob(
 		},
 		std::move(cmd)
 	);
-
 }
 
 template <typename Complete>

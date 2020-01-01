@@ -229,10 +229,7 @@ redis::CommandString Ownership::scan_collection_command(std::string_view coll) c
 	};
 }
 
-redis::CommandString Ownership::set_permission_command(
-	const ObjectID& blobid,
-	const Permission& perm
-) const
+redis::CommandString Ownership::set_permission_command(const ObjectID& blobid, Permission perm) const
 {
 	auto blob_meta = key::blob_meta(m_user);
 	auto pub_list  = key::public_blobs();

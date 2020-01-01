@@ -41,7 +41,7 @@ private:
 	[[nodiscard]] redis::CommandString link_command(std::string_view coll, const ObjectID& blob, std::optional<CollEntry> entry) const;
 	[[nodiscard]] redis::CommandString unlink_command(std::string_view coll, const ObjectID& blob) const;
 	[[nodiscard]] redis::CommandString scan_collection_command(std::string_view coll) const;
-	[[nodiscard]] redis::CommandString set_permission_command(const ObjectID& blobid, const Permission& perm) const;
+	[[nodiscard]] redis::CommandString set_permission_command(const ObjectID& blobid, Permission perm) const;
 	[[nodiscard]] redis::CommandString set_cover_command(std::string_view coll, const ObjectID& cover) const;
 	[[nodiscard]] redis::CommandString list_public_blob_command() const;
 	void update(redis::Connection& db, const ObjectID& blobid, const CollEntryDB& entry);
@@ -91,7 +91,7 @@ public:
 	void set_permission(
 		redis::Connection& db,
 		const ObjectID& blobid,
-		const Permission& perm,
+		Permission perm,
 		Complete&& complete
 	);
 
