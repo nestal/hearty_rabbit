@@ -25,14 +25,16 @@ class Blob:
 	m_filename = None
 	m_mime = None
 	m_timestamp = None
+	m_perm = None
 	m_data = None
 
-	def __init__(self, blobid, filename, mime, timestamp, data = None):
+	def __init__(self, blobid, filename, mime, timestamp, data = None, perm = None):
 		self.m_id = blobid
 		self.m_filename = filename
 		self.m_mime = mime
 		self.m_timestamp = timestamp
 		self.m_data = data
+		self.m_perm = perm
 
 	def filename(self):
 		return self.m_filename
@@ -48,6 +50,9 @@ class Blob:
 
 	def data(self):
 		return self.m_data
+
+	def perm(self):
+		return self.m_perm
 
 
 class Collection:
@@ -87,6 +92,8 @@ class Session:
 		# This is a hack for testing purpose.
 		if self.m_site.netloc == "localhost:4433" and cert is None:
 			self.m_session.verify = "../../etc/hearty_rabbit/certificate.pem"
+		else:
+			self.m_session.verify = cert
 
 	def __url(self, path, query = None):
 		url = self.m_site._replace(path = path)
@@ -164,7 +171,7 @@ class Session:
 	def __elements_to_blobs(json):
 		blobs = {}
 		for id, blob in json["elements"].items():
-			blobs[id] = Blob(id, blob.get("filename"), blob["mime"], blob.get("timestamp"))
+			blobs[id] = Blob(id, blob.get("filename"), blob["mime"], blob.get("timestamp"), perm=blob.get("perm"))
 		return blobs
 
 	def get_collection(self, collection, user = None):

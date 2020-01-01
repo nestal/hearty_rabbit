@@ -19,7 +19,7 @@ class NormalTestCase(unittest.TestCase):
 	m_site = "localhost:4433"
 	user1 = None
 	user2 = None
-	anon  = None
+	anon = None
 
 	# without the "test" prefix in the method, it is not treated as a test routine
 	@staticmethod
@@ -154,7 +154,6 @@ class NormalTestCase(unittest.TestCase):
 		self.assertEqual(self.user1.m_session.get("https://localhost:4433/lib/index.html").status_code, 404)
 		self.assertEqual(self.anon.m_session.get("https://localhost:4433/lib/login.html").status_code, 404)
 
-
 	def test_not_found(self):
 		# resource not exist
 		r1 = self.user1.m_session.get("https://localhost:4433/index.html")
@@ -245,6 +244,7 @@ class NormalTestCase(unittest.TestCase):
 
 		# owner set permission to public
 		self.user1.set_permission("some/collection", blob_id, "public")
+		self.assertEqual(self.user1.get_collection("some/collection").blob(blob_id).perm(), "public")
 
 		# other user can get the image
 		self.assertEqual(self.user2.get_blob("some/collection", blob_id, self.user1.user()).id(), blob_id)
@@ -267,6 +267,7 @@ class NormalTestCase(unittest.TestCase):
 
 		# owner set permission to shared
 		self.user1.set_permission("some/collection", blob_id, "shared")
+		self.assertEqual(self.user1.get_collection("some/collection").blob(blob_id).perm(), "shared")
 
 		# other user can get the image
 		self.assertEqual(self.user2.get_blob("some/collection", blob_id, "sumsum").id(), blob_id)
