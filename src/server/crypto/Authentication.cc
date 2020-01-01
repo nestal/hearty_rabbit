@@ -128,7 +128,7 @@ void Authentication::add_user(
 			if (!reply)
 				ec = Error::redis_command_error;
 
-			completion(std::move(ec));
+			completion(ec);
 		},
 		"HMSET user:%b salt %b key %b iteration %d hash_algorithm %b",
 		username.data(), username.size(),
@@ -194,7 +194,7 @@ void Authentication::verify_user(
 			username, session_length,
 			password=std::move(password),
 			completion=std::move(completion)
-		](redis::Reply reply, auto&& ec)
+		](redis::Reply reply, auto&& ec) mutable
 		{
 			// Verify password with the key in database
 			if (!ec)
@@ -205,7 +205,7 @@ void Authentication::verify_user(
 				create_session(std::move(completion), username, *db, session_length);
 
 			else
-				completion(std::move(ec), {});
+				completion(ec, {});
 		},
 		"HMGET user:%b salt key iteration hash_algorithm",
 		username.data(), username.size()
@@ -218,9 +218,9 @@ void Authentication::destroy_session(
 ) const
 {
 	db.command(
-		[comp=std::move(completion)](redis::Reply, auto&& ec) mutable
+		[comp=std::move(completion)](redis::Reply&&, auto ec) mutable
 		{
-			comp(std::move(ec));
+			comp(ec);
 		},
 		"DEL session:%b", id().session().data(), id().session().size()
 	);

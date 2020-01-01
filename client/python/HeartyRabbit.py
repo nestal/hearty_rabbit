@@ -85,12 +85,12 @@ class Session:
 	m_user = None
 	m_session = None
 
-	def __init__(self, site = "localhost:4433", cert = None):
+	def __init__(self, site = "localhost:4433", cert = True):
 		self.m_session = requests.Session()
 		self.m_site = urllib.parse.urlparse("https://" + site)
 
 		# This is a hack for testing purpose.
-		if self.m_site.netloc == "localhost:4433" and cert is None:
+		if self.m_site.netloc == "localhost:4433" and cert is True:
 			self.m_session.verify = "../../etc/hearty_rabbit/certificate.pem"
 		else:
 			self.m_session.verify = cert
@@ -258,12 +258,12 @@ class Session:
 				blobid, user, response.status_code
 			))
 
-		disposition = response.headers['content-disposition']
-		fname = re.findall("filename=(.+)", disposition)[0]
+		disposition = response.headers.get("content-disposition")
+		fname = re.findall("filename=(.+)", disposition)[0] if disposition is not None else None
 
 		return Blob(
 			blobid,
-			urllib.parse.unquote_plus(fname),
+			urllib.parse.unquote_plus(fname) if fname is not None else None,
 			response.headers["Content-type"],
 			None,
 			data=response.content
