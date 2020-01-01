@@ -32,32 +32,29 @@ for album in album_list:
 
 	print("downloading album: {0}".format(album.name()))
 
+	album_dir = os.path.join(blob_dir, album.name())
+	if not os.path.isdir(album_dir):
+		Path(album_dir).mkdir(mode=0o0700, parents=True, exist_ok=True)
+
 	coll = source.get_collection(album.name())
 	for blobid, blob in coll.m_blobs.items():
-		print("downloading " + blob.id())
-	# coll = source.get(site + "/api/" + user + "/" + urllib.parse.quote_plus(album["coll"])).json()
-	#
-	# album_dir = os.path.join(blob_dir, album["coll"])
-	# if not os.path.isdir(album_dir):
-	# 	os.mkdir(album_dir, 0o0700)
-	#
-	# for blobid, coll_entry in coll["elements"].items():
-	# 	source_url = site + "/view/" + user + "/" + urllib.parse.quote_plus(album["coll"]) + "/" + blobid + "?master"
-	# 	permission = coll_entry["perm"]
-	#
-	# 	downloaded_file = os.path.join(album_dir, coll_entry["filename"])
-	# 	if not os.path.isfile(downloaded_file):
-	# 		with open(downloaded_file, "wb") as output_file:
-	# 			print("downloading " + coll_entry["filename"])
-	# 			file_download = source.get(source_url, stream=True)
-	#
-	# 			for chunk in file_download.iter_content(chunk_size=1024*1024):
-	# 				if chunk:
-	# 					output_file.write(chunk)
-	#
-	# 	if permission == "private":
-	# 		os.chmod(downloaded_file, 0o600)
-	# 	elif permission == "shared":
-	# 		os.chmod(downloaded_file, 0o640)
-	# 	elif permission == "public":
-	# 		os.chmod(downloaded_file, 0o644)
+		downloaded_file = os.path.join(album_dir, blob.filename())
+
+		if not os.path.isfile(downloaded_file) or os.path.getsize(downloaded_file) == 0:
+			print("downloading {} to {}".format(blob.filename(), downloaded_file))
+			try:
+				file_download = source.get_blob(coll.name(), blob.id(), rendition="master")
+				with open(downloaded_file, "wb") as output_file:
+					output_file.write(file_download.data())
+
+				if blob.perm() == "private":
+					os.chmod(downloaded_file, 0o600)
+				elif blob.perm() == "shared":
+					os.chmod(downloaded_file, 0o640)
+				elif blob.perm() == "public":
+					os.chmod(downloaded_file, 0o644)
+
+				print("downloaded {}: {} bytes".format(blob.filename(), os.path.getsize(downloaded_file)))
+
+			except hrb.HrbException as e:
+				print("cannot download file: {}".format(e))
