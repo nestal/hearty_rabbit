@@ -12,8 +12,8 @@
 
 #pragma once
 
-#include "common/ObjectID.hh"
-#include "common/FS.hh"
+#include "common/hrb/ObjectID.hh"
+#include "common/util/FS.hh"
 #include "net/Request.hh"
 
 #include <boost/beast/core/file_posix.hpp>

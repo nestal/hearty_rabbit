@@ -13,7 +13,7 @@
 #include "client/HRBClient.hh"
 #include "client/HRBClient.ipp"
 
-#include "common/MMap.hh"
+#include "common/util/MMap.hh"
 
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ssl/context.hpp>

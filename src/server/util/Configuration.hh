@@ -15,7 +15,7 @@
 #include "Exception.hh"
 #include "Size2D.hh"
 
-#include "common/FS.hh"
+#include "common/util/FS.hh"
 
 #include <boost/program_options/variables_map.hpp>
 #include <boost/program_options/options_description.hpp>

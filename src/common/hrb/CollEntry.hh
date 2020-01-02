@@ -14,9 +14,9 @@
 
 #include "ObjectID.hh"
 #include "Permission.hh"
-#include "Timestamp.hh"
+#include "common/util/Timestamp.hh"
 
-#include "JSON.hh"
+#include "common/util/JSON.hh"
 
 #include <unordered_map>
 

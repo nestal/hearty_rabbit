@@ -16,7 +16,7 @@
 #include "RedisKeys.hh"
 
 #include "util/Log.hh"
-#include "common/Escape.hh"
+#include "common/util/Escape.hh"
 
 #include <nlohmann/json.hpp>
 #include <sstream>

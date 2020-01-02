@@ -26,10 +26,10 @@
 #include "net/MMapResponseBody.hh"
 #include "util/Log.hh"
 
-#include "common/BlobList.hh"
-#include "common/Escape.hh"
-#include "common/URLIntent.hh"
-#include "common/StringFields.hh"
+#include "common/hrb/BlobList.hh"
+#include "common/util/Escape.hh"
+#include "common/hrb/URLIntent.hh"
+#include "common/util/StringFields.hh"
 
 #include <boost/beast/http/fields.hpp>
 #include <boost/beast/http/message.hpp>

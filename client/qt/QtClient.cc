@@ -14,10 +14,10 @@
 
 #include <QtNetwork/QNetworkReply>
 
-#include "common/Collection.hh"
-#include "common/CollectionList.hh"
-#include "common/Escape.hh"
-#include "common/URLIntent.hh"
+#include "common/hrb/Collection.hh"
+#include "common/hrb/CollectionList.hh"
+#include "common/util/Escape.hh"
+#include "common/hrb/URLIntent.hh"
 
 #include <nlohmann/json.hpp>
 #include <iostream>

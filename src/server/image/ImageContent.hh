@@ -12,7 +12,7 @@
 
 #pragma once
 
-#include "common/FS.hh"
+#include "common/util/FS.hh"
 
 #include <boost/range/iterator_range.hpp>
 

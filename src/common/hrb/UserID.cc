@@ -11,8 +11,8 @@
 //
 
 #include "UserID.hh"
-#include "Cookie.hh"
-#include "Escape.hh"
+#include "common/util/Cookie.hh"
+#include "common/util/Escape.hh"
 
 #include <cassert>
 #include <iostream>

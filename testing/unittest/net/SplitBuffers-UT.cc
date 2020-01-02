@@ -13,7 +13,7 @@
 #include <catch2/catch.hpp>
 
 #include "net/SplitBuffers.hh"
-#include "common/FS.hh"
+#include "common/util/FS.hh"
 
 using namespace hrb;
 using Subject = hrb::SplitBuffers::value_type;

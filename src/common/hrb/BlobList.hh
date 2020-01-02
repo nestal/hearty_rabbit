@@ -13,7 +13,7 @@
 #pragma once
 
 #include "CollEntry.hh"
-#include "JSON.hh"
+#include "common/util/JSON.hh"
 #include "ObjectID.hh"
 
 #include <boost/range/adaptors.hpp>

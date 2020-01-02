@@ -15,7 +15,7 @@
 #include "crypto/Random.hh"
 #include "hrb/index/PHashDb.hh"
 #include "image/PHash.hh"
-#include "common/Escape.hh"
+#include "common/util/Escape.hh"
 
 #include "net/Redis.hh"
 #include "TestImages.hh"

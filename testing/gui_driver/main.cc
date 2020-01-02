@@ -11,7 +11,7 @@
 //
 
 #include "image/ImageContent.hh"
-#include "common/FS.hh"
+#include "common/util/FS.hh"
 
 #include <opencv2/highgui.hpp>
 #include <opencv2/imgcodecs.hpp>

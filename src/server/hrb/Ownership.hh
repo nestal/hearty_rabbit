@@ -12,7 +12,7 @@
 
 #pragma once
 
-#include "common/ObjectID.hh"
+#include "common/hrb/ObjectID.hh"
 #include "CollEntryDB.hh"
 
 #include <string_view>

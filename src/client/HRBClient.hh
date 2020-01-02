@@ -12,9 +12,9 @@
 
 #pragma once
 
-#include "common/Cookie.hh"
-#include "common/UserID.hh"
-#include "common/FS.hh"
+#include "common/util/Cookie.hh"
+#include "common/hrb/UserID.hh"
+#include "common/util/FS.hh"
 
 #include <boost/beast/http/verb.hpp>
 #include <boost/asio/io_context.hpp>

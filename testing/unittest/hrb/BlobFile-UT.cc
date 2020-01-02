@@ -16,7 +16,7 @@
 #include "hrb/CollEntryDB.hh"
 #include "hrb/UploadFile.hh"
 
-#include "common/MMap.hh"
+#include "common/util/MMap.hh"
 #include "util/Magic.hh"
 #include "util/Configuration.hh"
 

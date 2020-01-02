@@ -11,7 +11,7 @@
 //
 
 #include "BlobRequest.hh"
-#include "common/UserID.hh"
+#include "common/hrb/UserID.hh"
 
 namespace hrb {
 

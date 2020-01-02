@@ -12,8 +12,8 @@
 
 #pragma once
 
-#include "common/BufferView.hh"
-#include "common/FS.hh"
+#include "common/util/BufferView.hh"
+#include "common/util/FS.hh"
 
 #include <opencv2/core.hpp>
 #include <cstdint>

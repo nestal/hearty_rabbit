@@ -14,7 +14,7 @@
 #include "UploadFile.hh"
 
 // HeartyRabbit headers
-#include "common/Escape.hh"
+#include "common/util/Escape.hh"
 #include "image/ImageContent.hh"
 #include "image/PHash.hh"
 #include "image/EXIF2.hh"
@@ -22,7 +22,7 @@
 #include "util/Configuration.hh"
 #include "util/Log.hh"
 #include "util/Magic.hh"
-#include "common/MMap.hh"
+#include "common/util/MMap.hh"
 
 // JSON for saving meta data
 #include <nlohmann/json.hpp>

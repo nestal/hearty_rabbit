@@ -17,7 +17,7 @@
 #include "crypto/Random.hh"
 #include "util/Configuration.hh"
 
-#include "common/FS.hh"
+#include "common/util/FS.hh"
 
 #include <cassert>
 #include <thread>

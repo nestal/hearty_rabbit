@@ -12,8 +12,8 @@
 
 #include <catch2/catch.hpp>
 
-#include "common/URLIntent.hh"
-#include "common/StringFields.hh"
+#include "common/hrb/URLIntent.hh"
+#include "common/util/StringFields.hh"
 
 using namespace hrb;
 

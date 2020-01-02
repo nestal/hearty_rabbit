@@ -11,7 +11,7 @@
 //
 
 #include "Collection.hh"
-#include "Escape.hh"
+#include "common/util/Escape.hh"
 
 namespace hrb {
 

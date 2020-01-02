@@ -12,8 +12,8 @@
 
 #include "ObjectID.hh"
 
-#include "Blake2.hh"
-#include "Escape.hh"
+#include "common/util/Blake2.hh"
+#include "common/util/Escape.hh"
 
 #include <boost/algorithm/hex.hpp>
 

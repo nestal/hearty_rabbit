@@ -13,7 +13,7 @@
 #pragma once
 
 #include "CollEntryDB.hh"
-#include "common/ObjectID.hh"
+#include "common/hrb/ObjectID.hh"
 
 #include <nlohmann/json.hpp>
 #include <string>

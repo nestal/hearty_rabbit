@@ -14,8 +14,8 @@
 
 #include "hrb/SessionHandler.ipp"
 #include "net/SplitBuffers.hh"
-#include "common/Cookie.hh"
-#include "common/Error.hh"
+#include "common/util/Cookie.hh"
+#include "common/util/Error.hh"
 #include "util/Log.hh"
 
 #include <boost/asio/bind_executor.hpp>

@@ -15,7 +15,7 @@
 #include "ObjectID.hh"
 #include "Permission.hh"
 #include "CollEntry.hh"
-#include "Escape.hh"
+#include "common/util/Escape.hh"
 
 namespace hrb {
 

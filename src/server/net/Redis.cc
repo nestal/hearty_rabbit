@@ -14,8 +14,9 @@
 #include "Redis.hh"
 
 #include "util/Backtrace.hh"
-#include "common/Error.hh"
 #include "util/Log.hh"
+
+#include "common/util/Error.hh"
 
 #include <boost/asio/strand.hpp>
 #include <boost/exception/info.hpp>
