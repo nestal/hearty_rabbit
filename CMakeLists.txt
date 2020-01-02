@@ -90,9 +90,8 @@ file(APPEND ${WEB_RESOURCE_LIST} "};\n}")
 # common code for both server and client
 file(GLOB_RECURSE COMMON_SRC src/common/*.cc src/common/*.hh src/common/*.ipp)
 add_library(hrbcommon ${COMMON_SRC})
-target_link_libraries(
-	hrbcommon
-	PUBLIC
+target_link_libraries(hrbcommon PUBLIC
+	magic
 	Boost::system Boost::program_options stdc++fs
 	${LIBB2_LIBRARY}
 	${CMAKE_THREAD_LIBS_INIT}
@@ -107,7 +106,6 @@ file(GLOB_RECURSE SERVER_SRC src/server/*.cc src/server/*.hh src/server/*.ipp)
 add_library(hrbsrv ${SERVER_SRC} ${CMAKE_CURRENT_BINARY_DIR}/config.hh)
 target_link_libraries(hrbsrv PUBLIC
 	hrbcommon
-	magic
 	PkgConfig::HIREDIS
 	PkgConfig::LIBEXIF
 	OpenSSL::SSL

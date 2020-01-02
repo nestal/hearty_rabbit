@@ -21,7 +21,7 @@
 
 #include "util/Configuration.hh"
 #include "util/Log.hh"
-#include "util/Magic.hh"
+#include "common/util/Magic.hh"
 #include "common/util/MMap.hh"
 
 // JSON for saving meta data
