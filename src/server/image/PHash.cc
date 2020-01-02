@@ -36,11 +36,11 @@ public:
         cv::resize(input, resizeImg, cv::Size(32,32), 0, 0, cv::INTER_LINEAR);
         if(input.type() == CV_8UC3)
         {
-            cv::cvtColor(resizeImg, grayImg, CV_BGR2GRAY);
+            cv::cvtColor(resizeImg, grayImg, cv::COLOR_BGR2GRAY);
         }
         else if(input.type() == CV_8UC4)
         {
-            cv::cvtColor(resizeImg, grayImg, CV_BGRA2GRAY);
+            cv::cvtColor(resizeImg, grayImg, cv::COLOR_BGRA2GRAY);
         }
         else
         {

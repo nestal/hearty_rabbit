@@ -110,7 +110,7 @@ TEST_CASE("simple redis", "[normal]")
 				{
 					std::vector<std::string> result;
 					for (auto&& v : reply)
-						result.push_back(std::string{v.as_string()});
+						result.emplace_back(v.as_string());
 
 					REQUIRE(result[0] == "field1");
 					REQUIRE(result[1] == "value1");
@@ -139,6 +139,7 @@ TEST_CASE("simple redis", "[normal]")
 				}
 			}, "HGETALL test_hash");
 
+			// TODO: redis 3.2 (from CentOS 7) does not support setting multiple fields
 		}, "HSET test_hash field1 value1 field2 value2");
 
 		using namespace std::chrono_literals;

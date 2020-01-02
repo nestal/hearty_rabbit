@@ -35,7 +35,7 @@ add_subdirectory(testing/Catch2)
 
 pkg_check_modules(HIREDIS REQUIRED IMPORTED_TARGET hiredis)
 pkg_check_modules(LIBUNWIND IMPORTED_TARGET libunwind)
-pkg_check_modules(LIBEXIF IMPORTED_TARGET libexif)
+pkg_check_modules(LIBEXIF REQUIRED IMPORTED_TARGET libexif)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CONFIG_FILENAME "hearty_rabbit.json")
@@ -47,6 +47,7 @@ message(STATUS "using haarcascade at ${HAARCASCADE_PATH}")
 add_definitions(-D_GLIBCXX_USE_CXX11_ABI=1)
 
 include_directories(
+	${OpenCV_INCLUDE_DIRS}
 	${LIBUNWIND_INCLUDE_DIRS}
 	${LIBB2_INCLUDE}
 	${NLOHMANN_INCLUDE}
