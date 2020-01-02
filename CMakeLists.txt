@@ -199,17 +199,23 @@ add_custom_command(
 ###################################################################################################
 
 add_executable(hearty_rabbit src/server/main.cc)
-target_link_libraries(
-	hearty_rabbit
-	hrbsrv
-)
+target_link_libraries(hearty_rabbit PRIVATE hrbsrv)
 add_dependencies(hearty_rabbit unittest clienttest)
 
 if (BUILD_CLIENT)
 	add_subdirectory(client/qt)
 	
 	add_executable(gui_driver testing/gui_driver/main.cc)
-	target_link_libraries(gui_driver hrbclient hrbsrv test_common)
+	target_link_libraries(gui_driver PRIVATE hrbclient hrbsrv test_common)
+endif()
+
+###################################################################################################
+# hrbsync: directory sync with hearty rabbit server
+###################################################################################################
+
+if (BUILD_CLIENT)
+	add_executable(hrbsync client/hrbsync/main.cc)
+	target_link_libraries(hrbsync PRIVATE hrbclient)
 endif()
 
 ###################################################################################################
