@@ -18,7 +18,7 @@
 #include "image/PHash.hh"
 #include "util/Size2D.hh"
 #include "common/FS.hh"
-#include "util/MMap.hh"
+#include "common/MMap.hh"
 
 #include <nlohmann/json.hpp>
 #include <system_error>

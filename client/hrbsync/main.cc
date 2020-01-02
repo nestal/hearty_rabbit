@@ -13,6 +13,8 @@
 #include "client/HRBClient.hh"
 #include "client/HRBClient.ipp"
 
+#include "common/MMap.hh"
+
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ssl/context.hpp>
 
@@ -22,6 +24,27 @@
 using namespace hrb;
 using namespace std::chrono_literals;
 
+Collection load_local(std::filesystem::path local)
+{
+	Collection coll;
+	for (auto&& file : std::filesystem::directory_iterator{local})
+	{
+		std::cout << file.path() << std::endl;
+
+		std::error_code ec;
+		auto mmap = MMap::open(file.path(), ec);
+		if (!ec)
+		{
+			Blake2 hash;
+			hash.update(mmap.data(), mmap.size());
+
+			coll.add_blob(hash.finalize(), CollEntry{{}, file.path().filename(), "", {}});
+		}
+	}
+
+	return coll;
+}
+
 int main(int argc, char **argv)
 {
 	if (argc < 6)
@@ -29,6 +52,9 @@ int main(int argc, char **argv)
 		std::cerr << "usage: " << argv[0] << " [server] [port] [collection] [username] [password]" << std::endl;
 		return -1;
 	}
+
+	load_local(std::filesystem::current_path());
+	return 0;
 
 	boost::asio::io_context ioc;
 	ssl::context ctx{ssl::context::sslv23_client};
@@ -46,7 +72,7 @@ int main(int argc, char **argv)
 				{
 					std::cout << "blob: " << to_hex(id) << " " << entry.filename << std::endl;
 
-					client.get_blob(coll.owner(), coll.name(), id, [fname=entry.filename](std::string&& body, std::error_code ec)
+					client.get_blob(coll.owner(), coll.name(), id, [fname=entry.filename](const std::string& body, std::error_code ec)
 					{
 						std::ofstream out{fname};
 						out.rdbuf()->sputn(body.data(), body.size());

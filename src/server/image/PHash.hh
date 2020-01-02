@@ -12,7 +12,7 @@
 
 #pragma once
 
-#include "util/BufferView.hh"
+#include "common/BufferView.hh"
 #include "common/FS.hh"
 
 #include <opencv2/core.hpp>

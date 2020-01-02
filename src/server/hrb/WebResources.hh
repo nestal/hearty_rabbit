@@ -14,7 +14,7 @@
 
 #include "net/Request.hh"
 
-#include "util/MMap.hh"
+#include "common/MMap.hh"
 #include "util/Exception.hh"
 #include "common/FS.hh"
 #include "net/SplitBuffers.hh"

@@ -12,7 +12,7 @@
 
 #pragma once
 
-#include "util/MMap.hh"
+#include "common/MMap.hh"
 #include "util/StringTemplate.hh"
 
 #include <boost/filesystem/path.hpp>

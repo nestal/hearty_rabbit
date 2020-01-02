@@ -22,7 +22,7 @@
 #include "util/Configuration.hh"
 #include "util/Log.hh"
 #include "util/Magic.hh"
-#include "util/MMap.hh"
+#include "common/MMap.hh"
 
 // JSON for saving meta data
 #include <nlohmann/json.hpp>

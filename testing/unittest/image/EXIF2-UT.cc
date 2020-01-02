@@ -14,7 +14,7 @@
 
 #include "common/Timestamp.hh"
 #include "image/EXIF2.hh"
-#include "util/MMap.hh"
+#include "common/MMap.hh"
 
 #include "TestImages.hh"
 
