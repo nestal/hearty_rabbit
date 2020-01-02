@@ -50,7 +50,7 @@ public:
 
 	// if the rendition does not exists but it's a valid one, it will be generated dynamically
 	MMap rendition(std::string_view rendition, const RenditionSetting& cfg, const fs::path& haar_path, std::error_code& ec) const;
-	MMap master(std::error_code& ec) const;
+	MMap load_master(std::error_code& ec) const;
 
 	const ObjectID& ID() const {return m_id;}
 	std::string_view mime() const;

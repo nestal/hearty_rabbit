@@ -85,7 +85,7 @@ TEST_CASE_METHOD(BlobFileUTFixture, "upload non-image BlobFile", "[normal]")
 		std::error_code read_ec;
 		BlobFile subject2{m_blob_path, subject.ID()};
 
-		REQUIRE(out.buffer() == subject2.master(read_ec).buffer());
+		REQUIRE(out.buffer() == subject2.load_master(read_ec).buffer());
 		REQUIRE(!read_ec);
 		REQUIRE(subject2.mime() == "text/x-c++");
 		REQUIRE_FALSE(subject2.phash().has_value());

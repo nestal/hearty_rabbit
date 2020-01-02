@@ -17,6 +17,8 @@
 #include "common/Escape.hh"
 #include "image/ImageContent.hh"
 #include "image/PHash.hh"
+#include "image/EXIF2.hh"
+
 #include "util/Configuration.hh"
 #include "util/Log.hh"
 #include "util/Magic.hh"
@@ -29,11 +31,9 @@
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/imgproc.hpp>
 
-// libexif to read EXIF2 tags
-#include <libexif/exif-data.h>
-
 #include <limits>
 #include <fstream>
+#include <server/image/EXIF2.hh>
 
 namespace hrb {
 
@@ -139,7 +139,7 @@ void save_blob(const Blob& blob, const fs::path& dest, std::error_code& ec)
 MMap BlobFile::rendition(std::string_view rendition, const RenditionSetting& cfg, const fs::path& haar_path, std::error_code& ec) const
 {
 	if (rendition == hrb::master_rendition)
-		return master(ec);
+		return load_master(ec);
 
 	// check if rendition is allowed by config
 	if (!cfg.valid(rendition))
@@ -151,7 +151,7 @@ MMap BlobFile::rendition(std::string_view rendition, const RenditionSetting& cfg
 	if (!exists(rend_path) && is_image())
 		generate_image_rendition(cfg.find(rendition), rend_path, haar_path, ec);
 
-	return exists(rend_path) ? MMap::open(rend_path, ec) : master(ec);
+	return exists(rend_path) ? MMap::open(rend_path, ec) : load_master(ec);
 }
 
 void BlobFile::generate_image_rendition(const JPEGRenditionSetting& cfg, const fs::path& dest, const fs::path& haar_path, std::error_code& ec) const
@@ -183,7 +183,7 @@ void BlobFile::generate_image_rendition(const JPEGRenditionSetting& cfg, const f
 	}
 }
 
-MMap BlobFile::master(std::error_code& ec) const
+MMap BlobFile::load_master(std::error_code& ec) const
 {
 	return MMap::open(m_dir/hrb::master_rendition, ec);
 }
@@ -284,26 +284,9 @@ MMap BlobFile::deduce_original(MMap&& master) const
 	{
 		master = this->master(std::move(master));
 
-		// Use unique_ptr to ensure the ExifData will be freed.
-		if (std::unique_ptr<::ExifData, decltype(&::exif_data_unref)> exif{
-			::exif_data_new_from_data(static_cast<const unsigned char*>(master.data()), master.size()),
-			&::exif_data_unref};
-			exif
-		)
-		{
-			if (auto entry = ::exif_content_get_entry(exif->ifd[EXIF_IFD_0], EXIF_TAG_DATE_TIME); entry)
-			{
-				char buf[1024];
-		        ::exif_entry_get_value(entry, buf, sizeof(buf));
-
-		        struct std::tm result{};
-        		auto p = strptime(reinterpret_cast<const char*>(buf), "%Y:%m:%d %H:%M:%S", &result);
-				if (p)
-					m_meta->original = std::chrono::time_point_cast<Timestamp::duration>(
-						std::chrono::system_clock::from_time_t(::timegm(&result))
-					);
-			}
-		}
+		if (EXIF2 exif{master.buffer()}; exif)
+			if (auto datetime = exif.date_time(); datetime)
+				m_meta->original = std::chrono::time_point_cast<Timestamp::duration>(*datetime);
 	}
 
 	return std::move(master);
@@ -322,12 +305,13 @@ double BlobFile::compare(const BlobFile& other) const
 		std::numeric_limits<double>::max();
 }
 
+// Return the memory map of the master rendition. Load it from disk if it is not loaded yet.
 MMap BlobFile::master(MMap&& master) const
 {
 	std::error_code ec;
 	if (!master.is_opened())
 	{
-		master = this->master(ec);
+		master = this->load_master(ec);
 		if (ec)
 			Log(LOG_WARNING, "cannot load master rendition of blob %1% from %2% (%3%)", to_hex(m_id), m_dir, ec.message());
 	}
