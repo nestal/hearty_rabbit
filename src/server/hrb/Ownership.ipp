@@ -260,7 +260,7 @@ void Ownership::scan_all_collections(
 	scan_collections(db, 0,
 		[coll_list, user=m_user](auto coll, auto&& json) mutable
 		{
-			coll_list->add(user, coll, std::move(json));
+			coll_list->add(user, coll, std::forward<decltype(json)>(json));
 		},
 		[coll_list, comp=std::forward<Complete>(complete)](long cursor, auto ec) mutable
 		{
@@ -280,11 +280,11 @@ void Ownership::set_permission(
 )
 {
 	db.command(
-		[comp=std::forward<Complete>(complete)](auto&& reply, auto&& ec) mutable
+		[comp=std::forward<Complete>(complete)](auto&& reply, auto ec) mutable
 		{
 			if (!reply)
 				Log(LOG_WARNING, "Collection::set_permission(): script error: %1%", reply.as_error());
-			comp(std::move(ec));
+			comp(ec);
 		},
 		set_permission_command(blobid, perm)
 	);

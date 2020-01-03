@@ -40,14 +40,15 @@ hrb::Collection Ownership::from_reply(
 ) const
 {
 	assert(meta.is_object());
-	assert(reply.array_size() % 2 == 0);
+	assert(reply.array_size() % 3 == 0);
 
 	hrb::Collection result{coll, m_user, std::move(meta)};
 
-	for (auto&& kv : reply.kv_pairs())
+	for (auto i = 0U; i+2 < reply.array_size(); i += 3)
 	{
-		auto&& blob = kv.key();
-		auto&& perm = kv.value();
+		auto blob = reply[i].as_string();
+		auto perm = reply[i+1];
+		auto filename = reply[i+2].as_string();
 
 		if (perm.as_string().empty())
 			continue;
@@ -63,6 +64,8 @@ hrb::Collection Ownership::from_reply(
 				// Overwrite filename field with the filename in directory.
 				// The filename in the CollEntryDB of owner:blob_meta is the original filename of the blob
 				// when it was uploaded. The actual filename in the collection may be different
+				if (!filename.empty())
+					fields->filename = filename;
 
 				result.add_blob(*blob_id, *fields);
 			}
@@ -261,9 +264,15 @@ redis::CommandString Ownership::scan_collection_command(std::string_view coll) c
 		local coll_hash, coll_list, blob_meta = KEYS[1], KEYS[2], KEYS[3]
 		local coll = ARGV[1]
 		local dirs = {}
-		for k, blob in ipairs(redis.call('HKEYS', coll_hash)) do
-			table.insert(dirs, blob)
-			table.insert(dirs, redis.call('HGET', blob_meta, blob))
+		for i, v in ipairs(redis.call('HGETALL', coll_hash)) do
+			if i % 2 == 1 then
+				-- v is the blob ID
+				table.insert(dirs, v)
+				table.insert(dirs, redis.call('HGET', blob_meta, v))
+			else
+				-- v is the filename
+				table.insert(dirs, v)
+			end
 		end
 		return {dirs, redis.call('HGET', coll_list, coll)}
 	)__";

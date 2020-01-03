@@ -70,20 +70,23 @@ TEST_CASE("list of collection owned by user", "[normal]")
 	ioc.restart();
 
 	// remove all blobs in the collection
-	subject.find_collection(*redis, Authentication{{}, "owner"}, "/", [&tested, redis](auto&& coll, auto ec)
-	{
-		for (auto&& [id, blob] : coll.blobs())
+	subject.find_collection(
+		*redis, Authentication{{}, "owner"}, "/",
+		[&tested, redis](auto&& coll, std::error_code ec)
 		{
-		std::cout << "removing: " << to_hex(id) << std::endl;
-			INFO("blob = " << to_hex(id));
-			Ownership{"owner"}.unlink(*redis, "/", id, [](auto&& ec)
+			REQUIRE(coll.blobs().begin() != coll.blobs().end());
+			for (auto&& [id, blob] : coll.blobs())
 			{
-				REQUIRE(!ec);
-			});
-		}
+				INFO("removing = " << to_hex(id));
+				Ownership{"owner"}.unlink(*redis, "/", id, [](auto&& ec)
+				{
+					REQUIRE(!ec);
+				});
+			}
 
-		tested++;
-	});
+			tested++;
+		}
+	);
 
 	REQUIRE(ioc.run_for(10s) > 0);
 	REQUIRE(tested == 3);
@@ -242,6 +245,8 @@ TEST_CASE("Load 3 images in json", "[normal]")
 	boost::asio::io_context ioc;
 	auto redis = redis::connect(ioc);
 
+	// TODO: unlink all images left behind before testing
+
 	int added = 0;
 
 	Ownership subject{"testuser"};
@@ -268,6 +273,19 @@ TEST_CASE("Load 3 images in json", "[normal]")
 	for (auto&& blobid : blobids)
 		subject.update(*redis, blobid, entry);
 
+	// rename all files
+	int renamed = 0;
+	for (auto&& blobid : blobids)
+		subject.rename(*redis, "some/collection", blobid, "renamed.jpg", [&renamed](auto ec)
+		{
+			REQUIRE(!ec);
+			renamed++;
+		});
+	REQUIRE(ioc.run_for(10s) > 0);
+	REQUIRE(renamed == added);
+
+	ioc.restart();
+
 	bool tested = false;
 	subject.find_collection(*redis, {{},"testuser"}, "some/collection", [&tested, &blobids](auto&& coll, auto ec)
 	{
@@ -280,7 +298,7 @@ TEST_CASE("Load 3 images in json", "[normal]")
 		for (auto&& [id, entry] : coll.blobs())
 		{
 			REQUIRE(entry.perm == Permission::public_());
-			REQUIRE(entry.filename == "another_file.jpg");
+			REQUIRE(entry.filename == "renamed.jpg");
 			REQUIRE(entry.mime == "application/json");
 			REQUIRE(entry.timestamp == Timestamp{std::chrono::milliseconds{100}});
 		}
