@@ -60,7 +60,7 @@ public:
 	explicit Ownership(std::string_view name);
 
 	template <typename Complete>
-	void link(
+	void link_blob(
 		redis::Connection& db,
 		std::string_view coll,
 		const ObjectID& blobid,
@@ -68,20 +68,20 @@ public:
 		Complete&& complete
 	);
 
-	void update(
+	void update_blob(
 		redis::Connection& db,
 		const ObjectID& blobid,
 		const CollEntry& entry
 	);
 
-	void update(
+	void update_blob(
 		redis::Connection& db,
 		const ObjectID& blobid,
 		const nlohmann::json& entry
 	);
 
 	template <typename Complete>
-	void unlink(
+	void unlink_blob(
 		redis::Connection& db,
 		std::string_view coll,
 		const ObjectID& blobid,
@@ -89,7 +89,7 @@ public:
 	);
 
 	template <typename Complete>
-	void rename(
+	void rename_blob(
 		redis::Connection& db,
 		std::string_view coll,
 		const ObjectID& blobid,
@@ -106,16 +106,9 @@ public:
 	);
 
 	template <typename Complete>
-	void find_collection(
+	void get_collection(
 		redis::Connection& db,
 		const Authentication& requester,
-		std::string_view coll,
-		Complete&& complete
-	) const;
-
-	template <typename Complete>
-	void list(
-		redis::Connection& db,
 		std::string_view coll,
 		Complete&& complete
 	) const;

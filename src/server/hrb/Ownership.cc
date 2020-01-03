@@ -74,7 +74,7 @@ hrb::Collection Ownership::from_reply(
 	return result;
 }
 
-void Ownership::update(redis::Connection& db, const ObjectID& blobid, const CollEntry& entry)
+void Ownership::update_blob(redis::Connection& db, const ObjectID& blobid, const CollEntry& entry)
 {
 	// assume the blob is already in the collection, so there is no need to update
 	// blob backlink
@@ -82,7 +82,7 @@ void Ownership::update(redis::Connection& db, const ObjectID& blobid, const Coll
 	update(db, blobid, CollEntryDB{s});
 }
 
-void Ownership::update(redis::Connection& db, const ObjectID& blobid, const nlohmann::json& entry)
+void Ownership::update_blob(redis::Connection& db, const ObjectID& blobid, const nlohmann::json& entry)
 {
 	// assume the blob is already in the collection, so there is no need to update
 	// blob backlink

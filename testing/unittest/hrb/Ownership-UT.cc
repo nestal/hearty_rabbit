@@ -37,11 +37,13 @@ TEST_CASE("list of collection owned by user", "[normal]")
 	Ownership subject{"owner"};
 
 	int tested = 0;
-	subject.link(*redis, "/", blobid, CollEntry{}, [&tested](std::error_code ec)
-	{
-		REQUIRE_FALSE(ec);
-		tested++;
-	});
+	subject.link_blob(
+		*redis, "/", blobid, CollEntry{}, [&tested](std::error_code ec)
+		{
+			REQUIRE_FALSE(ec);
+			tested++;
+		}
+	);
 
 	// assert that the collection is added
 	subject.scan_all_collections(*redis, [&tested](auto&& coll_list, auto ec)
@@ -70,18 +72,21 @@ TEST_CASE("list of collection owned by user", "[normal]")
 	ioc.restart();
 
 	// remove all blobs in the collection
-	subject.find_collection(
+	subject.get_collection(
 		*redis, Authentication{{}, "owner"}, "/",
 		[&tested, redis](auto&& coll, std::error_code ec)
 		{
 			REQUIRE(coll.blobs().begin() != coll.blobs().end());
-			for (auto&& [id, blob] : coll.blobs())
+			for (
+				auto&&[id, blob] : coll.blobs())
 			{
 				INFO("removing = " << to_hex(id));
-				Ownership{"owner"}.unlink(*redis, "/", id, [](auto&& ec)
-				{
-					REQUIRE(!ec);
-				});
+				Ownership{"owner"}.unlink_blob(
+					*redis, "/", id, [](auto&& ec)
+					{
+						REQUIRE(!ec);
+					}
+				);
 			}
 
 			tested++;
@@ -115,20 +120,22 @@ TEST_CASE("add blob to Ownership", "[normal]")
 
 	Ownership subject{"owner"};
 
-	subject.link(*redis, "/", blobid, CollEntry{{}, "file.name"}, [&tested](std::error_code ec)
-	{
-		REQUIRE(!ec);
-		tested++;
-	});
+	subject.link_blob(
+		*redis, "/", blobid, CollEntry{{}, "file.name"}, [&tested](std::error_code ec)
+		{
+			REQUIRE(!ec);
+			tested++;
+		}
+	);
 
 	REQUIRE(ioc.run_for(10s) > 0);
 	REQUIRE(tested == 1);
 	ioc.restart();
 
-	subject.list(*redis, "/", [&tested, blobid](auto&& blobs, std::error_code ec)
+	subject.get_collection(*redis, {{}, "owner"}, "/", [&tested, blobid](Collection&& coll, std::error_code ec)
 	{
 		REQUIRE_FALSE(ec);
-		REQUIRE(std::find(blobs.begin(), blobs.end(), blobid) != blobs.end());
+		REQUIRE(coll.find(blobid) != coll.blobs().end());
 		tested++;
 	});
 
@@ -175,11 +182,13 @@ TEST_CASE("add blob to Ownership", "[normal]")
 	ioc.restart();
 
 	// change filename
-	subject.rename(*redis, "/", blobid, "something.else", [&tested](std::error_code ec)
-	{
-		REQUIRE(!ec);
-		tested++;
-	});
+	subject.rename_blob(
+		*redis, "/", blobid, "something.else", [&tested](std::error_code ec)
+		{
+			REQUIRE(!ec);
+			tested++;
+		}
+	);
 
 	REQUIRE(ioc.run_for(10s) > 0);
 	REQUIRE(tested == 6);
@@ -254,7 +263,7 @@ TEST_CASE("Load 3 images in json", "[normal]")
 	for (auto&& blobid : blobids)
 	{
 		CollEntry entry{Permission::private_(), "file.jpg", "image/jpeg", Timestamp::now()};
-		subject.link(
+		subject.link_blob(
 			*redis, "some/collection", blobid, entry, [&added](auto ec)
 			{
 				REQUIRE(!ec);
@@ -271,40 +280,45 @@ TEST_CASE("Load 3 images in json", "[normal]")
 	// update CollEntry of the blobs
 	CollEntry entry{Permission::public_(), "another_file.jpg", "application/json", Timestamp{std::chrono::milliseconds{100}}};
 	for (auto&& blobid : blobids)
-		subject.update(*redis, blobid, entry);
+		subject.update_blob(*redis, blobid, entry);
 
 	// rename all files
 	int renamed = 0;
 	for (auto&& blobid : blobids)
-		subject.rename(*redis, "some/collection", blobid, "renamed.jpg", [&renamed](auto ec)
-		{
-			REQUIRE(!ec);
-			renamed++;
-		});
+		subject.rename_blob(
+			*redis, "some/collection", blobid, "renamed.jpg", [&renamed](auto ec)
+			{
+				REQUIRE(!ec);
+				renamed++;
+			}
+		);
 	REQUIRE(ioc.run_for(10s) > 0);
 	REQUIRE(renamed == added);
 
 	ioc.restart();
 
 	bool tested = false;
-	subject.find_collection(*redis, {{},"testuser"}, "some/collection", [&tested, &blobids](auto&& coll, auto ec)
-	{
-		using json = nlohmann::json;
-
-		REQUIRE_FALSE(ec);
-		REQUIRE(coll.owner() == "testuser");
-		REQUIRE(coll.name() == "some/collection");
-
-		for (auto&& [id, entry] : coll.blobs())
+	subject.get_collection(
+		*redis, {{}, "testuser"}, "some/collection", [&tested, &blobids](auto&& coll, auto ec)
 		{
-			REQUIRE(entry.perm == Permission::public_());
-			REQUIRE(entry.filename == "renamed.jpg");
-			REQUIRE(entry.mime == "application/json");
-			REQUIRE(entry.timestamp == Timestamp{std::chrono::milliseconds{100}});
-		}
+			using json = nlohmann::json;
 
-		tested = true;
-	});
+			REQUIRE_FALSE(ec);
+			REQUIRE(coll.owner() == "testuser");
+			REQUIRE(coll.name() == "some/collection");
+
+			for (
+				auto&&[id, entry] : coll.blobs())
+			{
+				REQUIRE(entry.perm == Permission::public_());
+				REQUIRE(entry.filename == "renamed.jpg");
+				REQUIRE(entry.mime == "application/json");
+				REQUIRE(entry.timestamp == Timestamp{std::chrono::milliseconds{100}});
+			}
+
+			tested = true;
+		}
+	);
 	REQUIRE(ioc.run_for(10s) > 0);
 	REQUIRE(tested);
 
@@ -312,11 +326,13 @@ TEST_CASE("Load 3 images in json", "[normal]")
 
 	// delete all 3 image blobs
 	for (auto&& blobid : blobids)
-		subject.unlink(*redis, "some/collection", blobid, [&added](auto ec)
-		{
-			REQUIRE(!ec);
-			added--;
-		});
+		subject.unlink_blob(
+			*redis, "some/collection", blobid, [&added](auto ec)
+			{
+				REQUIRE(!ec);
+				added--;
+			}
+		);
 
 	REQUIRE(ioc.run_for(10s) > 0);
 	REQUIRE(added == 0);
@@ -334,7 +350,7 @@ TEST_CASE("Query blob of testuser")
 	CollEntry entry{Permission::public_(), "haha.jpeg", "image/jpeg", Timestamp::now()};
 
 	int tested = 0;
-	subject.link(
+	subject.link_blob(
 		*redis, "somecoll", blobid, entry, [&tested](auto ec)
 		{
 			REQUIRE(!ec);
@@ -410,22 +426,28 @@ TEST_CASE("set cover error cases", "[error]")
 
 		// add 2 blobs to an album
 		int run = 0;
-		subject.link(*redis, "/", blob1, CollEntry{}, [&run](auto ec)
-		{
-			REQUIRE(!ec);
-			++run;
-		});
-		subject.link(*redis, "/", blob2, CollEntry{}, [&run](auto ec)
-		{
-			REQUIRE(!ec);
-			++run;
-		});
+		subject.link_blob(
+			*redis, "/", blob1, CollEntry{}, [&run](auto ec)
+			{
+				REQUIRE(!ec);
+				++run;
+			}
+		);
+		subject.link_blob(
+			*redis, "/", blob2, CollEntry{}, [&run](auto ec)
+			{
+				REQUIRE(!ec);
+				++run;
+			}
+		);
 		// remove blob1 so that it doesn't exist in the album
-		subject.unlink(*redis, "/", blob1, [&run](auto ec)
-		{
-			REQUIRE(!ec);
-			++run;
-		});
+		subject.unlink_blob(
+			*redis, "/", blob1, [&run](auto ec)
+			{
+				REQUIRE(!ec);
+				++run;
+			}
+		);
 		REQUIRE(ioc.run_for(10s) > 0);
 		REQUIRE(run == 3);
 		ioc.restart();
@@ -451,18 +473,22 @@ TEST_CASE("setting and remove the cover of collection", "[normal]")
 	auto cover_blob = insecure_random<ObjectID>();
 
 	bool added = false;
-	subject.link(*redis, "/", cover_blob, CollEntry{}, [&added](auto ec)
-	{
-		REQUIRE(!ec);
-		added = true;
-	});
+	subject.link_blob(
+		*redis, "/", cover_blob, CollEntry{}, [&added](auto ec)
+		{
+			REQUIRE(!ec);
+			added = true;
+		}
+	);
 
 	// add another blob to the collection so that the collection will be
 	// still here even after removing the first one
-	subject.link(*redis, "/", insecure_random<ObjectID>(), CollEntry{}, [&added](auto ec)
-	{
-		REQUIRE(!ec);
-	});
+	subject.link_blob(
+		*redis, "/", insecure_random<ObjectID>(), CollEntry{}, [&added](auto ec)
+		{
+			REQUIRE(!ec);
+		}
+	);
 
 	std::vector<std::string> dirs;
 
@@ -520,11 +546,13 @@ TEST_CASE("setting and remove the cover of collection", "[normal]")
 	ioc.restart();
 
 	// remove the new blob
-	subject.unlink(*redis, "/", cover_blob, [&removed](auto ec)
-	{
-		REQUIRE(!ec);
-		removed = true;
-	});
+	subject.unlink_blob(
+		*redis, "/", cover_blob, [&removed](auto ec)
+		{
+			REQUIRE(!ec);
+			removed = true;
+		}
+	);
 
 	// check if the cover is updated
 	bool updated = false;

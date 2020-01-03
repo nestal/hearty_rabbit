@@ -303,12 +303,12 @@ void SessionHandler::on_request_api(Request&& req, URLIntent&& intent, Send&& se
 		if (breq.blob())
 			return get_blob(std::move(breq), std::forward<Send>(send));
 		else
-			return Ownership{breq.owner()}.find_collection(
+			return Ownership{breq.owner()}.get_collection(
 				*m_db,
 				m_auth,
 				breq.collection(),
 				[
-					send=SendJSON{std::forward<Send>(send), req.version(), std::nullopt, *this}, this
+					send = SendJSON{std::forward<Send>(send), req.version(), std::nullopt, *this}, this
 				](auto&& coll, std::error_code ec) mutable
 				{
 					validate_collection(coll);
@@ -337,7 +337,7 @@ void SessionHandler::on_request_view(Request&& req, URLIntent&& intent, Send&& s
 	if (req.method() == http::verb::get)
 	{
 		// view request always sends HTML: pass &m_lib to SendJSON
-		return Ownership{breq.owner()}.find_collection(
+		return Ownership{breq.owner()}.get_collection(
 			*m_db,
 			m_auth,
 			breq.collection(),
@@ -481,15 +481,20 @@ void SessionHandler::query_blob_set(const URLIntent& intent, unsigned version, S
 	}
 	else if (dup_coll.has_value())
 	{
-		Ownership{m_auth.username()}.list(
+		Ownership{m_auth.username()}.get_collection(
 			*m_db,
+			m_auth,
 			*dup_coll,
 			[
 				send=std::forward<Send>(send),
 			    this, version,
 				lib=(json.has_value() ? nullptr : &m_lib)
-			](auto&& oids, auto ec) mutable
+			](Collection&& coll, auto ec) mutable
 			{
+				std::vector<ObjectID> oids;
+				for (auto&& [id, entry] : coll.blobs())
+					oids.push_back(id);
+
 				auto matches = nlohmann::json::array();
 				auto similar = m_blob_db.find_similar(oids.begin(), oids.end(), 10);
 

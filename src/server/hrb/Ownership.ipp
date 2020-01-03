@@ -39,9 +39,9 @@
 namespace hrb {
 
 template <typename Complete>
-void Ownership::link(
+void Ownership::link_blob(
 	redis::Connection& db,
-	std::string_view coll_name,
+	std::string_view coll,
 	const ObjectID& blobid,
 	const CollEntry& entry,
 	Complete&& complete
@@ -52,20 +52,20 @@ void Ownership::link(
 		{
 			comp(ec);
 		},
-		link_command(coll_name, blobid, entry)
+		link_command(coll, blobid, entry)
 	);
 }
 
 template <typename Complete>
-void Ownership::unlink(
+void Ownership::unlink_blob(
 	redis::Connection& db,
-	std::string_view coll_name,
+	std::string_view coll,
 	const ObjectID& blobid,
 	Complete&& complete
 )
 {
 	db.do_write(
-		unlink_command(coll_name, blobid),
+		unlink_command(coll, blobid),
 		[comp=std::forward<Complete>(complete)](auto&& reply, std::error_code ec)
 		{
 			if (!reply || ec)
@@ -76,7 +76,7 @@ void Ownership::unlink(
 }
 
 template <typename Complete>
-void Ownership::find_collection(
+void Ownership::get_collection(
 	redis::Connection& db,
 	const Authentication& requester,
 	std::string_view coll,
@@ -119,36 +119,7 @@ void Ownership::find_collection(
 }
 
 template <typename Complete>
-void Ownership::list(
-	redis::Connection& db,
-	std::string_view coll,
-	Complete&& complete
-) const
-{
-	auto coll_hash = key::collection(m_user, coll);
-	db.command(
-		[
-			comp=std::forward<Complete>(complete)
-		](auto&& reply, std::error_code&& ec) mutable
-		{
-			if (!reply || ec)
-				Log(LOG_WARNING, "list() reply %1% %2%", reply.as_error(), ec);
-
-			using namespace boost::adaptors;
-			comp(
-				reply |
-				transformed([](auto&& reply){return ObjectID::from_raw(reply.as_string());}) |
-				filtered([](auto&& opt_oid){return opt_oid.has_value();}) |
-				transformed([](auto&& opt_oid){return *opt_oid;}),
-				ec
-			);
-		},
-		"HKEYS %b", coll_hash.data(), coll_hash.size()
-	);
-}
-
-template <typename Complete>
-void Ownership::rename(
+void Ownership::rename_blob(
 	redis::Connection& db,
 	std::string_view coll,
 	const ObjectID& blobid,
