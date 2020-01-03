@@ -112,7 +112,7 @@ TEST_CASE("add blob to Ownership", "[normal]")
 
 	Ownership subject{"owner"};
 
-	subject.link(*redis, "/", blobid, CollEntry{}, [&tested](std::error_code ec)
+	subject.link(*redis, "/", blobid, CollEntry{{}, "file.name"}, [&tested](std::error_code ec)
 	{
 		REQUIRE(!ec);
 		tested++;
@@ -134,9 +134,10 @@ TEST_CASE("add blob to Ownership", "[normal]")
 	ioc.restart();
 
 	// owner access is allowed
-	subject.find(*redis, "/", blobid, [&tested](auto&&, std::error_code ec)
+	subject.find(*redis, "/", blobid, [&tested](auto&&, auto filename, std::error_code ec)
 	{
 		REQUIRE(!ec);
+		REQUIRE(filename == "file.name");
 		tested++;
 	});
 
@@ -145,10 +146,11 @@ TEST_CASE("add blob to Ownership", "[normal]")
 	ioc.restart();
 
 	// anonymous access is not allowed
-	subject.find(*redis, "/", blobid, [&tested](auto&& entry, std::error_code ec)
+	subject.find(*redis, "/", blobid, [&tested](auto&& entry, auto filename, std::error_code ec)
 	{
 		REQUIRE(!ec);
 		REQUIRE(!entry.permission().allow({}, "owner"));
+		REQUIRE(filename == "file.name");
 		tested++;
 	});
 
@@ -168,10 +170,11 @@ TEST_CASE("add blob to Ownership", "[normal]")
 	ioc.restart();
 
 	// anonymous access is now allowed
-	subject.find(*redis, "/", blobid, [&tested](auto&& entry, std::error_code ec)
+	subject.find(*redis, "/", blobid, [&tested](auto&& entry, auto filename, std::error_code ec)
 	{
 		REQUIRE(!ec);
 		REQUIRE(entry.permission().allow({}, "owner"));
+		REQUIRE(filename == "file.name");
 		tested++;
 	});
 	REQUIRE(ioc.run_for(10s) > 0);
@@ -205,9 +208,10 @@ TEST_CASE("add blob to Ownership", "[normal]")
 	ioc.restart();
 
 	// check if it is in the new collection
-	subject.find(*redis, "someother", blobid, [&tested](auto&& entry, std::error_code ec)
+	subject.find(*redis, "someother", blobid, [&tested](auto&& entry, auto filename, std::error_code ec)
 	{
 		REQUIRE(!ec);
+		REQUIRE(filename == "file.name");
 		REQUIRE(entry.permission().allow({}, "owner"));
 		tested++;
 	});

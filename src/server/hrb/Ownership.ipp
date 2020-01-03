@@ -159,7 +159,7 @@ void Ownership::find(
 	auto blob_meta = key::blob_meta(m_user);
 	static const char lua[] = R"__(
 		if redis.call('HEXISTS', KEYS[1], ARGV[1]) == 1 then
-			return redis.call('HGET', KEYS[2], ARGV[1])
+			return {redis.call('HGET', KEYS[2], ARGV[1]), redis.call('HGET', KEYS[1], ARGV[1])}
 		else
 			return false
 		end
@@ -172,7 +172,8 @@ void Ownership::find(
 			if (!ec && entry.is_nil())
 				ec = Error::object_not_exist;
 
-			comp(CollEntryDB{entry.as_string()}, ec);
+			if (entry.array_size() == 2)
+				comp(CollEntryDB{entry[0].as_string()}, entry[1].as_string(), ec);
 		},
 		"EVAL %s 2 %b %b %b", lua,
 		coll_hash.data(), coll_hash.size(),
