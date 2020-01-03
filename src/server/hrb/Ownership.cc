@@ -40,6 +40,8 @@ hrb::Collection Ownership::from_reply(
 ) const
 {
 	assert(meta.is_object());
+	assert(reply.array_size() % 2 == 0);
+
 	hrb::Collection result{coll, m_user, std::move(meta)};
 
 	for (auto&& kv : reply.kv_pairs())
@@ -57,7 +59,13 @@ hrb::Collection Ownership::from_reply(
 		if (blob_id && entry.permission().allow(requester.id(), m_user))
 		{
 			if (auto fields = entry.fields(); fields.has_value())
+			{
+				// Overwrite filename field with the filename in directory.
+				// The filename in the CollEntryDB of owner:blob_meta is the original filename of the blob
+				// when it was uploaded. The actual filename in the collection may be different
+
 				result.add_blob(*blob_id, *fields);
+			}
 		}
 	};
 	return result;
@@ -100,9 +108,11 @@ redis::CommandString Ownership::link_command(std::string_view coll, const Object
 	auto hex = to_hex(blob);
 	auto entry = CollEntryDB::create(coll_entry);
 
+	auto filename = coll_entry.filename.empty() ? "hello" : coll_entry.filename;
+
 	static const char lua[] = R"__(
 		local blob_ref, blob_owner, blob_meta, coll_key, coll_list = KEYS[1], KEYS[2], KEYS[3], KEYS[4], KEYS[5]
-		local user, coll, blob, cover, entry = ARGV[1], ARGV[2], ARGV[3], ARGV[4], ARGV[5]
+		local user, coll, blob, cover, entry, filename = ARGV[1], ARGV[2], ARGV[3], ARGV[4], ARGV[5], ARGV[6]
 
 		redis.call('SADD',   blob_ref,   coll)
 		redis.call('SADD',   blob_owner, user)
@@ -111,11 +121,11 @@ redis::CommandString Ownership::link_command(std::string_view coll, const Object
 			redis.call('HSETNX', blob_meta,  blob, entry)
 		end
 
-		redis.call('SADD',   coll_key,   blob)
+		redis.call('HSET',   coll_key,  blob, filename)
 		redis.call('HSETNX', coll_list, coll, cjson.encode({cover=cover}))
 	)__";
 	return redis::CommandString{
-		"EVAL %s 5 %b %b %b %b %b   %b %b %b %b %b", lua,
+		"EVAL %s 5 %b %b %b %b %b   %b %b %b %b %b %b", lua,
 
 		blob_ref.data(), blob_ref.size(),
 		blob_owner.data(), blob_owner.size(),
@@ -127,7 +137,8 @@ redis::CommandString Ownership::link_command(std::string_view coll, const Object
 		coll.data(), coll.size(),           // ARGV[2]: collection name
 		blob.data(), blob.size(),           // ARGV[3]: blob
 		hex.data(), hex.size(),             // ARGV[4]: blob in hex string
-		entry.data(), entry.size()          // ARGV[5]: blob entry
+		entry.data(), entry.size(),         // ARGV[5]: blob entry
+		filename.data(), filename.size()    // ARGV[6]: filename
 	};
 }
 
@@ -146,8 +157,10 @@ redis::CommandString Ownership::move_command(std::string_view src, std::string_v
 		redis.call('SADD',   blob_ref,   dest_coll)
 		redis.call('SREM',   blob_ref,   src_coll)
 
-		redis.call('SADD',   dest_key,   blob)
-		redis.call('SREM',   src_key,    blob)
+		local filename = redis.call('HGET', src_key, blob)
+
+		redis.call('HSET',   dest_key,   blob,  filename)
+		redis.call('HDEL',   src_key,    blob)
 
 		redis.call('HSETNX', coll_list, dest_coll, cjson.encode({cover=cover}))
 	)__";
@@ -183,7 +196,7 @@ redis::CommandString Ownership::unlink_command(std::string_view coll, const Obje
 			end))
 		end
 
-		local blob_ref, blob_owner, blob_meta, coll_set, coll_list, pub_list = KEYS[1], KEYS[2], KEYS[3], KEYS[4], KEYS[5], KEYS[6]
+		local blob_ref, blob_owner, blob_meta, coll_hash, coll_list, pub_list = KEYS[1], KEYS[2], KEYS[3], KEYS[4], KEYS[5], KEYS[6]
 		local user, coll, blob = ARGV[1], ARGV[2], ARGV[3]
 
 		-- delete the link from blob-refs
@@ -197,12 +210,12 @@ redis::CommandString Ownership::unlink_command(std::string_view coll, const Obje
 			redis.call('LREM', pub_list, 0, cmsgpack.pack(user, blob))
 		end
 
-		-- delete the blob in the collection set
-		redis.call('SREM', coll_set, blob)
+		-- delete the blob in the collection hash
+		redis.call('HDEL', coll_hash, blob)
 
 		-- if the collection has no more entries, delete the collection in the
 		-- user's list of collections
-		if redis.call('EXISTS', coll_set) == 0 then
+		if redis.call('EXISTS', coll_hash) == 0 then
 			redis.call('HDEL', coll_list, coll)
 
 		-- if the collection still exists, check if the blob we are removing
@@ -217,7 +230,7 @@ redis::CommandString Ownership::unlink_command(std::string_view coll, const Obje
 			-- ministic commands may break replication. We have no choice
 			-- but to use the slower SMEMBERS and take the first element.
 			if album['cover'] == tohex(blob) then
-				album['cover'] = tohex(redis.call('SMEMBERS', coll_set)[1])
+				album['cover'] = tohex(redis.call('HKEYS', coll_hash)[1])
 				redis.call('HSET', coll_list, coll, cjson.encode(album))
 			end
 		end
@@ -240,15 +253,15 @@ redis::CommandString Ownership::unlink_command(std::string_view coll, const Obje
 
 redis::CommandString Ownership::scan_collection_command(std::string_view coll) const
 {
-	auto coll_set  = key::collection(m_user, coll);
+	auto coll_hash = key::collection(m_user, coll);
 	auto coll_list = key::collection_list(m_user);
 	auto blob_meta = key::blob_meta(m_user);
 
 	static const char lua[] = R"__(
-		local coll_set, coll_list, blob_meta = KEYS[1], KEYS[2], KEYS[3]
+		local coll_hash, coll_list, blob_meta = KEYS[1], KEYS[2], KEYS[3]
 		local coll = ARGV[1]
 		local dirs = {}
-		for k, blob in ipairs(redis.call('SMEMBERS', coll_set)) do
+		for k, blob in ipairs(redis.call('HKEYS', coll_hash)) do
 			table.insert(dirs, blob)
 			table.insert(dirs, redis.call('HGET', blob_meta, blob))
 		end
@@ -256,7 +269,7 @@ redis::CommandString Ownership::scan_collection_command(std::string_view coll) c
 	)__";
 	return redis::CommandString{
 		"EVAL %s 3 %b %b %b   %b", lua,
-		coll_set.data(), coll_set.size(),
+		coll_hash.data(), coll_hash.size(),
 		coll_list.data(), coll_list.size(),
 		blob_meta.data(), blob_meta.size(),
 
@@ -300,18 +313,18 @@ redis::CommandString Ownership::set_permission_command(const ObjectID& blobid, P
 redis::CommandString Ownership::set_cover_command(std::string_view coll, const ObjectID& cover) const
 {
 	auto coll_list = key::collection_list(m_user);
-	auto coll_set  = key::collection(m_user, coll);
+	auto coll_hash = key::collection(m_user, coll);
 	auto cover_hex = to_hex(cover);
 
 	// set the cover of the collection
 	// only set the cover if the collection is already in the dirs:<user> hash
 	// and only if the cover blob is already in the collection (i.e. dir:<user>:<collection> hash)
 	static const char lua[] = R"__(
-		local coll_list, coll_set = KEYS[1], KEYS[2]
+		local coll_list, coll_hash = KEYS[1], KEYS[2]
 		local coll, cover_hex, cover = ARGV[1], ARGV[2], ARGV[3]
 
 		local json    = redis.call('HGET', coll_list, coll)
-		local in_coll = redis.call('SISMEMBER', coll_set, cover)
+		local in_coll = redis.call('HEXISTS', coll_hash, cover)
 		if json and in_coll == 1 then
 			local album = cjson.decode(json)
 			album['cover'] = cover_hex
@@ -325,7 +338,7 @@ redis::CommandString Ownership::set_cover_command(std::string_view coll, const O
 	return redis::CommandString{
 	"EVAL %s 2 %b %b    %b %b %b", lua,
 		coll_list.data(), coll_list.size(),
-		coll_set.data(), coll_set.size(),
+		coll_hash.data(), coll_hash.size(),
 
 		coll.data(), coll.size(),
 		cover_hex.data(), cover_hex.size(),

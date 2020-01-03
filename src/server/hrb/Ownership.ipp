@@ -125,7 +125,7 @@ void Ownership::list(
 	Complete&& complete
 ) const
 {
-	auto coll_set = key::collection(m_user, coll);
+	auto coll_hash = key::collection(m_user, coll);
 	db.command(
 		[
 			comp=std::forward<Complete>(complete)
@@ -143,7 +143,7 @@ void Ownership::list(
 				ec
 			);
 		},
-		"SMEMBERS %b", coll_set.data(), coll_set.size()
+		"HKEYS %b", coll_hash.data(), coll_hash.size()
 	);
 }
 
@@ -155,10 +155,10 @@ void Ownership::find(
 	Complete&& complete
 ) const
 {
-	auto coll_set  = key::collection(m_user, coll);
+	auto coll_hash = key::collection(m_user, coll);
 	auto blob_meta = key::blob_meta(m_user);
 	static const char lua[] = R"__(
-		if redis.call('SISMEMBER', KEYS[1], ARGV[1]) == 1 then
+		if redis.call('HEXISTS', KEYS[1], ARGV[1]) == 1 then
 			return redis.call('HGET', KEYS[2], ARGV[1])
 		else
 			return false
@@ -175,7 +175,7 @@ void Ownership::find(
 			comp(CollEntryDB{entry.as_string()}, ec);
 		},
 		"EVAL %s 2 %b %b %b", lua,
-		coll_set.data(), coll_set.size(),
+		coll_hash.data(), coll_hash.size(),
 		blob_meta.data(), blob_meta.size(),
 		blob.data(), blob.size()
 	);
@@ -236,7 +236,7 @@ void Ownership::scan_all_collections(
 	auto coll_list = std::make_shared<CollectionList>();
 
 	scan_collections(db, 0,
-		[coll_list, user=m_user](auto coll, auto&& json)
+		[coll_list, user=m_user](auto coll, auto&& json) mutable
 		{
 			coll_list->add(user, coll, std::move(json));
 		},

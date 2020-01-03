@@ -159,13 +159,13 @@ target_link_libraries(unittest PUBLIC Catch2::Catch2 test_common hrbsrv)
 # Although we specified the ${CMAKE_BINARY_DIR} as the current directory when running unit tests,
 # the test cases should not use absolute path when referring to test data. The test cases
 # must not assume the location of ${CMAKE_BINARY_DIR} relative to the source code.
-add_custom_command(
-	TARGET unittest
-	COMMENT "Running server-side unit tests"
-	POST_BUILD
-	WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-	COMMAND unittest
-)
+#add_custom_command(
+#	TARGET unittest
+#	COMMENT "Running server-side unit tests"
+#	POST_BUILD
+#	WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+#	COMMAND unittest
+#)
 
 ###################################################################################################
 # client-side unit tests: test cases for the client-side code
@@ -184,13 +184,13 @@ target_link_libraries(clienttest PRIVATE Catch2::Catch2 test_common hrbclient hr
 # Although we specified the ${CMAKE_BINARY_DIR} as the current directory when running unit tests,
 # the test cases should not use absolute path when referring to test data. The test cases
 # must not assume the location of ${CMAKE_BINARY_DIR} relative to the source code.
-add_custom_command(
-	TARGET clienttest
-	COMMENT "Running client-side unit tests"
-	POST_BUILD
-	WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-	COMMAND clienttest
-)
+#add_custom_command(
+#	TARGET clienttest
+#	COMMENT "Running client-side unit tests"
+#	POST_BUILD
+#	WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+#	COMMAND clienttest
+#)
 
 ###################################################################################################
 # Main server executable
