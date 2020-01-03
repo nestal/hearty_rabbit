@@ -131,6 +131,41 @@ redis::CommandString Ownership::link_command(std::string_view coll, const Object
 	};
 }
 
+redis::CommandString Ownership::move_command(std::string_view src, std::string_view dest, const ObjectID& blob) const
+{
+	auto blob_ref   = key::blob_refs(m_user, blob);
+	auto src_key    = key::collection(m_user, src);
+	auto dest_key   = key::collection(m_user, dest);
+	auto coll_list  = key::collection_list(m_user);
+	auto hex = to_hex(blob);
+
+	static const char lua[] = R"__(
+		local blob_ref, src_key, dest_key, coll_list = KEYS[1], KEYS[2], KEYS[3], KEYS[4]
+		local src_coll, dest_coll, blob, cover = ARGV[1], ARGV[2], ARGV[3], ARGV[4]
+
+		redis.call('SADD',   blob_ref,   dest_coll)
+		redis.call('SREM',   blob_ref,   src_coll)
+
+		redis.call('SADD',   dest_key,   blob)
+		redis.call('SREM',   src_key,    blob)
+
+		redis.call('HSETNX', coll_list, dest_coll, cjson.encode({cover=cover}))
+	)__";
+	return redis::CommandString{
+		"EVAL %s 4 %b %b %b %b   %b %b %b %b", lua,
+
+		blob_ref.data(), blob_ref.size(),
+		src_key.data(), src_key.size(),
+		dest_key.data(), dest_key.size(),
+		coll_list.data(), coll_list.size(),
+
+		src.data(), src.size(),             // ARGV[1]: source collection name
+		dest.data(), dest.size(),           // ARGV[2]: destination collection name
+		blob.data(), blob.size(),           // ARGV[3]: blob ID
+		hex.data(), hex.size(),             // ARGV[4]: blob ID in hex string (for setting cover)
+	};
+}
+
 redis::CommandString Ownership::unlink_command(std::string_view coll, const ObjectID& blob) const
 {
 	auto blob_ref   = key::blob_refs(m_user, blob);

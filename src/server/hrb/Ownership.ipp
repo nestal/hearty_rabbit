@@ -277,9 +277,6 @@ void Ownership::move_blob(
 	Complete&& complete
 )
 {
-	std::vector<redis::CommandString> cmd;
-	cmd.push_back(link_command(dest_coll, blobid, std::nullopt));
-	cmd.push_back(unlink_command(src_coll, blobid));
 	db.command(
 		[
 			comp=std::forward<Complete>(complete),
@@ -290,7 +287,7 @@ void Ownership::move_blob(
 				Log(LOG_WARNING, "Collection::move_blob(): script error: %1%", reply.as_error());
 			comp(ec);
 		},
-		std::move(cmd)
+		move_command(src_coll, dest_coll, blobid)
 	);
 }
 
