@@ -195,6 +195,8 @@ void Ownership::find(
 
 			if (entry.array_size() == 2)
 				comp(CollEntryDB{entry[0].as_string()}, entry[1].as_string(), ec);
+			else
+				comp(CollEntryDB{}, "", ec);
 		},
 		"EVAL %s 2 %b %b %b", lua,
 		coll_hash.data(), coll_hash.size(),
