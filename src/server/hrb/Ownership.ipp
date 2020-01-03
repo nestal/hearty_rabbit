@@ -148,6 +148,27 @@ void Ownership::list(
 }
 
 template <typename Complete>
+void Ownership::rename(
+	redis::Connection& db,
+	std::string_view coll,
+	const ObjectID& blobid,
+	std::string_view filename,
+	Complete&& complete
+)
+{
+	auto coll_hash = key::collection(m_user, coll);
+	db.command([comp=std::forward<Complete>(complete)](auto&&, std::error_code ec)
+		{
+			comp(ec);
+		},
+		"HSET %b %b %b",
+		coll_hash.data(), coll_hash.size(),
+		blobid.data(), blobid.size(),
+		filename.data(), filename.size()
+	);
+}
+
+template <typename Complete>
 void Ownership::find(
 	redis::Connection& db,
 	std::string_view coll,

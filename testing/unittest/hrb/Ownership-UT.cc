@@ -134,10 +134,11 @@ TEST_CASE("add blob to Ownership", "[normal]")
 	ioc.restart();
 
 	// owner access is allowed
-	subject.find(*redis, "/", blobid, [&tested](auto&&, auto filename, std::error_code ec)
+	subject.find(*redis, "/", blobid, [&tested](auto&& entry, auto filename, std::error_code ec)
 	{
 		REQUIRE(!ec);
 		REQUIRE(filename == "file.name");
+		REQUIRE(entry.filename() == "file.name");
 		tested++;
 	});
 
@@ -150,6 +151,7 @@ TEST_CASE("add blob to Ownership", "[normal]")
 	{
 		REQUIRE(!ec);
 		REQUIRE(!entry.permission().allow({}, "owner"));
+		REQUIRE(entry.filename() == "file.name");
 		REQUIRE(filename == "file.name");
 		tested++;
 	});
@@ -169,16 +171,28 @@ TEST_CASE("add blob to Ownership", "[normal]")
 	REQUIRE(tested == 5);
 	ioc.restart();
 
+	// change filename
+	subject.rename(*redis, "/", blobid, "something.else", [&tested](std::error_code ec)
+	{
+		REQUIRE(!ec);
+		tested++;
+	});
+
+	REQUIRE(ioc.run_for(10s) > 0);
+	REQUIRE(tested == 6);
+	ioc.restart();
+
 	// anonymous access is now allowed
 	subject.find(*redis, "/", blobid, [&tested](auto&& entry, auto filename, std::error_code ec)
 	{
 		REQUIRE(!ec);
 		REQUIRE(entry.permission().allow({}, "owner"));
-		REQUIRE(filename == "file.name");
+		REQUIRE(entry.filename() == "file.name");
+		REQUIRE(filename == "something.else");
 		tested++;
 	});
 	REQUIRE(ioc.run_for(10s) > 0);
-	REQUIRE(tested == 6);
+	REQUIRE(tested == 7);
 	ioc.restart();
 
 	// verify that the newly added blob is in the public list
@@ -204,20 +218,21 @@ TEST_CASE("add blob to Ownership", "[normal]")
 	});
 
 	REQUIRE(ioc.run_for(10s) > 0);
-	REQUIRE(tested == 7);
+	REQUIRE(tested == 8);
 	ioc.restart();
 
 	// check if it is in the new collection
 	subject.find(*redis, "someother", blobid, [&tested](auto&& entry, auto filename, std::error_code ec)
 	{
 		REQUIRE(!ec);
-		REQUIRE(filename == "file.name");
+		REQUIRE(entry.filename() == "file.name");
+		REQUIRE(filename == "something.else");
 		REQUIRE(entry.permission().allow({}, "owner"));
 		tested++;
 	});
 
 	REQUIRE(ioc.run_for(10s) > 0);
-	REQUIRE(tested == 8);
+	REQUIRE(tested == 9);
 }
 
 TEST_CASE("Load 3 images in json", "[normal]")

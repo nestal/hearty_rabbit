@@ -89,6 +89,15 @@ public:
 	);
 
 	template <typename Complete>
+	void rename(
+		redis::Connection& db,
+		std::string_view coll,
+		const ObjectID& blobid,
+		std::string_view filename,
+		Complete&& complete
+	);
+
+	template <typename Complete>
 	void set_permission(
 		redis::Connection& db,
 		const ObjectID& blobid,
