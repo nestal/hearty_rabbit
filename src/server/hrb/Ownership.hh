@@ -38,7 +38,7 @@ public:
 	class Collection;
 
 private:
-	[[nodiscard]] redis::CommandString link_command(std::string_view coll, const ObjectID& blob, std::optional<CollEntry> entry) const;
+	[[nodiscard]] redis::CommandString link_command(std::string_view coll, const ObjectID& blob, const CollEntry& entry) const;
 	[[nodiscard]] redis::CommandString unlink_command(std::string_view coll, const ObjectID& blob) const;
 	[[nodiscard]] redis::CommandString move_command(std::string_view src, std::string_view dest, const ObjectID& blob) const;
 	[[nodiscard]] redis::CommandString scan_collection_command(std::string_view coll) const;

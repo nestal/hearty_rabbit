@@ -90,7 +90,7 @@ void Ownership::update(redis::Connection& db, const ObjectID& blob, const CollEn
 	);
 }
 
-redis::CommandString Ownership::link_command(std::string_view coll, const ObjectID& blob, std::optional<CollEntry> coll_entry) const
+redis::CommandString Ownership::link_command(std::string_view coll, const ObjectID& blob, const CollEntry& coll_entry) const
 {
 	auto blob_ref   = key::blob_refs(m_user, blob);
 	auto blob_owner = key::blob_owners(blob);
@@ -98,7 +98,7 @@ redis::CommandString Ownership::link_command(std::string_view coll, const Object
 	auto coll_key   = key::collection(m_user, coll);
 	auto coll_list  = key::collection_list(m_user);
 	auto hex = to_hex(blob);
-	auto entry = coll_entry ? CollEntryDB::create(*coll_entry) : "";
+	auto entry = CollEntryDB::create(coll_entry);
 
 	static const char lua[] = R"__(
 		local blob_ref, blob_owner, blob_meta, coll_key, coll_list = KEYS[1], KEYS[2], KEYS[3], KEYS[4], KEYS[5]
