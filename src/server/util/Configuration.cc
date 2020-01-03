@@ -83,14 +83,13 @@ void Configuration::load_config(const fs::path& config_file)
 		using jptr = nlohmann::json::json_pointer;
 
 		// Paths are relative to the configuration file
-		m_cert_chain    = weakly_canonical(absolute(json.at(jptr{"/cert_chain"}).get<std::string>(),  config_file.parent_path()));
-		m_private_key   = weakly_canonical(absolute(json.at(jptr{"/private_key"}).get<std::string>(), config_file.parent_path()));
-		m_root          = weakly_canonical(absolute(json.at(jptr{"/web_root"}).get<std::string>(),    config_file.parent_path()));
-		m_blob_path     = weakly_canonical(absolute(json.at(jptr{"/blob_path"}).get<std::string>(),   config_file.parent_path()));
-		m_haar_path     = weakly_canonical(absolute(
-			json.value(jptr{"/haar_path"}, std::string{constants::haarcascades_path}),
-			config_file.parent_path()
-		));
+		m_cert_chain    = (config_file.parent_path() / json.at(jptr{"/cert_chain"})).lexically_normal();
+		m_private_key   = (config_file.parent_path() / json.at(jptr{"/private_key"})).lexically_normal();
+		m_root          = (config_file.parent_path() / json.at(jptr{"/web_root"})).lexically_normal();
+		m_blob_path     = (config_file.parent_path() / json.at(jptr{"/blob_path"})).lexically_normal();
+		m_haar_path     = (config_file.parent_path() /
+			json.value(jptr{"/haar_path"}, std::string{constants::haarcascades_path})
+		).lexically_normal();
 
 		m_server_name   = json.at(jptr{"/server_name"});
 		m_thread_count  = json.value(jptr{"/thread_count"}, m_thread_count);

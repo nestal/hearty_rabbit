@@ -62,7 +62,7 @@ TEST_CASE( "Load normal.json", "[normal]" )
 	REQUIRE(cfg.session_length() == std::chrono::hours{1});
 	REQUIRE(cfg.user_id() == 65535);
 	REQUIRE(cfg.group_id() == 65535);
-	REQUIRE(cfg.haar_path()/"test.xml" == fs::path{std::string{constants::haarcascades_path}}/"test.xml");
+	REQUIRE(cfg.haar_path()/"test.xml" == current_src/fs::path{std::string{constants::haarcascades_path}}/"test.xml");
 }
 
 TEST_CASE( "Missing server name", "[error]" )
@@ -87,7 +87,7 @@ TEST_CASE( "Web root is .", "[normal]" )
 
 	const char *argv[] = {"hearty_rabbit", "--cfg", dot_json.c_str()};
 	Configuration subject{sizeof(argv)/sizeof(argv[1]), argv, nullptr};
-	REQUIRE(subject.web_root() == current_src);
+	REQUIRE(equivalent(subject.web_root(), current_src));
 	REQUIRE(subject.redis().address() == boost::asio::ip::make_address("127.0.0.1"));
 	REQUIRE(subject.redis().port() == 6379);
 }
@@ -98,7 +98,7 @@ TEST_CASE( "Absolute path for certs", "[normal]" )
 
 	const char *argv[] = {"hearty_rabbit", "--cfg", dot_json.c_str()};
 	Configuration subject{sizeof(argv)/sizeof(argv[1]), argv, nullptr};
-	REQUIRE(subject.web_root() == current_src);
+	REQUIRE(equivalent(subject.web_root(), current_src));
 	REQUIRE(subject.cert_chain() == "/etc/certificate.pem");
 	REQUIRE(subject.private_key() == "/etc/key.pem");
 }
