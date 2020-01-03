@@ -125,7 +125,7 @@ void Ownership::list(
 	Complete&& complete
 ) const
 {
-	auto coll_set = key::collection(m_user, coll);
+	auto coll_hash = key::collection(m_user, coll);
 	db.command(
 		[
 			comp=std::forward<Complete>(complete)
@@ -143,7 +143,28 @@ void Ownership::list(
 				ec
 			);
 		},
-		"SMEMBERS %b", coll_set.data(), coll_set.size()
+		"HKEYS %b", coll_hash.data(), coll_hash.size()
+	);
+}
+
+template <typename Complete>
+void Ownership::rename(
+	redis::Connection& db,
+	std::string_view coll,
+	const ObjectID& blobid,
+	std::string_view filename,
+	Complete&& complete
+)
+{
+	auto coll_hash = key::collection(m_user, coll);
+	db.command([comp=std::forward<Complete>(complete)](auto&&, std::error_code ec)
+		{
+			comp(ec);
+		},
+		"HSET %b %b %b",
+		coll_hash.data(), coll_hash.size(),
+		blobid.data(), blobid.size(),
+		filename.data(), filename.size()
 	);
 }
 
@@ -155,11 +176,11 @@ void Ownership::find(
 	Complete&& complete
 ) const
 {
-	auto coll_set  = key::collection(m_user, coll);
+	auto coll_hash = key::collection(m_user, coll);
 	auto blob_meta = key::blob_meta(m_user);
 	static const char lua[] = R"__(
-		if redis.call('SISMEMBER', KEYS[1], ARGV[1]) == 1 then
-			return redis.call('HGET', KEYS[2], ARGV[1])
+		if redis.call('HEXISTS', KEYS[1], ARGV[1]) == 1 then
+			return {redis.call('HGET', KEYS[2], ARGV[1]), redis.call('HGET', KEYS[1], ARGV[1])}
 		else
 			return false
 		end
@@ -172,10 +193,13 @@ void Ownership::find(
 			if (!ec && entry.is_nil())
 				ec = Error::object_not_exist;
 
-			comp(CollEntryDB{entry.as_string()}, ec);
+			if (entry.array_size() == 2)
+				comp(CollEntryDB{entry[0].as_string()}, entry[1].as_string(), ec);
+			else
+				comp(CollEntryDB{}, "", ec);
 		},
 		"EVAL %s 2 %b %b %b", lua,
-		coll_set.data(), coll_set.size(),
+		coll_hash.data(), coll_hash.size(),
 		blob_meta.data(), blob_meta.size(),
 		blob.data(), blob.size()
 	);
@@ -236,9 +260,9 @@ void Ownership::scan_all_collections(
 	auto coll_list = std::make_shared<CollectionList>();
 
 	scan_collections(db, 0,
-		[coll_list, user=m_user](auto coll, auto&& json)
+		[coll_list, user=m_user](auto coll, auto&& json) mutable
 		{
-			coll_list->add(user, coll, std::move(json));
+			coll_list->add(user, coll, std::forward<decltype(json)>(json));
 		},
 		[coll_list, comp=std::forward<Complete>(complete)](long cursor, auto ec) mutable
 		{
@@ -258,11 +282,11 @@ void Ownership::set_permission(
 )
 {
 	db.command(
-		[comp=std::forward<Complete>(complete)](auto&& reply, auto&& ec) mutable
+		[comp=std::forward<Complete>(complete)](auto&& reply, auto ec) mutable
 		{
 			if (!reply)
 				Log(LOG_WARNING, "Collection::set_permission(): script error: %1%", reply.as_error());
-			comp(std::move(ec));
+			comp(ec);
 		},
 		set_permission_command(blobid, perm)
 	);
@@ -277,9 +301,6 @@ void Ownership::move_blob(
 	Complete&& complete
 )
 {
-	std::vector<redis::CommandString> cmd;
-	cmd.push_back(link_command(dest_coll, blobid, std::nullopt));
-	cmd.push_back(unlink_command(src_coll, blobid));
 	db.command(
 		[
 			comp=std::forward<Complete>(complete),
@@ -290,7 +311,7 @@ void Ownership::move_blob(
 				Log(LOG_WARNING, "Collection::move_blob(): script error: %1%", reply.as_error());
 			comp(ec);
 		},
-		std::move(cmd)
+		move_command(src_coll, dest_coll, blobid)
 	);
 }
 

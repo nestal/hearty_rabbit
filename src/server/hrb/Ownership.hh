@@ -38,8 +38,9 @@ public:
 	class Collection;
 
 private:
-	[[nodiscard]] redis::CommandString link_command(std::string_view coll, const ObjectID& blob, std::optional<CollEntry> entry) const;
+	[[nodiscard]] redis::CommandString link_command(std::string_view coll, const ObjectID& blob, const CollEntry& entry) const;
 	[[nodiscard]] redis::CommandString unlink_command(std::string_view coll, const ObjectID& blob) const;
+	[[nodiscard]] redis::CommandString move_command(std::string_view src, std::string_view dest, const ObjectID& blob) const;
 	[[nodiscard]] redis::CommandString scan_collection_command(std::string_view coll) const;
 	[[nodiscard]] redis::CommandString set_permission_command(const ObjectID& blobid, Permission perm) const;
 	[[nodiscard]] redis::CommandString set_cover_command(std::string_view coll, const ObjectID& cover) const;
@@ -84,6 +85,15 @@ public:
 		redis::Connection& db,
 		std::string_view coll,
 		const ObjectID& blobid,
+		Complete&& complete
+	);
+
+	template <typename Complete>
+	void rename(
+		redis::Connection& db,
+		std::string_view coll,
+		const ObjectID& blobid,
+		std::string_view filename,
 		Complete&& complete
 	);
 
@@ -166,6 +176,8 @@ public:
 
 private:
 	std::string m_user;
+
+	redis::CommandString move_command(std::string_view src, std::string dest, const ObjectID& blob) const;
 };
 
 } // end of namespace hrb

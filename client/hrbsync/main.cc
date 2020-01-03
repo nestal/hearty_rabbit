@@ -41,7 +41,6 @@ Collection load_local(std::filesystem::path local)
 			Blake2 hash;
 			hash.update(mmap.data(), mmap.size());
 
-
 			coll.add_blob(
 				hash.finalize(),
 				CollEntry{

@@ -70,20 +70,23 @@ TEST_CASE("list of collection owned by user", "[normal]")
 	ioc.restart();
 
 	// remove all blobs in the collection
-	subject.find_collection(*redis, Authentication{{}, "owner"}, "/", [&tested, redis](auto&& coll, auto ec)
-	{
-		for (auto&& [id, blob] : coll.blobs())
+	subject.find_collection(
+		*redis, Authentication{{}, "owner"}, "/",
+		[&tested, redis](auto&& coll, std::error_code ec)
 		{
-		std::cout << "removing: " << to_hex(id) << std::endl;
-			INFO("blob = " << to_hex(id));
-			Ownership{"owner"}.unlink(*redis, "/", id, [](auto&& ec)
+			REQUIRE(coll.blobs().begin() != coll.blobs().end());
+			for (auto&& [id, blob] : coll.blobs())
 			{
-				REQUIRE(!ec);
-			});
-		}
+				INFO("removing = " << to_hex(id));
+				Ownership{"owner"}.unlink(*redis, "/", id, [](auto&& ec)
+				{
+					REQUIRE(!ec);
+				});
+			}
 
-		tested++;
-	});
+			tested++;
+		}
+	);
 
 	REQUIRE(ioc.run_for(10s) > 0);
 	REQUIRE(tested == 3);
@@ -112,7 +115,7 @@ TEST_CASE("add blob to Ownership", "[normal]")
 
 	Ownership subject{"owner"};
 
-	subject.link(*redis, "/", blobid, CollEntry{}, [&tested](std::error_code ec)
+	subject.link(*redis, "/", blobid, CollEntry{{}, "file.name"}, [&tested](std::error_code ec)
 	{
 		REQUIRE(!ec);
 		tested++;
@@ -134,9 +137,11 @@ TEST_CASE("add blob to Ownership", "[normal]")
 	ioc.restart();
 
 	// owner access is allowed
-	subject.find(*redis, "/", blobid, [&tested](auto&&, std::error_code ec)
+	subject.find(*redis, "/", blobid, [&tested](auto&& entry, auto filename, std::error_code ec)
 	{
 		REQUIRE(!ec);
+		REQUIRE(filename == "file.name");
+		REQUIRE(entry.filename() == "file.name");
 		tested++;
 	});
 
@@ -145,10 +150,12 @@ TEST_CASE("add blob to Ownership", "[normal]")
 	ioc.restart();
 
 	// anonymous access is not allowed
-	subject.find(*redis, "/", blobid, [&tested](auto&& entry, std::error_code ec)
+	subject.find(*redis, "/", blobid, [&tested](auto&& entry, auto filename, std::error_code ec)
 	{
 		REQUIRE(!ec);
 		REQUIRE(!entry.permission().allow({}, "owner"));
+		REQUIRE(entry.filename() == "file.name");
+		REQUIRE(filename == "file.name");
 		tested++;
 	});
 
@@ -167,15 +174,28 @@ TEST_CASE("add blob to Ownership", "[normal]")
 	REQUIRE(tested == 5);
 	ioc.restart();
 
+	// change filename
+	subject.rename(*redis, "/", blobid, "something.else", [&tested](std::error_code ec)
+	{
+		REQUIRE(!ec);
+		tested++;
+	});
+
+	REQUIRE(ioc.run_for(10s) > 0);
+	REQUIRE(tested == 6);
+	ioc.restart();
+
 	// anonymous access is now allowed
-	subject.find(*redis, "/", blobid, [&tested](auto&& entry, std::error_code ec)
+	subject.find(*redis, "/", blobid, [&tested](auto&& entry, auto filename, std::error_code ec)
 	{
 		REQUIRE(!ec);
 		REQUIRE(entry.permission().allow({}, "owner"));
+		REQUIRE(entry.filename() == "file.name");
+		REQUIRE(filename == "something.else");
 		tested++;
 	});
 	REQUIRE(ioc.run_for(10s) > 0);
-	REQUIRE(tested == 6);
+	REQUIRE(tested == 7);
 	ioc.restart();
 
 	// verify that the newly added blob is in the public list
@@ -201,19 +221,21 @@ TEST_CASE("add blob to Ownership", "[normal]")
 	});
 
 	REQUIRE(ioc.run_for(10s) > 0);
-	REQUIRE(tested == 7);
+	REQUIRE(tested == 8);
 	ioc.restart();
 
 	// check if it is in the new collection
-	subject.find(*redis, "someother", blobid, [&tested](auto&& entry, std::error_code ec)
+	subject.find(*redis, "someother", blobid, [&tested](auto&& entry, auto filename, std::error_code ec)
 	{
 		REQUIRE(!ec);
+		REQUIRE(entry.filename() == "file.name");
+		REQUIRE(filename == "something.else");
 		REQUIRE(entry.permission().allow({}, "owner"));
 		tested++;
 	});
 
 	REQUIRE(ioc.run_for(10s) > 0);
-	REQUIRE(tested == 8);
+	REQUIRE(tested == 9);
 }
 
 TEST_CASE("Load 3 images in json", "[normal]")
@@ -222,6 +244,8 @@ TEST_CASE("Load 3 images in json", "[normal]")
 
 	boost::asio::io_context ioc;
 	auto redis = redis::connect(ioc);
+
+	// TODO: unlink all images left behind before testing
 
 	int added = 0;
 
@@ -249,6 +273,19 @@ TEST_CASE("Load 3 images in json", "[normal]")
 	for (auto&& blobid : blobids)
 		subject.update(*redis, blobid, entry);
 
+	// rename all files
+	int renamed = 0;
+	for (auto&& blobid : blobids)
+		subject.rename(*redis, "some/collection", blobid, "renamed.jpg", [&renamed](auto ec)
+		{
+			REQUIRE(!ec);
+			renamed++;
+		});
+	REQUIRE(ioc.run_for(10s) > 0);
+	REQUIRE(renamed == added);
+
+	ioc.restart();
+
 	bool tested = false;
 	subject.find_collection(*redis, {{},"testuser"}, "some/collection", [&tested, &blobids](auto&& coll, auto ec)
 	{
@@ -261,7 +298,7 @@ TEST_CASE("Load 3 images in json", "[normal]")
 		for (auto&& [id, entry] : coll.blobs())
 		{
 			REQUIRE(entry.perm == Permission::public_());
-			REQUIRE(entry.filename == "another_file.jpg");
+			REQUIRE(entry.filename == "renamed.jpg");
 			REQUIRE(entry.mime == "application/json");
 			REQUIRE(entry.timestamp == Timestamp{std::chrono::milliseconds{100}});
 		}
