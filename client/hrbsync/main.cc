@@ -121,9 +121,9 @@ int main(int argc, char **argv)
 						id,
 						"master",
 						entry.filename,
-						[](auto& file, std::error_code ec)
+						[fname=entry.filename](auto& file, std::error_code ec)
 						{
-							std::cout << "downloaded: " << file.size() << ec << std::endl;
+							std::cout << "downloaded: " << fname << " " << file.size() << " bytes: " << ec << std::endl;
 						}
 					);
 				}

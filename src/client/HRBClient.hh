@@ -21,6 +21,9 @@
 #include <boost/asio/ssl.hpp>
 #include <boost/asio/strand.hpp>
 
+#include <unordered_set>
+#include <deque>
+
 namespace hrb {
 
 class BaseRequest;
@@ -68,7 +71,11 @@ private:
 	auto request(const URLIntent& intent, boost::beast::http::verb method);
 
 	template <typename Complete, typename Response>
-	void handle_upload_response(Response&& response, Complete&& comp, std::error_code ec);
+	void handle_upload_response(Response& response, Complete&& comp, std::error_code ec);
+
+	void add_request(std::shared_ptr<BaseRequest>&& req);
+	void try_start_requests();
+	void finish_request(const std::shared_ptr<BaseRequest>& req);
 
 private:
 	// connection to the server
@@ -82,7 +89,10 @@ private:
 	// authenticated user
 	UserID  m_user;
 
-	boost::asio::io_context::strand m_strand{m_ioc};
+	// outstanding and pending requests
+	std::size_t m_outstanding_limit{5};
+	std::unordered_set<std::shared_ptr<BaseRequest>> m_outstanding;
+	std::deque<std::shared_ptr<BaseRequest>> m_pending;
 };
 
 }
