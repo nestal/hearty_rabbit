@@ -21,8 +21,6 @@
 
 #include <boost/algorithm/string.hpp>
 
-#include <iostream>
-
 using namespace hrb;
 using namespace std::chrono_literals;
 using namespace boost::algorithm;
@@ -401,7 +399,7 @@ TEST_CASE("set cover error cases", "[error]")
 				for (auto&& it : coll_list)
 				{
 					REQUIRE(it.owner() == "testuser");
-					inexist_album += it.collection();
+					inexist_album += it.name();
 				}
 			}
 		);
@@ -502,7 +500,7 @@ TEST_CASE("setting and remove the cover of collection", "[normal]")
 
 			for (auto&& entry : coll_list)
 			{
-				dirs.emplace_back(entry.collection());
+				dirs.emplace_back(entry.name());
 				REQUIRE(entry.owner() == "testuser");
 			}
 		}
@@ -565,7 +563,7 @@ TEST_CASE("setting and remove the cover of collection", "[normal]")
 			for (auto&& it : coll_list)
 			{
 				REQUIRE(it.owner() == "testuser");
-				if (it.collection() == "/" )
+				if (it.name() == "/" )
 				{
 					REQUIRE(it.cover() != cover_blob);
 					updated = true;

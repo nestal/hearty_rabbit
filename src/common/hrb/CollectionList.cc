@@ -14,11 +14,6 @@
 
 namespace hrb {
 
-bool operator==(const CollectionList::Entry& lhs, const CollectionList::Entry& rhs)
-{
-	return lhs.m_collection == rhs.m_collection && lhs.m_properties == rhs.m_properties;
-}
-
 void from_json(const nlohmann::json& src, CollectionList& dest)
 {
 	CollectionList result;
@@ -42,9 +37,9 @@ void to_json(nlohmann::json& dest, const CollectionList& src)
 
 	for (auto&& en : src.m_entries)
 	{
-		auto coll = en.properties();
+		auto coll = en.meta();
 		coll.emplace("owner", std::string{en.owner()});
-		coll.emplace("coll", std::string{en.collection()});
+		coll.emplace("coll", std::string{en.name()});
 		colls.push_back(std::move(coll));
 	}
 
@@ -66,14 +61,21 @@ boost::iterator_range<CollectionList::iterator> CollectionList::entries()
 
 bool operator==(const CollectionList& lhs, const CollectionList& rhs)
 {
-	return lhs.m_entries == rhs.m_entries;
+	return std::equal(
+		lhs.m_entries.begin(), lhs.m_entries.end(),
+		rhs.m_entries.begin(), rhs.m_entries.end(),
+		[](auto&& coll1, auto&& coll2)
+		{
+			return coll1.name() == coll2.name() && coll1.owner() == coll2.owner() && coll1.meta() == coll2.meta();
+		}
+	);
 }
 
 CollectionList::iterator CollectionList::find(std::string_view owner, std::string_view coll)
 {
 	return std::find_if(m_entries.begin(), m_entries.end(), [owner, coll](auto&& en)
 	{
-		return en.owner() == owner && en.collection() == coll;
+		return en.owner() == owner && en.name() == coll;
 	});
 }
 
@@ -81,19 +83,8 @@ CollectionList::const_iterator CollectionList::find(std::string_view owner, std:
 {
 	return std::find_if(m_entries.begin(), m_entries.end(), [owner, coll](auto&& en)
 	{
-		return en.owner() == owner && en.collection() == coll;
+		return en.owner() == owner && en.name() == coll;
 	});
-}
-
-CollectionList::Entry::Entry(std::string_view owner, std::string_view coll, const ObjectID& cover) :
-	m_owner{owner}, m_collection{coll}, m_properties({{"cover", cover}})
-{
-
-}
-
-CollectionList::Entry::Entry(std::string_view owner, std::string_view coll, const nlohmann::json& properties) :
-	m_owner{owner}, m_collection{coll}, m_properties(properties)
-{
 }
 
 } // end of namespace hrb

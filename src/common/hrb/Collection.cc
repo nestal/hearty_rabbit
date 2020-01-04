@@ -21,6 +21,12 @@ Collection::Collection(std::string_view name, std::string_view owner, nlohmann::
 	assert(m_meta.is_object() || m_meta.is_null());
 }
 
+Collection::Collection(std::string_view name, std::string_view owner, const ObjectID& cover) :
+	m_name{name}, m_owner{owner}, m_meta({{"cover", to_hex(cover)}})
+{
+	assert(m_meta.is_object());
+}
+
 void Collection::add_blob(const ObjectID& id, CollEntry&& entry)
 {
 	m_blobs.emplace(id, std::move(entry));

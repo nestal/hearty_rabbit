@@ -76,7 +76,7 @@ TEST_CASE("simple client login", "[normal]")
 			REQUIRE_FALSE(err);
 			auto it = coll_list.find("sumsum", "");
 			REQUIRE(it != coll_list.end());
-			REQUIRE(it->collection() == "");
+			REQUIRE(it->name() == "");
 
 			++tested;
 		});

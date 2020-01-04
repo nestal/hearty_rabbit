@@ -13,6 +13,7 @@
 #pragma once
 
 #include "ObjectID.hh"
+#include "Collection.hh"
 
 #include <boost/range/iterator_range.hpp>
 
@@ -26,51 +27,30 @@ namespace hrb {
 class CollectionList
 {
 public:
-	class Entry
-	{
-	public:
-		Entry(std::string_view owner, std::string_view coll, const ObjectID& cover);
-		Entry(std::string_view owner, std::string_view coll, const nlohmann::json& properties);
-
-		std::string_view owner() const {return m_owner;}
-		std::string_view collection() const {return m_collection;}
-		ObjectID cover() const {return m_properties["cover"].template get<ObjectID>();}
-
-		const nlohmann::json& properties() const {return m_properties;}
-		nlohmann::json& properties() {return m_properties;}
-
-		friend bool operator==(const Entry& lhs, const Entry& rhs);
-		friend bool operator!=(const Entry& lhs, const Entry& rhs) {return !operator==(lhs, rhs);}
-
-	private:
-		std::string     m_owner;
-		std::string     m_collection;
-		nlohmann::json  m_properties;
-	};
-	using Entries = std::vector<Entry>;
+	using Entries = std::vector<Collection>;
 	using iterator = Entries::iterator;
 	using const_iterator = Entries::const_iterator;
 
 public:
 	CollectionList() = default;
 
-	boost::iterator_range<const_iterator> entries() const;
-	boost::iterator_range<iterator> entries();
+	[[nodiscard]] boost::iterator_range<const_iterator> entries() const;
+	[[nodiscard]] boost::iterator_range<iterator> entries();
 
-	iterator find(std::string_view owner, std::string_view coll);
-	const_iterator find(std::string_view owner, std::string_view coll) const;
+	[[nodiscard]] iterator find(std::string_view owner, std::string_view coll);
+	[[nodiscard]] const_iterator find(std::string_view owner, std::string_view coll) const;
 
-	auto begin() {return m_entries.begin();}
-	auto end() {return m_entries.end();}
+	[[nodiscard]] auto begin() {return m_entries.begin();}
+	[[nodiscard]] auto end() {return m_entries.end();}
 
-	auto begin() const {return m_entries.begin();}
-	auto end() const {return m_entries.end();}
-	auto size() const {return m_entries.size();}
+	[[nodiscard]] auto begin() const {return m_entries.begin();}
+	[[nodiscard]] auto end() const {return m_entries.end();}
+	[[nodiscard]] auto size() const {return m_entries.size();}
 
 	template <typename PropertiesOrCover>
 	void add(std::string_view owner, std::string_view coll, PropertiesOrCover&& prop)
 	{
-		m_entries.emplace_back(owner, coll, std::forward<PropertiesOrCover>(prop));
+		m_entries.emplace_back(coll, owner, std::forward<PropertiesOrCover>(prop));
 	}
 
 	friend void from_json(const nlohmann::json& src, CollectionList& dest);

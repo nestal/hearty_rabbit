@@ -31,7 +31,7 @@ int CollectionListModel::rowCount(const QModelIndex& parent) const
 QVariant CollectionListModel::data(const QModelIndex& index, int role) const
 {
 	return index.row() < m_entries.size() && role == Qt::DisplayRole ?
-		QString::fromStdString(std::string{m_entries[index.row()].collection()}) :
+		QString::fromStdString(std::string{m_entries[index.row()].name()}) :
 		QVariant();
 }
 
@@ -46,7 +46,7 @@ void CollectionListModel::update(const CollectionList& coll)
 	Q_EMIT layoutChanged();
 }
 
-CollectionList::Entry CollectionListModel::find(const QModelIndex& index) const
+Collection CollectionListModel::find(const QModelIndex& index) const
 {
 	return m_entries.at(static_cast<std::size_t>(index.row()));
 }

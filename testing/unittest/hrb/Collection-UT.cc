@@ -70,8 +70,8 @@ TEST_CASE("CollectionList operator==()", "[normal]")
 	REQUIRE(subject != subject2);
 
 	CollectionList subject3;
-	subject3.add("sumsum", "default", subject.entries()[0].cover());
-	subject3.add("sumsum", "some coll", subject.entries()[1].cover());
+	subject3.add("sumsum", "default", *subject.entries()[0].cover());
+	subject3.add("sumsum", "some coll", *subject.entries()[1].cover());
 
 	REQUIRE(subject == subject3);
 	REQUIRE_FALSE(subject != subject3);
@@ -85,7 +85,7 @@ TEST_CASE("simple CollectionList <-> JSON round-trip", "[normal]")
 	REQUIRE(subject.entries().size() == 2);
 
 	// additional property besides cover
-	subject.entries()[1].properties().emplace("field", "value");
+	subject.entries()[1].meta().emplace("field", "value");
 
 	// don't use {} to construct nlohmann. it will produce an JSON array
 	nlohmann::json json(subject);
@@ -94,7 +94,7 @@ TEST_CASE("simple CollectionList <-> JSON round-trip", "[normal]")
 	auto ret = json.get<CollectionList>();
 	REQUIRE(ret.entries().size() == 2);
 	REQUIRE(subject == ret);
-	REQUIRE(ret.entries()[1].properties()["field"] == "value");
+	REQUIRE(ret.entries()[1].meta()["field"] == "value");
 }
 
 TEST_CASE("simple BlobList <-> JSON round-trip", "[normal]")
