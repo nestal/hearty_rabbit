@@ -31,7 +31,7 @@ class BlobInode;
 class Collection;
 class CollectionList;
 
-/// A set of blob objects represented by a redis set.
+/// Encapsulate all blobs owned by a user.
 class Ownership
 {
 private:

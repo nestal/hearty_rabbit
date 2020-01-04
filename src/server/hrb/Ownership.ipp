@@ -159,13 +159,10 @@ void Ownership::get_blob(
 			comp=std::forward<Complete>(complete)
 		](auto&& entry, std::error_code ec) mutable
 		{
-			if (!ec && entry.is_nil())
-				ec = Error::object_not_exist;
-
-			if (entry.array_size() == 2)
+			if (!ec && entry.array_size() == 2)
 				comp(BlobInodeDB{entry[0].as_string()}, entry[1].as_string(), ec);
 			else
-				comp(BlobInodeDB{}, "", ec);
+				comp(BlobInodeDB{}, "", make_error_code(Error::object_not_exist));
 		},
 		"EVAL %s 2 %b %b %b", lua,
 		coll_hash.data(), coll_hash.size(),
@@ -291,7 +288,7 @@ void Ownership::list_public_blobs(
 )
 {
 	db.command(
-		[user=m_user, comp=std::forward<Complete>(complete)](auto&& reply, auto ec) mutable
+		[comp=std::forward<Complete>(complete)](auto&& reply, auto ec) mutable
 		{
 			if (!reply)
 				Log(LOG_WARNING, "list_public_blobs() script return %1%", reply.as_error());
