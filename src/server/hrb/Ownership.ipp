@@ -137,8 +137,8 @@ void Ownership::rename_blob(
 	);
 }
 
-template <typename Complete>
-void Ownership::find(
+template <typename Complete, typename>
+void Ownership::get_blob(
 	redis::Connection& db,
 	std::string_view coll,
 	const ObjectID& blob,
@@ -220,7 +220,7 @@ void Ownership::scan_collections(
 	);
 }
 
-template <typename Complete>
+template <typename Complete, typename>
 void Ownership::scan_all_collections(
 	redis::Connection& db,
 	Complete&& complete
@@ -363,7 +363,7 @@ void Ownership::query_blob(redis::Connection& db, const ObjectID& blob, Complete
 	);
 }
 
-template <typename Complete>
+template <typename Complete, typename>
 void Ownership::set_cover(redis::Connection& db, std::string_view coll, const ObjectID& blob, Complete&& complete) const
 {
 	db.command(

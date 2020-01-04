@@ -370,20 +370,22 @@ void SessionHandler::get_blob(const BlobRequest& req, Send&& send)
 	// Check if the user can access the blob
 	// Note: do not move-construct "req" to the lambda because the arguments of find() uses it.
 	// Otherwise, "req" will become dangled.
-	Ownership{req.owner()}.find(
+	Ownership{req.owner()}.get_blob(
 		*m_db, req.collection(), *req.blob(),
 		[
 			req, this,
-			send=std::forward<Send>(send)
+			send = std::forward<Send>(send)
 		](BlobInodeDB entry, auto filename, auto ec) mutable
 		{
 			// Only allow the owner to know whether an object exists or not.
 			// Always reply forbidden for everyone else.
 			if (ec == Error::object_not_exist)
-				return send(http::response<http::empty_body>{
-					req.request_by_owner(m_auth) ? http::status::not_found : http::status::forbidden,
-					req.version()
-				});
+				return send(
+					http::response<http::empty_body>{
+						req.request_by_owner(m_auth) ? http::status::not_found : http::status::forbidden,
+						req.version()
+					}
+				);
 
 			if (ec)
 				return send(http::response<http::empty_body>{http::status::internal_server_error, req.version()});
@@ -391,13 +393,13 @@ void SessionHandler::get_blob(const BlobRequest& req, Send&& send)
 			if (!entry.permission().allow(m_auth, req.owner()))
 				return send(http::response<http::empty_body>{http::status::forbidden, req.version()});
 
-			if (auto [json] = urlform.find_optional(req.option(), "json"); json)
+			if (auto[json] = urlform.find_optional(req.option(), "json"); json)
 			{
 				return send(m_blob_db.meta(*req.blob(), req.version()));
 			}
 			else
 			{
-				auto [rendition] = urlform.find(req.option(), "rendition");
+				auto[rendition] = urlform.find(req.option(), "rendition");
 				auto response = m_blob_db.response(*req.blob(), req.version(), req.etag(), rendition);
 				response.set(http::field::content_disposition, "inline; filename=" + url_encode(filename));
 				response.set(http::field::last_modified, entry.timestamp().http_format());

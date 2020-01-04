@@ -303,7 +303,7 @@ redis::CommandString Ownership::set_permission_command(const ObjectID& blobid, P
 	return redis::CommandString{
 		"EVAL %s 2 %b %b  %b %b %b", lua,
 		pub_list.data(), pub_list.size(),   // KEYS[1]: list of public blob IDs
-		blob_meta.data(), blob_meta.size(), // KEYS[2]: blob meta
+		blob_meta.data(), blob_meta.size(), // KEYS[2]: blob inode
 
 		m_user.data(), m_user.size(),       // ARGV[1]: user
 		blobid.data(), blobid.size(),       // ARGV[2]: blob ID
@@ -358,7 +358,7 @@ redis::CommandString Ownership::list_public_blob_command() const
 				table.insert(elements, {
 					user, blob,
 					redis.call('SRANDMEMBER', 'blob-refs:' .. user .. ':' .. blob),
-					redis.call('HGET', 'blob-meta:' .. user, blob)
+					redis.call('HGET', 'blob-inodes:' .. user, blob)
 				})
 			end
 		end

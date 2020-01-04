@@ -29,6 +29,7 @@ class Authentication;
 class Permission;
 class BlobInode;
 class Collection;
+class CollectionList;
 
 /// A set of blob objects represented by a redis set.
 class Ownership
@@ -116,15 +117,18 @@ public:
 		Complete&& complete
 	);
 
-	template <typename Complete>
-	void find(
+	template <
+	    typename Complete,
+	    typename=std::enable_if_t<std::is_invocable_v<Complete, BlobInodeDB, std::string_view, std::error_code>>
+    >
+	void get_blob(
 		redis::Connection& db,
 		std::string_view coll,
 		const ObjectID& blob,
 		Complete&& complete
 	) const;
 
-	template <typename Complete>
+	template <typename Complete, typename=std::enable_if_t<std::is_invocable_v<Complete, bool, std::error_code>>>
 	void set_cover(
 		redis::Connection& db,
 		std::string_view coll,
@@ -140,7 +144,10 @@ public:
 		Complete&& complete
 	) const;
 
-	template <typename Complete>
+	template <
+	    typename Complete,
+	    typename=std::enable_if_t<std::is_invocable_v<Complete, CollectionList, std::error_code>>
+	    >
 	void scan_all_collections(
 		redis::Connection& db,
 		Complete&& complete

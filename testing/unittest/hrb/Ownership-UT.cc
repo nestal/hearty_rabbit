@@ -142,27 +142,31 @@ TEST_CASE("add blob to Ownership", "[normal]")
 	ioc.restart();
 
 	// owner access is allowed
-	subject.find(*redis, "/", blobid, [&tested](auto&& entry, auto filename, std::error_code ec)
-	{
-		REQUIRE(!ec);
-		REQUIRE(filename == "file.name");
-		REQUIRE(entry.filename() == "file.name");
-		tested++;
-	});
+	subject.get_blob(
+		*redis, "/", blobid, [&tested](auto&& entry, auto filename, std::error_code ec)
+		{
+			REQUIRE(!ec);
+			REQUIRE(filename == "file.name");
+			REQUIRE(entry.filename() == "file.name");
+			tested++;
+		}
+	);
 
 	REQUIRE(ioc.run_for(10s) > 0);
 	REQUIRE(tested == 3);
 	ioc.restart();
 
 	// anonymous access is not allowed
-	subject.find(*redis, "/", blobid, [&tested](auto&& entry, auto filename, std::error_code ec)
-	{
-		REQUIRE(!ec);
-		REQUIRE(!entry.permission().allow({}, "owner"));
-		REQUIRE(entry.filename() == "file.name");
-		REQUIRE(filename == "file.name");
-		tested++;
-	});
+	subject.get_blob(
+		*redis, "/", blobid, [&tested](auto&& entry, auto filename, std::error_code ec)
+		{
+			REQUIRE(!ec);
+			REQUIRE(!entry.permission().allow({}, "owner"));
+			REQUIRE(entry.filename() == "file.name");
+			REQUIRE(filename == "file.name");
+			tested++;
+		}
+	);
 
 	REQUIRE(ioc.run_for(10s) > 0);
 	REQUIRE(tested == 4);
@@ -193,14 +197,16 @@ TEST_CASE("add blob to Ownership", "[normal]")
 	ioc.restart();
 
 	// anonymous access is now allowed
-	subject.find(*redis, "/", blobid, [&tested](auto&& entry, auto filename, std::error_code ec)
-	{
-		REQUIRE(!ec);
-		REQUIRE(entry.permission().allow({}, "owner"));
-		REQUIRE(entry.filename() == "file.name");
-		REQUIRE(filename == "something.else");
-		tested++;
-	});
+	subject.get_blob(
+		*redis, "/", blobid, [&tested](auto&& entry, auto filename, std::error_code ec)
+		{
+			REQUIRE(!ec);
+			REQUIRE(entry.permission().allow({}, "owner"));
+			REQUIRE(entry.filename() == "file.name");
+			REQUIRE(filename == "something.else");
+			tested++;
+		}
+	);
 	REQUIRE(ioc.run_for(10s) > 0);
 	REQUIRE(tested == 7);
 	ioc.restart();
@@ -232,14 +238,16 @@ TEST_CASE("add blob to Ownership", "[normal]")
 	ioc.restart();
 
 	// check if it is in the new collection
-	subject.find(*redis, "someother", blobid, [&tested](auto&& entry, auto filename, std::error_code ec)
-	{
-		REQUIRE(!ec);
-		REQUIRE(entry.filename() == "file.name");
-		REQUIRE(filename == "something.else");
-		REQUIRE(entry.permission().allow({}, "owner"));
-		tested++;
-	});
+	subject.get_blob(
+		*redis, "someother", blobid, [&tested](auto&& entry, auto filename, std::error_code ec)
+		{
+			REQUIRE(!ec);
+			REQUIRE(entry.filename() == "file.name");
+			REQUIRE(filename == "something.else");
+			REQUIRE(entry.permission().allow({}, "owner"));
+			tested++;
+		}
+	);
 
 	REQUIRE(ioc.run_for(10s) > 0);
 	REQUIRE(tested == 9);
