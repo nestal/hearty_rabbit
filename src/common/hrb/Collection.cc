@@ -91,4 +91,9 @@ void Collection::update_timestamp(const ObjectID& id, Timestamp value)
 		it->second.timestamp = value;
 }
 
+void Collection::remove_blob(const ObjectID& id)
+{
+	m_blobs.erase(id);
+}
+
 } // end of namespace hrb

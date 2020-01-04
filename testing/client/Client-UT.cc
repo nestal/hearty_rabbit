@@ -50,7 +50,7 @@ TEST_CASE("simple client login", "[normal]")
 			REQUIRE_FALSE(intent.str().empty());
 			REQUIRE(intent.blob().has_value());
 
-			subject.get_blob("sumsum", "", *intent.blob(), [&tested](auto content, auto err)
+			subject.get_blob("sumsum", "", *intent.blob(), "", [&tested](auto content, auto err)
 			{
 				tested++;
 				REQUIRE_FALSE(err);

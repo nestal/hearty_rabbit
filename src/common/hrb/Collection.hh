@@ -52,6 +52,8 @@ public:
 	void add_blob(const ObjectID& id, BlobInode&& entry);
 	void add_blob(const ObjectID& id, const BlobInode& entry);
 
+	void remove_blob(const ObjectID& id);
+
 	void update_timestamp(const ObjectID& id, Timestamp value);
 	[[nodiscard]] std::size_t size() const {return m_blobs.size();}
 

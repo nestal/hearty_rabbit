@@ -45,5 +45,5 @@ for root, dirs, files in os.walk(blob_dir):
 			elif S_IRGRP & S_IMODE(stat_info.st_mode):
 				permission = "shared"
 
-			print("uploaded {} blob {} to {}".format(permission, blobid, coll))
+			print("uploaded {} {} blob {} to {}".format(file, permission, blobid, coll))
 			dest.set_permission(coll, blobid, permission)

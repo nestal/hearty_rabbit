@@ -130,6 +130,8 @@ void HRBClient::upload(std::string_view coll, std::string_view filename, ByteIte
 template <typename RequestBody, typename ResponseBody>
 auto HRBClient::request(const URLIntent& intent, boost::beast::http::verb method)
 {
+	std::cout << "fetching " << intent.str() << std::endl;
+
 	auto req = std::make_shared<GenericHTTPRequest<RequestBody, ResponseBody>>(m_ioc, m_ssl);
 	req->init(m_host, m_port, intent.str(), method);
 	req->request().set(http::field::cookie, m_user.cookie().str());
@@ -137,10 +139,10 @@ auto HRBClient::request(const URLIntent& intent, boost::beast::http::verb method
 }
 
 template <typename Complete>
-void HRBClient::get_blob(std::string_view owner, std::string_view coll, const ObjectID& blob, Complete&& comp)
+void HRBClient::get_blob(std::string_view owner, std::string_view coll, const ObjectID& blob, std::string_view rendition, Complete&& comp)
 {
 	auto req = request<http::empty_body, http::string_body>({
-		URLIntent::Action::api, owner, coll, blob
+		URLIntent::Action::api, owner, coll, blob, "rendition="+std::string{rendition}
 	}, http::verb::get);
 	req->on_load([this, comp=std::forward<Complete>(comp)](auto ec, auto& req)
 	{
