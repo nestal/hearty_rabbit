@@ -12,14 +12,11 @@
 
 #include "Ownership.hh"
 #include "Ownership.ipp"
-#include "BlobDatabase.hh"
 #include "RedisKeys.hh"
 
-#include "util/Log.hh"
 #include "common/util/Escape.hh"
 
 #include <nlohmann/json.hpp>
-#include <sstream>
 
 namespace hrb {
 
@@ -27,12 +24,7 @@ Ownership::Ownership(std::string_view name) : m_user{name}
 {
 }
 
-hrb::Collection Ownership::no_collection()
-{
-	return hrb::Collection{};
-}
-
-hrb::Collection Ownership::from_reply(
+Collection Ownership::from_reply(
 	const redis::Reply& reply,
 	std::string_view coll,
 	const Authentication& requester,

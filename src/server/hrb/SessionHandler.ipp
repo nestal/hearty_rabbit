@@ -27,6 +27,7 @@
 #include "util/Log.hh"
 
 #include "common/hrb/BlobList.hh"
+#include "common/hrb/Collection.hh"
 #include "common/util/Escape.hh"
 #include "common/hrb/URLIntent.hh"
 #include "common/util/StringFields.hh"

@@ -19,19 +19,6 @@
 
 namespace hrb {
 
-BlobList::BlobList(BlobList&& other) : m_json(std::move(other.m_json))
-{
-	other.m_json = nlohmann::json::object({{"elements", {}}});
-}
-
-BlobList& BlobList::operator=(const BlobList& other)
-{
-	BlobList tmp{std::move(other)};
-	swap(tmp.m_json, m_json);
-	return *this;
-}
-
-
 void BlobList::add(std::string_view owner, std::string_view coll, const ObjectID& blob, const BlobInode& entry)
 {
 	assert(m_json.count("elements") > 0);

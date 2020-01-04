@@ -22,7 +22,7 @@ class Permission
 {
 public:
 	Permission() = default;
-	explicit Permission(char perm);
+	explicit Permission(char perm) : m_perm{perm} {}
 
 	static Permission from_description(std::string_view description);
 
@@ -30,7 +30,7 @@ public:
 	static Permission public_();
 	static Permission private_();
 
-	bool allow(const UserID& requester, std::string_view owner);
+	[[nodiscard]] bool allow(const UserID& requester, std::string_view owner) const;
 
 	[[nodiscard]] std::string_view str() const {return {&m_perm, 1};}
 	[[nodiscard]] std::string_view description() const;

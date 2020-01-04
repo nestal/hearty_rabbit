@@ -15,11 +15,7 @@
 
 namespace hrb {
 
-Permission::Permission(char perm) : m_perm{perm}
-{
-}
-
-bool Permission::allow(const UserID& requester, std::string_view owner)
+bool Permission::allow(const UserID& requester, std::string_view owner) const
 {
 	switch (m_perm)
 	{

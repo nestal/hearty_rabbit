@@ -33,10 +33,6 @@ class Collection;
 /// A set of blob objects represented by a redis set.
 class Ownership
 {
-public:
-	/// A set of blob objects represented by a redis set.
-	class Collection;
-
 private:
 	[[nodiscard]] redis::CommandString link_command(std::string_view coll, const ObjectID& blob, const BlobInode& entry) const;
 	[[nodiscard]] redis::CommandString unlink_command(std::string_view coll, const ObjectID& blob) const;
@@ -47,19 +43,17 @@ private:
 	[[nodiscard]] redis::CommandString list_public_blob_command() const;
 	void update(redis::Connection& db, const ObjectID& blobid, const BlobInodeDB& entry);
 
-	[[nodiscard]] hrb::Collection from_reply(
+	[[nodiscard]] Collection from_reply(
 		const redis::Reply& hash_getall_reply,
 		std::string_view coll,
 		const Authentication& requester,
 		nlohmann::json&& meta
 	) const;
 
-	[[nodiscard]] static hrb::Collection no_collection();
-
 public:
 	explicit Ownership(std::string_view name);
 
-	template <typename Complete>
+	template <typename Complete, typename=std::enable_if_t<std::is_invocable_v<Complete, std::error_code>>>
 	void link_blob(
 		redis::Connection& db,
 		std::string_view coll,
@@ -80,7 +74,7 @@ public:
 		const nlohmann::json& entry
 	);
 
-	template <typename Complete>
+	template <typename Complete, typename=std::enable_if_t<std::is_invocable_v<Complete, std::error_code>>>
 	void unlink_blob(
 		redis::Connection& db,
 		std::string_view coll,
@@ -88,7 +82,7 @@ public:
 		Complete&& complete
 	);
 
-	template <typename Complete>
+	template <typename Complete, typename=std::enable_if_t<std::is_invocable_v<Complete, std::error_code>>>
 	void rename_blob(
 		redis::Connection& db,
 		std::string_view coll,
@@ -97,7 +91,7 @@ public:
 		Complete&& complete
 	);
 
-	template <typename Complete>
+	template <typename Complete, typename=std::enable_if_t<std::is_invocable_v<Complete, std::error_code>>>
 	void set_permission(
 		redis::Connection& db,
 		const ObjectID& blobid,
@@ -105,7 +99,7 @@ public:
 		Complete&& complete
 	);
 
-	template <typename Complete>
+	template <typename Complete, typename=std::enable_if_t<std::is_invocable_v<Complete, Collection&&, std::error_code>>>
 	void get_collection(
 		redis::Connection& db,
 		const Authentication& requester,
@@ -113,7 +107,7 @@ public:
 		Complete&& complete
 	) const;
 
-	template <typename Complete>
+	template <typename Complete, typename=std::enable_if_t<std::is_invocable_v<Complete, std::error_code>>>
 	void move_blob(
 		redis::Connection& db,
 		std::string_view src_coll,
@@ -169,8 +163,6 @@ public:
 
 private:
 	std::string m_user;
-
-	redis::CommandString move_command(std::string_view src, std::string dest, const ObjectID& blob) const;
 };
 
 } // end of namespace hrb

@@ -18,7 +18,6 @@
 #include "net/Redis.hh"
 
 #include "common/hrb/Permission.hh"
-#include "common/hrb/Collection.hh"
 #include "common/hrb/CollectionList.hh"
 #include "common/util/Error.hh"
 #include "common/util/Escape.hh"
@@ -32,13 +31,12 @@
 #include <boost/range/adaptor/transformed.hpp>
 
 #include <vector>
-#include <iostream>
 
 #pragma once
 
 namespace hrb {
 
-template <typename Complete>
+template <typename Complete, typename>
 void Ownership::link_blob(
 	redis::Connection& db,
 	std::string_view coll,
@@ -56,7 +54,7 @@ void Ownership::link_blob(
 	);
 }
 
-template <typename Complete>
+template <typename Complete, typename>
 void Ownership::unlink_blob(
 	redis::Connection& db,
 	std::string_view coll,
@@ -75,7 +73,7 @@ void Ownership::unlink_blob(
 	);
 }
 
-template <typename Complete>
+template <typename Complete, typename>
 void Ownership::get_collection(
 	redis::Connection& db,
 	const Authentication& requester,
@@ -111,14 +109,14 @@ void Ownership::get_collection(
 
 			// This should never happen unless the redis server has bugs.
 			else
-				comp(no_collection(), hrb::make_error_code(Error::redis_command_error));
+				comp(Collection{}, hrb::make_error_code(Error::redis_command_error));
 		},
 		scan_collection_command(coll)
 	);
 
 }
 
-template <typename Complete>
+template <typename Complete, typename>
 void Ownership::rename_blob(
 	redis::Connection& db,
 	std::string_view coll,
@@ -244,7 +242,7 @@ void Ownership::scan_all_collections(
 	);
 }
 
-template <typename Complete>
+template <typename Complete, typename>
 void Ownership::set_permission(
 	redis::Connection& db,
 	const ObjectID& blobid,
@@ -263,7 +261,7 @@ void Ownership::set_permission(
 	);
 }
 
-template <typename Complete>
+template <typename Complete, typename>
 void Ownership::move_blob(
 	redis::Connection& db,
 	std::string_view src_coll,
