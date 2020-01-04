@@ -117,7 +117,6 @@ TEST_CASE("simple BlobList <-> JSON round-trip", "[normal]")
 	INFO("subject = " << subject.json());
 
 	nlohmann::json json(std::move(subject));
-	REQUIRE(subject.size() == 0);
 
 	auto ret = json.get<BlobList>();
 	REQUIRE(ret.size() == 2);
