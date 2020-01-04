@@ -251,6 +251,19 @@ TEST_CASE("add blob to Ownership", "[normal]")
 
 	REQUIRE(ioc.run_for(10s) > 0);
 	REQUIRE(tested == 9);
+	ioc.restart();
+
+	subject.get_blob(*redis, blobid, [&tested](auto&& entry, std::error_code ec)
+	{
+		REQUIRE(!ec);
+		REQUIRE(entry.filename() == "file.name");
+		REQUIRE(entry.permission().allow({}, "owner"));
+		tested++;
+	});
+
+	REQUIRE(ioc.run_for(10s) > 0);
+	REQUIRE(tested == 10);
+	ioc.restart();
 }
 
 TEST_CASE("Load 3 images in json", "[normal]")

@@ -171,6 +171,28 @@ void Ownership::get_blob(
 	);
 }
 
+template <typename Complete, typename>
+void Ownership::get_blob(
+	redis::Connection& db,
+	const ObjectID& blob,
+	Complete&& complete
+) const
+{
+	auto blob_inode = key::blob_inode(m_user);
+	db.command(
+		[comp=std::forward<Complete>(complete)](redis::Reply&& entry, std::error_code ec) mutable
+		{
+			if (!ec && entry.is_string())
+				comp(BlobInodeDB{entry.as_string()}, ec);
+			else
+				comp(BlobInodeDB{}, make_error_code(Error::object_not_exist));
+		},
+		"HGET %b %b",
+		blob_inode.data(), blob_inode.size(),
+		blob.data(), blob.size()
+	);
+}
+
 template <typename CollectionCallback, typename Complete>
 void Ownership::scan_collections(
 	redis::Connection& db,

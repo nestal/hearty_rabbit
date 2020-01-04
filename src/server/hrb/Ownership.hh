@@ -128,6 +128,16 @@ public:
 		Complete&& complete
 	) const;
 
+	template <
+	    typename Complete,
+	    typename=std::enable_if_t<std::is_invocable_v<Complete, BlobInodeDB, std::error_code>>
+    >
+	void get_blob(
+		redis::Connection& db,
+		const ObjectID& blob,
+		Complete&& complete
+	) const;
+
 	template <typename Complete, typename=std::enable_if_t<std::is_invocable_v<Complete, bool, std::error_code>>>
 	void set_cover(
 		redis::Connection& db,
