@@ -14,7 +14,7 @@
 
 #include "ObjectID.hh"
 #include "Permission.hh"
-#include "CollEntry.hh"
+#include "BlobInode.hh"
 #include "common/util/Escape.hh"
 
 namespace hrb {
@@ -32,7 +32,7 @@ BlobList& BlobList::operator=(const BlobList& other)
 }
 
 
-void BlobList::add(std::string_view owner, std::string_view coll, const ObjectID& blob, const CollEntry& entry)
+void BlobList::add(std::string_view owner, std::string_view coll, const ObjectID& blob, const BlobInode& entry)
 {
 	assert(m_json.count("elements") > 0);
 
@@ -73,7 +73,7 @@ std::vector<BlobList::Entry> BlobList::entries() const
 				value.at("owner").get<std::string>(),
 				value.at("collection").get<std::string>(),
 				*blob,
-				value.template get<CollEntry>()
+				value.template get<BlobInode>()
 			});
 	}
 	return result;

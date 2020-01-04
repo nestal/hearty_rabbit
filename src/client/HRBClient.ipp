@@ -16,7 +16,7 @@
 #include "GenericHTTPRequest.hh"
 
 #include "common/util/Cookie.hh"
-#include "common/hrb/CollEntry.hh"
+#include "common/hrb/BlobInode.hh"
 #include "common/hrb/Collection.hh"
 #include "common/hrb/CollectionList.hh"
 #include "common/util/Error.hh"

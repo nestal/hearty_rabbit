@@ -13,7 +13,7 @@
 #pragma once
 
 #include "common/hrb/ObjectID.hh"
-#include "CollEntryDB.hh"
+#include "BlobInodeDB.hh"
 
 #include <string_view>
 #include <functional>
@@ -27,7 +27,7 @@ class Reply;
 
 class Authentication;
 class Permission;
-class CollEntry;
+class BlobInode;
 class Collection;
 
 /// A set of blob objects represented by a redis set.
@@ -38,14 +38,14 @@ public:
 	class Collection;
 
 private:
-	[[nodiscard]] redis::CommandString link_command(std::string_view coll, const ObjectID& blob, const CollEntry& entry) const;
+	[[nodiscard]] redis::CommandString link_command(std::string_view coll, const ObjectID& blob, const BlobInode& entry) const;
 	[[nodiscard]] redis::CommandString unlink_command(std::string_view coll, const ObjectID& blob) const;
 	[[nodiscard]] redis::CommandString move_command(std::string_view src, std::string_view dest, const ObjectID& blob) const;
 	[[nodiscard]] redis::CommandString scan_collection_command(std::string_view coll) const;
 	[[nodiscard]] redis::CommandString set_permission_command(const ObjectID& blobid, Permission perm) const;
 	[[nodiscard]] redis::CommandString set_cover_command(std::string_view coll, const ObjectID& cover) const;
 	[[nodiscard]] redis::CommandString list_public_blob_command() const;
-	void update(redis::Connection& db, const ObjectID& blobid, const CollEntryDB& entry);
+	void update(redis::Connection& db, const ObjectID& blobid, const BlobInodeDB& entry);
 
 	[[nodiscard]] hrb::Collection from_reply(
 		const redis::Reply& hash_getall_reply,
@@ -64,14 +64,14 @@ public:
 		redis::Connection& db,
 		std::string_view coll,
 		const ObjectID& blobid,
-		const CollEntry& entry,
+		const BlobInode& entry,
 		Complete&& complete
 	);
 
 	void update_blob(
 		redis::Connection& db,
 		const ObjectID& blobid,
-		const CollEntry& entry
+		const BlobInode& entry
 	);
 
 	void update_blob(

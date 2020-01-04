@@ -36,7 +36,7 @@ TEST_CASE("list of collection owned by user", "[normal]")
 
 	int tested = 0;
 	subject.link_blob(
-		*redis, "/", blobid, CollEntry{}, [&tested](std::error_code ec)
+		*redis, "/", blobid, BlobInode{}, [&tested](std::error_code ec)
 		{
 			REQUIRE_FALSE(ec);
 			tested++;
@@ -119,7 +119,7 @@ TEST_CASE("add blob to Ownership", "[normal]")
 	Ownership subject{"owner"};
 
 	subject.link_blob(
-		*redis, "/", blobid, CollEntry{{}, "file.name"}, [&tested](std::error_code ec)
+		*redis, "/", blobid, BlobInode{{}, "file.name"}, [&tested](std::error_code ec)
 		{
 			REQUIRE(!ec);
 			tested++;
@@ -260,7 +260,7 @@ TEST_CASE("Load 3 images in json", "[normal]")
 
 	for (auto&& blobid : blobids)
 	{
-		CollEntry entry{Permission::private_(), "file.jpg", "image/jpeg", Timestamp::now()};
+		BlobInode entry{Permission::private_(), "file.jpg", "image/jpeg", Timestamp::now()};
 		subject.link_blob(
 			*redis, "some/collection", blobid, entry, [&added](auto ec)
 			{
@@ -275,8 +275,8 @@ TEST_CASE("Load 3 images in json", "[normal]")
 
 	ioc.restart();
 
-	// update CollEntry of the blobs
-	CollEntry entry{Permission::public_(), "another_file.jpg", "application/json", Timestamp{std::chrono::milliseconds{100}}};
+	// update BlobInode of the blobs
+	BlobInode entry{Permission::public_(), "another_file.jpg", "application/json", Timestamp{std::chrono::milliseconds{100}}};
 	for (auto&& blobid : blobids)
 		subject.update_blob(*redis, blobid, entry);
 
@@ -345,7 +345,7 @@ TEST_CASE("Query blob of testuser")
 
 	auto blobid = insecure_random<ObjectID>();
 
-	CollEntry entry{Permission::public_(), "haha.jpeg", "image/jpeg", Timestamp::now()};
+	BlobInode entry{Permission::public_(), "haha.jpeg", "image/jpeg", Timestamp::now()};
 
 	int tested = 0;
 	subject.link_blob(
@@ -425,14 +425,14 @@ TEST_CASE("set cover error cases", "[error]")
 		// add 2 blobs to an album
 		int run = 0;
 		subject.link_blob(
-			*redis, "/", blob1, CollEntry{}, [&run](auto ec)
+			*redis, "/", blob1, BlobInode{}, [&run](auto ec)
 			{
 				REQUIRE(!ec);
 				++run;
 			}
 		);
 		subject.link_blob(
-			*redis, "/", blob2, CollEntry{}, [&run](auto ec)
+			*redis, "/", blob2, BlobInode{}, [&run](auto ec)
 			{
 				REQUIRE(!ec);
 				++run;
@@ -472,7 +472,7 @@ TEST_CASE("setting and remove the cover of collection", "[normal]")
 
 	bool added = false;
 	subject.link_blob(
-		*redis, "/", cover_blob, CollEntry{}, [&added](auto ec)
+		*redis, "/", cover_blob, BlobInode{}, [&added](auto ec)
 		{
 			REQUIRE(!ec);
 			added = true;
@@ -482,7 +482,7 @@ TEST_CASE("setting and remove the cover of collection", "[normal]")
 	// add another blob to the collection so that the collection will be
 	// still here even after removing the first one
 	subject.link_blob(
-		*redis, "/", insecure_random<ObjectID>(), CollEntry{}, [&added](auto ec)
+		*redis, "/", insecure_random<ObjectID>(), BlobInode{}, [&added](auto ec)
 		{
 			REQUIRE(!ec);
 		}
@@ -581,8 +581,8 @@ TEST_CASE("collection entry", "[normal]")
 	Authentication yung{insecure_random<UserID::SessionID>(), "yungyung"};
 	Authentication sum{insecure_random<UserID::SessionID>(), "sumsum"};
 
-	auto s = CollEntryDB::create({}, "somepic.jpeg", "image/jpeg", Timestamp::now());
-	CollEntryDB subject{s};
+	auto s = BlobInodeDB::create({}, "somepic.jpeg", "image/jpeg", Timestamp::now());
+	BlobInodeDB subject{s};
 	INFO("entry JSON = " << subject.json());
 
 	REQUIRE(subject.filename() == "somepic.jpeg");
@@ -590,14 +590,14 @@ TEST_CASE("collection entry", "[normal]")
 	REQUIRE_FALSE(subject.permission().allow(sum.id(), yung.id().username()));
 	REQUIRE(subject.raw() == s);
 
-	CollEntryDB same{subject.raw()};
+	BlobInodeDB same{subject.raw()};
 	REQUIRE(same.filename() == "somepic.jpeg");
 	REQUIRE(same.mime() == "image/jpeg");
 	REQUIRE_FALSE(same.permission().allow(yung.id(), sum.id().username()));
 	REQUIRE(same.raw() == subject.raw());
 
-	auto s2 = CollEntryDB::create(Permission::shared(), nlohmann::json::parse(same.json()));
-	CollEntryDB same2{s2};
+	auto s2 = BlobInodeDB::create(Permission::shared(), nlohmann::json::parse(same.json()));
+	BlobInodeDB same2{s2};
 	REQUIRE(same2.filename() == "somepic.jpeg");
 	REQUIRE(same2.mime() == "image/jpeg");
 	REQUIRE(same2.permission().allow(yung.id(), sum.id().username()));

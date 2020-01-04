@@ -12,7 +12,7 @@
 
 #include "Ownership.hh"
 #include "BlobRef.hh"
-#include "CollEntryDB.hh"
+#include "BlobInodeDB.hh"
 #include "RedisKeys.hh"
 
 #include "net/Redis.hh"
@@ -43,7 +43,7 @@ void Ownership::link_blob(
 	redis::Connection& db,
 	std::string_view coll,
 	const ObjectID& blobid,
-	const CollEntry& entry,
+	const BlobInode& entry,
 	Complete&& complete
 )
 {
@@ -148,7 +148,7 @@ void Ownership::find(
 ) const
 {
 	auto coll_hash = key::collection(m_user, coll);
-	auto blob_meta = key::blob_meta(m_user);
+	auto blob_meta = key::blob_inode(m_user);
 	static const char lua[] = R"__(
 		if redis.call('HEXISTS', KEYS[1], ARGV[1]) == 1 then
 			return {redis.call('HGET', KEYS[2], ARGV[1]), redis.call('HGET', KEYS[1], ARGV[1])}
@@ -165,9 +165,9 @@ void Ownership::find(
 				ec = Error::object_not_exist;
 
 			if (entry.array_size() == 2)
-				comp(CollEntryDB{entry[0].as_string()}, entry[1].as_string(), ec);
+				comp(BlobInodeDB{entry[0].as_string()}, entry[1].as_string(), ec);
 			else
-				comp(CollEntryDB{}, "", ec);
+				comp(BlobInodeDB{}, "", ec);
 		},
 		"EVAL %s 2 %b %b %b", lua,
 		coll_hash.data(), coll_hash.size(),
@@ -312,7 +312,7 @@ void Ownership::list_public_blobs(
 							std::string{owner.as_string()},
 							std::string{coll.as_string()},
 							*blob_id,
-							CollEntryDB{entry_str.as_string()}
+							BlobInodeDB{entry_str.as_string()}
 	                    };
 
 					return result;
@@ -331,7 +331,7 @@ template <typename Complete>
 void Ownership::query_blob(redis::Connection& db, const ObjectID& blob, Complete&& complete)
 {
 	auto blob_ref   = key::blob_refs(m_user, blob);
-	auto blob_meta  = key::blob_meta(m_user);
+	auto blob_meta  = key::blob_inode(m_user);
 
 	static const char lua[] = R"__(
 		local dirs = {}
@@ -352,7 +352,7 @@ void Ownership::query_blob(redis::Connection& db, const ObjectID& blob, Complete
 			comp(reply.kv_pairs() |
 				transformed([blob, &user](auto&& kv)
 				{
-					return BlobRef{user, std::string{kv.key()}, blob, CollEntryDB{kv.value().as_string()}};
+					return BlobRef{user, std::string{kv.key()}, blob, BlobInodeDB{kv.value().as_string()}};
 				}),
 				ec
 			);

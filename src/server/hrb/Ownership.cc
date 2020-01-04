@@ -53,7 +53,7 @@ hrb::Collection Ownership::from_reply(
 		if (perm.as_string().empty())
 			continue;
 
-		CollEntryDB entry{perm.as_string()};
+		BlobInodeDB entry{perm.as_string()};
 		auto blob_id = ObjectID::from_raw(blob);
 
 		// check permission: allow allow owner (i.e. m_user)
@@ -62,7 +62,7 @@ hrb::Collection Ownership::from_reply(
 			if (auto fields = entry.fields(); fields.has_value())
 			{
 				// Overwrite filename field with the filename in directory.
-				// The filename in the CollEntryDB of owner:blob_meta is the original filename of the blob
+				// The filename in the BlobInodeDB of owner:blob_meta is the original filename of the blob
 				// when it was uploaded. The actual filename in the collection may be different
 				if (!filename.empty())
 					fields->filename = filename;
@@ -74,25 +74,25 @@ hrb::Collection Ownership::from_reply(
 	return result;
 }
 
-void Ownership::update_blob(redis::Connection& db, const ObjectID& blobid, const CollEntry& entry)
+void Ownership::update_blob(redis::Connection& db, const ObjectID& blobid, const BlobInode& entry)
 {
 	// assume the blob is already in the collection, so there is no need to update
 	// blob backlink
-	auto s = CollEntryDB::create(entry);
-	update(db, blobid, CollEntryDB{s});
+	auto s = BlobInodeDB::create(entry);
+	update(db, blobid, BlobInodeDB{s});
 }
 
 void Ownership::update_blob(redis::Connection& db, const ObjectID& blobid, const nlohmann::json& entry)
 {
 	// assume the blob is already in the collection, so there is no need to update
 	// blob backlink
-	auto en_str = CollEntryDB::create(Permission::from_description(entry["perm"].get<std::string>()), entry);
-	update(db, blobid, CollEntryDB{en_str});
+	auto en_str = BlobInodeDB::create(Permission::from_description(entry["perm"].get<std::string>()), entry);
+	update(db, blobid, BlobInodeDB{en_str});
 }
 
-void Ownership::update(redis::Connection& db, const ObjectID& blob, const CollEntryDB& entry)
+void Ownership::update(redis::Connection& db, const ObjectID& blob, const BlobInodeDB& entry)
 {
-	auto blob_meta  = key::blob_meta(m_user);
+	auto blob_meta  = key::blob_inode(m_user);
 	db.command(
 		"HSET %b %b %b",
 		blob_meta.data(), blob_meta.size(),
@@ -101,15 +101,15 @@ void Ownership::update(redis::Connection& db, const ObjectID& blob, const CollEn
 	);
 }
 
-redis::CommandString Ownership::link_command(std::string_view coll, const ObjectID& blob, const CollEntry& coll_entry) const
+redis::CommandString Ownership::link_command(std::string_view coll, const ObjectID& blob, const BlobInode& coll_entry) const
 {
 	auto blob_ref   = key::blob_refs(m_user, blob);
 	auto blob_owner = key::blob_owners(blob);
-	auto blob_meta  = key::blob_meta(m_user);
+	auto blob_meta  = key::blob_inode(m_user);
 	auto coll_key   = key::collection(m_user, coll);
 	auto coll_list  = key::collection_list(m_user);
 	auto hex = to_hex(blob);
-	auto entry = CollEntryDB::create(coll_entry);
+	auto entry = BlobInodeDB::create(coll_entry);
 
 	auto filename = coll_entry.filename.empty() ? "hello" : coll_entry.filename;
 
@@ -186,7 +186,7 @@ redis::CommandString Ownership::unlink_command(std::string_view coll, const Obje
 {
 	auto blob_ref   = key::blob_refs(m_user, blob);
 	auto blob_owner = key::blob_owners(blob);
-	auto blob_meta  = key::blob_meta(m_user);
+	auto blob_meta  = key::blob_inode(m_user);
 	auto coll_key   = key::collection(m_user, coll);
 	auto coll_list  = key::collection_list(m_user);
 	auto public_blobs = key::public_blobs();
@@ -258,7 +258,7 @@ redis::CommandString Ownership::scan_collection_command(std::string_view coll) c
 {
 	auto coll_hash = key::collection(m_user, coll);
 	auto coll_list = key::collection_list(m_user);
-	auto blob_meta = key::blob_meta(m_user);
+	auto blob_meta = key::blob_inode(m_user);
 
 	static const char lua[] = R"__(
 		local coll_hash, coll_list, blob_meta = KEYS[1], KEYS[2], KEYS[3]
@@ -288,7 +288,7 @@ redis::CommandString Ownership::scan_collection_command(std::string_view coll) c
 
 redis::CommandString Ownership::set_permission_command(const ObjectID& blobid, Permission perm) const
 {
-	auto blob_meta = key::blob_meta(m_user);
+	auto blob_meta = key::blob_inode(m_user);
 	auto pub_list  = key::public_blobs();
 
 	static const char lua[] = R"__(

@@ -20,14 +20,14 @@
 using namespace hrb;
 using namespace std::chrono_literals;
 
-TEST_CASE("simple CollEntry <-> JSON round-trip", "[normal]")
+TEST_CASE("simple BlobInode <-> JSON round-trip", "[normal]")
 {
-	CollEntry subject{Permission::public_(), "abc.txt", "text/plain", Timestamp{101s}};
+	BlobInode subject{Permission::public_(), "abc.txt", "text/plain", Timestamp{101s}};
 
 	nlohmann::json json(subject);
 	INFO("Subject JSON: " << json);
 
-	auto ret = json.get<CollEntry>();
+	auto ret = json.get<BlobInode>();
 	REQUIRE(subject.mime == ret.mime);
 	REQUIRE(subject.filename == ret.filename);
 	REQUIRE(subject.perm == ret.perm);
@@ -100,7 +100,7 @@ TEST_CASE("simple CollectionList <-> JSON round-trip", "[normal]")
 TEST_CASE("simple BlobList <-> JSON round-trip", "[normal]")
 {
 	BlobList subject;
-	subject.add("sumsum", "coll", insecure_random<ObjectID>(), CollEntry{Permission::shared(), "abc.txt", "text/css"});
+	subject.add("sumsum", "coll", insecure_random<ObjectID>(), BlobInode{Permission::shared(), "abc.txt", "text/css"});
 
 	REQUIRE(subject.size() == 1);
 	for (auto&& e : subject.entries())
@@ -111,7 +111,7 @@ TEST_CASE("simple BlobList <-> JSON round-trip", "[normal]")
 		REQUIRE(e.entry.mime == "text/css");
 		REQUIRE(e.entry.perm == Permission::shared());
 	}
-	subject.add("yung", "cool", insecure_random<ObjectID>(), CollEntry{Permission::private_(), "IMG_0102.JPG", "image/jpeg"});
+	subject.add("yung", "cool", insecure_random<ObjectID>(), BlobInode{Permission::private_(), "IMG_0102.JPG", "image/jpeg"});
 	REQUIRE(subject.size() == 2);
 
 	INFO("subject = " << subject.json());

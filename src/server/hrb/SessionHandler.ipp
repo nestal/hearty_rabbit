@@ -374,7 +374,7 @@ void SessionHandler::get_blob(const BlobRequest& req, Send&& send)
 		[
 			req, this,
 			send=std::forward<Send>(send)
-		](CollEntryDB entry, auto filename, auto ec) mutable
+		](BlobInodeDB entry, auto filename, auto ec) mutable
 		{
 			// Only allow the owner to know whether an object exists or not.
 			// Always reply forbidden for everyone else.

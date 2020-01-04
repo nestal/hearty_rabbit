@@ -22,25 +22,25 @@
 
 namespace hrb {
 
-struct CollEntry;
+struct BlobInode;
 
-class CollEntryDB
+class BlobInodeDB
 {
 public:
-	CollEntryDB() = default;
-	explicit CollEntryDB(std::string_view redis_reply);
+	BlobInodeDB() = default;
+	explicit BlobInodeDB(std::string_view redis_reply);
 
 	static std::string create(
 		Permission perm, std::string_view filename, std::string_view mime,
 		Timestamp timestamp
 	);
 	static std::string create(Permission perm, const nlohmann::json& json);
-	static std::string create(const CollEntry& fields);
+	static std::string create(const BlobInode& fields);
 
 	[[nodiscard]] std::string filename() const;
 	[[nodiscard]] std::string mime() 	const;
 	[[nodiscard]] Timestamp timestamp() const;
-	[[nodiscard]] std::optional<CollEntry> fields() const;
+	[[nodiscard]] std::optional<BlobInode> fields() const;
 
 	[[nodiscard]] std::string_view json() const;
 	[[nodiscard]] Permission permission() const;

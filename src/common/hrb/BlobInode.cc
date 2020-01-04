@@ -10,11 +10,11 @@
 // Created by nestal on 6/5/18.
 //
 
-#include "CollEntry.hh"
+#include "BlobInode.hh"
 
 namespace hrb {
 
-void from_json(const nlohmann::json& src, CollEntry& dest)
+void from_json(const nlohmann::json& src, BlobInode& dest)
 {
 	dest.timestamp = src.at("timestamp");
 	dest.filename  = src.at("filename");
@@ -22,7 +22,7 @@ void from_json(const nlohmann::json& src, CollEntry& dest)
 	dest.perm      = Permission::from_description(src.at("perm").get<std::string>());
 }
 
-void to_json(nlohmann::json& dest, const CollEntry& src)
+void to_json(nlohmann::json& dest, const BlobInode& src)
 {
 	auto result = nlohmann::json::object();
 	result.emplace("timestamp", src.timestamp);

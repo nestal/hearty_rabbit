@@ -14,7 +14,7 @@
 
 // Other dependencies in the same module
 #include "BlobFile.hh"
-#include "CollEntryDB.hh"
+#include "BlobInodeDB.hh"
 #include "UploadFile.hh"
 
 // Other modules in hearty rabbit

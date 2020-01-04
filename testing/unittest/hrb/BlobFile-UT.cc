@@ -13,7 +13,7 @@
 #include <catch2/catch.hpp>
 
 #include "hrb/BlobFile.hh"
-#include "hrb/CollEntryDB.hh"
+#include "hrb/BlobInodeDB.hh"
 #include "hrb/UploadFile.hh"
 
 #include "common/util/MMap.hh"

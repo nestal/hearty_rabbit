@@ -23,7 +23,7 @@
 namespace hrb {
 
 class BlobFile;
-class CollEntry;
+class BlobInode;
 class Configuration;
 class MMapResponseBody;
 class Magic;

@@ -20,7 +20,7 @@
 #include "UploadFile.hh"
 #include "WebResources.hh"
 
-#include "common/hrb/CollEntry.hh"
+#include "common/hrb/BlobInode.hh"
 #include "common/hrb/Collection.hh"
 #include "common/hrb/URLIntent.hh"
 #include "common/util/StringFields.hh"
@@ -231,7 +231,7 @@ void SessionHandler::on_upload(UploadRequest&& req, EmptyResponseSender&& send)
 		});*/
 	}
 
-	CollEntry entry{Permission::private_(), std::string{path_url.filename()}, std::string{blob.mime()}, blob.original_datetime()};
+	BlobInode entry{Permission::private_(), std::string{path_url.filename()}, std::string{blob.mime()}, blob.original_datetime()};
 
 	// Add the newly created blob to the user's ownership table.
 	// The user's ownership table contains all the blobs that is owned by the user.

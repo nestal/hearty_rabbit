@@ -43,7 +43,7 @@ Collection load_local(std::filesystem::path local)
 
 			coll.add_blob(
 				hash.finalize(),
-				CollEntry{
+				BlobInode{
 					{}, file.path().filename(), std::string{magic.mime(mmap.buffer())}, {}
 				}
 			);

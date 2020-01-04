@@ -12,7 +12,7 @@
 
 #pragma once
 
-#include "CollEntry.hh"
+#include "BlobInode.hh"
 #include "common/util/JSON.hh"
 #include "ObjectID.hh"
 
@@ -30,7 +30,7 @@ public:
 		std::string owner;
 		std::string coll;
 		ObjectID    blob;
-		CollEntry   entry;
+		BlobInode   entry;
 	};
 
 public:
@@ -41,7 +41,7 @@ public:
 	BlobList& operator=(const BlobList& other);
 
 	void add(std::string_view owner, std::string_view coll, const ObjectID& blob, const Permission& perm, nlohmann::json&& entry);
-	void add(std::string_view owner, std::string_view coll, const ObjectID& blob, const CollEntry& entry);
+	void add(std::string_view owner, std::string_view coll, const ObjectID& blob, const BlobInode& entry);
 	void add(const Entry& entry);
 
 	std::vector<Entry> entries() const;
