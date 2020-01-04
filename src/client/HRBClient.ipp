@@ -44,85 +44,112 @@ void HRBClient::login(std::string_view user, std::string_view password, Complete
 	req->request().set(http::field::content_type, "application/x-www-form-urlencoded");
 	req->request().body() = "username=" + username + "&password=" + std::string{password};
 
-	req->on_load([this, username, comp=std::forward<Complete>(comp)](auto ec, auto& req)
-	{
-		if (req.response().result() == http::status::no_content)
-			m_user = UserID{Cookie{req.response().at(http::field::set_cookie)}, username};
-		else
-			ec = Error::login_incorrect;
+	req->on_load(
+		[this, username, comp = std::forward<Complete>(comp)](auto ec, auto& req)
+		{
+			if (req.response().result() == http::status::no_content)
+				m_user = UserID{Cookie{req.response().at(http::field::set_cookie)}, username};
+			else
+				ec = Error::login_incorrect;
 
-		comp(ec);
-		req.shutdown();
-	});
+			comp(ec);
+			req.shutdown();
+		}
+	);
 	req->run();
 }
 
 template <typename Complete>
 void HRBClient::list_collection(std::string_view coll, Complete&& comp)
 {
-	auto req = request<http::empty_body, http::string_body>({URLIntent::Action::api, m_user.username(), coll, ""}, http::verb::get);
-	req->on_load([this, comp=std::forward<Complete>(comp)](auto ec, auto& req)
-	{
-		req.shutdown();
-
-		if (!ec && req.response().result() == http::status::ok)
+	auto req = request<http::empty_body, http::string_body>(
+		{URLIntent::Action::api, m_user.username(), coll, ""},
+		http::verb::get
+	);
+	req->on_load(
+		[this, comp = std::forward<Complete>(comp)](auto ec, auto& req)
 		{
-			if (auto json = nlohmann::json::parse(req.response().body(), nullptr, false); !json.is_discarded())
-			{
-				comp(json.template get<Collection>(), ec);
-				return;
-			}
-		}
+			req.shutdown();
 
-		comp(Collection{}, ec ? ec : make_error_code(Error::unknown_error));
-	});
+			if (!ec && req.response().result() == http::status::ok)
+			{
+				if (auto json = nlohmann::json::parse(req.response().body(), nullptr, false); !json.is_discarded())
+				{
+					comp(json.template get<Collection>(), ec);
+					return;
+				}
+			}
+
+			comp(Collection{}, ec ? ec : make_error_code(Error::unknown_error));
+		}
+	);
 	req->run();
 }
 
 template <typename Complete>
 void HRBClient::scan_collections(Complete&& comp)
 {
-	auto req = request<http::empty_body, http::string_body>({URLIntent::QueryTarget::collection, "json&user=" + m_user.username()}, http::verb::get);
-	req->on_load([this, comp=std::forward<Complete>(comp)](auto ec, auto& req)
-	{
-		comp(nlohmann::json::parse(req.response().body()).template get<CollectionList>(), ec);
-		req.shutdown();
-	});
+	auto req = request<http::empty_body, http::string_body>(
+		{
+			URLIntent::QueryTarget::collection,
+			"json&user=" + m_user.username()
+		}, http::verb::get
+	);
+	req->on_load(
+		[this, comp = std::forward<Complete>(comp)](auto ec, auto& req)
+		{
+			comp(nlohmann::json::parse(req.response().body()).template get<CollectionList>(), ec);
+			req.shutdown();
+		}
+	);
 	req->run();
 }
 
 template <typename Complete>
 void HRBClient::upload(std::string_view coll, const fs::path& file, Complete&& comp)
 {
-	auto req = request<http::file_body, http::string_body>({
-		URLIntent::Action::upload, m_user.username(), coll, file.filename().string()
-	}, http::verb::put);
+	auto req = request<http::file_body, http::string_body>(
+		{
+			URLIntent::Action::upload, m_user.username(), coll, file.filename().string()
+		}, http::verb::put
+	);
 
 	boost::system::error_code err;
 	req->request().body().open(file.string().c_str(), boost::beast::file_mode::read, err);
 	if (err)
 		throw std::system_error{err.value(), err.category()};
 
-	req->on_load([this, comp=std::forward<Complete>(comp)](auto ec, auto& req) mutable
-	{
-		handle_upload_response(req.response(), std::forward<Complete>(comp), ec);
-		req.shutdown();
-	});
+	req->on_load(
+		[this, comp = std::forward<Complete>(comp)](auto ec, auto& req) mutable
+		{
+			handle_upload_response(req.response(), std::forward<Complete>(comp), ec);
+			req.shutdown();
+		}
+	);
 	req->run();
 }
 
 template <typename Complete, typename ByteIterator>
-void HRBClient::upload(std::string_view coll, std::string_view filename, ByteIterator first_byte, ByteIterator last_byte, Complete&& comp)
+void HRBClient::upload(
+	std::string_view coll,
+	std::string_view filename,
+	ByteIterator first_byte,
+	ByteIterator last_byte,
+	Complete&& comp
+)
 {
-	auto req = request<http::string_body, http::string_body>({
-		URLIntent::Action::upload, m_user.username(), coll, filename
-	}, http::verb::put);
+	auto req = request<http::string_body, http::string_body>(
+		{URLIntent::Action::upload, m_user.username(), coll, filename},
+		http::verb::put
+	);
 	req->request().body().assign(first_byte, last_byte);
-	req->on_load([this, comp=std::forward<Complete>(comp)](auto ec, auto& req) mutable
-	{
-		handle_upload_response(req.response(), std::forward<Complete>(comp), ec);
-		req.shutdown();
-	});
+	req->on_load(
+		[this, comp = std::forward<Complete>(comp)](auto ec, auto& req) mutable
+		{
+			handle_upload_response(req.response(), std::forward<Complete>(comp), ec);
+			req.shutdown();
+		}
+	);
 	req->run();
 }
 
@@ -136,19 +163,28 @@ auto HRBClient::request(const URLIntent& intent, boost::beast::http::verb method
 }
 
 template <typename Complete>
-void HRBClient::get_blob(std::string_view owner, std::string_view coll, const ObjectID& blob, std::string_view rendition, Complete&& comp)
+void HRBClient::get_blob(
+	std::string_view owner,
+	std::string_view coll,
+	const ObjectID& blob,
+	std::string_view rendition,
+	Complete&& comp
+)
 {
-	auto req = request<http::empty_body, http::string_body>({
-		URLIntent::Action::api, owner, coll, blob, "rendition="+std::string{rendition}
-	}, http::verb::get);
-	req->on_load([this, comp=std::forward<Complete>(comp)](auto ec, auto& req)
-	{
-		comp(req.response().body(), ec);
-		req.shutdown();
-	});
+	auto req = request<http::empty_body, http::string_body>(
+		{
+			URLIntent::Action::api, owner, coll, blob, "rendition=" + std::string{rendition}
+		}, http::verb::get
+	);
+	req->on_load(
+		[this, comp = std::forward<Complete>(comp)](auto ec, auto& req)
+		{
+			comp(req.response().body(), ec);
+			req.shutdown();
+		}
+	);
 	req->run();
 }
-
 
 template <typename Complete>
 void HRBClient::download_blob(
@@ -160,24 +196,28 @@ void HRBClient::download_blob(
 	Complete&& comp
 )
 {
-	auto req = request<http::empty_body, http::file_body>({
-		URLIntent::Action::api, owner, coll, blob, "rendition="+std::string{rendition}
-	}, http::verb::get);
+	auto req = request<http::empty_body, http::file_body>(
+		{
+			URLIntent::Action::api, owner, coll, blob, "rendition=" + std::string{rendition}
+		}, http::verb::get
+	);
 
 	boost::system::error_code ec;
 	req->response().body().open(dest.c_str(), boost::beast::file_mode::write, ec);
-	req->set_body_limit(20*1024*1024);
+	req->set_body_limit(20 * 1024 * 1024);
 	if (ec)
 	{
 		comp(req->response().body(), ec);
 	}
 	else
 	{
-		req->on_load([this, comp=std::forward<Complete>(comp)](auto ec, auto& req)
-		{
-			comp(req.response().body(), ec);
-			req.shutdown();
-		});
+		req->on_load(
+			[this, comp = std::forward<Complete>(comp)](auto ec, auto& req)
+			{
+				comp(req.response().body(), ec);
+				req.shutdown();
+			}
+		);
 		req->run();
 	}
 }
@@ -185,16 +225,19 @@ void HRBClient::download_blob(
 template <typename Complete>
 void HRBClient::get_blob_meta(std::string_view owner, std::string_view coll, const ObjectID& blob, Complete&& comp)
 {
-	auto req = request<http::empty_body, http::string_body>({
-		URLIntent::Action::api, owner, coll, blob, "&json"
-	}, http::verb::get);
-	req->on_load([this, comp=std::forward<Complete>(comp)](auto ec, auto& req)
-	{
-		comp(nlohmann::json::parse(req.response().body()), ec);
-		req.shutdown();
-	});
+	auto req = request<http::empty_body, http::string_body>(
+		{
+			URLIntent::Action::api, owner, coll, blob, "&json"
+		}, http::verb::get
+	);
+	req->on_load(
+		[this, comp = std::forward<Complete>(comp)](auto ec, auto& req)
+		{
+			comp(nlohmann::json::parse(req.response().body()), ec);
+			req.shutdown();
+		}
+	);
 	req->run();
-
 }
 
 template <typename Complete, typename Response>

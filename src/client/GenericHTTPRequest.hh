@@ -19,6 +19,7 @@
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/ssl/error.hpp>
 #include <boost/asio/ssl/stream.hpp>
+#include <boost/asio/strand.hpp>
 
 #include <cstdlib>
 #include <functional>
@@ -34,16 +35,22 @@ namespace http = boost::beast::http;    // from <boost/beast/http.hpp>
 // Report a failure
 void fail(boost::system::error_code ec, char const *what);
 
+class BaseRequest
+{
+public:
+	virtual void run() = 0;
+};
+
 // Performs an HTTP GET and prints the response
 template <typename RequestBody, typename ResponseBody>
-class GenericHTTPRequest : public std::enable_shared_from_this<
+class GenericHTTPRequest : public BaseRequest, public std::enable_shared_from_this<
     GenericHTTPRequest<RequestBody, ResponseBody>
 >
 {
 public:
 	// Resolver and stream require an io_context
 	explicit GenericHTTPRequest(boost::asio::io_context& ioc, ssl::context& ctx) :
-		m_resolver{ioc}, m_stream{ioc, ctx}
+		m_resolver{make_strand(ioc)}, m_stream{make_strand(ioc), ctx}
 	{
 	}
 
@@ -80,7 +87,7 @@ public:
 		m_req.set(http::field::user_agent, BOOST_BEAST_VERSION_STRING);
 	}
 
-	void run()
+	void run() override
 	{
 		// Look up the domain name
 		m_resolver.async_resolve(

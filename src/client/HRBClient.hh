@@ -19,16 +19,13 @@
 #include <boost/beast/http/verb.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ssl.hpp>
-
-#include <memory>
+#include <boost/asio/strand.hpp>
 
 namespace hrb {
 
+class BaseRequest;
 class URLIntent;
 struct ObjectID;
-
-template <typename RequestBody, typename ResponseBody>
-class GenericHTTPRequest;
 
 class HRBClient
 {
