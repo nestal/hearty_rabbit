@@ -456,6 +456,7 @@ void SessionHandler::query_blob(const BlobRequest& req, Send&& send)
 
 	Ownership{m_auth.username()}.get_blob(
 		*m_db,
+		m_auth,
 		*blob,
 		[
 			send=std::forward<Send>(send), req, blobid=*blob,

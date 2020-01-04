@@ -253,7 +253,8 @@ TEST_CASE("add blob to Ownership", "[normal]")
 	REQUIRE(tested == 9);
 	ioc.restart();
 
-	subject.get_blob(*redis, blobid, [&tested](auto&& entry, std::error_code ec)
+	// query blob by owner
+	subject.get_blob(*redis, {{}, "owner"}, blobid, [&tested](auto&& entry, std::error_code ec)
 	{
 		REQUIRE(!ec);
 		REQUIRE(entry.filename() == "file.name");
@@ -263,6 +264,19 @@ TEST_CASE("add blob to Ownership", "[normal]")
 
 	REQUIRE(ioc.run_for(10s) > 0);
 	REQUIRE(tested == 10);
+	ioc.restart();
+
+	// query blob by someone else
+	subject.get_blob(*redis, {{}, "someone_else"}, blobid, [&tested](auto&& entry, std::error_code ec)
+	{
+		REQUIRE(!ec);
+		REQUIRE(entry.filename() == "file.name");
+		REQUIRE(entry.permission().allow({}, "someone_else"));
+		tested++;
+	});
+
+	REQUIRE(ioc.run_for(10s) > 0);
+	REQUIRE(tested == 11);
 	ioc.restart();
 }
 

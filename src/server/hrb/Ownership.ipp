@@ -174,18 +174,25 @@ void Ownership::get_blob(
 template <typename Complete, typename>
 void Ownership::get_blob(
 	redis::Connection& db,
+	const Authentication& requester,
 	const ObjectID& blob,
 	Complete&& complete
 ) const
 {
 	auto blob_inode = key::blob_inode(m_user);
 	db.command(
-		[comp=std::forward<Complete>(complete)](redis::Reply&& entry, std::error_code ec) mutable
+		[comp=std::forward<Complete>(complete), requester, *this](redis::Reply&& reply, std::error_code ec) mutable
 		{
-			if (!ec && entry.is_string())
-				comp(BlobInodeDB{entry.as_string()}, ec);
-			else
+			if (ec || !reply.is_string())
 				comp(BlobInodeDB{}, make_error_code(Error::object_not_exist));
+			else
+			{
+				BlobInodeDB entry{reply.as_string()};
+				if (entry.permission().allow(requester.id(), m_user))
+					comp(entry, ec);
+				else
+					comp(BlobInodeDB{}, make_error_code(Error::object_not_exist));
+			}
 		},
 		"HGET %b %b",
 		blob_inode.data(), blob_inode.size(),

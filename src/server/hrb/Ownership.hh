@@ -134,6 +134,7 @@ public:
     >
 	void get_blob(
 		redis::Connection& db,
+		const Authentication& requester,
 		const ObjectID& blob,
 		Complete&& complete
 	) const;
