@@ -115,43 +115,15 @@ int main(int argc, char **argv)
 				{
 					std::cout << "blob: " << to_hex(id) << " " << entry.filename << std::endl;
 
-					client.get_blob(
+					client.download_blob(
 						coll.owner(),
 						coll.name(),
 						id,
 						"master",
-						[fname = entry.filename](const std::string& body, std::error_code ec)
+						entry.filename,
+						[](auto& file, std::error_code ec)
 						{
-							std::cout << "downloaded: " << fname << " " << body.size() << " " << ec << std::endl;
-
-							Blake2 hash;
-							hash.update(body.data(), body.size());
-							std::cout << "object ID:" << to_hex(hash.finalize()) << std::endl;
-
-							for (
-								auto i = 0U; i < fname.size(); ++i
-								)
-							{
-								std::cout << "char " << i << " " << fname[i] << " " << (int) fname[i] << std::endl;
-							}
-
-							try
-							{
-								std::ofstream out;
-								out.exceptions(std::ios::failbit | std::ios::badbit);
-
-								out.open(fname, std::ios::out | std::ios::trunc);
-
-								std::cout
-									<< "written: "
-									<< out.rdbuf()->sputn(body.data(), body.size())
-									<< " bytes"
-									<< std::endl;
-							}
-							catch (std::ofstream::failure& e)
-							{
-								std::cout << "cannot write to file " << e.code().message() << std::endl;
-							}
+							std::cout << "downloaded: " << file.size() << ec << std::endl;
 						}
 					);
 				}

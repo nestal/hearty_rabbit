@@ -54,6 +54,16 @@ public:
 	void get_blob(std::string_view owner, std::string_view coll, const ObjectID& blob, std::string_view rendition, Complete&& comp);
 
 	template <typename Complete>
+	void download_blob(
+		std::string_view owner,
+		std::string_view coll,
+		const ObjectID& blob,
+		std::string_view rendition,
+		const std::filesystem::path& dest,
+		Complete&& comp
+	);
+
+	template <typename Complete>
 	void get_blob_meta(std::string_view owner, std::string_view coll, const ObjectID& blob, Complete&& comp);
 
 private:

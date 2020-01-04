@@ -149,6 +149,39 @@ void HRBClient::get_blob(std::string_view owner, std::string_view coll, const Ob
 	req->run();
 }
 
+
+template <typename Complete>
+void HRBClient::download_blob(
+	std::string_view owner,
+	std::string_view coll,
+	const ObjectID& blob,
+	std::string_view rendition,
+	const std::filesystem::path& dest,
+	Complete&& comp
+)
+{
+	auto req = request<http::empty_body, http::file_body>({
+		URLIntent::Action::api, owner, coll, blob, "rendition="+std::string{rendition}
+	}, http::verb::get);
+
+	boost::system::error_code ec;
+	req->response().body().open(dest.c_str(), boost::beast::file_mode::write, ec);
+	req->set_body_limit(20*1024*1024);
+	if (ec)
+	{
+		comp(req->response().body(), ec);
+	}
+	else
+	{
+		req->on_load([this, comp=std::forward<Complete>(comp)](auto ec, auto& req)
+		{
+			comp(req.response().body(), ec);
+			req.shutdown();
+		});
+		req->run();
+	}
+}
+
 template <typename Complete>
 void HRBClient::get_blob_meta(std::string_view owner, std::string_view coll, const ObjectID& blob, Complete&& comp)
 {

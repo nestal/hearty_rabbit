@@ -47,7 +47,7 @@ public:
 	{
 	}
 
-	auto& response() {return m_res;}
+	auto& response() {return m_parser.get();}
 	auto& request() {return m_req;}
 
 	template <typename Comp>
@@ -101,6 +101,11 @@ public:
 				self->on_shutdown(ec);
 			}
 		);
+	}
+
+	void set_body_limit(std::size_t size)
+	{
+		m_parser.body_limit(size);
 	}
 
 private:
@@ -161,7 +166,7 @@ private:
 
 		// Receive the HTTP response
 		http::async_read(
-			m_stream, m_buffer, m_res,
+			m_stream, m_buffer, m_parser,
 			[self=this->shared_from_this()](auto ec, auto bytes)
 			{
 				self->on_read(ec, bytes);
@@ -198,7 +203,7 @@ private:
 	ssl::stream<tcp::socket> m_stream;
 	boost::beast::flat_buffer m_buffer; // (Must persist between reads)
 	http::request<RequestBody> m_req;
-	http::response<ResponseBody> m_res;
+	http::response_parser<ResponseBody> m_parser;
 
 	std::function<void(std::error_code, GenericHTTPRequest&)> m_comp;
 	std::string m_host, m_port;
