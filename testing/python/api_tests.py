@@ -86,6 +86,7 @@ class NormalTestCase(unittest.TestCase):
 		query = self.user1.query_blob(id)
 		self.assertEqual(query.mime(), "image/jpeg")
 		self.assertEqual(query.data(), lena1.data())
+		self.assertEqual(query.filename(), "test_lena.jpg")
 
 		# The newly uploaded image should be in the "test_api" collection
 		self.assertIsNotNone(self.user1.get_collection("test_api").blob(id))

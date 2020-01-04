@@ -454,21 +454,24 @@ void SessionHandler::query_blob(const BlobRequest& req, Send&& send)
 	if (!blob)
 		return send(bad_request("invalid blob ID", req.version()));
 
-	Ownership{m_auth.username()}.query_blob(
+	Ownership{m_auth.username()}.get_blob(
 		*m_db,
 		*blob,
 		[
 			send=std::forward<Send>(send), req, blobid=*blob,
 			rendition=std::string{rendition}, this
-		](auto&& range, auto ec)
+		](auto&& entry, auto ec)
 		{
-			if (ec)
+			if (ec == Error::object_not_exist)
+				return send(not_found("blob not found", req.version()));
+
+			else if (ec)
 				return send(server_error("internal server error", req.version()));
 
-			for (auto&& en : range)
-				return send(m_blob_db.response(blobid, req.version(), req.etag(), rendition));
-
-			return send(not_found("blob not found", req.version()));
+			auto response = m_blob_db.response(blobid, req.version(), req.etag(), rendition);
+			response.set(http::field::content_disposition, "inline; filename=" + url_encode(entry.filename()));
+			response.set(http::field::last_modified, entry.timestamp().http_format());
+			return send(std::move(response));
 		}
 	);
 }

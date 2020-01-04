@@ -244,18 +244,11 @@ class Session:
 			))
 		return response.headers["Location"][-40:]
 
-	def get_blob(self, collection, blobid, user = None, rendition = ""):
-		if user is None:
-			user = self.m_user
-
-		query = {}
-		if rendition != "":
-			query["rendition"] = rendition
-
-		response = self.m_session.get(self.__format_url("api", user, collection, blobid, query=query))
+	def __fetch_blob(self, blobid, url):
+		response = self.m_session.get(url)
 		if response.status_code != 200:
-			self.raise_exception(response.status_code, "cannot get blob {} from user \"{}\": {}".format(
-				blobid, user, response.status_code
+			self.raise_exception(response.status_code, "cannot get blob {}: {}".format(
+				blobid, response.status_code
 			))
 
 		disposition = response.headers.get("content-disposition")
@@ -269,22 +262,21 @@ class Session:
 			data=response.content
 		)
 
+	def get_blob(self, collection, blobid, user = None, rendition = ""):
+		if user is None:
+			user = self.m_user
+
+		query = {}
+		if rendition != "":
+			query["rendition"] = rendition
+
+		return self.__fetch_blob(blobid, self.__format_url("api", user, collection, blobid, query=query))
+
 	def query_blob(self, blobid, rendition = ""):
 		query = {"id": blobid}
 		if rendition != "":
 			query["rendition"] = rendition
-		response = self.m_session.get(self.__url("/query/blob", query))
-		if response.status_code != 200:
-			self.raise_exception(response.status_code, "cannot query blob {}: {}".format(
-				blobid, response.status_code
-			))
-		return Blob(
-			blobid,
-			None,
-			response.headers["Content-type"],
-			None,
-			data=response.content
-		)
+		return self.__fetch_blob(blobid, self.__url("/query/blob", query))
 
 	def delete_blob(self, collection, blobid):
 		response = self.m_session.delete(self.__format_url("api", self.m_user, collection, blobid))
