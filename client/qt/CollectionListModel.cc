@@ -38,9 +38,7 @@ QVariant CollectionListModel::data(const QModelIndex& index, int role) const
 void CollectionListModel::update(const CollectionList& coll)
 {
 	Q_EMIT layoutAboutToBeChanged();
-
-	auto en = coll.entries();
-	m_entries.assign(en.begin(), en.end());
+	m_entries.assign(coll.begin(), coll.end());
 
 	changePersistentIndex({}, {});
 	Q_EMIT layoutChanged();

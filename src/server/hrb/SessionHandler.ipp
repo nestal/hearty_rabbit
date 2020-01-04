@@ -502,7 +502,7 @@ void SessionHandler::query_blob_set(const URLIntent& intent, unsigned version, S
 			](Collection&& coll, auto ec) mutable
 			{
 				std::vector<ObjectID> oids;
-				for (auto&& [id, entry] : coll.blobs())
+				for (auto&& [id, entry] : coll)
 					oids.push_back(id);
 
 				auto matches = nlohmann::json::array();

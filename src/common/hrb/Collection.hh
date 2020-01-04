@@ -39,8 +39,10 @@ public:
 	[[nodiscard]] std::string_view name() const {return m_name;}
 	[[nodiscard]] std::string_view owner() const {return m_owner;}
 	[[nodiscard]] std::optional<ObjectID> cover() const;
-	[[nodiscard]] auto blobs() const {return boost::iterator_range<iterator>{m_blobs.begin(), m_blobs.end()};}
-
+	[[nodiscard]] auto begin() const {return m_blobs.begin();}
+	[[nodiscard]] auto begin() {return m_blobs.begin();}
+	[[nodiscard]] auto end() const {return m_blobs.end();}
+	[[nodiscard]] auto end() {return m_blobs.end();}
 	[[nodiscard]] iterator find(const ObjectID& id) const;
 
 	friend void from_json(const nlohmann::json& src, Collection& dest);

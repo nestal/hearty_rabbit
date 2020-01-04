@@ -34,9 +34,6 @@ public:
 public:
 	CollectionList() = default;
 
-	[[nodiscard]] boost::iterator_range<const_iterator> entries() const;
-	[[nodiscard]] boost::iterator_range<iterator> entries();
-
 	[[nodiscard]] iterator find(std::string_view owner, std::string_view coll);
 	[[nodiscard]] const_iterator find(std::string_view owner, std::string_view coll) const;
 
@@ -46,6 +43,8 @@ public:
 	[[nodiscard]] auto begin() const {return m_entries.begin();}
 	[[nodiscard]] auto end() const {return m_entries.end();}
 	[[nodiscard]] auto size() const {return m_entries.size();}
+	[[nodiscard]] auto& at(std::size_t idx) const {return m_entries.at(idx);}
+	[[nodiscard]] auto& at(std::size_t idx) {return m_entries.at(idx);}
 
 	template <typename PropertiesOrCover>
 	void add(std::string_view owner, std::string_view coll, PropertiesOrCover&& prop)

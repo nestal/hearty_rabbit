@@ -30,7 +30,6 @@
 
 #include <string>
 #include <unordered_map>
-#include <iostream>
 
 namespace hrb {
 
@@ -130,8 +129,6 @@ void HRBClient::upload(std::string_view coll, std::string_view filename, ByteIte
 template <typename RequestBody, typename ResponseBody>
 auto HRBClient::request(const URLIntent& intent, boost::beast::http::verb method)
 {
-	std::cout << "fetching " << intent.str() << std::endl;
-
 	auto req = std::make_shared<GenericHTTPRequest<RequestBody, ResponseBody>>(m_ioc, m_ssl);
 	req->init(m_host, m_port, intent.str(), method);
 	req->request().set(http::field::cookie, m_user.cookie().str());

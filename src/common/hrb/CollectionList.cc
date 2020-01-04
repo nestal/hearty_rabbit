@@ -49,16 +49,6 @@ void to_json(nlohmann::json& dest, const CollectionList& src)
 	dest = std::move(result);
 }
 
-boost::iterator_range<CollectionList::const_iterator> CollectionList::entries() const
-{
-	return {m_entries.begin(), m_entries.end()};
-}
-
-boost::iterator_range<CollectionList::iterator> CollectionList::entries()
-{
-	return {m_entries.begin(), m_entries.end()};
-}
-
 bool operator==(const CollectionList& lhs, const CollectionList& rhs)
 {
 	return std::equal(

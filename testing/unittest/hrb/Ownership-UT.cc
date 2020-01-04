@@ -74,9 +74,9 @@ TEST_CASE("list of collection owned by user", "[normal]")
 		*redis, Authentication{{}, "owner"}, "/",
 		[&tested, redis](auto&& coll, std::error_code ec)
 		{
-			REQUIRE(coll.blobs().begin() != coll.blobs().end());
+			REQUIRE(coll.begin() != coll.end());
 			for (
-				auto&&[id, blob] : coll.blobs())
+				auto&&[id, blob] : coll)
 			{
 				INFO("removing = " << to_hex(id));
 				Ownership{"owner"}.unlink_blob(
@@ -133,7 +133,7 @@ TEST_CASE("add blob to Ownership", "[normal]")
 	subject.get_collection(*redis, {{}, "owner"}, "/", [&tested, blobid](Collection&& coll, std::error_code ec)
 	{
 		REQUIRE_FALSE(ec);
-		REQUIRE(coll.find(blobid) != coll.blobs().end());
+		REQUIRE(coll.find(blobid) != coll.end());
 		tested++;
 	});
 
@@ -340,8 +340,7 @@ TEST_CASE("Load 3 images in json", "[normal]")
 			REQUIRE(coll.owner() == "testuser");
 			REQUIRE(coll.name() == "some/collection");
 
-			for (
-				auto&&[id, entry] : coll.blobs())
+			for (auto&&[id, entry] : coll)
 			{
 				REQUIRE(entry.perm == Permission::public_());
 				REQUIRE(entry.filename == "renamed.jpg");

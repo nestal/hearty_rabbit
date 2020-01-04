@@ -36,7 +36,7 @@ QVariant CollectionModel::data(const QModelIndex& index, int role) const
 	{
 		assert(index.row() < static_cast<int>(m_blob_ids.size()));
 
-		if (auto it = m_coll.find(m_blob_ids[index.row()]); it != m_coll.blobs().end())
+		if (auto it = m_coll.find(m_blob_ids[index.row()]); it != m_coll.end())
 		{
 			switch (role)
 			{
@@ -57,7 +57,7 @@ void CollectionModel::update(const Collection& coll)
 	Q_EMIT layoutAboutToBeChanged();
 
 	std::vector<ObjectID> ids;
-	for (auto&& [id, en] : coll.blobs())
+	for (auto&& [id, en] : coll)
 	{
 		ids.push_back(id);
 		m_hrb->get_blob(QString::fromStdString(std::string{coll.owner()}), QString::fromStdString(std::string{coll.name()}), id, "thumbnail");

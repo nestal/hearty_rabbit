@@ -56,10 +56,10 @@ Collection compare_collection(Collection remote, Collection local)
 	std::cout << "comparing remote " << remote.size() << " and local " << local.size() << std::endl;
 
 	std::set<ObjectID> remote_blobids, local_blobids;
-	for (auto&& [id, blob] : remote.blobs())
+	for (auto&& [id, blob] : remote)
 		remote_blobids.insert(id);
 
-	for (auto&& [id, blob] : local.blobs())
+	for (auto&& [id, blob] : local)
 		local_blobids.insert(id);
 
 	std::vector<ObjectID> diff1, diff2;
@@ -80,7 +80,7 @@ Collection compare_collection(Collection remote, Collection local)
 //			std::cout << "char " << i << " " << blob->second.filename[i] << " " << (int)blob->second.filename[i] << std::endl;
 		}
 
-		assert(remote.find(id) != remote.blobs().end());
+		assert(remote.find(id) != remote.end());
 		download.add_blob(id, remote.find(id)->second);
 	}
 	std::cout << download.size() << " differences" << std::endl;
@@ -111,8 +111,7 @@ int main(int argc, char **argv)
 		{
 			if (!ec)
 			{
-				auto diff = compare_collection(coll, local);
-				for (auto&&[id, entry] : diff.blobs())
+				for (auto&&[id, entry] : compare_collection(coll, local))
 				{
 					std::cout << "blob: " << to_hex(id) << " " << entry.filename << std::endl;
 

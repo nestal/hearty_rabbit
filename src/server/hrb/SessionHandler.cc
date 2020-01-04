@@ -313,7 +313,7 @@ std::string SessionHandler::server_root() const
 
 void SessionHandler::validate_collection(Collection& coll)
 {
-	for (auto& [id, entry] : coll.blobs())
+	for (auto& [id, entry] : coll)
 	{
 		if (entry.timestamp == Timestamp{})
 		{
