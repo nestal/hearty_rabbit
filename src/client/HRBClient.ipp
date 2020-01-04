@@ -45,14 +45,14 @@ void HRBClient::login(std::string_view user, std::string_view password, Complete
 	req->request().body() = "username=" + username + "&password=" + std::string{password};
 
 	req->on_load(
-		[this, username, comp = std::forward<Complete>(comp)](auto ec, auto& req)
+		[this, username, comp = std::forward<Complete>(comp)](auto ec, auto& req) mutable
 		{
 			if (req.response().result() == http::status::no_content)
 				m_user = UserID{Cookie{req.response().at(http::field::set_cookie)}, username};
 			else
 				ec = Error::login_incorrect;
 
-			comp(ec);
+			m_strand.post([comp=std::forward<Complete>(comp), ec]{comp(ec);});
 			req.shutdown();
 		}
 	);
@@ -67,7 +67,7 @@ void HRBClient::list_collection(std::string_view coll, Complete&& comp)
 		http::verb::get
 	);
 	req->on_load(
-		[this, comp = std::forward<Complete>(comp)](auto ec, auto& req)
+		[this, comp = std::forward<Complete>(comp)](auto ec, auto& req) mutable
 		{
 			req.shutdown();
 
@@ -75,7 +75,10 @@ void HRBClient::list_collection(std::string_view coll, Complete&& comp)
 			{
 				if (auto json = nlohmann::json::parse(req.response().body(), nullptr, false); !json.is_discarded())
 				{
-					comp(json.template get<Collection>(), ec);
+					m_strand.post([comp=std::forward<Complete>(comp), ec, json=std::move(json)]
+					{
+						comp(json.template get<Collection>(), ec);
+					});
 					return;
 				}
 			}
@@ -96,9 +99,13 @@ void HRBClient::scan_collections(Complete&& comp)
 		}, http::verb::get
 	);
 	req->on_load(
-		[this, comp = std::forward<Complete>(comp)](auto ec, auto& req)
+		[this, comp = std::forward<Complete>(comp)](auto ec, auto& req) mutable
 		{
-			comp(nlohmann::json::parse(req.response().body()).template get<CollectionList>(), ec);
+			m_strand.post([comp = std::forward<Complete>(comp), json=std::move(req.response().body()), ec]() mutable
+			{
+				comp(nlohmann::json::parse(json).template get<CollectionList>(), ec);
+			});
+
 			req.shutdown();
 		}
 	);
@@ -146,7 +153,7 @@ void HRBClient::upload(
 	req->on_load(
 		[this, comp = std::forward<Complete>(comp)](auto ec, auto& req) mutable
 		{
-			handle_upload_response(req.response(), std::forward<Complete>(comp), ec);
+			handle_upload_response(std::move(req.response()), std::forward<Complete>(comp), ec);
 			req.shutdown();
 		}
 	);
@@ -241,13 +248,17 @@ void HRBClient::get_blob_meta(std::string_view owner, std::string_view coll, con
 }
 
 template <typename Complete, typename Response>
-void HRBClient::handle_upload_response(Response& response, Complete&& comp, std::error_code ec)
+void HRBClient::handle_upload_response(Response&& response, Complete&& comp, std::error_code ec)
 {
 	// TODO: return better error code
 	if (response.result() != http::status::created)
 		ec = Error::unknown_error;
 
-	comp(response.count(http::field::location) > 0 ? URLIntent{response.at(http::field::location)} : URLIntent{}, ec);
+	m_strand.post([comp = std::forward<Complete>(comp), response=std::move(response), ec]() mutable
+	{
+		comp(response.count(http::field::location) > 0 ? URLIntent{response.at(http::field::location)} : URLIntent{}, ec);
+	});
+
 }
 
 } // end of namespace

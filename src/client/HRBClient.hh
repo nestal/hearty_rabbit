@@ -68,7 +68,7 @@ private:
 	auto request(const URLIntent& intent, boost::beast::http::verb method);
 
 	template <typename Complete, typename Response>
-	void handle_upload_response(Response& response, Complete&& comp, std::error_code ec);
+	void handle_upload_response(Response&& response, Complete&& comp, std::error_code ec);
 
 private:
 	// connection to the server
@@ -81,6 +81,8 @@ private:
 
 	// authenticated user
 	UserID  m_user;
+
+	boost::asio::io_context::strand m_strand{m_ioc};
 };
 
 }
