@@ -449,12 +449,15 @@ void SessionHandler::scan_collection(const URLIntent& intent, unsigned version, 
 template <class Send>
 void SessionHandler::query_blob(const BlobRequest& req, Send&& send)
 {
-	auto [blob_arg, rendition] = urlform.find(req.option(), "id", "rendition");
+	auto [blob_arg, rendition, owner] = urlform.find(req.option(), "id", "rendition", "owner");
 	auto blob = ObjectID::from_hex(blob_arg);
 	if (!blob)
 		return send(bad_request("invalid blob ID", req.version()));
 
-	Ownership{m_auth.username()}.get_blob(
+	if (owner.empty())
+		owner = m_auth.username();
+
+	Ownership{owner}.get_blob(
 		*m_db,
 		m_auth,
 		*blob,

@@ -272,8 +272,10 @@ class Session:
 
 		return self.__fetch_blob(blobid, self.__format_url("api", user, collection, blobid, query=query))
 
-	def query_blob(self, blobid, rendition = ""):
-		query = {"id": blobid}
+	def query_blob(self, blobid, user = None, rendition = ""):
+		if user is None:
+			user = self.m_user
+		query = {"id": blobid, "owner": user}
 		if rendition != "":
 			query["rendition"] = rendition
 		return self.__fetch_blob(blobid, self.__url("/query/blob", query))

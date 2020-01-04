@@ -258,7 +258,8 @@ class NormalTestCase(unittest.TestCase):
 		self.assertEqual(len(self.user2.list_public_blobs(user="unknown")), 0)
 
 		# anonymous user can find it in collection
-		self.assertEqual(self.anon.get_blob("some/collection", blob_id, self.user1.user()).id(), blob_id)
+		self.assertEqual(self.anon.get_blob("some/collection", blob_id, user=self.user1.user()).id(), blob_id)
+		self.assertEqual(self.anon.query_blob(blob_id, user=self.user1.user()).filename(), "派石😊.jpg")
 		self.assertIsNotNone(self.anon.get_collection("some/collection", user="sumsum").blob(blob_id))
 
 		# anonymous user can query the blob
@@ -272,6 +273,7 @@ class NormalTestCase(unittest.TestCase):
 
 		# other user can get the image
 		self.assertEqual(self.user2.get_blob("some/collection", blob_id, "sumsum").id(), blob_id)
+		self.assertEqual(self.user2.query_blob(blob_id, self.user1.user()).filename(), "派石😊.jpg")
 		self.assertIsNotNone(self.user2.get_collection("some/collection", "sumsum").blob(blob_id))
 
 		# anonymous user cannot

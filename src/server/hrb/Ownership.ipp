@@ -187,8 +187,7 @@ void Ownership::get_blob(
 				comp(BlobInodeDB{}, make_error_code(Error::object_not_exist));
 			else
 			{
-				BlobInodeDB entry{reply.as_string()};
-				if (entry.permission().allow(requester.id(), m_user))
+				if (BlobInodeDB entry{reply.as_string()}; entry.permission().allow(requester.id(), m_user))
 					comp(entry, ec);
 				else
 					comp(BlobInodeDB{}, make_error_code(Error::object_not_exist));
