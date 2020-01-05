@@ -11,7 +11,7 @@
 //
 
 #include "BlobInodeDB.hh"
-#include "common/hrb/BlobInode.hh"
+#include "hrb/BlobInode.hh"
 
 #include <cassert>
 #include <sstream>

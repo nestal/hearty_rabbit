@@ -15,7 +15,7 @@
 #include "ObjectID.hh"
 #include "Permission.hh"
 #include "BlobInode.hh"
-#include "common/util/Escape.hh"
+#include "util/Escape.hh"
 
 namespace hrb {
 

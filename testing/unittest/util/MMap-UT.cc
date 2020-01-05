@@ -12,7 +12,7 @@
 
 #include <catch2/catch.hpp>
 
-#include "common/util/MMap.hh"
+#include "util/MMap.hh"
 
 #include <boost/beast/core/file_posix.hpp>
 

@@ -12,8 +12,8 @@
 
 #include <catch2/catch.hpp>
 
-#include "common/util/Cookie.hh"
-#include "common/hrb/UserID.hh"
+#include "util/Cookie.hh"
+#include "hrb/UserID.hh"
 #include "crypto/Random.hh"
 
 using namespace hrb;

@@ -12,8 +12,8 @@
 
 #pragma once
 
-#include "common/hrb/Permission.hh"
-#include "common/util/Timestamp.hh"
+#include "hrb/Permission.hh"
+#include "util/Timestamp.hh"
 
 #include <nlohmann/json.hpp>
 

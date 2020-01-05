@@ -11,7 +11,7 @@
 //
 
 #include "PHash.hh"
-#include "common/util/MMap.hh"
+#include "util/MMap.hh"
 
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/imgproc.hpp>

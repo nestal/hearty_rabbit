@@ -13,7 +13,7 @@
 #pragma once
 
 #include "BlobInodeDB.hh"
-#include "common/hrb/ObjectID.hh"
+#include "hrb/ObjectID.hh"
 
 #include <nlohmann/json.hpp>
 #include <string>

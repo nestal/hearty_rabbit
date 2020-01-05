@@ -15,7 +15,7 @@
 #include <QtNetwork/QNetworkAccessManager>
 #include <QtCore/QFuture>
 
-#include "common/hrb/ObjectID.hh"
+#include "hrb/ObjectID.hh"
 
 namespace hrb {
 

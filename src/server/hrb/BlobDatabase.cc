@@ -20,9 +20,9 @@
 // Other modules in hearty rabbit
 #include "net/MMapResponseBody.hh"
 #include "util/Configuration.hh"
-#include "common/util/Escape.hh"
+#include "util/Escape.hh"
 #include "util/Log.hh"
-#include "common/util/Magic.hh"
+#include "util/Magic.hh"
 
 namespace hrb {
 

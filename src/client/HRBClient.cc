@@ -13,7 +13,7 @@
 #include "HRBClient.hh"
 
 #include "GenericHTTPRequest.hh"
-#include "common/hrb/URLIntent.hh"
+#include "hrb/URLIntent.hh"
 
 namespace hrb {
 

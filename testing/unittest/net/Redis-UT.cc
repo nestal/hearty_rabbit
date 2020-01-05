@@ -13,13 +13,13 @@
 #include <catch2/catch.hpp>
 
 #include "net/Redis.hh"
+#include "util/Error.hh"
 
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ip/address.hpp>
 
 #include <cassert>
 #include <chrono>
-#include <common/util/Error.hh>
 
 using namespace hrb::redis;
 

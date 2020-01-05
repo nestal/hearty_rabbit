@@ -15,7 +15,7 @@
 #include "hrb/WebResources.hh"
 #include "CheckResource.hh"
 
-#include "common/util/FS.hh"
+#include "util/FS.hh"
 
 using namespace hrb;
 

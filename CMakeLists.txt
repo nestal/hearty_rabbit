@@ -52,7 +52,6 @@ include_directories(
 	${LIBB2_INCLUDE}
 	${NLOHMANN_INCLUDE}
 	${CMAKE_BINARY_DIR}
-	${PROJECT_SOURCE_DIR}/src
 )
 
 # Post-processing
@@ -84,7 +83,7 @@ endforeach(fullpath)
 file(APPEND ${WEB_RESOURCE_LIST} "};\n}")
 
 ###################################################################################################
-# common library
+# common library: shared code between client and server
 ###################################################################################################
 
 # common code for both server and client
@@ -95,6 +94,9 @@ target_link_libraries(hrbcommon PUBLIC
 	Boost::system Boost::program_options stdc++fs
 	${LIBB2_LIBRARY}
 	${CMAKE_THREAD_LIBS_INIT}
+)
+target_include_directories(hrbcommon PUBLIC
+	${PROJECT_SOURCE_DIR}/src/common
 )
 
 ###################################################################################################
@@ -120,6 +122,34 @@ target_include_directories(
 )
 
 ###################################################################################################
+# Unit test common library: code shared between unit tests
+###################################################################################################
+add_library(test_common testing/common/TestImages.cc testing/common/TestImages.hh)
+target_include_directories(test_common PUBLIC ${PROJECT_SOURCE_DIR}/testing/common)
+target_link_libraries(test_common PUBLIC hrbcommon)
+
+###################################################################################################
+# Server-side unit tests: test cases for the server-side code
+# Server will fail to built if any of these test cases failed.
+###################################################################################################
+
+file(GLOB_RECURSE SRV_UT_SRC testing/unittest/*.cc testing/unittest/*.hh)
+add_executable(unittest ${SRV_UT_SRC})
+target_link_libraries(unittest PUBLIC Catch2::Catch2 test_common hrbsrv)
+
+# Automatically run unit tests after the build
+# Although we specified the ${CMAKE_BINARY_DIR} as the current directory when running unit tests,
+# the test cases should not use absolute path when referring to test data. The test cases
+# must not assume the location of ${CMAKE_BINARY_DIR} relative to the source code.
+add_custom_command(
+	TARGET unittest
+	COMMENT "Running server-side unit tests"
+	POST_BUILD
+	WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+	COMMAND unittest
+)
+
+###################################################################################################
 # client library
 ###################################################################################################
 
@@ -137,34 +167,6 @@ target_link_libraries(
 target_include_directories(
 	hrbclient PUBLIC
 	${PROJECT_SOURCE_DIR}/src/client
-)
-
-###################################################################################################
-# unit test common library
-###################################################################################################
-add_library(test_common testing/common/TestImages.cc testing/common/TestImages.hh)
-target_include_directories(test_common PUBLIC ${PROJECT_SOURCE_DIR}/testing/common)
-
-###################################################################################################
-# server-side unit tests: test cases for the server-side code
-# Server will fail to built if any of these test cases failed.
-###################################################################################################
-
-file(GLOB_RECURSE SRV_UT_SRC testing/unittest/*.cc testing/unittest/*.hh)
-#set(SRV_UT_SRC testing/unittest/hrb/Ownership-UT.cc testing/unittest/testing.cc)
-add_executable(unittest ${SRV_UT_SRC})
-target_link_libraries(unittest PUBLIC Catch2::Catch2 test_common hrbsrv)
-
-# Automatically run unit tests after the build
-# Although we specified the ${CMAKE_BINARY_DIR} as the current directory when running unit tests,
-# the test cases should not use absolute path when referring to test data. The test cases
-# must not assume the location of ${CMAKE_BINARY_DIR} relative to the source code.
-add_custom_command(
-	TARGET unittest
-	COMMENT "Running server-side unit tests"
-	POST_BUILD
-	WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-	COMMAND unittest
 )
 
 ###################################################################################################
@@ -200,21 +202,20 @@ add_executable(hearty_rabbit src/server/main.cc)
 target_link_libraries(hearty_rabbit PRIVATE hrbsrv)
 add_dependencies(hearty_rabbit unittest clienttest)
 
-if (BUILD_CLIENT)
-	add_subdirectory(client/qt)
-	
-	add_executable(gui_driver testing/gui_driver/main.cc)
-	target_link_libraries(gui_driver PRIVATE hrbclient hrbsrv test_common)
-endif()
-
 ###################################################################################################
-# hrbsync: directory sync with hearty rabbit server
+# Client-side tools, libraries and unit tests
 ###################################################################################################
 
 if (BUILD_CLIENT)
-	add_executable(hrbsync client/hrbsync/main.cc)
-	target_link_libraries(hrbsync PRIVATE hrbclient)
+	add_subdirectory(client)
 endif()
+
+###################################################################################################
+# gui_driver: test driver with GUI
+###################################################################################################
+
+add_executable(gui_driver testing/gui_driver/main.cc)
+target_link_libraries(gui_driver PRIVATE test_common hrbsrv)
 
 ###################################################################################################
 # Doxygen

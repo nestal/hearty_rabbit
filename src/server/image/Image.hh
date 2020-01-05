@@ -12,7 +12,7 @@
 
 #pragma once
 
-#include "common/util/BufferView.hh"
+#include "util/BufferView.hh"
 #include <opencv2/core.hpp>
 
 namespace hrb {

@@ -10,9 +10,9 @@
 // Created by nestal on 6/7/18.
 //
 
-#include "common/hrb/BlobList.hh"
-#include "common/hrb/Collection.hh"
-#include "common/hrb/CollectionList.hh"
+#include "hrb/BlobList.hh"
+#include "hrb/Collection.hh"
+#include "hrb/CollectionList.hh"
 #include "crypto/Random.hh"
 
 #include <catch2/catch.hpp>

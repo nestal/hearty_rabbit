@@ -13,7 +13,7 @@
 #pragma once
 
 #include "BlobInode.hh"
-#include "common/util/JSON.hh"
+#include "util/JSON.hh"
 #include "ObjectID.hh"
 
 #include <boost/range/adaptors.hpp>

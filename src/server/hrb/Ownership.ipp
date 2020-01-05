@@ -17,10 +17,10 @@
 
 #include "net/Redis.hh"
 
-#include "common/hrb/Permission.hh"
-#include "common/hrb/CollectionList.hh"
-#include "common/util/Error.hh"
-#include "common/util/Escape.hh"
+#include "hrb/Permission.hh"
+#include "hrb/CollectionList.hh"
+#include "util/Error.hh"
+#include "util/Escape.hh"
 
 #include "crypto/Authentication.hh"
 #include "util/Log.hh"

@@ -12,7 +12,7 @@
 
 #pragma once
 
-#include "common/util/RepeatingTuple.hh"
+#include "util/RepeatingTuple.hh"
 
 #include <boost/asio.hpp>
 #include <boost/iterator/iterator_adaptor.hpp>

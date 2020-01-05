@@ -12,9 +12,9 @@
 
 #include <catch2/catch.hpp>
 
-#include "common/util/Timestamp.hh"
+#include "util/Timestamp.hh"
 #include "image/EXIF2.hh"
-#include "common/util/MMap.hh"
+#include "util/MMap.hh"
 
 #include "TestImages.hh"
 

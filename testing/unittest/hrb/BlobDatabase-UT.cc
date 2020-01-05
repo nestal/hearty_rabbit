@@ -19,7 +19,7 @@
 #include "hrb/UploadFile.hh"
 #include "net/MMapResponseBody.hh"
 #include "util/Configuration.hh"
-#include "common/util/Magic.hh"
+#include "util/Magic.hh"
 
 using namespace hrb;
 

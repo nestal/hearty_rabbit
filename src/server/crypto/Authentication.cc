@@ -14,10 +14,10 @@
 
 #include "Password.hh"
 
-#include "common/util/Cookie.hh"
+#include "util/Cookie.hh"
 #include "crypto/Random.hh"
 #include "net/Redis.hh"
-#include "common/util/Error.hh"
+#include "util/Error.hh"
 #include "util/Log.hh"
 
 #include <boost/algorithm/hex.hpp>

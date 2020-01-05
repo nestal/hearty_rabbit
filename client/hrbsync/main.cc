@@ -10,11 +10,11 @@
 // Created by nestal on 2/1/2020.
 //
 
-#include "client/HRBClient.hh"
-#include "client/HRBClient.ipp"
+#include "HRBClient.hh"
+#include "HRBClient.ipp"
 
-#include "common/util/MMap.hh"
-#include "common/util/Magic.hh"
+#include "util/MMap.hh"
+#include "util/Magic.hh"
 
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ssl/context.hpp>
@@ -73,13 +73,6 @@ Collection compare_collection(Collection remote, Collection local)
 	for (auto&& id : diff1)
 	{
 		auto blob = remote.find(id);
-
-//		std::cout << "blob " << blob->second.filename << " not found " << std::endl;
-		for (auto i = 0U; i < blob->second.filename.size(); ++i)
-		{
-//			std::cout << "char " << i << " " << blob->second.filename[i] << " " << (int)blob->second.filename[i] << std::endl;
-		}
-
 		assert(remote.find(id) != remote.end());
 		download.add_blob(id, remote.find(id)->second);
 	}

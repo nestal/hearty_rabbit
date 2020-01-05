@@ -12,7 +12,7 @@
 
 #include <catch2/catch.hpp>
 
-#include "common/util/Cookie.hh"
+#include "util/Cookie.hh"
 
 using namespace hrb;
 

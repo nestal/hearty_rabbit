@@ -16,8 +16,8 @@
 #include "hrb/BlobInodeDB.hh"
 #include "hrb/UploadFile.hh"
 
-#include "common/util/MMap.hh"
-#include "common/util/Magic.hh"
+#include "util/MMap.hh"
+#include "util/Magic.hh"
 #include "util/Configuration.hh"
 
 #include "image/Image.hh"

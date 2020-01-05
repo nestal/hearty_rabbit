@@ -12,8 +12,8 @@
 
 #include <catch2/catch.hpp>
 
-#include "common/util/Escape.hh"
-#include "common/util/StringFields.hh"
+#include "util/Escape.hh"
+#include "util/StringFields.hh"
 
 #include <optional>
 

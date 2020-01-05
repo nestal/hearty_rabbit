@@ -14,7 +14,7 @@
 #include "Ownership.ipp"
 #include "RedisKeys.hh"
 
-#include "common/util/Escape.hh"
+#include "util/Escape.hh"
 
 #include <nlohmann/json.hpp>
 

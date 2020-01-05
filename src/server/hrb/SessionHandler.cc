@@ -20,10 +20,10 @@
 #include "UploadFile.hh"
 #include "WebResources.hh"
 
-#include "common/hrb/BlobInode.hh"
-#include "common/hrb/Collection.hh"
-#include "common/hrb/URLIntent.hh"
-#include "common/util/StringFields.hh"
+#include "hrb/BlobInode.hh"
+#include "hrb/Collection.hh"
+#include "hrb/URLIntent.hh"
+#include "util/StringFields.hh"
 
 #include "crypto/Password.hh"
 #include "crypto/Authentication.hh"
@@ -33,8 +33,8 @@
 #include "net/MMapResponseBody.hh"
 
 #include "util/Configuration.hh"
-#include "common/util/Escape.hh"
-#include "common/util/FS.hh"
+#include "util/Escape.hh"
+#include "util/FS.hh"
 #include "util/Log.hh"
 #include "hrb/index/PHashDb.hh"
 

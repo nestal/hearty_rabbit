@@ -13,8 +13,8 @@
 #include <catch2/catch.hpp>
 
 #include "net/Redis.hh"
-#include "common/util/Cookie.hh"
-#include "common/util/Error.hh"
+#include "util/Cookie.hh"
+#include "util/Error.hh"
 #include "crypto/Authentication.hh"
 #include "crypto/Authentication.ipp"
 #include "crypto/Password.hh"

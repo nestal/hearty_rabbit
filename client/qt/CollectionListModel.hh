@@ -16,7 +16,7 @@
 #include <QtCore/QAbstractListModel>
 #include <QtGui/QIcon>
 
-#include "common/hrb/CollectionList.hh"
+#include "hrb/CollectionList.hh"
 
 namespace hrb {
 

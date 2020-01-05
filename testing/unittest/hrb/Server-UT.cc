@@ -14,7 +14,7 @@
 
 #include "CheckResource.hh"
 
-#include "common/util/Cookie.hh"
+#include "util/Cookie.hh"
 #include "hrb/Server.hh"
 #include "hrb/SessionHandler.ipp"
 #include "hrb/Ownership.ipp"

@@ -13,7 +13,7 @@
 #include "URLIntent.hh"
 
 #include "ObjectID.hh"
-#include "common/util/Escape.hh"
+#include "util/Escape.hh"
 
 #include <sstream>
 #include <cassert>

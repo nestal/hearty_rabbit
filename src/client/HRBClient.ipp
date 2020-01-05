@@ -15,14 +15,14 @@
 #include "HRBClient.hh"
 #include "GenericHTTPRequest.hh"
 
-#include "common/util/Cookie.hh"
-#include "common/hrb/BlobInode.hh"
-#include "common/hrb/Collection.hh"
-#include "common/hrb/CollectionList.hh"
-#include "common/util/Error.hh"
-#include "common/util/Escape.hh"
-#include "common/hrb/ObjectID.hh"
-#include "common/hrb/URLIntent.hh"
+#include "util/Cookie.hh"
+#include "hrb/BlobInode.hh"
+#include "hrb/Collection.hh"
+#include "hrb/CollectionList.hh"
+#include "util/Error.hh"
+#include "util/Escape.hh"
+#include "hrb/ObjectID.hh"
+#include "hrb/URLIntent.hh"
 
 #include <boost/beast/http/file_body.hpp>
 

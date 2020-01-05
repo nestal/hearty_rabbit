@@ -14,9 +14,9 @@
 
 #include "net/Request.hh"
 
-#include "common/util/MMap.hh"
+#include "util/MMap.hh"
 #include "util/Exception.hh"
-#include "common/util/FS.hh"
+#include "util/FS.hh"
 #include "net/SplitBuffers.hh"
 
 #include <boost/utility/string_view.hpp>

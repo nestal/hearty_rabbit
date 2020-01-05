@@ -11,7 +11,7 @@
 //
 
 #include "RedisKeys.hh"
-#include "common/hrb/ObjectID.hh"
+#include "hrb/ObjectID.hh"
 
 namespace hrb::key {
 

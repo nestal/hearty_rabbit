@@ -12,8 +12,8 @@
 
 #pragma once
 
-#include "common/hrb/ObjectID.hh"
-#include "common/util/FS.hh"
+#include "hrb/ObjectID.hh"
+#include "util/FS.hh"
 #include "util/Size2D.hh"
 
 #include <boost/beast/http/message.hpp>
