@@ -97,7 +97,7 @@ class RandomAdaptor
 	static_assert(std::is_standard_layout<T>::value);
 
 public:
-	RandomAdaptor(URBG&& gen) : m_gen{gen} {}
+	explicit RandomAdaptor(URBG&& gen) : m_gen{gen} {}
 
 	using result_type = T;
 	static constexpr result_type min() {return std::numeric_limits<result_type>::min();}

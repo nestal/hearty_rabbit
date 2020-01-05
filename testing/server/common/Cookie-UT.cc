@@ -14,7 +14,7 @@
 
 #include "util/Cookie.hh"
 #include "hrb/UserID.hh"
-#include "crypto/Random.hh"
+#include "util/Random.hh"
 
 using namespace hrb;
 using namespace std::literals;

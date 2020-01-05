@@ -17,8 +17,7 @@
 
 namespace hrb {
 
-CollectionComparison::CollectionComparison(const Collection& local, const Collection& remote) :
-	m_local{local}, m_remote{remote}
+CollectionComparison::CollectionComparison(const Collection& local, const Collection& remote)
 {
 	std::set<ObjectID> remote_blobids, local_blobids;
 	for (auto&& [id, blob] : remote)
@@ -27,11 +26,23 @@ CollectionComparison::CollectionComparison(const Collection& local, const Collec
 	for (auto&& [id, blob] : local)
 		local_blobids.insert(id);
 
-	std::set_symmetric_difference(
+	std::vector<ObjectID> download;
+	std::set_difference(
 		remote_blobids.begin(), remote_blobids.end(),
 		local_blobids.begin(), local_blobids.end(),
-		std::back_inserter(m_xor)
+		std::back_inserter(download)
 	);
+	for (auto&& id : download)
+		m_download.add_blob(id, remote.find(id)->second);
+
+	std::vector<ObjectID> upload;
+	std::set_difference(
+		local_blobids.begin(), local_blobids.end(),
+		remote_blobids.begin(), remote_blobids.end(),
+		std::back_inserter(upload)
+	);
+	for (auto&& id : upload)
+		m_upload.add_blob(id, local.find(id)->second);
 }
 
 } // end of namespace hrb

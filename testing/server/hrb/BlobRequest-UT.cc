@@ -14,7 +14,7 @@
 
 #include "hrb/BlobRequest.hh"
 #include "crypto/Authentication.hh"
-#include "crypto/Random.hh"
+#include "util/Random.hh"
 
 #include <iostream>
 

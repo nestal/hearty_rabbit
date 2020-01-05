@@ -21,11 +21,11 @@ class CollectionComparison
 public:
 	CollectionComparison(const Collection& local, const Collection& remote);
 
-
+	auto& upload() const {return m_upload;}
+	auto& download() const {return m_download;}
 
 private:
-	Collection  m_local, m_remote;
-	std::vector<ObjectID>   m_xor;
+	Collection m_upload, m_download;
 };
 
 } // end of namespace hrb

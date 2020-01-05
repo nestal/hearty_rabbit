@@ -19,7 +19,7 @@
 #include "hrb/SessionHandler.ipp"
 #include "hrb/Ownership.ipp"
 
-#include "crypto/Random.hh"
+#include "util/Random.hh"
 #include "crypto/Password.hh"
 #include "util/Configuration.hh"
 

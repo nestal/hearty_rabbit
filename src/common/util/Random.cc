@@ -73,7 +73,7 @@ Blake2x::result_type Blake2x::operator()()
 
 	// Update generator state
 	auto native_offset = boost::endian::little_to_native(m_param.node_offset);
-	assert(native_offset >> 32 == 0xffffffff);
+	assert(native_offset >> 32U == 0xffffffffU);
 	native_offset++;
 	m_param.node_offset = boost::endian::native_to_little(native_offset);
 

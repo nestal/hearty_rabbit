@@ -14,7 +14,7 @@
 
 #include "hrb/index/TimeIndex.hh"
 
-#include "crypto/Random.hh"
+#include "util/Random.hh"
 #include "util/Escape.hh"
 #include "net/Redis.hh"
 

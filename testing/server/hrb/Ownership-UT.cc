@@ -17,7 +17,7 @@
 #include "hrb/BlobDatabase.hh"
 #include "hrb/UploadFile.hh"
 #include "hrb/Permission.hh"
-#include "crypto/Random.hh"
+#include "util/Random.hh"
 
 #include <boost/algorithm/string.hpp>
 
