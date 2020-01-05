@@ -12,7 +12,7 @@
 
 #include <catch2/catch.hpp>
 
-#include "CollectionComparison.hh"
+#include "hrbsync/CollectionComparison.hh"
 
 TEST_CASE("test sync collection", "[normal]")
 {

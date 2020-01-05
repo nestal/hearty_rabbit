@@ -19,6 +19,8 @@
 
 #include "util/FS.hh"
 
+#include "config.hh"
+
 #include <cassert>
 #include <thread>
 
@@ -47,7 +49,7 @@ struct ServerInstance::Impl
 
 const Configuration ServerInstance::Impl::m_cfg{[]()
 {
-	fs::path path = fs::path{__FILE__}.parent_path().parent_path().parent_path() / "etc" / "hearty_rabbit" / "hearty_rabbit.json";
+	fs::path path = fs::path{CONFIG_FILE} / hrb::constants::config_filename;
 	Configuration cfg{
 		0, nullptr,
 		path.string().c_str()

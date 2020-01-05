@@ -90,29 +90,13 @@ add_dependencies(hearty_rabbit unittest clienttest)
 # hrbsync: directory sync with hearty rabbit server
 ###################################################################################################
 
-file(GLOB_RECURSE HRB_SYNC_SRC client/hrbsync/src/*.cc client/hrbsync/src/*.hh)
+file(GLOB_RECURSE HRB_SYNC_SRC client/hrbsync/*.cc client/hrbsync/*.hh)
 add_library(hrbsync_lib ${HRB_SYNC_SRC})
 target_link_libraries(hrbsync_lib PUBLIC hrbclient)
-target_include_directories(hrbsync_lib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/hrbsync)
-
-#file(GLOB_RECURSE HRB_SYNC_UT_SRC hrbsync/unittest/*.cc hrbsync/unittest/*.hh)
-#add_executable(hrbsync_unittest ${HRB_SYNC_UT_SRC})
-#target_link_libraries(hrbsync_unittest PRIVATE hrbsync_lib Catch2::Catch2)
+target_include_directories(hrbsync_lib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/client)
 
 add_executable(hrbsync client/hrbsync/main.cc)
 target_link_libraries(hrbsync PRIVATE hrbsync_lib)
-
-# Automatically run unit tests after the build
-# Although we specified the ${CMAKE_BINARY_DIR} as the current directory when running unit tests,
-# the test cases should not use absolute path when referring to test data. The test cases
-# must not assume the location of ${CMAKE_BINARY_DIR} relative to the source code.
-#add_custom_command(
-#	TARGET hrbsync_unittest
-#	COMMENT "Running hrbsync unit tests"
-#	POST_BUILD
-#	WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-#	COMMAND hrbsync_unittest
-#)
 
 if (BUILD_CLIENT)
 	add_subdirectory(client/qt)
