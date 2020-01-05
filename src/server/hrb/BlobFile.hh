@@ -12,13 +12,13 @@
 
 #pragma once
 
-#include "common/hrb/ObjectID.hh"
-#include "common/util/Timestamp.hh"
+#include "hrb/ObjectID.hh"
+#include "util/Timestamp.hh"
 
 #include "image/PHash.hh"
 #include "util/Size2D.hh"
-#include "common/util/FS.hh"
-#include "common/util/MMap.hh"
+#include "util/FS.hh"
+#include "util/MMap.hh"
 
 #include <nlohmann/json.hpp>
 #include <system_error>

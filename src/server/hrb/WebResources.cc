@@ -12,11 +12,11 @@
 
 #include "WebResources.hh"
 
-#include "common/hrb/ObjectID.hh"
+#include "hrb/ObjectID.hh"
 #include "ResourcesList.hh"
-#include "common/util/Blake2.hh"
-#include "common/util/Escape.hh"
-#include "common/util/Magic.hh"
+#include "util/Blake2.hh"
+#include "util/Escape.hh"
+#include "util/Magic.hh"
 
 #include <boost/exception/info.hpp>
 

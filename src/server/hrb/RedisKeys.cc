@@ -11,7 +11,7 @@
 //
 
 #include "RedisKeys.hh"
-#include "common/hrb/ObjectID.hh"
+#include "hrb/ObjectID.hh"
 
 namespace hrb::key {
 
@@ -54,9 +54,9 @@ std::string_view public_blobs()
 	return std::string_view{"public_blobs"};
 }
 
-std::string blob_meta(std::string user)
+std::string blob_inode(std::string user)
 {
-	std::string s{"blob-meta:"};
+	std::string s{"blob-inodes:"};
 	s.append(user.data(), user.size());
 	return s;
 }

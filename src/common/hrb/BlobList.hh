@@ -12,8 +12,8 @@
 
 #pragma once
 
-#include "CollEntry.hh"
-#include "common/util/JSON.hh"
+#include "BlobInode.hh"
+#include "util/JSON.hh"
 #include "ObjectID.hh"
 
 #include <boost/range/adaptors.hpp>
@@ -30,27 +30,27 @@ public:
 		std::string owner;
 		std::string coll;
 		ObjectID    blob;
-		CollEntry   entry;
+		BlobInode   entry;
 	};
 
 public:
 	BlobList() = default;
-	BlobList(BlobList&& other);
+	BlobList(BlobList&& other) = default;
 	BlobList(const BlobList&) = default;
-	BlobList& operator=(BlobList&& other);
-	BlobList& operator=(const BlobList& other);
+	BlobList& operator=(BlobList&& other) = default;
+	BlobList& operator=(const BlobList& other) = default;
 
 	void add(std::string_view owner, std::string_view coll, const ObjectID& blob, const Permission& perm, nlohmann::json&& entry);
-	void add(std::string_view owner, std::string_view coll, const ObjectID& blob, const CollEntry& entry);
+	void add(std::string_view owner, std::string_view coll, const ObjectID& blob, const BlobInode& entry);
 	void add(const Entry& entry);
 
-	std::vector<Entry> entries() const;
-	std::size_t size() const;
+	[[nodiscard]] std::vector<Entry> entries() const;
+	[[nodiscard]] std::size_t size() const;
 
 	friend void to_json(nlohmann::json& dest, BlobList&& src);
 	friend void from_json(const nlohmann::json& src, BlobList& dest);
 
-	const nlohmann::json& json() const {return m_json;}
+	[[nodiscard]] const nlohmann::json& json() const {return m_json;}
 
 private:
 	nlohmann::json m_json{{"elements", nlohmann::json::object()}};

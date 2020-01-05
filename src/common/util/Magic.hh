@@ -12,8 +12,8 @@
 
 #pragma once
 
-#include "common/util/FS.hh"
-#include "common/util/BufferView.hh"
+#include "util/FS.hh"
+#include "util/BufferView.hh"
 
 #include <boost/asio/buffer.hpp>
 #include <boost/beast/core/file.hpp>

@@ -13,7 +13,7 @@
 #pragma once
 
 #include "Authentication.hh"
-#include "Random.hh"
+#include "util/Random.hh"
 
 #include "net/Redis.hh"
 #include "util/Log.hh"

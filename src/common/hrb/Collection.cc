@@ -11,7 +11,7 @@
 //
 
 #include "Collection.hh"
-#include "common/util/Escape.hh"
+#include "util/Escape.hh"
 
 namespace hrb {
 
@@ -21,12 +21,18 @@ Collection::Collection(std::string_view name, std::string_view owner, nlohmann::
 	assert(m_meta.is_object() || m_meta.is_null());
 }
 
-void Collection::add_blob(const ObjectID& id, CollEntry&& entry)
+Collection::Collection(std::string_view name, std::string_view owner, const ObjectID& cover) :
+	m_name{name}, m_owner{owner}, m_meta({{"cover", to_hex(cover)}})
+{
+	assert(m_meta.is_object());
+}
+
+void Collection::add_blob(const ObjectID& id, BlobInode&& entry)
 {
 	m_blobs.emplace(id, std::move(entry));
 }
 
-void Collection::add_blob(const ObjectID& id, const CollEntry& entry)
+void Collection::add_blob(const ObjectID& id, const BlobInode& entry)
 {
 	m_blobs.emplace(id, entry);
 }
@@ -42,7 +48,7 @@ void from_json(const nlohmann::json& src, Collection& dest)
 	for (auto&& item : src.at("elements").items())
 	{
 		if (auto blob = ObjectID::from_hex(item.key()); blob.has_value())
-			result.m_blobs.emplace(*blob, item.value().template get<CollEntry>());
+			result.m_blobs.emplace(*blob, item.value().template get<BlobInode>());
 	}
 
 	// commit changes
@@ -83,6 +89,11 @@ void Collection::update_timestamp(const ObjectID& id, Timestamp value)
 {
 	if (auto it = m_blobs.find(id); it != m_blobs.end())
 		it->second.timestamp = value;
+}
+
+void Collection::remove_blob(const ObjectID& id)
+{
+	m_blobs.erase(id);
 }
 
 } // end of namespace hrb

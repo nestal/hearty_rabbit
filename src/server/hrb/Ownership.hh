@@ -12,8 +12,8 @@
 
 #pragma once
 
-#include "common/hrb/ObjectID.hh"
-#include "CollEntryDB.hh"
+#include "hrb/ObjectID.hh"
+#include "BlobInodeDB.hh"
 
 #include <string_view>
 #include <functional>
@@ -27,69 +27,64 @@ class Reply;
 
 class Authentication;
 class Permission;
-class CollEntry;
+class BlobInode;
 class Collection;
+class CollectionList;
 
-/// A set of blob objects represented by a redis set.
+/// Encapsulate all blobs owned by a user.
 class Ownership
 {
-public:
-	/// A set of blob objects represented by a redis set.
-	class Collection;
-
 private:
-	[[nodiscard]] redis::CommandString link_command(std::string_view coll, const ObjectID& blob, const CollEntry& entry) const;
+	[[nodiscard]] redis::CommandString link_command(std::string_view coll, const ObjectID& blob, const BlobInode& entry) const;
 	[[nodiscard]] redis::CommandString unlink_command(std::string_view coll, const ObjectID& blob) const;
 	[[nodiscard]] redis::CommandString move_command(std::string_view src, std::string_view dest, const ObjectID& blob) const;
 	[[nodiscard]] redis::CommandString scan_collection_command(std::string_view coll) const;
 	[[nodiscard]] redis::CommandString set_permission_command(const ObjectID& blobid, Permission perm) const;
 	[[nodiscard]] redis::CommandString set_cover_command(std::string_view coll, const ObjectID& cover) const;
 	[[nodiscard]] redis::CommandString list_public_blob_command() const;
-	void update(redis::Connection& db, const ObjectID& blobid, const CollEntryDB& entry);
+	void update(redis::Connection& db, const ObjectID& blobid, const BlobInodeDB& entry);
 
-	[[nodiscard]] hrb::Collection from_reply(
+	[[nodiscard]] Collection from_reply(
 		const redis::Reply& hash_getall_reply,
 		std::string_view coll,
 		const Authentication& requester,
 		nlohmann::json&& meta
 	) const;
 
-	[[nodiscard]] static hrb::Collection no_collection();
-
 public:
 	explicit Ownership(std::string_view name);
 
-	template <typename Complete>
-	void link(
+	template <typename Complete, typename=std::enable_if_t<std::is_invocable_v<Complete, std::error_code>>>
+	void link_blob(
 		redis::Connection& db,
 		std::string_view coll,
 		const ObjectID& blobid,
-		const CollEntry& entry,
+		const BlobInode& entry,
 		Complete&& complete
 	);
 
-	void update(
+	void update_blob(
 		redis::Connection& db,
 		const ObjectID& blobid,
-		const CollEntry& entry
+		const BlobInode& entry
 	);
 
-	void update(
+	void update_blob(
 		redis::Connection& db,
 		const ObjectID& blobid,
 		const nlohmann::json& entry
 	);
 
-	template <typename Complete>
-	void unlink(
+	template <typename Complete, typename=std::enable_if_t<std::is_invocable_v<Complete, std::error_code>>>
+	void unlink_blob(
 		redis::Connection& db,
 		std::string_view coll,
 		const ObjectID& blobid,
 		Complete&& complete
 	);
 
-	template <typename Complete>
-	void rename(
+	template <typename Complete, typename=std::enable_if_t<std::is_invocable_v<Complete, std::error_code>>>
+	void rename_blob(
 		redis::Connection& db,
 		std::string_view coll,
 		const ObjectID& blobid,
@@ -97,7 +92,7 @@ public:
 		Complete&& complete
 	);
 
-	template <typename Complete>
+	template <typename Complete, typename=std::enable_if_t<std::is_invocable_v<Complete, std::error_code>>>
 	void set_permission(
 		redis::Connection& db,
 		const ObjectID& blobid,
@@ -105,22 +100,15 @@ public:
 		Complete&& complete
 	);
 
-	template <typename Complete>
-	void find_collection(
+	template <typename Complete, typename=std::enable_if_t<std::is_invocable_v<Complete, Collection&&, std::error_code>>>
+	void get_collection(
 		redis::Connection& db,
 		const Authentication& requester,
 		std::string_view coll,
 		Complete&& complete
 	) const;
 
-	template <typename Complete>
-	void list(
-		redis::Connection& db,
-		std::string_view coll,
-		Complete&& complete
-	) const;
-
-	template <typename Complete>
+	template <typename Complete, typename=std::enable_if_t<std::is_invocable_v<Complete, std::error_code>>>
 	void move_blob(
 		redis::Connection& db,
 		std::string_view src_coll,
@@ -129,15 +117,29 @@ public:
 		Complete&& complete
 	);
 
-	template <typename Complete>
-	void find(
+	template <
+	    typename Complete,
+	    typename=std::enable_if_t<std::is_invocable_v<Complete, BlobInodeDB, std::string_view, std::error_code>>
+    >
+	void get_blob(
 		redis::Connection& db,
 		std::string_view coll,
 		const ObjectID& blob,
 		Complete&& complete
 	) const;
 
-	template <typename Complete>
+	template <
+	    typename Complete,
+	    typename=std::enable_if_t<std::is_invocable_v<Complete, BlobInodeDB, std::error_code>>
+    >
+	void get_blob(
+		redis::Connection& db,
+		const Authentication& requester,
+		const ObjectID& blob,
+		Complete&& complete
+	) const;
+
+	template <typename Complete, typename=std::enable_if_t<std::is_invocable_v<Complete, bool, std::error_code>>>
 	void set_cover(
 		redis::Connection& db,
 		std::string_view coll,
@@ -153,7 +155,10 @@ public:
 		Complete&& complete
 	) const;
 
-	template <typename Complete>
+	template <
+	    typename Complete,
+	    typename=std::enable_if_t<std::is_invocable_v<Complete, CollectionList, std::error_code>>
+	    >
 	void scan_all_collections(
 		redis::Connection& db,
 		Complete&& complete
@@ -176,8 +181,6 @@ public:
 
 private:
 	std::string m_user;
-
-	redis::CommandString move_command(std::string_view src, std::string dest, const ObjectID& blob) const;
 };
 
 } // end of namespace hrb

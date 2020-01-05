@@ -16,7 +16,7 @@
 #include "util/Backtrace.hh"
 #include "util/Log.hh"
 
-#include "common/util/Error.hh"
+#include "util/Error.hh"
 
 #include <boost/asio/strand.hpp>
 #include <boost/exception/info.hpp>

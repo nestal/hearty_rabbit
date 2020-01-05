@@ -12,7 +12,7 @@
 
 #pragma once
 
-#include "common/hrb/UserID.hh"
+#include "hrb/UserID.hh"
 #include "net/Redis.hh"
 #include "net/Request.hh"
 

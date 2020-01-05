@@ -12,8 +12,8 @@
 
 #pragma once
 
-#include "CollEntryDB.hh"
-#include "common/hrb/ObjectID.hh"
+#include "BlobInodeDB.hh"
+#include "hrb/ObjectID.hh"
 
 #include <nlohmann/json.hpp>
 #include <string>
@@ -21,14 +21,14 @@
 namespace hrb {
 
 /// \brief  A structure to store information about a blob in the database
-/// The memory pointed by the CollEntryDB will be freed after the callback
+/// The memory pointed by the BlobInodeDB will be freed after the callback
 /// function returns.
 struct BlobRef
 {
 	std::string user;
 	std::string coll;
 	ObjectID    blob;
-	CollEntryDB entry;
+	BlobInodeDB entry;
 };
 
 void to_json(nlohmann::json& dest, const BlobRef& src);

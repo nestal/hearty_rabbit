@@ -26,10 +26,11 @@
 #include "net/MMapResponseBody.hh"
 #include "util/Log.hh"
 
-#include "common/hrb/BlobList.hh"
-#include "common/util/Escape.hh"
-#include "common/hrb/URLIntent.hh"
-#include "common/util/StringFields.hh"
+#include "hrb/BlobList.hh"
+#include "hrb/Collection.hh"
+#include "util/Escape.hh"
+#include "hrb/URLIntent.hh"
+#include "util/StringFields.hh"
 
 #include <boost/beast/http/fields.hpp>
 #include <boost/beast/http/message.hpp>
@@ -303,12 +304,12 @@ void SessionHandler::on_request_api(Request&& req, URLIntent&& intent, Send&& se
 		if (breq.blob())
 			return get_blob(std::move(breq), std::forward<Send>(send));
 		else
-			return Ownership{breq.owner()}.find_collection(
+			return Ownership{breq.owner()}.get_collection(
 				*m_db,
 				m_auth,
 				breq.collection(),
 				[
-					send=SendJSON{std::forward<Send>(send), req.version(), std::nullopt, *this}, this
+					send = SendJSON{std::forward<Send>(send), req.version(), std::nullopt, *this}, this
 				](auto&& coll, std::error_code ec) mutable
 				{
 					validate_collection(coll);
@@ -337,7 +338,7 @@ void SessionHandler::on_request_view(Request&& req, URLIntent&& intent, Send&& s
 	if (req.method() == http::verb::get)
 	{
 		// view request always sends HTML: pass &m_lib to SendJSON
-		return Ownership{breq.owner()}.find_collection(
+		return Ownership{breq.owner()}.get_collection(
 			*m_db,
 			m_auth,
 			breq.collection(),
@@ -369,20 +370,22 @@ void SessionHandler::get_blob(const BlobRequest& req, Send&& send)
 	// Check if the user can access the blob
 	// Note: do not move-construct "req" to the lambda because the arguments of find() uses it.
 	// Otherwise, "req" will become dangled.
-	Ownership{req.owner()}.find(
+	Ownership{req.owner()}.get_blob(
 		*m_db, req.collection(), *req.blob(),
 		[
 			req, this,
-			send=std::forward<Send>(send)
-		](CollEntryDB entry, auto filename, auto ec) mutable
+			send = std::forward<Send>(send)
+		](BlobInodeDB entry, auto filename, auto ec) mutable
 		{
 			// Only allow the owner to know whether an object exists or not.
 			// Always reply forbidden for everyone else.
 			if (ec == Error::object_not_exist)
-				return send(http::response<http::empty_body>{
-					req.request_by_owner(m_auth) ? http::status::not_found : http::status::forbidden,
-					req.version()
-				});
+				return send(
+					http::response<http::empty_body>{
+						req.request_by_owner(m_auth) ? http::status::not_found : http::status::forbidden,
+						req.version()
+					}
+				);
 
 			if (ec)
 				return send(http::response<http::empty_body>{http::status::internal_server_error, req.version()});
@@ -390,13 +393,13 @@ void SessionHandler::get_blob(const BlobRequest& req, Send&& send)
 			if (!entry.permission().allow(m_auth, req.owner()))
 				return send(http::response<http::empty_body>{http::status::forbidden, req.version()});
 
-			if (auto [json] = urlform.find_optional(req.option(), "json"); json)
+			if (auto[json] = urlform.find_optional(req.option(), "json"); json)
 			{
 				return send(m_blob_db.meta(*req.blob(), req.version()));
 			}
 			else
 			{
-				auto [rendition] = urlform.find(req.option(), "rendition");
+				auto[rendition] = urlform.find(req.option(), "rendition");
 				auto response = m_blob_db.response(*req.blob(), req.version(), req.etag(), rendition);
 				response.set(http::field::content_disposition, "inline; filename=" + url_encode(filename));
 				response.set(http::field::last_modified, entry.timestamp().http_format());
@@ -446,26 +449,33 @@ void SessionHandler::scan_collection(const URLIntent& intent, unsigned version, 
 template <class Send>
 void SessionHandler::query_blob(const BlobRequest& req, Send&& send)
 {
-	auto [blob_arg, rendition] = urlform.find(req.option(), "id", "rendition");
+	auto [blob_arg, rendition, owner] = urlform.find(req.option(), "id", "rendition", "owner");
 	auto blob = ObjectID::from_hex(blob_arg);
 	if (!blob)
 		return send(bad_request("invalid blob ID", req.version()));
 
-	Ownership{m_auth.username()}.query_blob(
+	if (owner.empty())
+		owner = m_auth.username();
+
+	Ownership{owner}.get_blob(
 		*m_db,
+		m_auth,
 		*blob,
 		[
 			send=std::forward<Send>(send), req, blobid=*blob,
 			rendition=std::string{rendition}, this
-		](auto&& range, auto ec)
+		](auto&& entry, auto ec)
 		{
-			if (ec)
+			if (ec == Error::object_not_exist)
+				return send(not_found("blob not found", req.version()));
+
+			else if (ec)
 				return send(server_error("internal server error", req.version()));
 
-			for (auto&& en : range)
-				return send(m_blob_db.response(blobid, req.version(), req.etag(), rendition));
-
-			return send(not_found("blob not found", req.version()));
+			auto response = m_blob_db.response(blobid, req.version(), req.etag(), rendition);
+			response.set(http::field::content_disposition, "inline; filename=" + url_encode(entry.filename()));
+			response.set(http::field::last_modified, entry.timestamp().http_format());
+			return send(std::move(response));
 		}
 	);
 }
@@ -481,15 +491,20 @@ void SessionHandler::query_blob_set(const URLIntent& intent, unsigned version, S
 	}
 	else if (dup_coll.has_value())
 	{
-		Ownership{m_auth.username()}.list(
+		Ownership{m_auth.username()}.get_collection(
 			*m_db,
+			m_auth,
 			*dup_coll,
 			[
 				send=std::forward<Send>(send),
 			    this, version,
 				lib=(json.has_value() ? nullptr : &m_lib)
-			](auto&& oids, auto ec) mutable
+			](Collection&& coll, auto ec) mutable
 			{
+				std::vector<ObjectID> oids;
+				for (auto&& [id, entry] : coll)
+					oids.push_back(id);
+
 				auto matches = nlohmann::json::array();
 				auto similar = m_blob_db.find_similar(oids.begin(), oids.end(), 10);
 

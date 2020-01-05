@@ -14,15 +14,15 @@
 
 // Other dependencies in the same module
 #include "BlobFile.hh"
-#include "CollEntryDB.hh"
+#include "BlobInodeDB.hh"
 #include "UploadFile.hh"
 
 // Other modules in hearty rabbit
 #include "net/MMapResponseBody.hh"
 #include "util/Configuration.hh"
-#include "common/util/Escape.hh"
+#include "util/Escape.hh"
 #include "util/Log.hh"
-#include "common/util/Magic.hh"
+#include "util/Magic.hh"
 
 namespace hrb {
 

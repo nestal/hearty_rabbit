@@ -12,7 +12,7 @@
 
 #pragma once
 
-#include "common/util/BufferView.hh"
+#include "util/BufferView.hh"
 
 // libexif to read EXIF2 tags
 #include <libexif/exif-data.h>

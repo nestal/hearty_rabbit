@@ -14,10 +14,10 @@
 
 #include "Password.hh"
 
-#include "common/util/Cookie.hh"
-#include "crypto/Random.hh"
+#include "util/Cookie.hh"
+#include "util/Random.hh"
 #include "net/Redis.hh"
-#include "common/util/Error.hh"
+#include "util/Error.hh"
 #include "util/Log.hh"
 
 #include <boost/algorithm/hex.hpp>
@@ -38,7 +38,7 @@ Salt random_salt()
 	{
 		std::array<std::uint64_t, sizeof(Salt)/sizeof(std::uint64_t)>    lls;
 		Salt salt;
-	} tmp;
+	} tmp{};
 
 	// There is no need to use cryptographically secure random number to generate the
 	// salt because it is not a secret to the attacker.

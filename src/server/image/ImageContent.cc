@@ -11,7 +11,7 @@
 //
 
 #include "ImageContent.hh"
-#include "common/util/FS.hh"
+#include "util/FS.hh"
 #include "util/Log.hh"
 
 #include "config.hh"

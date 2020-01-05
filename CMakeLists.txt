@@ -10,50 +10,15 @@ if (NOT BUILD_NUMBER)
 endif()
 message(STATUS "Building HeartyRabbit ${VERSION}.${BUILD_NUMBER}")
 
-set(Boost_USE_STATIC_LIBS  ON)
-find_package(Boost REQUIRED COMPONENTS system program_options)
-find_package(Threads REQUIRED)
-find_package(PkgConfig REQUIRED)
-find_package(OpenSSL REQUIRED)
-find_package(OpenCV REQUIRED core imgproc imgcodecs objdetect highgui)
-find_package(Doxygen)
-
-# Find libb2
-find_library(LIBB2_LIBRARY libb2.a b2 PATHS lib)
-find_path(LIBB2_INCLUDE blake2.h PATHS include)
-message(STATUS "found libb2 at ${LIBB2_LIBRARY} ${LIBB2_INCLUDE}")
-
-# Find nlohmann/json
-find_path(NLOHMANN_INCLUDE nlohmann/json.hpp PATHS include)
-message(STATUS "found nlohmann/json at ${NLOHMANN_INCLUDE}")
-
-# Catch2
-set(CATCH_BUILD_TESTING OFF)
-set(CATCH_INSTALL_DOCS OFF)
-set(CATCH_INSTALL_HELPERS OFF)
-add_subdirectory(testing/Catch2)
-
-pkg_check_modules(HIREDIS REQUIRED IMPORTED_TARGET hiredis)
-pkg_check_modules(LIBUNWIND IMPORTED_TARGET libunwind)
-pkg_check_modules(LIBEXIF REQUIRED IMPORTED_TARGET libexif)
-
 set(CMAKE_CXX_STANDARD 17)
 set(CONFIG_FILENAME "hearty_rabbit.json")
 
 # OpenCV haarcascade model for unit test
 message(STATUS "using haarcascade at ${HAARCASCADE_PATH}")
 
-# use new C++ ABI
-add_definitions(-D_GLIBCXX_USE_CXX11_ABI=1)
+include(thirdparty/thirdparty.cmake)
 
-include_directories(
-	${OpenCV_INCLUDE_DIRS}
-	${LIBUNWIND_INCLUDE_DIRS}
-	${LIBB2_INCLUDE}
-	${NLOHMANN_INCLUDE}
-	${CMAKE_BINARY_DIR}
-	${PROJECT_SOURCE_DIR}/src
-)
+include_directories(${CMAKE_BINARY_DIR})
 
 # Post-processing
 configure_file(config.hh.in config.hh)
@@ -83,138 +48,8 @@ foreach(fullpath ${DYNAMIC_RESOURCES})
 endforeach(fullpath)
 file(APPEND ${WEB_RESOURCE_LIST} "};\n}")
 
-###################################################################################################
-# common library
-###################################################################################################
-
-# common code for both server and client
-file(GLOB_RECURSE COMMON_SRC src/common/*.cc src/common/*.hh src/common/*.ipp)
-add_library(hrbcommon ${COMMON_SRC})
-target_link_libraries(hrbcommon PUBLIC
-	magic
-	Boost::system Boost::program_options stdc++fs
-	${LIBB2_LIBRARY}
-	${CMAKE_THREAD_LIBS_INIT}
-)
-
-###################################################################################################
-# server library
-# all server side codes are built as a library for unit test
-###################################################################################################
-
-file(GLOB_RECURSE SERVER_SRC src/server/*.cc src/server/*.hh src/server/*.ipp)
-add_library(hrbsrv ${SERVER_SRC} ${CMAKE_CURRENT_BINARY_DIR}/config.hh)
-target_link_libraries(hrbsrv PUBLIC
-	hrbcommon
-	PkgConfig::HIREDIS
-	PkgConfig::LIBEXIF
-	OpenSSL::SSL
-	OpenSSL::Crypto
-	${OpenCV_LIBS}
-	${LIBUNWIND_STATIC_LIBRARIES}
-	${CMAKE_THREAD_LIBS_INIT}
-)
-target_include_directories(
-	hrbsrv PUBLIC
-	${PROJECT_SOURCE_DIR}/src/server
-)
-
-###################################################################################################
-# client library
-###################################################################################################
-
-file(GLOB_RECURSE CLIENT_SRC src/client/*.cc src/client/*.hh src/client/*.ipp)
-add_library(hrbclient ${CLIENT_SRC})
-target_link_libraries(
-	hrbclient
-	hrbcommon
-	OpenSSL::SSL
-	OpenSSL::Crypto
-	${OpenCV_LIBS}
-	${LIBUNWIND_STATIC_LIBRARIES}
-	${CMAKE_THREAD_LIBS_INIT}
-)
-target_include_directories(
-	hrbclient PUBLIC
-	${PROJECT_SOURCE_DIR}/src/client
-)
-
-###################################################################################################
-# unit test common library
-###################################################################################################
-add_library(test_common testing/common/TestImages.cc testing/common/TestImages.hh)
-target_include_directories(test_common PUBLIC ${PROJECT_SOURCE_DIR}/testing/common)
-
-###################################################################################################
-# server-side unit tests: test cases for the server-side code
-# Server will fail to built if any of these test cases failed.
-###################################################################################################
-
-file(GLOB_RECURSE SRV_UT_SRC testing/unittest/*.cc testing/unittest/*.hh)
-#set(SRV_UT_SRC testing/unittest/hrb/Ownership-UT.cc testing/unittest/testing.cc)
-add_executable(unittest ${SRV_UT_SRC})
-target_link_libraries(unittest PUBLIC Catch2::Catch2 test_common hrbsrv)
-
-# Automatically run unit tests after the build
-# Although we specified the ${CMAKE_BINARY_DIR} as the current directory when running unit tests,
-# the test cases should not use absolute path when referring to test data. The test cases
-# must not assume the location of ${CMAKE_BINARY_DIR} relative to the source code.
-add_custom_command(
-	TARGET unittest
-	COMMENT "Running server-side unit tests"
-	POST_BUILD
-	WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-	COMMAND unittest
-)
-
-###################################################################################################
-# client-side unit tests: test cases for the client-side code
-# These test cases requires the server to be running.
-###################################################################################################
-
-file(
-	GLOB_RECURSE CLIENT_UT_SRC
-	testing/include/*.hh testing/tests/image/TestImages.cc
-	testing/client/*.cc testing/client/*/*.hh
-)
-add_executable(clienttest ${CLIENT_UT_SRC})
-target_link_libraries(clienttest PRIVATE Catch2::Catch2 test_common hrbclient hrbsrv)
-
-# Automatically run unit tests after the build
-# Although we specified the ${CMAKE_BINARY_DIR} as the current directory when running unit tests,
-# the test cases should not use absolute path when referring to test data. The test cases
-# must not assume the location of ${CMAKE_BINARY_DIR} relative to the source code.
-add_custom_command(
-	TARGET clienttest
-	COMMENT "Running client-side unit tests"
-	POST_BUILD
-	WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-	COMMAND clienttest
-)
-
-###################################################################################################
-# Main server executable
-###################################################################################################
-
-add_executable(hearty_rabbit src/server/main.cc)
-target_link_libraries(hearty_rabbit PRIVATE hrbsrv)
-add_dependencies(hearty_rabbit unittest clienttest)
-
-if (BUILD_CLIENT)
-	add_subdirectory(client/qt)
-	
-	add_executable(gui_driver testing/gui_driver/main.cc)
-	target_link_libraries(gui_driver PRIVATE hrbclient hrbsrv test_common)
-endif()
-
-###################################################################################################
-# hrbsync: directory sync with hearty rabbit server
-###################################################################################################
-
-if (BUILD_CLIENT)
-	add_executable(hrbsync client/hrbsync/main.cc)
-	target_link_libraries(hrbsync PRIVATE hrbclient)
-endif()
+add_subdirectory(src)
+add_subdirectory(testing)
 
 ###################################################################################################
 # Doxygen

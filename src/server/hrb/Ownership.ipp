@@ -12,16 +12,15 @@
 
 #include "Ownership.hh"
 #include "BlobRef.hh"
-#include "CollEntryDB.hh"
+#include "BlobInodeDB.hh"
 #include "RedisKeys.hh"
 
 #include "net/Redis.hh"
 
-#include "common/hrb/Permission.hh"
-#include "common/hrb/Collection.hh"
-#include "common/hrb/CollectionList.hh"
-#include "common/util/Error.hh"
-#include "common/util/Escape.hh"
+#include "hrb/Permission.hh"
+#include "hrb/CollectionList.hh"
+#include "util/Error.hh"
+#include "util/Escape.hh"
 
 #include "crypto/Authentication.hh"
 #include "util/Log.hh"
@@ -32,18 +31,17 @@
 #include <boost/range/adaptor/transformed.hpp>
 
 #include <vector>
-#include <iostream>
 
 #pragma once
 
 namespace hrb {
 
-template <typename Complete>
-void Ownership::link(
+template <typename Complete, typename>
+void Ownership::link_blob(
 	redis::Connection& db,
-	std::string_view coll_name,
+	std::string_view coll,
 	const ObjectID& blobid,
-	const CollEntry& entry,
+	const BlobInode& entry,
 	Complete&& complete
 )
 {
@@ -52,20 +50,20 @@ void Ownership::link(
 		{
 			comp(ec);
 		},
-		link_command(coll_name, blobid, entry)
+		link_command(coll, blobid, entry)
 	);
 }
 
-template <typename Complete>
-void Ownership::unlink(
+template <typename Complete, typename>
+void Ownership::unlink_blob(
 	redis::Connection& db,
-	std::string_view coll_name,
+	std::string_view coll,
 	const ObjectID& blobid,
 	Complete&& complete
 )
 {
 	db.do_write(
-		unlink_command(coll_name, blobid),
+		unlink_command(coll, blobid),
 		[comp=std::forward<Complete>(complete)](auto&& reply, std::error_code ec)
 		{
 			if (!reply || ec)
@@ -75,8 +73,8 @@ void Ownership::unlink(
 	);
 }
 
-template <typename Complete>
-void Ownership::find_collection(
+template <typename Complete, typename>
+void Ownership::get_collection(
 	redis::Connection& db,
 	const Authentication& requester,
 	std::string_view coll,
@@ -111,44 +109,15 @@ void Ownership::find_collection(
 
 			// This should never happen unless the redis server has bugs.
 			else
-				comp(no_collection(), hrb::make_error_code(Error::redis_command_error));
+				comp(Collection{}, hrb::make_error_code(Error::redis_command_error));
 		},
 		scan_collection_command(coll)
 	);
 
 }
 
-template <typename Complete>
-void Ownership::list(
-	redis::Connection& db,
-	std::string_view coll,
-	Complete&& complete
-) const
-{
-	auto coll_hash = key::collection(m_user, coll);
-	db.command(
-		[
-			comp=std::forward<Complete>(complete)
-		](auto&& reply, std::error_code&& ec) mutable
-		{
-			if (!reply || ec)
-				Log(LOG_WARNING, "list() reply %1% %2%", reply.as_error(), ec);
-
-			using namespace boost::adaptors;
-			comp(
-				reply |
-				transformed([](auto&& reply){return ObjectID::from_raw(reply.as_string());}) |
-				filtered([](auto&& opt_oid){return opt_oid.has_value();}) |
-				transformed([](auto&& opt_oid){return *opt_oid;}),
-				ec
-			);
-		},
-		"HKEYS %b", coll_hash.data(), coll_hash.size()
-	);
-}
-
-template <typename Complete>
-void Ownership::rename(
+template <typename Complete, typename>
+void Ownership::rename_blob(
 	redis::Connection& db,
 	std::string_view coll,
 	const ObjectID& blobid,
@@ -168,8 +137,8 @@ void Ownership::rename(
 	);
 }
 
-template <typename Complete>
-void Ownership::find(
+template <typename Complete, typename>
+void Ownership::get_blob(
 	redis::Connection& db,
 	std::string_view coll,
 	const ObjectID& blob,
@@ -177,7 +146,7 @@ void Ownership::find(
 ) const
 {
 	auto coll_hash = key::collection(m_user, coll);
-	auto blob_meta = key::blob_meta(m_user);
+	auto blob_meta = key::blob_inode(m_user);
 	static const char lua[] = R"__(
 		if redis.call('HEXISTS', KEYS[1], ARGV[1]) == 1 then
 			return {redis.call('HGET', KEYS[2], ARGV[1]), redis.call('HGET', KEYS[1], ARGV[1])}
@@ -190,17 +159,42 @@ void Ownership::find(
 			comp=std::forward<Complete>(complete)
 		](auto&& entry, std::error_code ec) mutable
 		{
-			if (!ec && entry.is_nil())
-				ec = Error::object_not_exist;
-
-			if (entry.array_size() == 2)
-				comp(CollEntryDB{entry[0].as_string()}, entry[1].as_string(), ec);
+			if (!ec && entry.array_size() == 2)
+				comp(BlobInodeDB{entry[0].as_string()}, entry[1].as_string(), ec);
 			else
-				comp(CollEntryDB{}, "", ec);
+				comp(BlobInodeDB{}, "", make_error_code(Error::object_not_exist));
 		},
 		"EVAL %s 2 %b %b %b", lua,
 		coll_hash.data(), coll_hash.size(),
 		blob_meta.data(), blob_meta.size(),
+		blob.data(), blob.size()
+	);
+}
+
+template <typename Complete, typename>
+void Ownership::get_blob(
+	redis::Connection& db,
+	const Authentication& requester,
+	const ObjectID& blob,
+	Complete&& complete
+) const
+{
+	auto blob_inode = key::blob_inode(m_user);
+	db.command(
+		[comp=std::forward<Complete>(complete), requester, *this](redis::Reply&& reply, std::error_code ec) mutable
+		{
+			if (ec || !reply.is_string())
+				comp(BlobInodeDB{}, make_error_code(Error::object_not_exist));
+			else
+			{
+				if (BlobInodeDB entry{reply.as_string()}; entry.permission().allow(requester.id(), m_user))
+					comp(entry, ec);
+				else
+					comp(BlobInodeDB{}, make_error_code(Error::object_not_exist));
+			}
+		},
+		"HGET %b %b",
+		blob_inode.data(), blob_inode.size(),
 		blob.data(), blob.size()
 	);
 }
@@ -251,7 +245,7 @@ void Ownership::scan_collections(
 	);
 }
 
-template <typename Complete>
+template <typename Complete, typename>
 void Ownership::scan_all_collections(
 	redis::Connection& db,
 	Complete&& complete
@@ -273,7 +267,7 @@ void Ownership::scan_all_collections(
 	);
 }
 
-template <typename Complete>
+template <typename Complete, typename>
 void Ownership::set_permission(
 	redis::Connection& db,
 	const ObjectID& blobid,
@@ -292,7 +286,7 @@ void Ownership::set_permission(
 	);
 }
 
-template <typename Complete>
+template <typename Complete, typename>
 void Ownership::move_blob(
 	redis::Connection& db,
 	std::string_view src_coll,
@@ -322,7 +316,7 @@ void Ownership::list_public_blobs(
 )
 {
 	db.command(
-		[user=m_user, comp=std::forward<Complete>(complete)](auto&& reply, auto ec) mutable
+		[comp=std::forward<Complete>(complete)](auto&& reply, auto ec) mutable
 		{
 			if (!reply)
 				Log(LOG_WARNING, "list_public_blobs() script return %1%", reply.as_error());
@@ -341,7 +335,7 @@ void Ownership::list_public_blobs(
 							std::string{owner.as_string()},
 							std::string{coll.as_string()},
 							*blob_id,
-							CollEntryDB{entry_str.as_string()}
+							BlobInodeDB{entry_str.as_string()}
 	                    };
 
 					return result;
@@ -360,7 +354,7 @@ template <typename Complete>
 void Ownership::query_blob(redis::Connection& db, const ObjectID& blob, Complete&& complete)
 {
 	auto blob_ref   = key::blob_refs(m_user, blob);
-	auto blob_meta  = key::blob_meta(m_user);
+	auto blob_meta  = key::blob_inode(m_user);
 
 	static const char lua[] = R"__(
 		local dirs = {}
@@ -381,7 +375,7 @@ void Ownership::query_blob(redis::Connection& db, const ObjectID& blob, Complete
 			comp(reply.kv_pairs() |
 				transformed([blob, &user](auto&& kv)
 				{
-					return BlobRef{user, std::string{kv.key()}, blob, CollEntryDB{kv.value().as_string()}};
+					return BlobRef{user, std::string{kv.key()}, blob, BlobInodeDB{kv.value().as_string()}};
 				}),
 				ec
 			);
@@ -394,7 +388,7 @@ void Ownership::query_blob(redis::Connection& db, const ObjectID& blob, Complete
 	);
 }
 
-template <typename Complete>
+template <typename Complete, typename>
 void Ownership::set_cover(redis::Connection& db, std::string_view coll, const ObjectID& blob, Complete&& complete) const
 {
 	db.command(

@@ -12,7 +12,7 @@
 
 #pragma once
 
-#include "common/util/FS.hh"
+#include "util/FS.hh"
 
 #include <opencv2/core/mat.hpp>
 #include <vector>

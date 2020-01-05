@@ -14,15 +14,15 @@
 #include "UploadFile.hh"
 
 // HeartyRabbit headers
-#include "common/util/Escape.hh"
+#include "util/Escape.hh"
 #include "image/ImageContent.hh"
 #include "image/PHash.hh"
 #include "image/EXIF2.hh"
 
 #include "util/Configuration.hh"
 #include "util/Log.hh"
-#include "common/util/Magic.hh"
-#include "common/util/MMap.hh"
+#include "util/Magic.hh"
+#include "util/MMap.hh"
 
 // JSON for saving meta data
 #include <nlohmann/json.hpp>
@@ -33,7 +33,6 @@
 
 #include <limits>
 #include <fstream>
-#include <server/image/EXIF2.hh>
 
 namespace hrb {
 
