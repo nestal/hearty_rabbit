@@ -1,9 +1,3 @@
-# Catch2
-set(CATCH_BUILD_TESTING OFF)
-set(CATCH_INSTALL_DOCS OFF)
-set(CATCH_INSTALL_HELPERS OFF)
-add_subdirectory(Catch2)
-
 ###################################################################################################
 # Unit test common library: code shared between unit tests
 ###################################################################################################
@@ -28,7 +22,7 @@ add_custom_command(
 	TARGET unittest
 	COMMENT "Running server-side unit tests"
 	POST_BUILD
-	WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+	WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 	COMMAND unittest
 )
 
@@ -50,7 +44,7 @@ add_custom_command(
 	TARGET clienttest
 	COMMENT "Running client-side unit tests"
 	POST_BUILD
-	WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+	WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 	COMMAND clienttest
 )
 

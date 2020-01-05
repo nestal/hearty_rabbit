@@ -16,15 +16,9 @@ set(CONFIG_FILENAME "hearty_rabbit.json")
 # OpenCV haarcascade model for unit test
 message(STATUS "using haarcascade at ${HAARCASCADE_PATH}")
 
-find_package(nlohmann_json 3.2.0 REQUIRED)
+include(thirdparty/thirdparty.cmake)
 
-include_directories(
-	${OpenCV_INCLUDE_DIRS}
-	${LIBUNWIND_INCLUDE_DIRS}
-	${LIBB2_INCLUDE}
-	${NLOHMANN_INCLUDE}
-	${CMAKE_BINARY_DIR}
-)
+include_directories(${CMAKE_BINARY_DIR})
 
 # Post-processing
 configure_file(config.hh.in config.hh)

@@ -3,20 +3,9 @@ find_package(Boost REQUIRED COMPONENTS system program_options)
 find_package(Threads REQUIRED)
 find_package(PkgConfig REQUIRED)
 find_package(OpenSSL REQUIRED)
-find_package(OpenCV REQUIRED core imgproc imgcodecs objdetect highgui)
 find_package(Doxygen)
 
-# Find libb2
-find_library(LIBB2_LIBRARY libb2.a b2 PATHS lib)
-find_path(LIBB2_INCLUDE blake2.h PATHS include)
-message(STATUS "found libb2 at ${LIBB2_LIBRARY} ${LIBB2_INCLUDE}")
-
-# Find nlohmann/json
-find_path(NLOHMANN_INCLUDE nlohmann/json.hpp PATHS include)
-message(STATUS "found nlohmann/json at ${NLOHMANN_INCLUDE}")
-
 pkg_check_modules(HIREDIS REQUIRED IMPORTED_TARGET hiredis)
-pkg_check_modules(LIBUNWIND IMPORTED_TARGET libunwind)
 pkg_check_modules(LIBEXIF REQUIRED IMPORTED_TARGET libexif)
 
 ###################################################################################################
@@ -29,12 +18,12 @@ add_library(hrbcommon ${COMMON_SRC})
 target_link_libraries(hrbcommon PUBLIC
 	magic
 	Boost::system Boost::program_options stdc++fs
-	${LIBB2_LIBRARY}
+	nlohmann_json::nlohmann_json
+	OpenCV::OpenCV
+	Blake2::Blake2
 	${CMAKE_THREAD_LIBS_INIT}
 )
-target_include_directories(hrbcommon PUBLIC
-	${CMAKE_CURRENT_SOURCE_DIR}/common
-)
+target_include_directories(hrbcommon PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/common)
 
 ###################################################################################################
 # server library
@@ -49,14 +38,12 @@ target_link_libraries(hrbsrv PUBLIC
 	PkgConfig::LIBEXIF
 	OpenSSL::SSL
 	OpenSSL::Crypto
-	${OpenCV_LIBS}
-	${LIBUNWIND_STATIC_LIBRARIES}
+	nlohmann_json::nlohmann_json
+	OpenCV::OpenCV
+	Blake2::Blake2
 	${CMAKE_THREAD_LIBS_INIT}
 )
-target_include_directories(
-	hrbsrv PUBLIC
-	${CMAKE_CURRENT_SOURCE_DIR}/server
-)
+target_include_directories(hrbsrv PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/server)
 
 ###################################################################################################
 # client library
@@ -69,14 +56,9 @@ target_link_libraries(
 	hrbcommon
 	OpenSSL::SSL
 	OpenSSL::Crypto
-	${OpenCV_LIBS}
-	${LIBUNWIND_STATIC_LIBRARIES}
 	${CMAKE_THREAD_LIBS_INIT}
 )
-target_include_directories(
-	hrbclient PUBLIC
-	${CMAKE_CURRENT_SOURCE_DIR}/client
-)
+target_include_directories(hrbclient PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/client)
 
 ###################################################################################################
 # Main server executable
