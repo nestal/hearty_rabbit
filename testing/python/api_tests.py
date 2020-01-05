@@ -9,7 +9,7 @@ import string
 import time
 
 import importlib.util
-spec = importlib.util.spec_from_file_location("hrb", "../../client/python/HeartyRabbit.py")
+spec = importlib.util.spec_from_file_location("hrb", "../../src/client/python/HeartyRabbit.py")
 hrb = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(hrb)
 

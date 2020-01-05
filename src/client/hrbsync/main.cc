@@ -10,8 +10,8 @@
 // Created by nestal on 2/1/2020.
 //
 
-#include "HRBClient.hh"
-#include "HRBClient.ipp"
+#include "http/HRBClient.hh"
+#include "http/HRBClient.ipp"
 
 #include "util/MMap.hh"
 #include "util/Magic.hh"

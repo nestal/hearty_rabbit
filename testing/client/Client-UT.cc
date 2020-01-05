@@ -15,8 +15,8 @@
 #include "ServerInstance.hh"
 #include "TestImages.hh"
 
-#include "HRBClient.hh"
-#include "HRBClient.ipp"
+#include "http/HRBClient.hh"
+#include "http/HRBClient.ipp"
 
 using namespace hrb;
 using namespace std::chrono_literals;
