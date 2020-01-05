@@ -16,6 +16,8 @@ set(CONFIG_FILENAME "hearty_rabbit.json")
 # OpenCV haarcascade model for unit test
 message(STATUS "using haarcascade at ${HAARCASCADE_PATH}")
 
+find_package(nlohmann_json 3.2.0 REQUIRED)
+
 include_directories(
 	${OpenCV_INCLUDE_DIRS}
 	${LIBUNWIND_INCLUDE_DIRS}
