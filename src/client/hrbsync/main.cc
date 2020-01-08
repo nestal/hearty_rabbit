@@ -14,7 +14,7 @@
 #include "http/HRBClient.ipp"
 
 #include "util/MMap.hh"
-#include "util/Magic.hh"
+#include "image/Image.hh"
 
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ssl/context.hpp>
@@ -27,8 +27,6 @@ using namespace std::chrono_literals;
 
 Collection load_local(const std::filesystem::path& local)
 {
-	Magic magic;
-
 	Collection coll;
 	for (auto&& file : std::filesystem::directory_iterator{local})
 	{
@@ -39,10 +37,14 @@ Collection load_local(const std::filesystem::path& local)
 			Blake2 hash;
 			hash.update(mmap.data(), mmap.size());
 
+			ImageMeta meta{mmap.buffer()};
+			std::cout << file.path().filename() << " " << meta.mime() << " " <<
+				meta.original_timestamp().value_or(Timestamp{}).http_format() << std::endl;
+
 			coll.add_blob(
 				hash.finalize(),
 				BlobInode{
-					{}, file.path().filename(), std::string{magic.mime(mmap.buffer())}, {}
+					{}, file.path().filename(), std::string{meta.mime()}, {}
 				}
 			);
 		}
