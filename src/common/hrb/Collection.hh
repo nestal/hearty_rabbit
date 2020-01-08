@@ -18,6 +18,7 @@
 #include <boost/range/iterator_range.hpp>
 
 #include <nlohmann/json.hpp>
+#include <filesystem>
 
 namespace hrb {
 
@@ -30,6 +31,7 @@ public:
 	Collection() = default;
 	Collection(std::string_view name, std::string_view owner, nlohmann::json&& meta);
 	Collection(std::string_view name, std::string_view owner, const ObjectID& cover);
+	explicit Collection(const std::filesystem::path& path);
 
 	Collection(Collection&&) = default;
 	Collection(const Collection&) = default;
