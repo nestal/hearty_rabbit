@@ -13,7 +13,7 @@
 #include <catch2/catch.hpp>
 
 #include "hrbsync/CollectionComparison.hh"
-#include "util/Random.hh"
+#include "crypto/Random.hh"
 
 using namespace hrb;
 

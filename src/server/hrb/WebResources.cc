@@ -14,7 +14,7 @@
 
 #include "hrb/ObjectID.hh"
 #include "ResourcesList.hh"
-#include "util/Blake2.hh"
+#include "crypto/Blake2.hh"
 #include "util/Escape.hh"
 #include "util/Magic.hh"
 

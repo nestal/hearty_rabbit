@@ -12,7 +12,7 @@
 
 #include <catch2/catch.hpp>
 
-#include "util/Random.hh"
+#include "crypto/Random.hh"
 #include "hrb/index/PHashDb.hh"
 #include "image/PHash.hh"
 #include "util/Escape.hh"

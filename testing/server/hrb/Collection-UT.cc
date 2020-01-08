@@ -13,7 +13,7 @@
 #include "hrb/BlobList.hh"
 #include "hrb/Collection.hh"
 #include "hrb/CollectionList.hh"
-#include "util/Random.hh"
+#include "crypto/Random.hh"
 
 #include <catch2/catch.hpp>
 

@@ -18,7 +18,7 @@
 #include "crypto/Authentication.hh"
 #include "crypto/Authentication.ipp"
 #include "crypto/Password.hh"
-#include "util/Random.hh"
+#include "crypto/Random.hh"
 
 #include <boost/asio/io_context.hpp>
 #include <boost/algorithm/hex.hpp>

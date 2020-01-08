@@ -14,7 +14,7 @@
 
 #include "hrb/Server.hh"
 #include "crypto/Password.hh"
-#include "util/Random.hh"
+#include "crypto/Random.hh"
 #include "util/Configuration.hh"
 
 #include "util/FS.hh"

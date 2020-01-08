@@ -12,7 +12,7 @@
 
 #include <catch2/catch.hpp>
 
-#include "util/Random.hh"
+#include "crypto/Random.hh"
 
 #include <random>
 #include <chrono>

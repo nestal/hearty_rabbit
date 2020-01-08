@@ -15,7 +15,7 @@
 #include "Password.hh"
 
 #include "util/Cookie.hh"
-#include "util/Random.hh"
+#include "crypto/Random.hh"
 #include "net/Redis.hh"
 #include "util/Error.hh"
 #include "util/Log.hh"
