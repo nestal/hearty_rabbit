@@ -15,7 +15,7 @@
 #include "hrb/ObjectID.hh"
 #include "util/Timestamp.hh"
 
-#include "image/PHash.hh"
+#include "image/Image.hh"
 #include "util/Size2D.hh"
 #include "util/FS.hh"
 #include "util/MMap.hh"
@@ -57,7 +57,8 @@ public:
 	std::optional<PHash> phash() const;
 
 	nlohmann::json meta_json() const;
-	MMap meta() const;
+	MMap load_meta() const;
+	auto& meta() const {return m_meta;}
 
 	Timestamp original_datetime() const;
 
@@ -69,27 +70,13 @@ private:
 	void generate_image_rendition(const JPEGRenditionSetting& cfg, const fs::path& dest, const fs::path& haar_path, std::error_code& ec) const;
 	void update_meta() const;
 	MMap deduce_meta(MMap&& master) const;
-	MMap deduce_mime(MMap&& master) const;
-	MMap deduce_phash(MMap&& master) const;
-	MMap deduce_original(MMap&& master) const;
-	MMap deduce_uploaded(MMap&& master) const;
 	MMap master(MMap&& master) const;
 
 private:
 	ObjectID    m_id{};				//!< ID of the blob
 	fs::path    m_dir;				//!< The directory in file system that stores all renditions of the blob
-	struct Meta
-	{
-		std::string	mime;						//!< Mime type of the master rendition
-		std::optional<PHash> 		phash;		//!< Phash of the master rendition (for images only)
-		std::optional<Timestamp>	original;	//!< Date time stored inside the master rendition (e.g. EXIF2)
-		Timestamp	uploaded;
-	};
 
-	friend void to_json(nlohmann::json& dest, const Meta& src);
-	friend void from_json(const nlohmann::json& src, Meta& dest);
-
-	mutable std::optional<Meta>	m_meta;
+	mutable std::optional<ImageMeta>	m_meta;
 };
 
 } // end of namespace hrb

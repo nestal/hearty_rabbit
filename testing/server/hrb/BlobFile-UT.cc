@@ -70,7 +70,7 @@ TEST_CASE_METHOD(BlobFileUTFixture, "upload non-image BlobFile", "[normal]")
 	REQUIRE(!ec);
 	REQUIRE(subject.ID() != ObjectID{});
 	REQUIRE(subject.mime() == "text/x-c++");
-	REQUIRE_FALSE(subject.phash().has_value());
+	REQUIRE_FALSE(!subject.phash().has_value());
 	REQUIRE_FALSE(subject.is_image());
 	REQUIRE(fs::exists(m_blob_path/"master"));
 	REQUIRE(fs::exists(m_blob_path/"meta.json"));
@@ -88,7 +88,7 @@ TEST_CASE_METHOD(BlobFileUTFixture, "upload non-image BlobFile", "[normal]")
 		REQUIRE(out.buffer() == subject2.load_master(read_ec).buffer());
 		REQUIRE(!read_ec);
 		REQUIRE(subject2.mime() == "text/x-c++");
-		REQUIRE_FALSE(subject2.phash().has_value());
+		REQUIRE_FALSE(!subject2.phash().has_value());
 		REQUIRE_FALSE(subject2.is_image());
 		REQUIRE(subject2.original_datetime() != Timestamp{});
 	}
@@ -100,7 +100,7 @@ TEST_CASE_METHOD(BlobFileUTFixture, "upload non-image BlobFile", "[normal]")
 		REQUIRE(out.buffer() == subject2.rendition("thumbnail", cfg, std::string{constants::haarcascades_path}, read_ec).buffer());
 		REQUIRE(!read_ec);
 		REQUIRE(subject2.mime() == "text/x-c++");
-		REQUIRE_FALSE(subject2.phash().has_value());
+		REQUIRE_FALSE(!subject2.phash().has_value());
 		REQUIRE_FALSE(subject2.is_image());
 		REQUIRE(subject2.original_datetime() != Timestamp{});
 	}
