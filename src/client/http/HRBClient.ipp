@@ -16,6 +16,7 @@
 #include "GenericHTTPRequest.hh"
 
 #include "util/Cookie.hh"
+#include "util/AggregatedCallBack.hh"
 #include "hrb/BlobInode.hh"
 #include "hrb/Collection.hh"
 #include "hrb/CollectionList.hh"
@@ -234,6 +235,33 @@ void HRBClient::download_blob(
 			}
 		);
 		add_request(std::move(req));
+	}
+}
+
+template <typename Complete>
+void HRBClient::download_collection(
+	const Collection& coll,
+	std::string_view rendition,
+	const std::filesystem::path& dest_dir,
+	Complete&& comp
+)
+{
+	auto callback = make_shared_callback(std::forward<Complete>(comp), coll.size());
+
+	for (auto&&[id, entry] : coll)
+	{
+		download_blob(
+			coll.owner(),
+			coll.name(),
+			id,
+			rendition,
+			dest_dir / entry.filename,
+			[callback, fname=entry.filename](auto& file, std::error_code ec)
+			{
+				std::cout << "downloaded: " << fname << " " << file.size() << " bytes: " << ec << std::endl;
+				(*callback)(ec);
+			}
+		);
 	}
 }
 

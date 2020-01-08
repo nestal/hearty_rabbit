@@ -26,6 +26,7 @@
 
 namespace hrb {
 
+class Collection;
 class BaseRequest;
 class URLIntent;
 struct ObjectID;
@@ -60,6 +61,14 @@ public:
 		const ObjectID& blob,
 		std::string_view rendition,
 		const std::filesystem::path& dest,
+		Complete&& comp
+	);
+
+	template <typename Complete>
+	void download_collection(
+		const Collection& coll,
+		std::string_view rendition,
+		const std::filesystem::path& dest_dir,
 		Complete&& comp
 	);
 

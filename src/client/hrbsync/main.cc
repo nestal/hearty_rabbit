@@ -27,27 +27,17 @@
 using namespace hrb;
 using namespace std::chrono_literals;
 
-void download_difference(const CollectionComparison& comp, HRBClient& client, std::string_view owner, std::string_view coll)
+void download_difference(const CollectionComparison& comp, HRBClient& client)
 {
-	std::cout << "downloading " << comp.download().size() << " files" << std::endl;
+	auto& download = comp.download();
+	std::cout << "downloading " << download.size() << " files" << std::endl;
 
-	for (auto&&[id, entry] : comp.download())
-	{
-		std::cout << "blob: " << to_hex(id) << " " << entry.filename << std::endl;
-
-		client.download_blob(
-			owner,
-			coll,
-			id,
-			"master",
-			entry.filename,
-			[fname=entry.filename](auto& file, std::error_code ec)
-			{
-				std::cout << "downloaded: " << fname << " " << file.size() << " bytes: " << ec << std::endl;
-			}
-		);
-	}
-
+	client.download_collection(download, "master", std::filesystem::current_path(),
+		[](std::error_code ec)
+		{
+			std::cout << "downloaded finished!" << ec << std::endl;
+		}
+	);
 }
 
 int main(int argc, char **argv)
@@ -72,7 +62,7 @@ int main(int argc, char **argv)
 		client.list_collection(coll, [&client, &local](Collection&& coll, std::error_code ec)
 		{
 			if (!ec)
-				download_difference(CollectionComparison{local, coll}, client, coll.owner(), coll.name());
+				download_difference(CollectionComparison{local, coll}, client);
 		});
 	});
 	ioc.run();
