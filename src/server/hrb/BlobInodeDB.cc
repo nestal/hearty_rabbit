@@ -84,11 +84,11 @@ std::string BlobInodeDB::create(Permission perm, const nlohmann::json& json)
 	);
 }
 
-std::optional<BlobInode> BlobInodeDB::fields() const
+std::optional<Collection::Entry> BlobInodeDB::fields() const
 {
 	auto json = nlohmann::json::parse(BlobInodeDB::json(), nullptr, false);
 	if (!json.is_discarded())
-		return BlobInode{
+		return Collection::Entry{
 			permission(),
 			json.value(filename_pointer, ""),
 			json.value(mime_pointer, ""),

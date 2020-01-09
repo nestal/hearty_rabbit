@@ -25,7 +25,26 @@ namespace hrb {
 class Collection
 {
 public:
-	using iterator = std::unordered_map<ObjectID, BlobInode>::const_iterator;
+	struct Entry
+	{
+		/// Permission data that indicates who can access this inode.
+		Permission  perm;
+
+		/// When stored in blob_inode:<owner> in database, it indicates the original filename when the
+		/// blob is uploaded. When BlobInode is used to store an entry in a collection (e.g. when returned
+		/// by Ownership::get_collection()), this field indicates the filename in that collection, and not
+		/// the original filename.
+		std::string filename;
+
+		/// Mime type of the blob. Should be the same for all renditions.
+		std::string mime;
+
+		/// Creation time of the blob. For image it should be determined by EXIF tags. It that is not available
+		/// then the upload time will be used as a last restore.
+		Timestamp   timestamp;
+	};
+
+	using iterator = std::unordered_map<ObjectID, Entry>::const_iterator;
 
 public:
 	Collection() = default;
@@ -53,8 +72,8 @@ public:
 	[[nodiscard]] nlohmann::json& meta() {return m_meta;}
 	[[nodiscard]] const nlohmann::json& meta() const {return m_meta;}
 
-	void add_blob(const ObjectID& id, BlobInode&& entry);
-	void add_blob(const ObjectID& id, const BlobInode& entry);
+	void add_blob(const ObjectID& id, Entry&& entry);
+	void add_blob(const ObjectID& id, const Entry& entry);
 
 	void remove_blob(const ObjectID& id);
 
@@ -66,7 +85,10 @@ private:
 	std::string     m_owner;
 	nlohmann::json  m_meta;
 
-	std::unordered_map<ObjectID, BlobInode> m_blobs;
+	std::unordered_map<ObjectID, Entry> m_blobs;
 };
+
+void to_json(nlohmann::json& dest, const Collection::Entry& src);
+void from_json(const nlohmann::json& src, Collection::Entry& dest);
 
 } // end of namespace hrb

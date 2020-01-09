@@ -29,7 +29,7 @@ namespace hrb {
 // There are 3 formats for BlobInode:
 // Database format: +{"filename": "image.jpg", "mime": "image/jpeg", "timestamp": 100}
 // JSON format:     {"filename": "image.jpg", "mime": "image/jpeg", "timestamp": 100, "perm": "public"}
-// In-memory format: BlobInode
+// In-memory format: Collection::Entry
 //
 // BlobInodeDB represents the Database format.
 // BlobInode represent in-memory format.
