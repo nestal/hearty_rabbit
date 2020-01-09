@@ -13,7 +13,6 @@
 #pragma once
 
 #include "hrb/Permission.hh"
-#include "hrb/Collection.hh"
 #include "util/Timestamp.hh"
 
 #include <nlohmann/json.hpp>
@@ -22,6 +21,8 @@
 #include <optional>
 
 namespace hrb {
+
+struct BlobInode;
 
 class BlobInodeDB
 {
@@ -39,7 +40,7 @@ public:
 	[[nodiscard]] std::string filename() const;
 	[[nodiscard]] std::string mime() 	const;
 	[[nodiscard]] Timestamp timestamp() const;
-	[[nodiscard]] std::optional<Collection::Entry> fields() const;
+	[[nodiscard]] std::optional<BlobInode> fields() const;
 
 	[[nodiscard]] std::string_view json() const;
 	[[nodiscard]] Permission permission() const;

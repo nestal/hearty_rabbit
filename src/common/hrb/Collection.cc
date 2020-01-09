@@ -52,7 +52,7 @@ Collection::Collection(const std::filesystem::path& path) :
 
 			add_blob(
 				blob,
-				Entry{
+				BlobInode{
 					{}, file.path().filename(), std::string{meta.mime()},
 					meta.original_timestamp().value_or(Timestamp{})
 				}
@@ -61,12 +61,12 @@ Collection::Collection(const std::filesystem::path& path) :
 	}
 }
 
-void Collection::add_blob(const ObjectID& id, Entry&& entry)
+void Collection::add_blob(const ObjectID& id, BlobInode&& entry)
 {
 	m_blobs.emplace(id, std::move(entry));
 }
 
-void Collection::add_blob(const ObjectID& id, const Entry& entry)
+void Collection::add_blob(const ObjectID& id, const BlobInode& entry)
 {
 	m_blobs.emplace(id, entry);
 }
@@ -82,7 +82,7 @@ void from_json(const nlohmann::json& src, Collection& dest)
 	for (auto&& item : src.at("elements").items())
 	{
 		if (auto blob = ObjectID::from_hex(item.key()); blob.has_value())
-			result.m_blobs.emplace(*blob, item.value().template get<Collection::Entry>());
+			result.m_blobs.emplace(*blob, item.value().template get<BlobInode>());
 	}
 
 	// commit changes
@@ -128,26 +128,6 @@ void Collection::update_timestamp(const ObjectID& id, Timestamp value)
 void Collection::remove_blob(const ObjectID& id)
 {
 	m_blobs.erase(id);
-}
-
-
-void from_json(const nlohmann::json& src, Collection::Entry& dest)
-{
-	dest.timestamp = src.at("timestamp");
-	dest.filename  = src.at("filename");
-	dest.mime      = src.at("mime");
-	dest.perm      = Permission::from_description(src.at("perm").get<std::string>());
-}
-
-void to_json(nlohmann::json& dest, const Collection::Entry& src)
-{
-	auto result = nlohmann::json::object();
-	result.emplace("timestamp", src.timestamp);
-	result.emplace("filename",  src.filename);
-	result.emplace("mime", src.mime);
-	result.emplace("perm", src.perm.description());
-
-	dest = std::move(result);
 }
 
 } // end of namespace hrb
