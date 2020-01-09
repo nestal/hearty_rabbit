@@ -18,15 +18,15 @@
 
 // http://engineering.curalate.com/2017/04/13/content-based-intelligent-cropping.html
 
-namespace hrb {
+namespace hrb::test {
 
-const std::filesystem::path test_images{std::filesystem::path{__FILE__}.parent_path()};
+const std::filesystem::path images{std::filesystem::path{__FILE__}.parent_path()};
 
 cv::Mat random_lena()
 {
 	thread_local std::mt19937_64 mt{std::random_device{}()};
 
-	auto lena = cv::imread((test_images/"lena.png").string(), cv::IMREAD_COLOR);
+	auto lena = cv::imread((images/"lena.png").string(), cv::IMREAD_COLOR);
 
 	std::uniform_int_distribution<> dis{16, 64};
 

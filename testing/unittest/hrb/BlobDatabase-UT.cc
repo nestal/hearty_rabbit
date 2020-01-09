@@ -70,7 +70,7 @@ TEST_CASE("Open temp file", "[normal]")
 TEST_CASE("Upload JPEG file to BlobDatabase", "[normal]")
 {
 	std::error_code ec;
-	auto black = MMap::open(test_images / "black.jpg", ec);
+	auto black = MMap::open(test::images / "black.jpg", ec);
 	REQUIRE(!ec);
 
 	Configuration cfg;

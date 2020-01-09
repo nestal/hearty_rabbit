@@ -57,7 +57,7 @@ protected:
 
 protected:
 	const fs::path  m_blob_path{"/tmp/BlobFile-UT"};
-	const fs::path  m_image_path{hrb::test_images};
+	const fs::path  m_image_path{hrb::test::images};
 };
 
 TEST_CASE_METHOD(BlobFileUTFixture, "upload non-image BlobFile", "[normal]")
@@ -222,7 +222,7 @@ TEST_CASE_METHOD(BlobFileUTFixture, "upload lena.png as BlobFile", "[normal]")
 
 TEST_CASE_METHOD(BlobFileUTFixture, "upload image from camera as BlobFile", "[normal]")
 {
-	if (fs::exists(test_images/"DSC_7926.JPG"))
+	if (fs::exists(test::images/"DSC_7926.JPG"))
 	{
 		auto [tmp, src] = upload(m_image_path/"DSC_7926.JPG");
 		std::error_code ec;

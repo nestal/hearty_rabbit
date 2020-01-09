@@ -22,7 +22,7 @@ using namespace hrb;
 TEST_CASE("JPEG image metadata", "[normal]")
 {
 	std::error_code ec;
-	auto mmap = MMap::open(test_images/"black.jpg", ec);
+	auto mmap = MMap::open(test::images/"black.jpg", ec);
 	REQUIRE(!ec);
 
 	ImageMeta meta{mmap.buffer()};

@@ -15,12 +15,13 @@
 #cmakedefine LIBUNWIND_FOUND
 
 #include <string_view>
+#include <filesystem>
 
 namespace hrb {
 namespace constants {
 
 const std::string_view config_filename = "@CONFIG_FILENAME@";
 const std::string_view version         = "@VERSION@.@BUILD_NUMBER@";
-const std::string_view haarcascades_path = "@HAARCASCADE_PATH@";
+const std::filesystem::path haarcascades_path{"@HAARCASCADE_PATH@"};
 
 }} // end of namespace

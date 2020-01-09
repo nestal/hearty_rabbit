@@ -23,7 +23,7 @@ using namespace hrb;
 TEST_CASE("read date time from black.jpg", "[normal]")
 {
 	std::error_code ec;
-	auto black = MMap::open(test_images / "black.jpg", ec);
+	auto black = MMap::open(test::images / "black.jpg", ec);
 
 	REQUIRE(!ec);
 

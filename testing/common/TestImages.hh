@@ -16,11 +16,11 @@
 #include <vector>
 #include <filesystem>
 
-namespace hrb {
+namespace hrb::test {
 
 	/// Location of the test images in the source code directory.
 	/// It is defined by a .cc file in the same directory as the test images.
-	extern const std::filesystem::path test_images;
+	extern const std::filesystem::path images;
 
 	std::vector<unsigned char> random_lena_bytes();
 	cv::Mat random_lena();

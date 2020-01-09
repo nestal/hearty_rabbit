@@ -30,7 +30,7 @@ TEST_CASE("find duplicated image in database", "[normal]")
 
 	PHashDb subject{*redis};
 
-	auto lena = phash(hrb::test_images / "lena.png");
+	auto lena = phash(hrb::test::images / "lena.png");
 	REQUIRE(lena.value() > 0);
 
 	auto lena_blob = insecure_random<ObjectID>();
