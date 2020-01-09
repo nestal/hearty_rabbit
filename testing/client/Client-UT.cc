@@ -86,13 +86,15 @@ TEST_CASE("simple client login", "[normal]")
 		ioc.restart();
 
 		// list default collection
-		subject.list_collection("", [&tested](auto coll, auto err)
-		{
-			REQUIRE_FALSE(err);
-			REQUIRE(coll.name() == "");
-			REQUIRE(coll.owner() == "sumsum");
-			++tested;
-		});
+		subject.get_collection(
+			"", [&tested](auto coll, auto err)
+			{
+				REQUIRE_FALSE(err);
+				REQUIRE(coll.name() == "");
+				REQUIRE(coll.owner() == "sumsum");
+				++tested;
+			}
+		);
 
 		REQUIRE(ioc.run_for(10s) > 0);
 		REQUIRE(tested == 6);
@@ -122,6 +124,26 @@ TEST_CASE("simple client login", "[normal]")
 		REQUIRE(ioc.run_for(10s) > 0);
 		REQUIRE(tested == 8);
 		ioc.restart();
+
+		// download whole collection
+		subject.get_collection(
+			"", [&subject, &tested](auto coll, auto err)
+			{
+				REQUIRE_FALSE(err);
+				REQUIRE(coll.name() == "");
+				REQUIRE(coll.owner() == "sumsum");
+
+				subject.download_collection(coll, "master", std::filesystem::current_path(), [&tested](auto ec)
+				{
+					REQUIRE_FALSE(ec);
+					++tested;
+				});
+			}
+		);
+
+		REQUIRE(ioc.run_for(10s) > 0);
+		REQUIRE(tested == 9);
+		ioc.restart();
 	}
 	SECTION("login incorrect")
 	{
@@ -135,13 +157,15 @@ TEST_CASE("simple client login", "[normal]")
 		REQUIRE(tested == 1);
 		ioc.restart();
 
-		subject.list_collection("", [&tested](auto coll, auto err)
-		{
-			REQUIRE_FALSE(err);
-			REQUIRE(coll.name() == "");
-			REQUIRE(coll.owner() == "");
-			++tested;
-		});
+		subject.get_collection(
+			"", [&tested](auto coll, auto err)
+			{
+				REQUIRE_FALSE(err);
+				REQUIRE(coll.name() == "");
+				REQUIRE(coll.owner() == "");
+				++tested;
+			}
+		);
 
 		REQUIRE(ioc.run_for(10s) > 0);
 		REQUIRE(tested == 2);

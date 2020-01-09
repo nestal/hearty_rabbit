@@ -39,7 +39,7 @@ public:
 	void login(std::string_view user, std::string_view password, Complete&& comp);
 
 	template <typename Complete>
-	void list_collection(std::string_view coll, Complete&& comp);
+	void get_collection(std::string_view coll, Complete&& comp);
 
 	template <typename Complete>
 	void scan_collections(Complete&& comp);

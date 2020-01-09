@@ -59,11 +59,13 @@ int main(int argc, char **argv)
 		if (!ec)
 			std::cout << "login success!" << std::endl;
 
-		client.list_collection(coll, [&client, &local](Collection&& coll, std::error_code ec)
-		{
-			if (!ec)
-				download_difference(CollectionComparison{local, coll}, client);
-		});
+		client.get_collection(
+			coll, [&client, &local](Collection&& coll, std::error_code ec)
+			{
+				if (!ec)
+					download_difference(CollectionComparison{local, coll}, client);
+			}
+		);
 	});
 	ioc.run();
 

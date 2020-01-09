@@ -64,7 +64,7 @@ void HRBClient::login(std::string_view user, std::string_view password, Complete
 }
 
 template <typename Complete>
-void HRBClient::list_collection(std::string_view coll, Complete&& comp)
+void HRBClient::get_collection(std::string_view coll, Complete&& comp)
 {
 	auto req = request<http::empty_body, http::string_body>(
 		{URLIntent::Action::api, m_user.username(), coll, ""},

@@ -28,7 +28,7 @@ namespace {
 class HAARModel
 {
 public:
-	HAARModel(const fs::path& path)
+	explicit HAARModel(const fs::path& path)
 	{
 		auto face = path/"haarcascade_frontalface_default.xml";
 		auto eyes = path/"haarcascade_eye_tree_eyeglasses.xml";
@@ -81,7 +81,7 @@ private:
 
 } // end of local namespace
 
-ImageContent::ImageContent(const cv::Mat& image, const fs::path& haar_path) : m_image{image}
+ImageContent::ImageContent(cv::Mat image, const fs::path& haar_path) : m_image{std::move(image)}
 {
 	thread_local HAARModel model{haar_path};
 
@@ -224,7 +224,7 @@ cv::Rect ImageContent::square_crop() const
 ///
 /// \param infections
 /// \param content
-void ImageContent::add_content(std::vector<ImageContent::InflectionPoint>& infections, const cv::Rect& content, int score_ratio) const
+void ImageContent::add_content(std::vector<InflectionPoint>& infections, const cv::Rect& content, int score_ratio) const
 {
 	auto window_size = std::min(m_image.cols, m_image.rows);
 	auto score = std::max(score_ratio * content.width * content.height, 1);
@@ -244,8 +244,7 @@ void ImageContent::add_content(std::vector<ImageContent::InflectionPoint>& infec
 
 void ImageContent::check_models(const fs::path& haar_path)
 {
-	HAARModel model{haar_path};
-	if (!model)
+	if (HAARModel model{haar_path}; !model)
 		Log(LOG_WARNING, "Cannot load HAAR models in %1%. Face detection will be disabled.", haar_path);
 }
 
