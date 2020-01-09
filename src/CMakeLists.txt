@@ -78,6 +78,7 @@ target_include_directories(hrbsync_lib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/client
 
 add_executable(hrbsync client/hrbsync/main.cc)
 target_link_libraries(hrbsync PRIVATE hrbsync_lib)
+add_dependencies(hrbsync unittest clienttest)
 
 if (BUILD_CLIENT)
 	add_subdirectory(client/qt)

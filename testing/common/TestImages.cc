@@ -20,7 +20,7 @@
 
 namespace hrb {
 
-const fs::path test_images{fs::path{__FILE__}.parent_path()};
+const std::filesystem::path test_images{std::filesystem::path{__FILE__}.parent_path()};
 
 cv::Mat random_lena()
 {
