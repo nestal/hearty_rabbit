@@ -331,13 +331,16 @@ void Ownership::list_public_blobs(
 
 					std::optional<Blob> result;
 					if (auto blob_id = ObjectID::from_raw(blob.as_string()); !err && blob_id.has_value())
-						if (BlobInodeDB inode{entry_str.as_string()}; inode.fields().has_value())
-						result.emplace(
-							std::string{owner.as_string()},
-							std::string{coll.as_string()},
-							*blob_id,
-							*inode.fields()
-						);
+					{
+						BlobInodeDB inode{entry_str.as_string()};
+						if (auto fields = inode.fields(); fields.has_value())
+							result.emplace(
+								std::string{owner.as_string()},
+								std::string{coll.as_string()},
+								*blob_id,
+								*fields
+							);
+					}
 
 					return result;
 				}) |
@@ -377,8 +380,9 @@ void Ownership::query_blob(redis::Connection& db, const ObjectID& blob, Complete
 				transformed([blob, *this](auto&& kv)
 				{
 					std::optional<Blob> result;
-					if (BlobInodeDB inode{kv.value().as_string()}; inode.fields().has_value())
-						result.emplace(m_user, std::string{kv.key()}, blob, *inode.fields());
+					BlobInodeDB inode{kv.value().as_string()};
+					if (auto fields = inode.fields(); fields.has_value())
+						result.emplace(m_user, std::string{kv.key()}, blob, *fields);
 					return result;
 				}) |
 				filtered([](auto&& opt){return opt.has_value();}) |

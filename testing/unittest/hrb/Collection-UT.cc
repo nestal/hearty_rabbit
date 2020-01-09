@@ -38,9 +38,15 @@ TEST_CASE("simple Collection <-> JSON round-trip", "[normal]")
 {
 	auto cover = insecure_random<ObjectID>();
 
+	auto abc = insecure_random<ObjectID>();
+	auto img = insecure_random<ObjectID>();
+
 	Collection subject{"some_coll", "sumyung", nlohmann::json::object({{"cover", cover}})};
-	subject.add_blob(insecure_random<ObjectID>(), {Permission::public_(), "abc.txt", "text/plain", Timestamp{101s}});
-	subject.add_blob(insecure_random<ObjectID>(), {Permission::private_(), "image.jpeg", "image/jpeg", Timestamp{1h}});
+	subject.add_blob(abc, {Permission::public_(), "abc.txt", "text/plain", Timestamp{101s}});
+	subject.add_blob(img, {Permission::private_(), "image.jpeg", "image/jpeg", Timestamp{1h}});
+
+	// try updating one blob's timestamp
+	subject.update_timestamp(abc, Timestamp{342s});
 
 	// don't use {} to construct nlohmann. it will produce an JSON array
 	nlohmann::json json(subject);
@@ -53,6 +59,9 @@ TEST_CASE("simple Collection <-> JSON round-trip", "[normal]")
 	REQUIRE(subject.owner() == ret.owner());
 	REQUIRE(subject.name() == ret.name());
 	REQUIRE(subject.cover() == ret.cover());
+	REQUIRE(ret.get_blob(abc).has_value());
+	REQUIRE(ret.get_blob(abc)->info().timestamp == Timestamp{342s});
+	REQUIRE(ret.get_blob(img)->info().timestamp == Timestamp{1h});
 }
 
 // verify operator==() before using it to verify result of other tests

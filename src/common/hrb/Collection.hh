@@ -22,6 +22,8 @@
 
 namespace hrb {
 
+class Blob;
+
 class Collection
 {
 public:
@@ -46,6 +48,8 @@ public:
 	[[nodiscard]] auto end() const {return m_blobs.end();}
 	[[nodiscard]] auto end() {return m_blobs.end();}
 	[[nodiscard]] iterator find(const ObjectID& id) const;
+
+	[[nodiscard]] std::optional<Blob> get_blob(const ObjectID& id) const;
 
 	friend void from_json(const nlohmann::json& src, Collection& dest);
 	friend void to_json(nlohmann::json& dest, const Collection& src);

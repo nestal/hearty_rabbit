@@ -11,8 +11,9 @@
 //
 
 #include "Collection.hh"
-#include "util/Escape.hh"
+#include "Blob.hh"
 
+#include "util/Escape.hh"
 #include "util/MMap.hh"
 #include "util/Magic.hh"
 #include "image/Image.hh"
@@ -128,6 +129,14 @@ void Collection::update_timestamp(const ObjectID& id, Timestamp value)
 void Collection::remove_blob(const ObjectID& id)
 {
 	m_blobs.erase(id);
+}
+
+std::optional<Blob> Collection::get_blob(const ObjectID& id) const
+{
+	if (auto it = m_blobs.find(id); it != m_blobs.end())
+		return Blob{m_owner, m_name, id, it->second};
+	else
+		return std::nullopt;
 }
 
 } // end of namespace hrb
