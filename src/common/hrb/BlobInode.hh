@@ -50,6 +50,7 @@ namespace hrb {
 //
 // Dependency graph:
 // BlobInodeDB (database format) -> BlobInode (in-memory format) -> nlohmann::json (JSON format)
+
 struct BlobInode
 {
 	/// Permission data that indicates who can access this inode.

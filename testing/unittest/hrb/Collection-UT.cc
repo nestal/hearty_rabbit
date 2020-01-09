@@ -10,7 +10,7 @@
 // Created by nestal on 6/7/18.
 //
 
-#include "hrb/BlobList.hh"
+#include "hrb/Blob.hh"
 #include "hrb/Collection.hh"
 #include "hrb/CollectionList.hh"
 #include "crypto/Random.hh"
@@ -99,54 +99,50 @@ TEST_CASE("simple CollectionList <-> JSON round-trip", "[normal]")
 
 TEST_CASE("simple BlobList <-> JSON round-trip", "[normal]")
 {
-	BlobList subject;
-	subject.add("sumsum", "coll", insecure_random<ObjectID>(), BlobInode{Permission::shared(), "abc.txt", "text/css"});
+	BlobElements subject;
+	subject.emplace_back("sumsum", "coll", insecure_random<ObjectID>(), BlobInode{Permission::shared(), "abc.txt", "text/css"});
 
 	REQUIRE(subject.size() == 1);
-	for (auto&& e : subject.entries())
+	for (auto&& e : subject)
 	{
-		REQUIRE(e.owner == "sumsum");
-		REQUIRE(e.coll == "coll");
-		REQUIRE(e.entry.filename == "abc.txt");
-		REQUIRE(e.entry.mime == "text/css");
-		REQUIRE(e.entry.perm == Permission::shared());
+		REQUIRE(e.owner() == "sumsum");
+		REQUIRE(e.collection() == "coll");
+		REQUIRE(e.info().filename == "abc.txt");
+		REQUIRE(e.info().mime == "text/css");
+		REQUIRE(e.info().perm == Permission::shared());
 	}
-	subject.add("yung", "cool", insecure_random<ObjectID>(), BlobInode{Permission::private_(), "IMG_0102.JPG", "image/jpeg"});
+	subject.emplace_back("yung", "cool", insecure_random<ObjectID>(), BlobInode{Permission::private_(), "IMG_0102.JPG", "image/jpeg"});
 	REQUIRE(subject.size() == 2);
-
-	INFO("subject = " << subject.json());
 
 	nlohmann::json json(std::move(subject));
 
-	auto ret = json.get<BlobList>();
-	REQUIRE(ret.size() == 2);
-	INFO("ret = " << ret.json());
-
-	// sort it by owner name for easy checking
-	auto entries = ret.entries();
-	std::sort(entries.begin(), entries.end(), [](auto&& e1, auto&& e2){return e1.owner < e2.owner;});
+	auto entries = json.get<BlobElements>();
 	REQUIRE(entries.size() == 2);
 
-	REQUIRE(entries[0].owner == "sumsum");
-	REQUIRE(entries[0].coll == "coll");
-	REQUIRE(entries[0].entry.filename == "abc.txt");
-	REQUIRE(entries[0].entry.mime == "text/css");
-	REQUIRE(entries[0].entry.perm == Permission::shared());
-	REQUIRE(entries[1].owner == "yung");
-	REQUIRE(entries[1].coll == "cool");
-	REQUIRE(entries[1].entry.filename == "IMG_0102.JPG");
-	REQUIRE(entries[1].entry.mime == "image/jpeg");
-	REQUIRE(entries[1].entry.perm == Permission::private_());
+	// sort it by owner name for easy checking
+	std::sort(entries.begin(), entries.end(), [](auto&& e1, auto&& e2){return e1.owner() < e2.owner();});
+	REQUIRE(entries.size() == 2);
+
+	REQUIRE(entries[0].owner() == "sumsum");
+	REQUIRE(entries[0].collection() == "coll");
+	REQUIRE(entries[0].info().filename == "abc.txt");
+	REQUIRE(entries[0].info().mime == "text/css");
+	REQUIRE(entries[0].info().perm == Permission::shared());
+	REQUIRE(entries[1].owner() == "yung");
+	REQUIRE(entries[1].collection() == "cool");
+	REQUIRE(entries[1].info().filename == "IMG_0102.JPG");
+	REQUIRE(entries[1].info().mime == "image/jpeg");
+	REQUIRE(entries[1].info().perm == Permission::private_());
 }
 
 TEST_CASE("empty BlobList serialization", "[normal]")
 {
-	BlobList subject;
+	BlobElements subject;
 	REQUIRE(subject.size() == 0);
 
-	nlohmann::json json(std::move(subject));
+	nlohmann::json json(subject);
 	REQUIRE(json.is_object());
 
-	auto ret = json.get<BlobList>();
+	auto ret = json.get<BlobElements>();
 	REQUIRE(ret.size() == 0);
 }

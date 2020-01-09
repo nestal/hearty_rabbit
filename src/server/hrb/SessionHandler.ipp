@@ -26,7 +26,7 @@
 #include "net/MMapResponseBody.hh"
 #include "util/Log.hh"
 
-#include "hrb/BlobList.hh"
+#include "hrb/Blob.hh"
 #include "hrb/Collection.hh"
 #include "util/Escape.hh"
 #include "hrb/URLIntent.hh"
@@ -598,7 +598,7 @@ void SessionHandler::list_public_blobs(bool is_json, std::string_view user, unsi
 		*m_db,
 		[send=std::forward<Send>(send), version, this, is_json, user=std::string{user}](auto&& blob_refs, auto ec) mutable
 		{
-			BlobList blob_list;
+			BlobElements blob_list;
 			for (auto&& bref : blob_refs)
 			{
 				// filter by "user" if it is not empty: that means we want all public blobs from all users
@@ -606,8 +606,9 @@ void SessionHandler::list_public_blobs(bool is_json, std::string_view user, unsi
 				if ((user.empty() || user == bref.user) &&
 					bref.entry.permission() == Permission::public_())
 				{
+					// TODO: try to save one json->BlobInode->json round trip
 					if (auto json = nlohmann::json::parse(bref.entry.json(), nullptr, false); !json.is_discarded())
-						blob_list.add(bref.user, bref.coll, bref.blob, bref.entry.permission(), std::move(json));
+						blob_list.emplace_back(bref.user, bref.coll, bref.blob, *bref.entry.fields());
 				}
 			}
 
