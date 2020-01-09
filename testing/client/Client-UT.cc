@@ -41,6 +41,8 @@ TEST_CASE("simple client login", "[normal]")
 		REQUIRE(tested == 1);
 		ioc.restart();
 
+
+
 		// upload the source code of this unit test case
 		subject.upload("", __FILE__, [&tested, &subject](auto intent, auto err)
 		{

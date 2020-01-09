@@ -19,12 +19,14 @@
 #include "util/FS.hh"
 
 #include <boost/beast/http/verb.hpp>
+#include <boost/beast/http/fields.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ssl.hpp>
 #include <boost/asio/strand.hpp>
 
 namespace hrb {
 
+class BlobInode;
 class Collection;
 class BaseRequest;
 class URLIntent;
@@ -81,9 +83,7 @@ private:
 	template <typename Complete, typename Response>
 	void handle_upload_response(Response& response, Complete&& comp, std::error_code ec);
 
-	void add_request(std::shared_ptr<BaseRequest>&& req);
-	void try_start_requests();
-	void finish_request(const std::shared_ptr<BaseRequest>& req);
+	static BlobInode parse_response(const boost::beast::http::fields& response);
 
 private:
 	// connection to the server
