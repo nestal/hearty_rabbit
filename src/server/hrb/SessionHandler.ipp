@@ -598,9 +598,15 @@ void SessionHandler::list_public_blobs(bool is_json, std::string_view user, unsi
 		*m_db,
 		[send=std::forward<Send>(send), version, this, is_json, user=std::string{user}](auto&& blobs, auto ec) mutable
 		{
+			using namespace boost::adaptors;
+			auto pub_blobs = blobs |
+				filtered([&user](const Blob& blob)
+				{
+					return (user.empty() || user == blob.owner()) && blob.info().perm == Permission::public_();
+				});
 
 			SendJSON{std::forward<Send>(send), version, std::nullopt, *this, is_json ? nullptr : &m_lib}(
-				BlobElements{blobs.begin(), blobs.end()}, ec
+				BlobElements{pub_blobs.begin(), pub_blobs.end()}, ec
 			);
 		}
 	);
