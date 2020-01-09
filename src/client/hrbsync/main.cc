@@ -33,9 +33,9 @@ void download_difference(const CollectionComparison& comp, HRBClient& client)
 	std::cout << "downloading " << download.size() << " files" << std::endl;
 
 	client.download_collection(download, "master", std::filesystem::current_path(),
-		[](std::error_code ec)
+		[](auto&& blob, std::error_code ec)
 		{
-			std::cout << "downloaded finished!" << ec << std::endl;
+			std::cout << "downloaded file: " << blob.info().filename << ec << std::endl;
 		}
 	);
 }

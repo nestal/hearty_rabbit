@@ -29,7 +29,7 @@
 
 namespace hrb {
 
-class BlobInode;
+class Blob;
 class Collection;
 class BaseRequest;
 class URLIntent;
@@ -58,7 +58,7 @@ public:
 	template <typename Complete>
 	void get_blob(std::string_view owner, std::string_view coll, const ObjectID& blob, std::string_view rendition, Complete&& comp);
 
-	template <typename Complete, typename=std::enable_if_t<std::is_invocable_v<Complete, std::error_code>>>
+	template <typename Complete, typename=std::enable_if_t<std::is_invocable_v<Complete, Blob, std::error_code>>>
 	void download_blob(
 		std::string_view owner,
 		std::string_view coll,
@@ -86,7 +86,7 @@ private:
 	template <typename Complete, typename Response>
 	void handle_upload_response(Response& response, Complete&& comp, std::error_code ec);
 
-	static BlobInode parse_response(const boost::beast::http::fields& response);
+	static Blob parse_response(const boost::beast::http::fields& response);
 
 private:
 	// connection to the server

@@ -17,7 +17,7 @@
 
 #include "util/Cookie.hh"
 #include "util/AggregatedCallBack.hh"
-#include "hrb/BlobInode.hh"
+#include "hrb/Blob.hh"
 #include "hrb/Collection.hh"
 #include "hrb/CollectionList.hh"
 #include "util/Error.hh"
@@ -190,7 +190,7 @@ void HRBClient::get_blob(
 		[this, comp = std::forward<Complete>(comp)](auto ec, auto& req)
 		{
 			m_outstanding.finish(req.shared_from_this());
-			comp(req.response().body(), ec);
+			comp(parse_response(req.response()), req.response().body(), ec);
 			req.shutdown();
 		}
 	);
@@ -222,7 +222,7 @@ void HRBClient::download_blob(
 	req->set_body_limit(20 * 1024 * 1024);
 	if (ec)
 	{
-		comp(ec);
+		comp(Blob{}, ec);
 	}
 	else
 	{
@@ -230,7 +230,7 @@ void HRBClient::download_blob(
 			[this, comp = std::forward<Complete>(comp)](auto ec, auto& req)
 			{
 				m_outstanding.finish(req.shared_from_this());
-				comp(ec);
+				comp(parse_response(req.response()), ec);
 				req.shutdown();
 			}
 		);
@@ -246,7 +246,7 @@ void HRBClient::download_collection(
 	Complete&& comp
 )
 {
-	auto callback = make_shared_callback(std::forward<Complete>(comp), coll.size());
+	auto callback = std::make_shared<std::decay_t<Complete>>(std::forward<Complete>(comp));
 
 	for (auto&&[id, entry] : coll)
 	{
@@ -256,10 +256,10 @@ void HRBClient::download_collection(
 			id,
 			rendition,
 			dest_dir / entry.filename,
-			[callback, fname=entry.filename](std::error_code ec)
+			[callback, fname=entry.filename](const Blob& blob, std::error_code ec)
 			{
 				std::cout << "downloaded: " << fname << " " << ec << std::endl;
-				(*callback)(ec);
+				(*callback)(blob, ec);
 			}
 		);
 	}

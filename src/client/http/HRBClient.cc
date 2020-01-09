@@ -15,9 +15,10 @@
 #include "GenericHTTPRequest.hh"
 
 #include "hrb/URLIntent.hh"
-#include "hrb/BlobInode.hh"
+#include "hrb/Blob.hh"
 
 #include <regex>
+#include <iostream>
 
 namespace hrb {
 
@@ -31,21 +32,28 @@ HRBClient::HRBClient(
 {
 }
 
-BlobInode HRBClient::parse_response(const boost::beast::http::fields& response)
+Blob HRBClient::parse_response(const boost::beast::http::fields& response)
 {
-	// URL "parser"
-	URLIntent intent{response.at(http::field::location)};
+	std::cout << "location = " << response[http::field::location] << " " << response[http::field::content_disposition] << std::endl;
 
-	BlobInode result{};
+	// URL "parser"
+	URLIntent intent{response[http::field::location]};
+
+	// For /api/<user>/<coll>/<blobid> intents, the filename() will be a blob ID
+	auto blobid = ObjectID::from_hex(response[http::field::etag].to_string());
+	if (!blobid)
+		blobid = ObjectID::from_hex(intent.filename());
+
+	BlobInode inode{};
 
 	static const std::regex disposition_regex{"filename=(.+)"};
-	std::string disposition{response.at(http::field::content_disposition)};
+	std::string disposition{response[http::field::content_disposition]};
 	std::smatch m;
 
-	if (regex_match(disposition, m, disposition_regex) && m.size() == 2)
-		result.filename = m[1].str();
+	if (regex_search(disposition, m, disposition_regex) && m.size() == 2)
+		inode.filename = m[1].str();
 
-	return result;
+	return Blob{std::string{intent.user()}, std::string{intent.collection()}, blobid.value_or(ObjectID{}), inode};
 }
 
 } // end of namespace

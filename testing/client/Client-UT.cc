@@ -50,11 +50,14 @@ TEST_CASE("simple client login", "[normal]")
 			REQUIRE_FALSE(intent.str().empty());
 			REQUIRE(intent.blob().has_value());
 
-			subject.get_blob("sumsum", "", *intent.blob(), "", [&tested](auto content, auto err)
+			subject.get_blob("sumsum", "", *intent.blob(), "", [&tested](Blob&& b, auto content, auto err)
 			{
 				tested++;
 				REQUIRE_FALSE(err);
 				REQUIRE_FALSE(content.empty());
+				REQUIRE(b.info().filename == fs::path{__FILE__}.filename());
+				REQUIRE(b.owner() == "sumsum");
+				REQUIRE(b.collection() == "");
 			});
 
 			subject.get_blob_meta("sumsum", "", *intent.blob(), [&tested](auto meta, auto err)
@@ -133,7 +136,7 @@ TEST_CASE("simple client login", "[normal]")
 				REQUIRE(coll.name() == "");
 				REQUIRE(coll.owner() == "sumsum");
 
-				subject.download_collection(coll, "master", std::filesystem::current_path(), [&tested](auto ec)
+				subject.download_collection(coll, "master", std::filesystem::current_path(), [&tested](auto&& filename, auto ec)
 				{
 					REQUIRE_FALSE(ec);
 					++tested;
@@ -142,7 +145,7 @@ TEST_CASE("simple client login", "[normal]")
 		);
 
 		REQUIRE(ioc.run_for(10s) > 0);
-		REQUIRE(tested == 9);
+		REQUIRE(tested >= 8+2);
 		ioc.restart();
 	}
 	SECTION("login incorrect")
