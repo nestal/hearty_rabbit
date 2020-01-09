@@ -13,7 +13,11 @@
 #include "HRBClient.hh"
 
 #include "GenericHTTPRequest.hh"
+
 #include "hrb/URLIntent.hh"
+#include "hrb/BlobInode.hh"
+
+#include <regex>
 
 namespace hrb {
 
@@ -27,29 +31,21 @@ HRBClient::HRBClient(
 {
 }
 
-
-void HRBClient::add_request(std::shared_ptr<BaseRequest>&& req)
+BlobInode HRBClient::parse_response(const boost::beast::http::fields& response)
 {
-	m_pending.push_back(std::move(req));
-	try_start_requests();
-}
+	// URL "parser"
+	URLIntent intent{response.at(http::field::location)};
 
-void HRBClient::try_start_requests()
-	{
-	while (m_outstanding.size() < m_outstanding_limit && !m_pending.empty())
-	{
-		auto req = std::move(m_pending.front());
-		m_pending.pop_front();
+	BlobInode result{};
 
-		req->run();
-		m_outstanding.insert(std::move(req));
-	}
-}
+	static const std::regex disposition_regex{"filename=(.+)"};
+	std::string disposition{response.at(http::field::content_disposition)};
+	std::smatch m;
 
-void HRBClient::finish_request(const std::shared_ptr<BaseRequest>& req)
-{
-	m_outstanding.erase(req);
-	try_start_requests();
+	if (regex_match(disposition, m, disposition_regex) && m.size() == 2)
+		result.filename = m[1].str();
+
+	return result;
 }
 
 } // end of namespace

@@ -12,7 +12,7 @@
 
 #pragma once
 
-#include "util/Blake2.hh"
+#include "crypto/Blake2.hh"
 
 #include <boost/functional/hash.hpp>
 

@@ -26,7 +26,7 @@
 #include "net/MMapResponseBody.hh"
 #include "util/Log.hh"
 
-#include "hrb/BlobList.hh"
+#include "hrb/Blob.hh"
 #include "hrb/Collection.hh"
 #include "util/Escape.hh"
 #include "hrb/URLIntent.hh"
@@ -596,22 +596,18 @@ void SessionHandler::list_public_blobs(bool is_json, std::string_view user, unsi
 {
 	Ownership{m_auth.username()}.list_public_blobs(
 		*m_db,
-		[send=std::forward<Send>(send), version, this, is_json, user=std::string{user}](auto&& blob_refs, auto ec) mutable
+		[send=std::forward<Send>(send), version, this, is_json, user=std::string{user}](auto&& blobs, auto ec) mutable
 		{
-			BlobList blob_list;
-			for (auto&& bref : blob_refs)
-			{
-				// filter by "user" if it is not empty: that means we want all public blobs from all users
-				// if "user" is empty string.
-				if ((user.empty() || user == bref.user) &&
-					bref.entry.permission() == Permission::public_())
+			using namespace boost::adaptors;
+			auto pub_blobs = blobs |
+				filtered([&user](const Blob& blob)
 				{
-					if (auto json = nlohmann::json::parse(bref.entry.json(), nullptr, false); !json.is_discarded())
-						blob_list.add(bref.user, bref.coll, bref.blob, bref.entry.permission(), std::move(json));
-				}
-			}
+					return (user.empty() || user == blob.owner()) && blob.info().perm == Permission::public_();
+				});
 
-			SendJSON{std::forward<Send>(send), version, std::nullopt, *this, is_json ? nullptr : &m_lib}(std::move(blob_list), ec);
+			SendJSON{std::forward<Send>(send), version, std::nullopt, *this, is_json ? nullptr : &m_lib}(
+				BlobElements{pub_blobs.begin(), pub_blobs.end()}, ec
+			);
 		}
 	);
 }

@@ -12,20 +12,22 @@
 
 #pragma once
 
+#include "RequestScheduler.hh"
+
 #include "util/Cookie.hh"
 #include "hrb/UserID.hh"
 #include "util/FS.hh"
 
 #include <boost/beast/http/verb.hpp>
+#include <boost/beast/http/fields.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ssl.hpp>
 #include <boost/asio/strand.hpp>
 
-#include <unordered_set>
-#include <deque>
-
 namespace hrb {
 
+class BlobInode;
+class Collection;
 class BaseRequest;
 class URLIntent;
 struct ObjectID;
@@ -39,7 +41,7 @@ public:
 	void login(std::string_view user, std::string_view password, Complete&& comp);
 
 	template <typename Complete>
-	void list_collection(std::string_view coll, Complete&& comp);
+	void get_collection(std::string_view coll, Complete&& comp);
 
 	template <typename Complete>
 	void scan_collections(Complete&& comp);
@@ -64,6 +66,14 @@ public:
 	);
 
 	template <typename Complete>
+	void download_collection(
+		const Collection& coll,
+		std::string_view rendition,
+		const std::filesystem::path& dest_dir,
+		Complete&& comp
+	);
+
+	template <typename Complete>
 	void get_blob_meta(std::string_view owner, std::string_view coll, const ObjectID& blob, Complete&& comp);
 
 private:
@@ -73,9 +83,7 @@ private:
 	template <typename Complete, typename Response>
 	void handle_upload_response(Response& response, Complete&& comp, std::error_code ec);
 
-	void add_request(std::shared_ptr<BaseRequest>&& req);
-	void try_start_requests();
-	void finish_request(const std::shared_ptr<BaseRequest>& req);
+	static BlobInode parse_response(const boost::beast::http::fields& response);
 
 private:
 	// connection to the server
@@ -90,9 +98,7 @@ private:
 	UserID  m_user;
 
 	// outstanding and pending requests
-	std::size_t m_outstanding_limit{5};
-	std::unordered_set<std::shared_ptr<BaseRequest>> m_outstanding;
-	std::deque<std::shared_ptr<BaseRequest>> m_pending;
+	RequestScheduler m_outstanding;
 };
 
 }

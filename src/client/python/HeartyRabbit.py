@@ -321,7 +321,7 @@ class Session:
 			))
 
 	def list_public_blobs(self, user = ""):
-		response = self.m_session.get(self.__url("/query/blob_set", {"public":user, "json":""}))
+		response = self.m_session.get(self.__url("/query/blob_set", {"public": user, "json": ""}))
 		if response.status_code != 200:
 			self.raise_exception(response.status_code, "cannot public blobs: {}")
 		return self.__elements_to_blobs(response.json())

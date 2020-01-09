@@ -197,42 +197,47 @@ bool BlobFile::is_image() const
 {
 	// Must update meta before using the meta data
 	update_meta();
-	return is_image(m_meta->mime);
+	return is_image(m_meta->mime());
 }
 
 std::optional<PHash> BlobFile::phash() const
 {
 	update_meta();
-	return m_meta->phash;
+	return m_meta->phash();
 }
 
 std::string_view BlobFile::mime() const
 {
 	update_meta();
-	return m_meta->mime;
+	return m_meta->mime();
+}
+
+nlohmann::json BlobFile::meta_json() const
+{
+	update_meta();
+	return nlohmann::json(*m_meta);
 }
 
 void BlobFile::update_meta() const
 {
 	if (!m_meta.has_value())
 	{
-		// try to load it from meta.json
-		std::ifstream meta_file{(m_dir/"meta.json").string()};
-		nlohmann::json meta;
-
 		try
 		{
+			// try to load it from meta.json
+			std::ifstream meta_file{m_dir/"meta.json"};
+			nlohmann::json meta;
+
 			if (meta_file)
 				meta_file >> meta;
+
+			if (meta_file && meta.is_object())
+				m_meta.emplace(meta.get<ImageMeta>());
 		}
 		catch (nlohmann::json::exception& e)
 		{
 			Log(LOG_WARNING, "json parse error @ file %1%: %2%", m_dir, e.what());
-			meta_file.setstate(std::ios::failbit);
 		}
-
-		if (meta_file && meta.is_object())
-			m_meta.emplace(meta.get<Meta>());
 
 		// some meta field is still missing, we need to deduce the meta
 		deduce_meta({});
@@ -241,13 +246,11 @@ void BlobFile::update_meta() const
 
 MMap BlobFile::deduce_meta(MMap&& master) const
 {
-	if (!m_meta.has_value())
-		m_meta.emplace();
+	// load master rendition on-demand
+	master = this->master(std::move(master));
 
-	master = deduce_mime(std::move(master));
-	master = deduce_phash(std::move(master));
-	master = deduce_original(std::move(master));
-	master = deduce_uploaded(std::move(master));
+	// emplace() will destroy the original object if any
+	m_meta.emplace(master.buffer());
 
 	// save the meta data to file
 	std::ofstream meta_file{(m_dir/"meta.json").string()};
@@ -256,45 +259,10 @@ MMap BlobFile::deduce_meta(MMap&& master) const
 	return std::move(master);
 }
 
-MMap BlobFile::deduce_mime(MMap&& master) const
-{
-	if (m_meta->mime.empty())
-	{
-		master = this->master(std::move(master));
-		m_meta->mime = Magic::instance().mime(master.buffer());
-	}
-	return std::move(master);
-}
-
-MMap BlobFile::deduce_phash(MMap&& master) const
-{
-	if (!m_meta->phash.has_value() && is_image(m_meta->mime))
-	{
-		master = this->master(std::move(master));
-		m_meta->phash = hrb::phash(master.buffer());
-	}
-	return std::move(master);
-}
-
-MMap BlobFile::deduce_original(MMap&& master) const
-{
-	// deduce original time from EXIF2
-	if (!m_meta->original.has_value() && m_meta->mime == "image/jpeg")
-	{
-		master = this->master(std::move(master));
-
-		if (EXIF2 exif{master.buffer()}; exif)
-			if (auto datetime = exif.date_time(); datetime)
-				m_meta->original = std::chrono::time_point_cast<Timestamp::duration>(*datetime);
-	}
-
-	return std::move(master);
-}
-
 Timestamp BlobFile::original_datetime() const
 {
 	update_meta();
-	return m_meta->original.has_value() ? *m_meta->original : m_meta->uploaded;
+	return m_meta->original_timestamp().has_value() ? *m_meta->original_timestamp() : m_meta->upload_timestamp();
 }
 
 double BlobFile::compare(const BlobFile& other) const
@@ -317,57 +285,7 @@ MMap BlobFile::master(MMap&& master) const
 	return std::move(master);
 }
 
-MMap BlobFile::deduce_uploaded(MMap&& master) const
-{
-	if (m_meta->uploaded == Timestamp{})
-		m_meta->uploaded = std::chrono::time_point_cast<Timestamp::duration>(Timestamp::clock::now());
-	return std::move(master);
-}
-
-nlohmann::json BlobFile::meta_json() const
-{
-	update_meta();
-	return nlohmann::json(*m_meta);
-}
-
-void to_json(nlohmann::json& dest, const BlobFile::Meta& src)
-{
-	// save the meta data to file
-	using namespace std::chrono;
-	nlohmann::json meta{
-		{"mime", src.mime}
-	};
-
-	// just to be sure
-	assert(meta.is_object());
-
-	if (src.original)
-		meta.emplace("original_datetime", *src.original);
-	if (src.phash)
-		meta.emplace("phash", src.phash->value());
-
-	dest = std::move(meta);
-}
-
-void from_json(const nlohmann::json& src, BlobFile::Meta& dest)
-{
-	if (src.is_object())
-	{
-		dest.mime = src["mime"];
-
-		if (src.count("original_datetime") > 0)
-			dest.original = src["original_datetime"].get<Timestamp>();
-		else
-			dest.original = std::nullopt;
-
-		if (src.count("phash") > 0)
-			dest.phash = PHash{src["phash"].get<std::uint64_t>()};
-		else
-			dest.phash = std::nullopt;
-	}
-}
-
-MMap BlobFile::meta() const
+MMap BlobFile::load_meta() const
 {
 	std::error_code ec;
 	auto mmap = MMap::open(m_dir/"meta.json", ec);

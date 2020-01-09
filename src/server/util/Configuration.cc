@@ -73,7 +73,7 @@ void Configuration::load_config(const fs::path& config_file)
 	try
 	{
 		std::ifstream stream;
-		stream.open(config_file.string(), std::ios::in);
+		stream.open(config_file, std::ios::in);
 		if (!stream)
 		{
 			BOOST_THROW_EXCEPTION(FileError() << ErrorCode({errno, std::system_category()}));

@@ -17,7 +17,9 @@
 
 namespace hrb {
 
-CollectionComparison::CollectionComparison(const Collection& local, const Collection& remote)
+CollectionComparison::CollectionComparison(const Collection& local, const Collection& remote) :
+	m_upload{remote.name(), remote.owner(), ObjectID{}},
+	m_download{remote.name(), remote.owner(), ObjectID{}}
 {
 	std::set<ObjectID> remote_blobids, local_blobids;
 	for (auto&& [id, blob] : remote)

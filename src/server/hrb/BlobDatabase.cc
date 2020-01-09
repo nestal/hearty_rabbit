@@ -60,7 +60,7 @@ fs::path BlobDatabase::dest(const ObjectID& id, std::string_view) const
 BlobDatabase::BlobResponse BlobDatabase::meta(const ObjectID& id, unsigned version) const
 {
 	BlobFile blob_obj{dest(id), id};
-	auto mmap = blob_obj.meta();
+	auto mmap = blob_obj.load_meta();
 	if (!mmap.is_opened())
 		return BlobResponse{http::status::not_found, version};
 

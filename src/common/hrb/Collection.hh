@@ -18,8 +18,11 @@
 #include <boost/range/iterator_range.hpp>
 
 #include <nlohmann/json.hpp>
+#include <filesystem>
 
 namespace hrb {
+
+class Blob;
 
 class Collection
 {
@@ -30,6 +33,7 @@ public:
 	Collection() = default;
 	Collection(std::string_view name, std::string_view owner, nlohmann::json&& meta);
 	Collection(std::string_view name, std::string_view owner, const ObjectID& cover);
+	explicit Collection(const std::filesystem::path& path);
 
 	Collection(Collection&&) = default;
 	Collection(const Collection&) = default;
@@ -45,6 +49,8 @@ public:
 	[[nodiscard]] auto end() {return m_blobs.end();}
 	[[nodiscard]] iterator find(const ObjectID& id) const;
 
+	[[nodiscard]] std::optional<Blob> get_blob(const ObjectID& id) const;
+
 	friend void from_json(const nlohmann::json& src, Collection& dest);
 	friend void to_json(nlohmann::json& dest, const Collection& src);
 
@@ -58,6 +64,9 @@ public:
 
 	void update_timestamp(const ObjectID& id, Timestamp value);
 	[[nodiscard]] std::size_t size() const {return m_blobs.size();}
+
+	bool operator==(const Collection& rhs) const;
+	bool operator!=(const Collection& rhs) const {return !operator==(rhs);}
 
 private:
 	std::string     m_name;

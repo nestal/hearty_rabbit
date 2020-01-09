@@ -29,7 +29,7 @@ namespace hrb {
 // There are 3 formats for BlobInode:
 // Database format: +{"filename": "image.jpg", "mime": "image/jpeg", "timestamp": 100}
 // JSON format:     {"filename": "image.jpg", "mime": "image/jpeg", "timestamp": 100, "perm": "public"}
-// In-memory format: BlobInode
+// In-memory format: Collection::Entry
 //
 // BlobInodeDB represents the Database format.
 // BlobInode represent in-memory format.
@@ -50,6 +50,7 @@ namespace hrb {
 //
 // Dependency graph:
 // BlobInodeDB (database format) -> BlobInode (in-memory format) -> nlohmann::json (JSON format)
+
 struct BlobInode
 {
 	/// Permission data that indicates who can access this inode.
@@ -71,5 +72,8 @@ struct BlobInode
 
 void to_json(nlohmann::json& dest, const BlobInode& src);
 void from_json(const nlohmann::json& src, BlobInode& dest);
+
+bool operator==(const BlobInode& lhs, const BlobInode& rhs);
+inline bool operator!=(const BlobInode& lhs, const BlobInode& rhs) {return !operator==(lhs, rhs);}
 
 } // end of namespace hrb

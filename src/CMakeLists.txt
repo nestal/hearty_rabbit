@@ -21,6 +21,7 @@ target_link_libraries(hrbcommon PUBLIC
 	nlohmann_json::nlohmann_json
 	OpenCV::OpenCV
 	Blake2::Blake2
+	PkgConfig::LIBEXIF
 	${CMAKE_THREAD_LIBS_INIT}
 )
 target_include_directories(hrbcommon PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/common)
@@ -35,12 +36,10 @@ add_library(hrbsrv ${SERVER_SRC} ${CMAKE_BINARY_DIR}/config.hh)
 target_link_libraries(hrbsrv PUBLIC
 	hrbcommon
 	PkgConfig::HIREDIS
-	PkgConfig::LIBEXIF
 	OpenSSL::SSL
 	OpenSSL::Crypto
 	nlohmann_json::nlohmann_json
 	OpenCV::OpenCV
-	Blake2::Blake2
 	${CMAKE_THREAD_LIBS_INIT}
 )
 target_include_directories(hrbsrv PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/server)
@@ -79,6 +78,7 @@ target_include_directories(hrbsync_lib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/client
 
 add_executable(hrbsync client/hrbsync/main.cc)
 target_link_libraries(hrbsync PRIVATE hrbsync_lib)
+add_dependencies(hrbsync unittest clienttest)
 
 if (BUILD_CLIENT)
 	add_subdirectory(client/qt)

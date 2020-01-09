@@ -11,7 +11,14 @@
 //
 
 #include "Collection.hh"
+#include "Blob.hh"
+
 #include "util/Escape.hh"
+#include "util/MMap.hh"
+#include "util/Magic.hh"
+#include "image/Image.hh"
+
+#include <algorithm>
 
 namespace hrb {
 
@@ -25,6 +32,34 @@ Collection::Collection(std::string_view name, std::string_view owner, const Obje
 	m_name{name}, m_owner{owner}, m_meta({{"cover", to_hex(cover)}})
 {
 	assert(m_meta.is_object());
+}
+
+Collection::Collection(const std::filesystem::path& path) :
+	m_name{path.filename() == "." ? path.parent_path().filename() : path.filename()}
+{
+	for (auto&& file : std::filesystem::directory_iterator{path})
+	{
+		std::error_code ec;
+		auto mmap = MMap::open(file.path(), ec);
+		if (!ec)
+		{
+			Blake2 hash;
+			hash.update(mmap.data(), mmap.size());
+			auto blob = hash.finalize();
+
+			ImageMeta meta{mmap.buffer()};
+//			std::cout << to_hex(blob) << " " << file.path().filename() << " " << meta.mime() << " " <<
+//				meta.original_timestamp().value_or(Timestamp{}).http_format() << std::endl;
+
+			add_blob(
+				blob,
+				BlobInode{
+					{}, file.path().filename(), std::string{meta.mime()},
+					meta.original_timestamp().value_or(Timestamp{})
+				}
+			);
+		}
+	}
 }
 
 void Collection::add_blob(const ObjectID& id, BlobInode&& entry)
@@ -94,6 +129,22 @@ void Collection::update_timestamp(const ObjectID& id, Timestamp value)
 void Collection::remove_blob(const ObjectID& id)
 {
 	m_blobs.erase(id);
+}
+
+std::optional<Blob> Collection::get_blob(const ObjectID& id) const
+{
+	if (auto it = m_blobs.find(id); it != m_blobs.end())
+		return Blob{m_owner, m_name, id, it->second};
+	else
+		return std::nullopt;
+}
+
+bool Collection::operator==(const Collection& rhs) const
+{
+	return m_name == rhs.m_name && m_owner == rhs.m_owner && m_meta == rhs.m_meta &&
+		m_blobs.size() == rhs.m_blobs.size() &&
+		std::equal(m_blobs.begin(), m_blobs.end(), rhs.m_blobs.begin()
+	);
 }
 
 } // end of namespace hrb

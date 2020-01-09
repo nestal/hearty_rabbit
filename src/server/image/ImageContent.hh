@@ -27,7 +27,7 @@ public:
 	using rect_iterator = std::vector<cv::Rect>::const_iterator;
 
 public:
-	explicit ImageContent(const cv::Mat& image, const fs::path& haar_path);
+	explicit ImageContent(cv::Mat image, const fs::path& haar_path);
 
 	static void check_models(const fs::path& haar_path);
 

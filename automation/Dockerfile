@@ -10,7 +10,7 @@ RUN yum install -y deltarpm epel-release centos-release-scl \
 	&& yum update -y \
 	&& yum install -y --setopt=tsflags=nodocs openssl-devel git make hiredis-devel \
 		file-devel libicu-devel zlib-devel bzip2-devel xz-devel libunwind-devel which \
-		autoconf automake libtool libexif-devel msgpack-devel libpng-devel libcurl-devel \
+		libexif-devel msgpack-devel libpng-devel libcurl-devel \
 		cmake3 libb2-devel gperftools-devel devtoolset-8 \
 	&& yum clean all -y
 
@@ -18,27 +18,26 @@ RUN yum install -y deltarpm epel-release centos-release-scl \
 #	https://dl.bintray.com/boostorg/release/1.67.0/source/boost_1_67_0.tar.gz \
 #	https://github.com/opencv/opencv/archive/3.4.1.tar.gz \
 ADD \
-	boost_1_70_0.tar.gz 3.4.1.tar.gz \
+	boost_1_72_0.tar.gz 4.2.0.tar.gz \
 	/build/
 
 WORKDIR /build
 
-ENV \
-	PATH="/opt/rh/devtoolset-8/root/usr/bin:/opt/bin:${PATH}" \
+ENV PATH="/opt/rh/devtoolset-8/root/usr/bin:/opt/bin:${PATH}" \
 	LD_LIBARY_PATH="/opt/rh/devtoolset-8/root/usr/lib64"
 
 # build boost (>1.65 to support boost beast)
 RUN \
-	cd boost_1_70_0 \
+	cd boost_1_72_0 \
 	&& ./bootstrap.sh \
 		--with-libraries=program_options,filesystem,system \
-		--prefix=/opt/boost_1_70 \
+		--prefix=/opt/boost_1_72 \
 	&& (./b2 -j8 install; exit 0) \
-	&& rm -rf /build/boost_1_70_0
+	&& rm -rf /build/boost_1_72_0
 
 # OpenCV
 RUN \
-	cd opencv-3.4.1 \
+	cd opencv-4.2.0 \
 	&& mkdir build \
 	&& cd build \
 	&& cmake3 \
@@ -67,6 +66,3 @@ RUN \
 # AWS libraries: for future requirements to support S3 backup
 #RUN git clone --depth 1 -b 1.4.60 https://github.com/aws/aws-sdk-cpp.git
 #RUN cd aws-sdk-cpp && mkdir build && cd build && cmake -DBUILD_SHARED_LIBS=OFF .. && make -j8
-
-# nlohmann JSON library
-ADD https://github.com/nlohmann/json/releases/download/v3.6.1/json.hpp /opt/include/nlohmann/

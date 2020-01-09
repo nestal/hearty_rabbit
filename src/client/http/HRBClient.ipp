@@ -16,6 +16,7 @@
 #include "GenericHTTPRequest.hh"
 
 #include "util/Cookie.hh"
+#include "util/AggregatedCallBack.hh"
 #include "hrb/BlobInode.hh"
 #include "hrb/Collection.hh"
 #include "hrb/CollectionList.hh"
@@ -30,6 +31,7 @@
 
 #include <string>
 #include <unordered_map>
+#include <iostream>
 
 namespace hrb {
 
@@ -47,7 +49,7 @@ void HRBClient::login(std::string_view user, std::string_view password, Complete
 	req->on_load(
 		[this, username, comp = std::forward<Complete>(comp)](auto ec, auto& req)
 		{
-			finish_request(req.shared_from_this());
+			m_outstanding.finish(req.shared_from_this());
 
 			if (req.response().result() == http::status::no_content)
 				m_user = UserID{Cookie{req.response().at(http::field::set_cookie)}, username};
@@ -58,11 +60,11 @@ void HRBClient::login(std::string_view user, std::string_view password, Complete
 			req.shutdown();
 		}
 	);
-	add_request(std::move(req));
+	m_outstanding.add(std::move(req));
 }
 
 template <typename Complete>
-void HRBClient::list_collection(std::string_view coll, Complete&& comp)
+void HRBClient::get_collection(std::string_view coll, Complete&& comp)
 {
 	auto req = request<http::empty_body, http::string_body>(
 		{URLIntent::Action::api, m_user.username(), coll, ""},
@@ -71,7 +73,7 @@ void HRBClient::list_collection(std::string_view coll, Complete&& comp)
 	req->on_load(
 		[this, comp = std::forward<Complete>(comp)](auto ec, auto& req)
 		{
-			finish_request(req.shared_from_this());
+			m_outstanding.finish(req.shared_from_this());
 			req.shutdown();
 
 			if (!ec && req.response().result() == http::status::ok)
@@ -86,7 +88,7 @@ void HRBClient::list_collection(std::string_view coll, Complete&& comp)
 			comp(Collection{}, ec ? ec : make_error_code(Error::unknown_error));
 		}
 	);
-	add_request(std::move(req));
+	m_outstanding.add(std::move(req));
 }
 
 template <typename Complete>
@@ -101,13 +103,13 @@ void HRBClient::scan_collections(Complete&& comp)
 	req->on_load(
 		[this, comp = std::forward<Complete>(comp)](auto ec, auto& req)
 		{
-			finish_request(req.shared_from_this());
+			m_outstanding.finish(req.shared_from_this());
 
 			comp(nlohmann::json::parse(req.response().body()).template get<CollectionList>(), ec);
 			req.shutdown();
 		}
 	);
-	add_request(std::move(req));
+	m_outstanding.add(std::move(req));
 }
 
 template <typename Complete>
@@ -127,13 +129,13 @@ void HRBClient::upload(std::string_view coll, const fs::path& file, Complete&& c
 	req->on_load(
 		[this, comp = std::forward<Complete>(comp)](auto ec, auto& req) mutable
 		{
-			finish_request(req.shared_from_this());
+			m_outstanding.finish(req.shared_from_this());
 
 			handle_upload_response(req.response(), std::forward<Complete>(comp), ec);
 			req.shutdown();
 		}
 	);
-	add_request(std::move(req));
+	m_outstanding.add(std::move(req));
 }
 
 template <typename Complete, typename ByteIterator>
@@ -153,12 +155,12 @@ void HRBClient::upload(
 	req->on_load(
 		[this, comp = std::forward<Complete>(comp)](auto ec, auto& req) mutable
 		{
-			finish_request(req.shared_from_this());
+			m_outstanding.finish(req.shared_from_this());
 			handle_upload_response(req.response(), std::forward<Complete>(comp), ec);
 			req.shutdown();
 		}
 	);
-	add_request(std::move(req));
+	m_outstanding.add(std::move(req));
 }
 
 template <typename RequestBody, typename ResponseBody>
@@ -187,12 +189,12 @@ void HRBClient::get_blob(
 	req->on_load(
 		[this, comp = std::forward<Complete>(comp)](auto ec, auto& req)
 		{
-			finish_request(req.shared_from_this());
+			m_outstanding.finish(req.shared_from_this());
 			comp(req.response().body(), ec);
 			req.shutdown();
 		}
 	);
-	add_request(std::move(req));
+	m_outstanding.add(std::move(req));
 }
 
 template <typename Complete>
@@ -211,6 +213,10 @@ void HRBClient::download_blob(
 		}, http::verb::get
 	);
 
+	std::cout << URLIntent{
+			URLIntent::Action::api, owner, coll, blob, "rendition=" + std::string{rendition}
+		}.str() << std::endl;
+
 	boost::system::error_code ec;
 	req->response().body().open(dest.c_str(), boost::beast::file_mode::write, ec);
 	req->set_body_limit(20 * 1024 * 1024);
@@ -223,12 +229,39 @@ void HRBClient::download_blob(
 		req->on_load(
 			[this, comp = std::forward<Complete>(comp)](auto ec, auto& req)
 			{
-				finish_request(req.shared_from_this());
+				m_outstanding.finish(req.shared_from_this());
 				comp(req.response().body(), ec);
 				req.shutdown();
 			}
 		);
-		add_request(std::move(req));
+		m_outstanding.add(std::move(req));
+	}
+}
+
+template <typename Complete>
+void HRBClient::download_collection(
+	const Collection& coll,
+	std::string_view rendition,
+	const std::filesystem::path& dest_dir,
+	Complete&& comp
+)
+{
+	auto callback = make_shared_callback(std::forward<Complete>(comp), coll.size());
+
+	for (auto&&[id, entry] : coll)
+	{
+		download_blob(
+			coll.owner(),
+			coll.name(),
+			id,
+			rendition,
+			dest_dir / entry.filename,
+			[callback, fname=entry.filename](auto& file, std::error_code ec)
+			{
+				std::cout << "downloaded: " << fname << " " << file.size() << " bytes: " << ec << std::endl;
+				(*callback)(ec);
+			}
+		);
 	}
 }
 
@@ -243,12 +276,12 @@ void HRBClient::get_blob_meta(std::string_view owner, std::string_view coll, con
 	req->on_load(
 		[this, comp = std::forward<Complete>(comp)](auto ec, auto& req)
 		{
-			finish_request(req.shared_from_this());
+			m_outstanding.finish(req.shared_from_this());
 			comp(nlohmann::json::parse(req.response().body()), ec);
 			req.shutdown();
 		}
 	);
-	add_request(std::move(req));
+	m_outstanding.add(std::move(req));
 }
 
 template <typename Complete, typename Response>

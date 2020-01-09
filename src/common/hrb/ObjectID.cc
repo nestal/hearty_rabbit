@@ -12,7 +12,7 @@
 
 #include "ObjectID.hh"
 
-#include "util/Blake2.hh"
+#include "crypto/Blake2.hh"
 #include "util/Escape.hh"
 
 #include <boost/algorithm/hex.hpp>

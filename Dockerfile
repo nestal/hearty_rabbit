@@ -18,12 +18,12 @@ RUN mkdir /build/docker-build \
 		-DCMAKE_PREFIX_PATH=/opt \
 		-DCMAKE_BUILD_TYPE=Release \
 		-DCMAKE_INSTALL_PREFIX=/build/hearty_rabbit \
-		-DHAARCASCADE_PATH="/build/opencv-3.4.1/data/haarcascades/" \
+		-DHAARCASCADE_PATH="/build/opencv-4.2.0/data/haarcascades/" \
 			../src \
 	&& make -j8 install
 
 # chmod before copy
-RUN chmod a+rX -R /build/opencv-3.4.1/data/haarcascades/
+RUN chmod a+rX -R /build/opencv-4.2.0/data/haarcascades/
 
 # Copy products to runtime docker image
 FROM scratch
@@ -66,9 +66,9 @@ COPY --from=builder /usr/share/misc/magic /usr/share/misc/magic
 
 # Copy HAAR-cascade models
 COPY --from=builder \
-	/build/opencv-3.4.1/data/haarcascades/haarcascade_frontalface_default.xml \
-	/build/opencv-3.4.1/data/haarcascades/haarcascade_eye_tree_eyeglasses.xml \
-		/build/opencv-3.4.1/data/haarcascades/
+	/build/opencv-4.2.0/data/haarcascades/haarcascade_frontalface_default.xml \
+	/build/opencv-4.2.0/data/haarcascades/haarcascade_eye_tree_eyeglasses.xml \
+		/build/opencv-4.2.0/data/haarcascades/
 
 # Use environment to specify config file location.
 # It works even when we run --add-user
