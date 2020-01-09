@@ -12,7 +12,7 @@ target_link_libraries(test_common PUBLIC hrbcommon)
 
 file(GLOB_RECURSE SRV_UT_SRC server/*.cc server/*.hh)
 add_executable(unittest ${SRV_UT_SRC})
-target_link_libraries(unittest PUBLIC Catch2::Catch2 test_common hrbsrv)
+target_link_libraries(unittest PUBLIC Catch2::Catch2 test_common hrbsrv hrbsync_lib)
 
 # Automatically run unit tests after the build
 # Although we specified the ${CMAKE_BINARY_DIR} as the current directory when running unit tests,

@@ -12,6 +12,8 @@
 
 #pragma once
 
+#include "RequestScheduler.hh"
+
 #include "util/Cookie.hh"
 #include "hrb/UserID.hh"
 #include "util/FS.hh"
@@ -20,9 +22,6 @@
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ssl.hpp>
 #include <boost/asio/strand.hpp>
-
-#include <unordered_set>
-#include <deque>
 
 namespace hrb {
 
@@ -99,9 +98,7 @@ private:
 	UserID  m_user;
 
 	// outstanding and pending requests
-	std::size_t m_outstanding_limit{5};
-	std::unordered_set<std::shared_ptr<BaseRequest>> m_outstanding;
-	std::deque<std::shared_ptr<BaseRequest>> m_pending;
+	RequestScheduler m_outstanding;
 };
 
 }
