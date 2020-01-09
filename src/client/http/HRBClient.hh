@@ -58,9 +58,7 @@ public:
 	template <typename Complete>
 	void get_blob(std::string_view owner, std::string_view coll, const ObjectID& blob, std::string_view rendition, Complete&& comp);
 
-	template <typename Complete, typename=std::enable_if_t<std::is_invocable_v<
-		Complete, const boost::beast::http::file_body::value_type&, std::error_code>>
-	>
+	template <typename Complete, typename=std::enable_if_t<std::is_invocable_v<Complete, std::error_code>>>
 	void download_blob(
 		std::string_view owner,
 		std::string_view coll,

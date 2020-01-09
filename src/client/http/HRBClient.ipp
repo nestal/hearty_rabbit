@@ -222,7 +222,7 @@ void HRBClient::download_blob(
 	req->set_body_limit(20 * 1024 * 1024);
 	if (ec)
 	{
-		comp(req->response().body(), ec);
+		comp(ec);
 	}
 	else
 	{
@@ -230,7 +230,7 @@ void HRBClient::download_blob(
 			[this, comp = std::forward<Complete>(comp)](auto ec, auto& req)
 			{
 				m_outstanding.finish(req.shared_from_this());
-				comp(req.response().body(), ec);
+				comp(ec);
 				req.shutdown();
 			}
 		);
@@ -256,9 +256,9 @@ void HRBClient::download_collection(
 			id,
 			rendition,
 			dest_dir / entry.filename,
-			[callback, fname=entry.filename](auto& file, std::error_code ec)
+			[callback, fname=entry.filename](std::error_code ec)
 			{
-				std::cout << "downloaded: " << fname << " " << file.size() << " bytes: " << ec << std::endl;
+				std::cout << "downloaded: " << fname << " " << ec << std::endl;
 				(*callback)(ec);
 			}
 		);
