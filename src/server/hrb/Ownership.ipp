@@ -338,7 +338,7 @@ void Ownership::list_public_blobs(
 								std::string{owner.as_string()},
 								std::string{coll.as_string()},
 								*blob_id,
-								*fields
+								std::move(*fields)
 							);
 					}
 

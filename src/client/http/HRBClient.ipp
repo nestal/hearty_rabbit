@@ -197,7 +197,7 @@ void HRBClient::get_blob(
 	m_outstanding.add(std::move(req));
 }
 
-template <typename Complete>
+template <typename Complete, typename>
 void HRBClient::download_blob(
 	std::string_view owner,
 	std::string_view coll,
