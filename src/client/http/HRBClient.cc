@@ -34,8 +34,6 @@ HRBClient::HRBClient(
 
 Blob HRBClient::parse_response(const boost::beast::http::fields& response)
 {
-	std::cout << "location = " << response[http::field::location] << " " << response[http::field::content_disposition] << std::endl;
-
 	// URL "parser"
 	URLIntent intent{response[http::field::location]};
 

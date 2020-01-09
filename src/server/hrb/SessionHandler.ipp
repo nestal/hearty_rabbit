@@ -476,6 +476,7 @@ void SessionHandler::query_blob(const BlobRequest& req, Send&& send)
 			auto response = m_blob_db.response(blobid, req.version(), req.etag(), rendition);
 			response.set(http::field::content_disposition, "inline; filename=" + url_encode(entry.filename()));
 			response.set(http::field::last_modified, entry.timestamp().http_format());
+			response.set(http::field::location, req.intent().str());
 			return send(std::move(response));
 		}
 	);

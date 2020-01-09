@@ -213,10 +213,6 @@ void HRBClient::download_blob(
 		}, http::verb::get
 	);
 
-	std::cout << URLIntent{
-			URLIntent::Action::api, owner, coll, blob, "rendition=" + std::string{rendition}
-		}.str() << std::endl;
-
 	boost::system::error_code ec;
 	req->response().body().open(dest.c_str(), boost::beast::file_mode::write, ec);
 	req->set_body_limit(20 * 1024 * 1024);
