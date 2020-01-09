@@ -133,7 +133,7 @@ TEST_CASE("simple client login", "[normal]")
 				REQUIRE(coll.name() == "");
 				REQUIRE(coll.owner() == "sumsum");
 
-				subject.download_collection(coll, "master", std::filesystem::temp_directory_path(), [&tested](auto ec)
+				subject.download_collection(coll, "master", std::filesystem::current_path(), [&tested](auto ec)
 				{
 					REQUIRE_FALSE(ec);
 					++tested;
