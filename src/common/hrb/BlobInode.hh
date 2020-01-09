@@ -73,4 +73,7 @@ struct BlobInode
 void to_json(nlohmann::json& dest, const BlobInode& src);
 void from_json(const nlohmann::json& src, BlobInode& dest);
 
+bool operator==(const BlobInode& lhs, const BlobInode& rhs);
+inline bool operator!=(const BlobInode& lhs, const BlobInode& rhs) {return !operator==(lhs, rhs);}
+
 } // end of namespace hrb

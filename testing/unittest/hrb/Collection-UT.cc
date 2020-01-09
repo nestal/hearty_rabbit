@@ -62,6 +62,9 @@ TEST_CASE("simple Collection <-> JSON round-trip", "[normal]")
 	REQUIRE(ret.get_blob(abc).has_value());
 	REQUIRE(ret.get_blob(abc)->info().timestamp == Timestamp{342s});
 	REQUIRE(ret.get_blob(img)->info().timestamp == Timestamp{1h});
+
+	ret.remove_blob(abc);
+	REQUIRE(subject != ret);
 }
 
 // verify operator==() before using it to verify result of other tests

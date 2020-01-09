@@ -65,6 +65,9 @@ public:
 	void update_timestamp(const ObjectID& id, Timestamp value);
 	[[nodiscard]] std::size_t size() const {return m_blobs.size();}
 
+	bool operator==(const Collection& rhs) const;
+	bool operator!=(const Collection& rhs) const {return !operator==(rhs);}
+
 private:
 	std::string     m_name;
 	std::string     m_owner;

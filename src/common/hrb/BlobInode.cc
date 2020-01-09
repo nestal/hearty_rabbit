@@ -33,4 +33,13 @@ void to_json(nlohmann::json& dest, const BlobInode& src)
 	dest = std::move(result);
 }
 
+bool operator==(const BlobInode& lhs, const BlobInode& rhs)
+{
+	return lhs.timestamp == rhs.timestamp &&
+		lhs.filename == rhs.filename &&
+		lhs.mime == rhs.mime &&
+		lhs.perm == rhs.perm;
+
+}
+
 } // end of namespace

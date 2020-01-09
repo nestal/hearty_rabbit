@@ -41,8 +41,6 @@ TEST_CASE("simple client login", "[normal]")
 		REQUIRE(tested == 1);
 		ioc.restart();
 
-
-
 		// upload the source code of this unit test case
 		subject.upload("", __FILE__, [&tested, &subject](auto intent, auto err)
 		{
@@ -135,7 +133,7 @@ TEST_CASE("simple client login", "[normal]")
 				REQUIRE(coll.name() == "");
 				REQUIRE(coll.owner() == "sumsum");
 
-				subject.download_collection(coll, "master", std::filesystem::current_path(), [&tested](auto ec)
+				subject.download_collection(coll, "master", std::filesystem::temp_directory_path(), [&tested](auto ec)
 				{
 					REQUIRE_FALSE(ec);
 					++tested;

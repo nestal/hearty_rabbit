@@ -18,7 +18,7 @@
 #include "util/Magic.hh"
 #include "image/Image.hh"
 
-#include <iostream>
+#include <algorithm>
 
 namespace hrb {
 
@@ -48,8 +48,8 @@ Collection::Collection(const std::filesystem::path& path) :
 			auto blob = hash.finalize();
 
 			ImageMeta meta{mmap.buffer()};
-			std::cout << to_hex(blob) << " " << file.path().filename() << " " << meta.mime() << " " <<
-				meta.original_timestamp().value_or(Timestamp{}).http_format() << std::endl;
+//			std::cout << to_hex(blob) << " " << file.path().filename() << " " << meta.mime() << " " <<
+//				meta.original_timestamp().value_or(Timestamp{}).http_format() << std::endl;
 
 			add_blob(
 				blob,
@@ -137,6 +137,14 @@ std::optional<Blob> Collection::get_blob(const ObjectID& id) const
 		return Blob{m_owner, m_name, id, it->second};
 	else
 		return std::nullopt;
+}
+
+bool Collection::operator==(const Collection& rhs) const
+{
+	return m_name == rhs.m_name && m_owner == rhs.m_owner && m_meta == rhs.m_meta &&
+		m_blobs.size() == rhs.m_blobs.size() &&
+		std::equal(m_blobs.begin(), m_blobs.end(), rhs.m_blobs.begin()
+	);
 }
 
 } // end of namespace hrb
