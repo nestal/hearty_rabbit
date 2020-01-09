@@ -37,7 +37,7 @@ public:
 private:
 	std::string m_owner;
 	std::string m_coll;
-	ObjectID    m_id;
+	ObjectID    m_id{};
 	BlobInode   m_info;
 };
 

@@ -60,8 +60,8 @@ TEST_CASE("list of collection owned by user", "[normal]")
 	subject.query_blob(*redis, blobid, [&refs](auto&& range, auto ec)
 	{
 		for (auto&& ref : range)
-			if (ref.user == "owner")
-				refs.emplace_back(ref.coll);
+			if (ref.owner() == "owner")
+				refs.emplace_back(ref.collection());
 	});
 
 	REQUIRE(ioc.run_for(10s) > 0);
@@ -213,17 +213,15 @@ TEST_CASE("add blob to Ownership", "[normal]")
 
 	// verify that the newly added blob is in the public list
 	bool found = false;
-	subject.list_public_blobs(*redis, [&found, blobid](auto&& brefs, auto ec)
+	subject.list_public_blobs(*redis, [&found, blobid](auto&& blobs, auto ec)
 	{
-		auto it = std::find_if(brefs.begin(), brefs.end(), [blobid](auto&& bref){return bref.blob == blobid;});
-		found = (it != brefs.end());
-
-		if (found)
-			REQUIRE(it->coll == "/");
+		static_assert(std::is_same_v<std::decay_t<decltype(*blobs.begin())>, Blob>);
+		auto it = std::find_if(blobs.begin(), blobs.end(), [blobid](auto&& blob){return blob.id() == blobid;});
+		REQUIRE(it != blobs.end());
+		REQUIRE(it->collection() == "/");
 	});
 
 	REQUIRE(ioc.run_for(10s) > 0);
-	REQUIRE(found);
 	ioc.restart();
 
 	// move to another new collection
@@ -401,11 +399,11 @@ TEST_CASE("Query blob of testuser")
 		REQUIRE(first != last);
 
 		// There should be only one collection that owns the blob
-		REQUIRE(first->user == "testuser");
-		REQUIRE(first->coll == "somecoll");
-		REQUIRE(first->entry.permission() == Permission::public_());
-		REQUIRE(first->entry.filename() == "haha.jpeg");
-		REQUIRE(first->entry.mime() == "image/jpeg");
+		REQUIRE(first->owner() == "testuser");
+		REQUIRE(first->collection() == "somecoll");
+		REQUIRE(first->info().perm == Permission::public_());
+		REQUIRE(first->info().filename == "haha.jpeg");
+		REQUIRE(first->info().mime == "image/jpeg");
 		REQUIRE(++first == last);
 		tested++;
 	});

@@ -596,23 +596,12 @@ void SessionHandler::list_public_blobs(bool is_json, std::string_view user, unsi
 {
 	Ownership{m_auth.username()}.list_public_blobs(
 		*m_db,
-		[send=std::forward<Send>(send), version, this, is_json, user=std::string{user}](auto&& blob_refs, auto ec) mutable
+		[send=std::forward<Send>(send), version, this, is_json, user=std::string{user}](auto&& blobs, auto ec) mutable
 		{
-			BlobElements blob_list;
-			for (auto&& bref : blob_refs)
-			{
-				// filter by "user" if it is not empty: that means we want all public blobs from all users
-				// if "user" is empty string.
-				if ((user.empty() || user == bref.user) &&
-					bref.entry.permission() == Permission::public_())
-				{
-					// TODO: try to save one json->BlobInode->json round trip
-					if (auto json = nlohmann::json::parse(bref.entry.json(), nullptr, false); !json.is_discarded())
-						blob_list.emplace_back(bref.user, bref.coll, bref.blob, *bref.entry.fields());
-				}
-			}
 
-			SendJSON{std::forward<Send>(send), version, std::nullopt, *this, is_json ? nullptr : &m_lib}(std::move(blob_list), ec);
+			SendJSON{std::forward<Send>(send), version, std::nullopt, *this, is_json ? nullptr : &m_lib}(
+				BlobElements{blobs.begin(), blobs.end()}, ec
+			);
 		}
 	);
 }

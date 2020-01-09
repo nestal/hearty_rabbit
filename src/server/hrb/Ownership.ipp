@@ -11,12 +11,12 @@
 //
 
 #include "Ownership.hh"
-#include "BlobRef.hh"
 #include "BlobInodeDB.hh"
 #include "RedisKeys.hh"
 
 #include "net/Redis.hh"
 
+#include "hrb/Blob.hh"
 #include "hrb/Permission.hh"
 #include "hrb/CollectionList.hh"
 #include "util/Error.hh"
@@ -329,14 +329,15 @@ void Ownership::list_public_blobs(
 					std::error_code err;
 					auto [owner, blob, coll, entry_str] = row.as_tuple<4>(err);
 
-					std::optional<BlobRef> result;
+					std::optional<Blob> result;
 					if (auto blob_id = ObjectID::from_raw(blob.as_string()); !err && blob_id.has_value())
-						result = BlobRef{
+						if (BlobInodeDB inode{entry_str.as_string()}; inode.fields().has_value())
+						result.emplace(
 							std::string{owner.as_string()},
 							std::string{coll.as_string()},
 							*blob_id,
-							BlobInodeDB{entry_str.as_string()}
-	                    };
+							*inode.fields()
+						);
 
 					return result;
 				}) |
@@ -366,17 +367,22 @@ void Ownership::query_blob(redis::Connection& db, const ObjectID& blob, Complete
 	)__";
 
 	db.command(
-		[user=m_user, blob, comp=std::forward<Complete>(complete)](auto&& reply, auto ec)
+		[*this, blob, comp=std::forward<Complete>(complete)](auto&& reply, auto ec)
 		{
 			if (!reply)
 				Log(LOG_WARNING, "query_blob() script reply: %1%", reply.as_error());
 
 			using namespace boost::adaptors;
 			comp(reply.kv_pairs() |
-				transformed([blob, &user](auto&& kv)
+				transformed([blob, *this](auto&& kv)
 				{
-					return BlobRef{user, std::string{kv.key()}, blob, BlobInodeDB{kv.value().as_string()}};
-				}),
+					std::optional<Blob> result;
+					if (BlobInodeDB inode{kv.value().as_string()}; inode.fields().has_value())
+						result.emplace(m_user, std::string{kv.key()}, blob, *inode.fields());
+					return result;
+				}) |
+				filtered([](auto&& opt){return opt.has_value();}) |
+				transformed([](auto&& opt){return *opt;}),
 				ec
 			);
 		},
