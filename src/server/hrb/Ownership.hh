@@ -27,7 +27,7 @@ class CommandString;
 class Reply;
 }
 
-class Authentication;
+class UserID;
 class Permission;
 class BlobInode;
 class Collection;
@@ -49,12 +49,13 @@ private:
 	[[nodiscard]] Collection from_reply(
 		const redis::Reply& hash_getall_reply,
 		std::string_view coll,
-		const Authentication& requester,
+		const UserID& requester,
 		nlohmann::json&& meta
 	) const;
 
 public:
-	explicit Ownership(std::string_view name);
+	explicit Ownership(UserID owner);
+	Ownership(std::string_view name, UserID requester);
 
 	template <typename Complete, typename=std::enable_if_t<std::is_invocable_v<Complete, std::error_code>>>
 	void link_blob(
@@ -105,7 +106,7 @@ public:
 	template <typename Complete, typename=std::enable_if_t<std::is_invocable_v<Complete, Collection&&, std::error_code>>>
 	void get_collection(
 		redis::Connection& db,
-		const Authentication& requester,
+		const UserID& requester,
 		std::string_view coll,
 		Complete&& complete
 	) const;
@@ -136,7 +137,7 @@ public:
     >
 	void get_blob(
 		redis::Connection& db,
-		const Authentication& requester,
+		const UserID& requester,
 		const ObjectID& blob,
 		Complete&& complete
 	) const;

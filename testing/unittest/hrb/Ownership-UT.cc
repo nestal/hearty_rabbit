@@ -12,6 +12,7 @@
 
 #include <catch2/catch.hpp>
 
+#include "crypto/Authentication.hh"
 #include "hrb/Ownership.hh"
 #include "hrb/Ownership.ipp"
 #include "hrb/BlobDatabase.hh"
@@ -31,8 +32,9 @@ TEST_CASE("list of collection owned by user", "[normal]")
 
 	boost::asio::io_context ioc;
 	auto redis = redis::connect(ioc);
+	UserID owner{std::array<unsigned char, 16>{}, "owner"};
 
-	Ownership subject{"owner"};
+	Ownership subject{"owner", owner};
 
 	int tested = 0;
 	subject.link_blob(
@@ -71,7 +73,7 @@ TEST_CASE("list of collection owned by user", "[normal]")
 
 	// remove all blobs in the collection
 	subject.get_collection(
-		*redis, Authentication{{}, "owner"}, "/",
+		*redis, UserID{std::array<unsigned char, 16>{}, "owner"}, "/",
 		[&tested, redis](auto&& coll, std::error_code ec)
 		{
 			REQUIRE(coll.begin() != coll.end());
@@ -79,7 +81,7 @@ TEST_CASE("list of collection owned by user", "[normal]")
 				auto&&[id, blob] : coll)
 			{
 				INFO("removing = " << to_hex(id));
-				Ownership{"owner"}.unlink_blob(
+				Ownership{"owner", UserID{std::array<unsigned char, 16>{}, "owner"}}.unlink_blob(
 					*redis, "/", id, [](auto&& ec)
 					{
 						REQUIRE(!ec);
@@ -116,7 +118,9 @@ TEST_CASE("add blob to Ownership", "[normal]")
 
 	int tested = 0;
 
-	Ownership subject{"owner"};
+	UserID owner{std::array<unsigned char, 16>{}, "owner"};
+	UserID someone_else{std::array<unsigned char, 16>{}, "someone_else"};
+	Ownership subject{"owner", owner};
 
 	subject.link_blob(
 		*redis, "/", blobid, BlobInode{{}, "file.name"}, [&tested](std::error_code ec)
@@ -130,7 +134,7 @@ TEST_CASE("add blob to Ownership", "[normal]")
 	REQUIRE(tested == 1);
 	ioc.restart();
 
-	subject.get_collection(*redis, {{}, "owner"}, "/", [&tested, blobid](Collection&& coll, std::error_code ec)
+	subject.get_collection(*redis, owner, "/", [&tested, blobid](Collection&& coll, std::error_code ec)
 	{
 		REQUIRE_FALSE(ec);
 		REQUIRE(coll.find(blobid) != coll.end());
@@ -252,7 +256,7 @@ TEST_CASE("add blob to Ownership", "[normal]")
 	ioc.restart();
 
 	// query blob by owner
-	subject.get_blob(*redis, {{}, "owner"}, blobid, [&tested](auto&& entry, std::error_code ec)
+	subject.get_blob(*redis, owner, blobid, [&tested](auto&& entry, std::error_code ec)
 	{
 		REQUIRE(!ec);
 		REQUIRE(entry.filename() == "file.name");
@@ -265,7 +269,7 @@ TEST_CASE("add blob to Ownership", "[normal]")
 	ioc.restart();
 
 	// query blob by someone else
-	subject.get_blob(*redis, {{}, "someone_else"}, blobid, [&tested](auto&& entry, std::error_code ec)
+	subject.get_blob(*redis, someone_else, blobid, [&tested](auto&& entry, std::error_code ec)
 	{
 		REQUIRE(!ec);
 		REQUIRE(entry.filename() == "file.name");
@@ -289,7 +293,8 @@ TEST_CASE("Load 3 images in json", "[normal]")
 
 	int added = 0;
 
-	Ownership subject{"testuser"};
+	UserID owner{std::array<unsigned char, 16>{}, "owner"};
+	Ownership subject{"testuser", owner};
 
 	for (auto&& blobid : blobids)
 	{
@@ -328,9 +333,11 @@ TEST_CASE("Load 3 images in json", "[normal]")
 
 	ioc.restart();
 
+	UserID testuser{std::array<unsigned char, 16>{}, "testuser"};
+
 	bool tested = false;
 	subject.get_collection(
-		*redis, {{}, "testuser"}, "some/collection", [&tested, &blobids](auto&& coll, auto ec)
+		*redis, testuser, "some/collection", [&tested, &blobids](auto&& coll, auto ec)
 		{
 			using json = nlohmann::json;
 
@@ -373,7 +380,8 @@ TEST_CASE("Query blob of testuser")
 	boost::asio::io_context ioc;
 	auto redis = redis::connect(ioc);
 
-	Ownership subject{"testuser"};
+	UserID testuser{std::array<unsigned char, 16>{}, "testuser"};
+	Ownership subject{"testuser", testuser};
 
 	auto blobid = insecure_random<ObjectID>();
 
@@ -417,7 +425,8 @@ TEST_CASE("set cover error cases", "[error]")
 	boost::asio::io_context ioc;
 	auto redis = redis::connect(ioc);
 
-	Ownership subject{"testuser"};
+	UserID testuser{std::array<unsigned char, 16>{}, "testuser"};
+	Ownership subject{"testuser", testuser};
 	auto cover_blob = insecure_random<ObjectID>();
 
 	SECTION("setting cover of inexist album")
@@ -499,7 +508,8 @@ TEST_CASE("setting and remove the cover of collection", "[normal]")
 	boost::asio::io_context ioc;
 	auto redis = redis::connect(ioc);
 
-	Ownership subject{"testuser"};
+	UserID testuser{std::array<unsigned char, 16>{}, "testuser"};
+	Ownership subject{"testuser", testuser};
 	auto cover_blob = insecure_random<ObjectID>();
 
 	bool added = false;

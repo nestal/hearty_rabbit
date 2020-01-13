@@ -136,7 +136,7 @@ void SessionHandler::unlink(BlobRequest&& req, EmptyResponseSender&& send)
 		return send(http::response<http::empty_body>{http::status::forbidden, req.version()});
 
 	// remove from user's container
-	Ownership{req.owner()}.unlink_blob(
+	Ownership{req.owner(), m_auth}.unlink_blob(
 		*m_db, req.collection(), *req.blob(),
 		[send = std::move(send), version = req.version()](auto ec)
 		{
@@ -174,7 +174,7 @@ void SessionHandler::post_blob(BlobRequest&& req, EmptyResponseSender&& send)
 	};
 
 	if (!perm_str.empty())
-		Ownership{req.owner()}.set_permission(
+		Ownership{req.owner(), m_auth}.set_permission(
 			*m_db,
 			*req.blob(),
 			Permission::from_description(perm_str),
@@ -182,7 +182,7 @@ void SessionHandler::post_blob(BlobRequest&& req, EmptyResponseSender&& send)
 		);
 
 	else if (!move_destination.empty())
-		Ownership{req.owner()}.move_blob(
+		Ownership{req.owner(), m_auth}.move_blob(
 			*m_db,
 			req.collection(),
 			move_destination,
@@ -236,7 +236,7 @@ void SessionHandler::on_upload(UploadRequest&& req, EmptyResponseSender&& send)
 	// Add the newly created blob to the user's ownership table.
 	// The user's ownership table contains all the blobs that is owned by the user.
 	// It will be used for authorizing the user's request on these blob later.
-	Ownership{m_auth.username()}.link_blob(
+	Ownership{m_auth.username(), m_auth}.link_blob(
 		*m_db, path_url.collection(), blob.ID(), entry, [
 			location = URLIntent{
 				URLIntent::Action::api,
@@ -325,7 +325,7 @@ void SessionHandler::validate_collection(Collection& coll)
 			new_entry.timestamp = blob_file.original_datetime();
 			coll.update_timestamp(id, new_entry.timestamp);
 
-			Ownership{m_auth.username()}.update_blob(*m_db, id, new_entry);
+			Ownership{m_auth.username(), m_auth}.update_blob(*m_db, id, new_entry);
 		}
 	}
 }

@@ -32,7 +32,7 @@ class Authentication
 {
 public:
 	Authentication() = default;
-	Authentication(const UserID& uid) : m_uid{uid} {}
+	explicit Authentication(UserID uid) : m_uid{std::move(uid)} {}
 	Authentication(UserID::SessionID session, std::string_view user, bool guest=false);
 	Authentication(Authentication&&) = default;
 	Authentication(const Authentication&) = default;
@@ -41,7 +41,7 @@ public:
 	Authentication& operator=(Authentication&&) = default;
 	Authentication& operator=(const Authentication&) = default;
 
-	bool valid() const;
+	[[nodiscard]] bool valid() const;
 
 	static void add_user(
 		std::string_view username_mixed_case,

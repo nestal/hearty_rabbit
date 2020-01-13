@@ -19,10 +19,9 @@
 #include "hrb/Blob.hh"
 #include "hrb/Permission.hh"
 #include "hrb/CollectionList.hh"
+#include "hrb/UserID.hh"
 #include "util/Error.hh"
 #include "util/Escape.hh"
-
-#include "crypto/Authentication.hh"
 #include "util/Log.hh"
 
 #include <nlohmann/json.hpp>
@@ -76,7 +75,7 @@ void Ownership::unlink_blob(
 template <typename Complete, typename>
 void Ownership::get_collection(
 	redis::Connection& db,
-	const Authentication& requester,
+	const UserID& requester,
 	std::string_view coll,
 	Complete&& complete
 ) const
@@ -174,7 +173,7 @@ void Ownership::get_blob(
 template <typename Complete, typename>
 void Ownership::get_blob(
 	redis::Connection& db,
-	const Authentication& requester,
+	const UserID& requester,
 	const ObjectID& blob,
 	Complete&& complete
 ) const
@@ -187,7 +186,7 @@ void Ownership::get_blob(
 				comp(BlobDBEntry{}, make_error_code(Error::object_not_exist));
 			else
 			{
-				if (BlobDBEntry entry{reply.as_string()}; entry.permission().allow(requester.id(), m_user))
+				if (BlobDBEntry entry{reply.as_string()}; entry.permission().allow(requester, m_user))
 					comp(entry, ec);
 				else
 					comp(BlobDBEntry{}, make_error_code(Error::object_not_exist));

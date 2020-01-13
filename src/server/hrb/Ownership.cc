@@ -20,14 +20,19 @@
 
 namespace hrb {
 
-Ownership::Ownership(std::string_view name) : m_user{name}
+// Request by owner
+Ownership::Ownership(UserID owner) : m_user{owner.username()}, m_requester{std::move(owner)}
+{
+}
+
+Ownership::Ownership(std::string_view name, UserID requester) : m_user{name}, m_requester{std::move(requester)}
 {
 }
 
 Collection Ownership::from_reply(
 	const redis::Reply& reply,
 	std::string_view coll,
-	const Authentication& requester,
+	const UserID& requester,
 	nlohmann::json&& meta
 ) const
 {
@@ -49,7 +54,7 @@ Collection Ownership::from_reply(
 		auto blob_id = ObjectID::from_raw(blob);
 
 		// check permission: allow allow owner (i.e. m_user)
-		if (blob_id && entry.permission().allow(requester.id(), m_user))
+		if (blob_id && entry.permission().allow(requester, m_user))
 		{
 			if (auto fields = entry.fields(); fields.has_value())
 			{

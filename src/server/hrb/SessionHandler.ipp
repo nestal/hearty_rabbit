@@ -267,7 +267,7 @@ void SessionHandler::on_request_body(Request&& req, Send&& send)
 
 		if (intent.action() == URLIntent::Action::home)
 			return m_auth.valid() ?
-				Ownership{m_auth.username()}.scan_all_collections(
+				Ownership{m_auth.username(), m_auth}.scan_all_collections(
 					*m_db,
 					SendJSON{std::forward<Send>(send), req.version(), std::nullopt, *this, &m_lib}
 				) :
@@ -304,7 +304,7 @@ void SessionHandler::on_request_api(Request&& req, URLIntent&& intent, Send&& se
 		if (breq.blob())
 			return get_blob(std::move(breq), std::forward<Send>(send));
 		else
-			return Ownership{breq.owner()}.get_collection(
+			return Ownership{breq.owner(), m_auth}.get_collection(
 				*m_db,
 				m_auth,
 				breq.collection(),
@@ -338,7 +338,7 @@ void SessionHandler::on_request_view(Request&& req, URLIntent&& intent, Send&& s
 	if (req.method() == http::verb::get)
 	{
 		// view request always sends HTML: pass &m_lib to SendJSON
-		return Ownership{breq.owner()}.get_collection(
+		return Ownership{breq.owner(), m_auth}.get_collection(
 			*m_db,
 			m_auth,
 			breq.collection(),
@@ -370,7 +370,7 @@ void SessionHandler::get_blob(const BlobRequest& req, Send&& send)
 	// Check if the user can access the blob
 	// Note: do not move-construct "req" to the lambda because the arguments of find() uses it.
 	// Otherwise, "req" will become dangled.
-	Ownership{req.owner()}.get_blob(
+	Ownership{req.owner(), m_auth}.get_blob(
 		*m_db, req.collection(), *req.blob(),
 		[
 			req, this,
@@ -442,7 +442,7 @@ void SessionHandler::scan_collection(const URLIntent& intent, unsigned version, 
 	if (m_auth.username() != *user)
 		return send(http::response<http::string_body>{http::status::forbidden, version});
 
-	Ownership{*user}.scan_all_collections(
+	Ownership{*user, m_auth}.scan_all_collections(
 		*m_db,
 		SendJSON{std::forward<Send>(send), version, std::nullopt, *this, json.has_value() ? nullptr : &m_lib}
 	);
@@ -459,7 +459,7 @@ void SessionHandler::query_blob(const BlobRequest& req, Send&& send)
 	if (owner.empty())
 		owner = m_auth.username();
 
-	Ownership{owner}.get_blob(
+	Ownership{owner, m_auth}.get_blob(
 		*m_db,
 		m_auth,
 		*blob,
@@ -494,7 +494,7 @@ void SessionHandler::query_blob_set(const URLIntent& intent, unsigned version, S
 	}
 	else if (dup_coll.has_value())
 	{
-		Ownership{m_auth.username()}.get_collection(
+		Ownership{m_auth.username(), m_auth}.get_collection(
 			*m_db,
 			m_auth,
 			*dup_coll,
@@ -545,7 +545,7 @@ void SessionHandler::post_view(BlobRequest&& req, Send&& send)
 	using namespace std::chrono_literals;
 
 	if (auto cover_blob = ObjectID::from_hex(cover); cover_blob)
-		return Ownership{req.owner()}.set_cover(
+		return Ownership{req.owner(), m_auth}.set_cover(
 			*m_db,
 			req.collection(),
 			*cover_blob,
@@ -596,7 +596,7 @@ void SessionHandler::post_view(BlobRequest&& req, Send&& send)
 template <typename Send>
 void SessionHandler::list_public_blobs(bool is_json, std::string_view user, unsigned version, Send&& send)
 {
-	Ownership{m_auth.username()}.list_public_blobs(
+	Ownership{m_auth.username(), m_auth}.list_public_blobs(
 		*m_db,
 		[send=std::forward<Send>(send), version, this, is_json, user=std::string{user}](auto&& blobs, auto ec) mutable
 		{
