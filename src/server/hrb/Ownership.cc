@@ -50,10 +50,7 @@ Collection Ownership::from_reply(
 			continue;
 
 		BlobDBEntry entry{perm.as_string()};
-		auto blob_id = ObjectID::from_raw(blob);
-
-		// check permission: allow allow owner (i.e. m_user)
-		if (blob_id && entry.permission().allow(m_requester, m_user))
+		if (auto blob_id = ObjectID::from_raw(blob); blob_id && can_access(entry.permission()))
 		{
 			if (auto fields = entry.fields(); fields.has_value())
 			{
@@ -373,6 +370,12 @@ redis::CommandString Ownership::list_public_blob_command() const
 		lua,
 		key::public_blobs().data(), key::public_blobs().size()
 	};
+}
+
+bool Ownership::can_access(Permission perm) const
+{
+	// Don't swap these two!
+	return perm.allow(m_requester, m_user);
 }
 
 } // end of namespace hrb

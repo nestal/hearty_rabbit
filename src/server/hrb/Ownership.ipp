@@ -183,7 +183,7 @@ void Ownership::get_blob(
 				comp(BlobDBEntry{}, make_error_code(Error::object_not_exist));
 			else
 			{
-				if (BlobDBEntry entry{reply.as_string()}; entry.permission().allow(m_requester, m_user))
+				if (BlobDBEntry entry{reply.as_string()}; can_access(entry.permission()))
 					comp(entry, ec);
 				else
 					comp(BlobDBEntry{}, make_error_code(Error::object_not_exist));
