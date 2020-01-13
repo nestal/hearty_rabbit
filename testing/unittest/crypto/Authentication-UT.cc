@@ -24,6 +24,35 @@
 #include <boost/algorithm/hex.hpp>
 
 using namespace hrb;
+using namespace std::literals;
+
+TEST_CASE("random round-trip", "[normal]")
+{
+	// Random round-trip
+	auto rand = insecure_random<Authentication::SessionID>();
+	auto cookie = Authentication{rand, "test"}.set_cookie(600s);
+
+	INFO("cookie for random session ID is " << cookie);
+	auto session = Authentication::parse_cookie(cookie);
+	REQUIRE(session.has_value());
+	REQUIRE(*session == rand);
+}
+
+TEST_CASE("Parsing session cookies", "[normal]")
+{
+	auto session = Authentication::parse_cookie(Cookie{"id=0123456789ABCDEF0123456789ABCDEF; somethingelse; "});
+	REQUIRE(session.has_value());
+	REQUIRE(*session == Authentication::SessionID{0x01,0x23,0x45, 0x67, 0x89,0xAB,0xCD,0xEF,0x01,0x23,0x45,0x67,0x89,0xAB,0xCD,0xEF});
+
+	session = Authentication::parse_cookie(Cookie{"name=value; id=0123456789ABCDEF0123456789ABCDEF; "});
+	REQUIRE(session.has_value());
+	REQUIRE(*session == Authentication::SessionID{0x01,0x23,0x45, 0x67, 0x89,0xAB,0xCD,0xEF,0x01,0x23,0x45,0x67,0x89,0xAB,0xCD,0xEF});
+
+	// some lower case characters
+	session = Authentication::parse_cookie(Cookie{"name=value; id=0123456789abcDEF0123456789ABCdef; "});
+	REQUIRE(session.has_value());
+	REQUIRE(*session == Authentication::SessionID{0x01,0x23,0x45, 0x67, 0x89,0xAB,0xCD,0xEF,0x01,0x23,0x45,0x67,0x89,0xAB,0xCD,0xEF});
+}
 
 TEST_CASE("Test password init", "[normal]")
 {
@@ -46,7 +75,14 @@ TEST_CASE("Test password init", "[normal]")
 
 TEST_CASE("Default Authenication ctor construct invalid authenication", "[normal]")
 {
-	REQUIRE(!Authentication{}.valid());
+	REQUIRE_FALSE(Authentication{}.is_valid());
+}
+
+TEST_CASE("Guest Authenication is valid", "[normal]")
+{
+	Authentication guest{insecure_random<Authentication::SessionID>()};
+	REQUIRE(guest.id().is_guest());
+	REQUIRE_FALSE(Authentication{}.is_valid());
 }
 
 TEST_CASE("Test normal user login", "[normal]")
@@ -74,7 +110,7 @@ TEST_CASE("Test normal user login", "[normal]")
 				{
 					INFO("verify_user(correct) result = " << ec.message());
 					REQUIRE(!ec);
-					REQUIRE(session.valid());
+					REQUIRE(session.is_valid());
 
 					Authentication::verify_session(
 						session.session(), *redis, 60s,
@@ -82,9 +118,10 @@ TEST_CASE("Test normal user login", "[normal]")
 						{
 							// Username returned is always lower case.
 							REQUIRE(!ec);
-							REQUIRE(auth.valid());
-							REQUIRE_FALSE(auth.is_guest());
-							REQUIRE(auth.username() == "sumsum");
+							REQUIRE(auth.is_valid());
+							REQUIRE_FALSE(auth.id().is_guest());
+							REQUIRE(auth.id().is_valid());
+							REQUIRE(auth.id().username() == "sumsum");
 							tested = true;
 						}
 					);
@@ -99,22 +136,24 @@ TEST_CASE("Test normal user login", "[normal]")
 				{
 					INFO("verify_user(incorrect) result = " << ec.message());
 					REQUIRE(ec == Error::login_incorrect);
-					REQUIRE(!session.valid());
-					REQUIRE_FALSE(session.is_guest());
+					REQUIRE(!session.is_valid());
+					REQUIRE_FALSE(session.id().is_guest());
+					REQUIRE_FALSE(session.id().is_valid());
 					tested = true;
 				}
 			);
 		}
 		SECTION("verify random session ID")
 		{
-			auto cookie = insecure_random<UserID::SessionID>();
+			auto cookie = insecure_random<Authentication::SessionID>();
 
 			Authentication::verify_session(cookie, *redis, 60s, [&tested](std::error_code ec, auto&& session)
 				{
 					INFO("verify_session(incorrect) result = " << ec.message());
 					REQUIRE(!ec);
-					REQUIRE_FALSE(session.valid());
-					REQUIRE_FALSE(session.is_guest());
+					REQUIRE_FALSE(session.is_valid());
+					REQUIRE_FALSE(session.id().is_guest());
+					REQUIRE_FALSE(session.id().is_valid());
 					tested = true;
 				}
 			);
@@ -138,9 +177,10 @@ TEST_CASE("Test normal user login", "[normal]")
 				[&tested_count, old_cookie = session.session()](std::error_code ec, auto&& auth)
 				{
 					REQUIRE(!ec);
-					REQUIRE(auth.valid());
-					REQUIRE_FALSE(auth.is_guest());
-					REQUIRE(auth.username() == "sumsum");
+					REQUIRE(auth.is_valid());
+					REQUIRE_FALSE(auth.id().is_guest());
+					REQUIRE(auth.id().is_valid());
+					REQUIRE(auth.id().username() == "sumsum");
 
 					// Verify cookie changed
 					REQUIRE(auth.session() != old_cookie);
@@ -155,8 +195,9 @@ TEST_CASE("Test normal user login", "[normal]")
 				[&tested_count, old_cookie = session.session()](std::error_code ec, auto&& auth)
 				{
 					REQUIRE(!ec);
-					REQUIRE(auth.valid());
-					REQUIRE(auth.username() == "sumsum");
+					REQUIRE(auth.is_valid());
+					REQUIRE(auth.id().is_valid());
+					REQUIRE(auth.id().username() == "sumsum");
 					REQUIRE(auth.session() == old_cookie);
 					tested_count++;
 				}
@@ -178,11 +219,12 @@ TEST_CASE("Sharing resource to guest", "[normal]")
 	{
 		REQUIRE(!ec);
 		REQUIRE(auth.id().is_guest());
-		REQUIRE(auth.valid());
+		REQUIRE(auth.is_valid());
+		REQUIRE_FALSE(auth.id().is_valid());
 
 		tested++;
 
-		auth.is_shared_resource("dir:", *redis, [&tested](bool shared, auto ec)
+		auth.is_shared_resource("sumsum", "dir:", *redis, [&tested](bool shared, auto ec)
 		{
 			REQUIRE_FALSE(ec);
 			REQUIRE(shared);
@@ -209,8 +251,8 @@ TEST_CASE("Sharing resource to guest", "[normal]")
 
 	bool found = false;
 
-	Authentication someone_else{insecure_random<UserID::SessionID>(), "someone"};
-	someone_else.is_shared_resource("dir:", *redis, [&found](bool shared, auto ec)
+	Authentication someone_else{insecure_random<Authentication::SessionID>(), "someone"};
+	someone_else.is_shared_resource("someone", "dir:", *redis, [&found](bool shared, auto ec)
 	{
 		REQUIRE_FALSE(shared);
 		found = false;

@@ -37,17 +37,17 @@ void Authentication::share_resource(
 	Complete&& comp
 )
 {
-	auto auth = insecure_random<UserID::SessionID>();
+	auto auth = insecure_random<SessionID>();
 	auto expired = std::chrono::system_clock::now() + valid_period;
 
 	db.command(
 		[
 			comp=std::forward<Complete>(comp),
-			owner=std::string{owner},
 			auth
 	    ](auto&&, auto ec)
 		{
-			comp(Authentication{auth, owner, true}, ec);
+			assert(Authentication{auth}.id().is_guest());
+			comp(Authentication{auth}, ec);
 		},
 		"HSET %b%b:%b %b %ld",
 		m_shared_auth_prefix.data(), m_shared_auth_prefix.size(),
@@ -60,6 +60,7 @@ void Authentication::share_resource(
 
 template <typename Complete>
 void Authentication::is_shared_resource(
+	std::string_view owner,
 	std::string_view resource,
 	redis::Connection& db,
 	Complete&& comp
@@ -68,13 +69,13 @@ void Authentication::is_shared_resource(
 	db.command(
 		[comp=std::forward<Complete>(comp)](auto&& reply, auto ec)
 		{
-			comp(reply.to_int() > std::time(0), ec);
+			comp(reply.to_int() > std::time(nullptr), ec);
 		},
 		"HGET %b%b:%b %b",
 		m_shared_auth_prefix.data(), m_shared_auth_prefix.size(),
-		id().username().data(), id().username().size(),
+		owner.data(), owner.size(),
 		resource.data(), resource.size(),
-		id().session().data(), id().session().size()
+		m_session.data(), m_session.size()
 	);
 }
 
@@ -88,22 +89,21 @@ void Authentication::list_guests(
 {
 	db.command(
 		[
-			comp=std::forward<Complete>(comp),
-			owner=std::string{owner}
+			comp=std::forward<Complete>(comp)
 	    ](auto&& reply, auto ec)
 		{
 			auto valid_cookie = [](auto&& kv)
 			{
-				return kv.key().size() == UserID::SessionID{}.size();
+				return kv.key().size() == SessionID{}.size();
 			};
-			auto make_guest = [&owner](auto&& kv)
+			auto make_guest = [](auto&& kv)
 			{
-				UserID::SessionID c{};
+				SessionID c{};
 				auto s = kv.key();
 				assert(s.size() == c.size());
 
 				std::copy(s.begin(), s.end(), c.begin());
-				return Authentication{c, owner, true};
+				return Authentication{c};
 			};
 
 			using namespace boost::adaptors;

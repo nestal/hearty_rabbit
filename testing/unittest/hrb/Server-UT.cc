@@ -112,12 +112,12 @@ private:
 	fs::path m_file;
 };
 
-UserID create_session(std::string_view username, std::string_view password, const Configuration& cfg)
+Authentication create_session(std::string_view username, std::string_view password, const Configuration& cfg)
 {
 	boost::asio::io_context ioc;
 	auto db = redis::connect(ioc, cfg.redis());
 
-	std::promise<UserID> result;
+	std::promise<Authentication> result;
 
 	Authentication::add_user(username, Password{password}, *db, [&result, db, username, password](std::error_code ec)
 	{
@@ -127,7 +127,9 @@ UserID create_session(std::string_view username, std::string_view password, cons
 		Authentication::verify_user(username, Password{password}, *db, 60s, [&result, db](std::error_code ec, auto&& auth)
 		{
 			REQUIRE(!ec);
-			REQUIRE(auth.valid());
+			REQUIRE(auth.is_valid());
+			REQUIRE(auth.id().is_valid());
+			REQUIRE_FALSE(auth.id().is_guest());
 			result.set_value(auth);
 		});
 	});

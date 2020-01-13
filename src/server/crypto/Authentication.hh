@@ -14,11 +14,12 @@
 
 #include "hrb/UserID.hh"
 
+#include <array>
+#include <chrono>
 #include <functional>
-#include <optional>
 #include <string_view>
 #include <system_error>
-#include <chrono>
+#include <optional>
 
 namespace hrb {
 
@@ -27,13 +28,17 @@ class Connection;
 }
 
 class Password;
+class Cookie;
 
 class Authentication
 {
 public:
+	using SessionID = std::array<unsigned char, 16>;
+
+public:
 	Authentication() = default;
-	explicit Authentication(UserID uid) : m_uid{std::move(uid)} {}
-	Authentication(UserID::SessionID session, std::string_view user, bool guest=false);
+	explicit Authentication(SessionID guest_session);
+	Authentication(SessionID session, std::string_view user);
 	Authentication(Authentication&&) = default;
 	Authentication(const Authentication&) = default;
 	~Authentication() = default;
@@ -41,7 +46,9 @@ public:
 	Authentication& operator=(Authentication&&) = default;
 	Authentication& operator=(const Authentication&) = default;
 
-	[[nodiscard]] bool valid() const;
+	[[nodiscard]] bool is_valid() const noexcept;
+	[[nodiscard]] Cookie cookie() const;
+	[[nodiscard]] Cookie set_cookie(std::chrono::seconds session_length = std::chrono::seconds{3600}) const;
 
 	static void add_user(
 		std::string_view username_mixed_case,
@@ -55,14 +62,14 @@ public:
 		Password&& password,
 		redis::Connection& db,
 		std::chrono::seconds session_length,
-		std::function<void(std::error_code, UserID&&)> completion
+		std::function<void(std::error_code, Authentication&&)> completion
 	);
 
 	static void verify_session(
-		const UserID::SessionID& cookie,
+		const SessionID& cookie,
 		redis::Connection& db,
 		std::chrono::seconds session_length,
-		std::function<void(std::error_code, UserID&&)>&& completion
+		std::function<void(std::error_code, Authentication&&)>&& completion
 	);
 
 	template <typename Complete, typename Duration>
@@ -76,6 +83,7 @@ public:
 
 	template <typename Complete>
 	void is_shared_resource(
+		std::string_view owner,
 		std::string_view resource,
 		redis::Connection& db,
 		Complete&& comp
@@ -95,22 +103,26 @@ public:
 	) const;
 
 	[[nodiscard]] const UserID& id() const {return m_uid;}
+	[[nodiscard]] const SessionID& session() const {return m_session;}
 
 	bool operator==(const Authentication& rhs) const {return m_uid == rhs.m_uid;}
 	bool operator!=(const Authentication& rhs) const {return m_uid != rhs.m_uid;}
+
+	static std::optional<SessionID> parse_cookie(const Cookie& cookie);
 
 private:
 	void renew_session(
 		redis::Connection& db,
 		std::chrono::seconds session_length,
-		std::function<void(std::error_code, UserID&&)>&& completion
+		std::function<void(std::error_code, Authentication&&)>&& completion
 	) const;
 
 private:
 	static const std::string_view m_shared_auth_prefix;
 
 private:
-	UserID m_uid;
+	UserID      m_uid;
+	SessionID   m_session;
 };
 
 } // end of namespace

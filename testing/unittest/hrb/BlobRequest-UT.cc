@@ -13,10 +13,8 @@
 #include <catch2/catch.hpp>
 
 #include "hrb/BlobRequest.hh"
-#include "crypto/Authentication.hh"
+#include "hrb/UserID.hh"
 #include "crypto/Random.hh"
-
-#include <iostream>
 
 using namespace hrb;
 
@@ -32,6 +30,6 @@ TEST_CASE("BlobRequest move ctor")
 	REQUIRE(moved.blob().has_value());
 	REQUIRE(*moved.blob() == *ObjectID::from_hex("d83587387441dbd26616b532fe039fc0e9f4c927"));
 	REQUIRE(moved.owner() == "testuser");
-	REQUIRE_FALSE(moved.request_by_owner({insecure_random<UserID::SessionID>(), "sumsum"}));
-	REQUIRE(moved.request_by_owner({insecure_random<UserID::SessionID>(), "testuser"}));
+	REQUIRE_FALSE(moved.request_by_owner(UserID{"sumsum"}));
+	REQUIRE(moved.request_by_owner(UserID{"testuser"}));
 }

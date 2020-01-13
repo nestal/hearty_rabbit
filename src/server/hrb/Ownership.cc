@@ -32,7 +32,6 @@ Ownership::Ownership(std::string_view name, UserID requester) : m_user{name}, m_
 Collection Ownership::from_reply(
 	const redis::Reply& reply,
 	std::string_view coll,
-	const UserID& requester,
 	nlohmann::json&& meta
 ) const
 {
@@ -54,7 +53,7 @@ Collection Ownership::from_reply(
 		auto blob_id = ObjectID::from_raw(blob);
 
 		// check permission: allow allow owner (i.e. m_user)
-		if (blob_id && entry.permission().allow(requester, m_user))
+		if (blob_id && entry.permission().allow(m_requester, m_user))
 		{
 			if (auto fields = entry.fields(); fields.has_value())
 			{

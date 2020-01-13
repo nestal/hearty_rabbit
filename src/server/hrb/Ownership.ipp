@@ -75,15 +75,13 @@ void Ownership::unlink_blob(
 template <typename Complete, typename>
 void Ownership::get_collection(
 	redis::Connection& db,
-	const UserID& requester,
 	std::string_view coll,
 	Complete&& complete
 ) const
 {
 	db.command(
 		[
-			comp=std::forward<Complete>(complete), *this,
-			requester, coll=std::string{coll}
+			comp=std::forward<Complete>(complete), *this, coll=std::string{coll}
 		](auto&& reply, std::error_code&& ec) mutable
 		{
 			if (!reply || ec)
@@ -103,7 +101,7 @@ void Ownership::get_collection(
 					meta = nlohmann::json::object();
 				}
 
-				comp(from_reply(reply[0], coll, requester, std::move(meta)), ec);
+				comp(from_reply(reply[0], coll, std::move(meta)), ec);
 			}
 
 			// This should never happen unless the redis server has bugs.
@@ -173,20 +171,19 @@ void Ownership::get_blob(
 template <typename Complete, typename>
 void Ownership::get_blob(
 	redis::Connection& db,
-	const UserID& requester,
 	const ObjectID& blob,
 	Complete&& complete
 ) const
 {
 	auto blob_inode = key::blob_inode(m_user);
 	db.command(
-		[comp=std::forward<Complete>(complete), requester, *this](redis::Reply&& reply, std::error_code ec) mutable
+		[comp=std::forward<Complete>(complete), *this](redis::Reply&& reply, std::error_code ec) mutable
 		{
 			if (ec || !reply.is_string())
 				comp(BlobDBEntry{}, make_error_code(Error::object_not_exist));
 			else
 			{
-				if (BlobDBEntry entry{reply.as_string()}; entry.permission().allow(requester, m_user))
+				if (BlobDBEntry entry{reply.as_string()}; entry.permission().allow(m_requester, m_user))
 					comp(entry, ec);
 				else
 					comp(BlobDBEntry{}, make_error_code(Error::object_not_exist));

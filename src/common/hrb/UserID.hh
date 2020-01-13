@@ -12,40 +12,41 @@
 
 #pragma once
 
-#include <chrono>
-#include <array>
 #include <optional>
 
 namespace hrb {
 
-class Cookie;
-
+/// There are three types of users: anonymous, guests and valid users.
+/// Anonymous users send requests without any session ID in cookies or authentication keys in URL.
+/// Guest users send requests without session ID in cookies, but they have a valid authentication key in all
+/// URLs. Valid users send requests with a valid session ID, and we don't care if they have any authentication
+/// keys in URL.
 class UserID
 {
 public:
-	using SessionID = std::array<unsigned char, 16>;
-
-public:
 	UserID() = default;
-	UserID(SessionID session, std::string_view user, bool guest=false);
-	UserID(const Cookie& cookie, std::string_view user);
+	explicit UserID(std::string_view user);
 
-	[[nodiscard]] const SessionID& session() const {return m_session;}
 	[[nodiscard]] const std::string& username() const {return m_user;}
 	[[nodiscard]] bool is_guest() const {return m_guest;}
 
-	[[nodiscard]] bool valid() const;
+	// Returns true only when this object represent a valid user.
+	// Unlike Authentication::is_valid(), UserID::is_valid() return false if it represents a guest user.
+	[[nodiscard]] bool is_valid() const {return !m_user.empty();}
+
+	[[nodiscard]] bool is_anonymous() const {return m_user.empty() && !m_guest;}
 
 	bool operator==(const UserID& rhs) const;
 	bool operator!=(const UserID& rhs) const;
 
-	[[nodiscard]] Cookie cookie() const;
-	[[nodiscard]] Cookie set_cookie(std::chrono::seconds session_length = std::chrono::seconds{3600}) const;
-
-	static std::optional<SessionID> parse_cookie(const Cookie& cookie);
+	static UserID guest()
+	{
+		UserID guest;
+		guest.m_guest = true;
+		return guest;
+	}
 
 private:
-	SessionID       m_session{};
 	std::string     m_user;
 	bool            m_guest{false};
 };

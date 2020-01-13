@@ -52,7 +52,10 @@ void HRBClient::login(std::string_view user, std::string_view password, Complete
 			m_outstanding.finish(req.shared_from_this());
 
 			if (req.response().result() == http::status::no_content)
-				m_user = UserID{Cookie{req.response().at(http::field::set_cookie)}, username};
+			{
+				m_cookie = req.response().at(http::field::set_cookie).to_string();
+				m_user   = UserID{username};
+			}
 			else
 				ec = Error::login_incorrect;
 
@@ -168,7 +171,7 @@ auto HRBClient::request(const URLIntent& intent, boost::beast::http::verb method
 {
 	auto req = std::make_shared<GenericHTTPRequest<RequestBody, ResponseBody>>(m_ioc, m_ssl);
 	req->init(m_host, m_port, intent.str(), method);
-	req->request().set(http::field::cookie, m_user.cookie().str());
+	req->request().set(http::field::cookie, m_cookie);
 	return req;
 }
 

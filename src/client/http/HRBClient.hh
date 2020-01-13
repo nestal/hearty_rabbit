@@ -98,7 +98,8 @@ private:
 	std::string m_port;
 
 	// authenticated user
-	UserID  m_user;
+	UserID      m_user;
+	std::string m_cookie;
 
 	// outstanding and pending requests
 	RequestScheduler m_outstanding;
