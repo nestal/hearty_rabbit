@@ -38,7 +38,7 @@ class SplitBuffers;
 class URLIntent;
 class UploadFile;
 class WebResources;
-class BlobDBEntry;
+class BlobInode;
 
 class SessionHandler
 {
@@ -89,7 +89,7 @@ public:
 private:
 	http::response<SplitBuffers> file_request(const URLIntent& intent, boost::string_view etag, unsigned version);
 
-	void set_header(const BlobDBEntry& entry, boost::beast::http::fields& header);
+	static void set_header(const BlobInode& entry, boost::beast::http::fields& header);
 
 	template <class Send>
 	class SendJSON;

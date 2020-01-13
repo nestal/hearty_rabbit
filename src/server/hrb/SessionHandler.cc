@@ -330,13 +330,13 @@ void SessionHandler::validate_collection(Collection& coll)
 	}
 }
 
-void SessionHandler::set_header(const BlobDBEntry& entry, boost::beast::http::fields& header)
+void SessionHandler::set_header(const BlobInode& entry, boost::beast::http::fields& header)
 {
-	header.set(http::field::content_disposition, "inline; filename=" + url_encode(entry.filename()));
-	header.set(http::field::last_modified, entry.timestamp().http_format());
+	header.set(http::field::content_disposition, "inline; filename=" + url_encode(entry.filename));
+	header.set(http::field::last_modified, entry.timestamp.http_format());
 
 	if (header.find(http::field::content_type) == header.end())
-		header.set(http::field::content_type, entry.mime());
+		header.set(http::field::content_type, entry.mime);
 }
 
 } // end of namespace hrb

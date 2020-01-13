@@ -13,6 +13,8 @@
 #pragma once
 
 #include "hrb/ObjectID.hh"
+#include "hrb/UserID.hh"
+
 #include "BlobDBEntry.hh"
 
 #include <string_view>
@@ -181,6 +183,7 @@ public:
 
 private:
 	std::string m_user;
+	UserID m_requester;
 };
 
 } // end of namespace hrb

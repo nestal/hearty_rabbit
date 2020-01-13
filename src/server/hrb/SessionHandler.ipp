@@ -401,8 +401,9 @@ void SessionHandler::get_blob(const BlobRequest& req, Send&& send)
 			{
 				auto[rendition] = urlform.find(req.option(), "rendition");
 				auto response = m_blob_db.response(*req.blob(), req.version(), req.etag(), rendition);
-				response.set(http::field::content_disposition, "inline; filename=" + url_encode(filename));
-				response.set(http::field::last_modified, entry.timestamp().http_format());
+
+				if (auto fields = entry.fields(); fields.has_value())
+					set_header(*fields, response);
 				response.set(http::field::location, req.intent().str());
 				return send(std::move(response));
 			}
@@ -474,8 +475,8 @@ void SessionHandler::query_blob(const BlobRequest& req, Send&& send)
 				return send(server_error("internal server error", req.version()));
 
 			auto response = m_blob_db.response(blobid, req.version(), req.etag(), rendition);
-			response.set(http::field::content_disposition, "inline; filename=" + url_encode(entry.filename()));
-			response.set(http::field::last_modified, entry.timestamp().http_format());
+			if (auto fields = entry.fields(); fields.has_value())
+				set_header(*fields, response);
 			response.set(http::field::location, req.intent().str());
 			return send(std::move(response));
 		}
@@ -561,8 +562,7 @@ void SessionHandler::post_view(BlobRequest&& req, Send&& send)
 
 	else if (share == "create")
 		return Authentication::share_resource(req.owner(), req.collection(), 3600s, *m_db, [
-			send=std::move(send),
-			req
+			send=std::forward<decltype(send)>(send), req
 		](auto&& auth, auto ec)
 		{
 			URLIntent location{URLIntent::Action::view, req.owner(), req.collection(), "", "auth=" + to_hex(auth.id().session())};
@@ -574,7 +574,7 @@ void SessionHandler::post_view(BlobRequest&& req, Send&& send)
 
 	else if (share == "list")
 		return Authentication::list_guests(req.owner(), req.collection(), *m_db, [
-			send=std::move(send), version=req.version()
+			send=std::forward<decltype(send)>(send), version=req.version()
 		](auto&& guests, auto ec)
 		{
 			auto json = nlohmann::json::array();

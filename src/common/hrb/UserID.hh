@@ -30,17 +30,17 @@ public:
 	UserID(SessionID session, std::string_view user, bool guest=false);
 	UserID(const Cookie& cookie, std::string_view user);
 
-	const SessionID& session() const {return m_session;}
-	const std::string& username() const {return m_user;}
-	bool is_guest() const {return m_guest;}
+	[[nodiscard]] const SessionID& session() const {return m_session;}
+	[[nodiscard]] const std::string& username() const {return m_user;}
+	[[nodiscard]] bool is_guest() const {return m_guest;}
 
-	bool valid() const;
+	[[nodiscard]] bool valid() const;
 
 	bool operator==(const UserID& rhs) const;
 	bool operator!=(const UserID& rhs) const;
 
-	Cookie cookie() const;
-	Cookie set_cookie(std::chrono::seconds session_length = std::chrono::seconds{3600}) const;
+	[[nodiscard]] Cookie cookie() const;
+	[[nodiscard]] Cookie set_cookie(std::chrono::seconds session_length = std::chrono::seconds{3600}) const;
 
 	static std::optional<SessionID> parse_cookie(const Cookie& cookie);
 
