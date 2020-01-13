@@ -45,7 +45,7 @@ Collection Ownership::from_reply(
 		if (perm.as_string().empty())
 			continue;
 
-		BlobInodeDB entry{perm.as_string()};
+		BlobDBEntry entry{perm.as_string()};
 		auto blob_id = ObjectID::from_raw(blob);
 
 		// check permission: allow allow owner (i.e. m_user)
@@ -54,7 +54,7 @@ Collection Ownership::from_reply(
 			if (auto fields = entry.fields(); fields.has_value())
 			{
 				// Overwrite filename field with the filename in directory.
-				// The filename in the BlobInodeDB of owner:blob_meta is the original filename of the blob
+				// The filename in the BlobDBEntry of owner:blob_meta is the original filename of the blob
 				// when it was uploaded. The actual filename in the collection may be different
 				if (!filename.empty())
 					fields->filename = filename;
@@ -70,19 +70,19 @@ void Ownership::update_blob(redis::Connection& db, const ObjectID& blobid, const
 {
 	// assume the blob is already in the collection, so there is no need to update
 	// blob backlink
-	auto s = BlobInodeDB::create(entry);
-	update(db, blobid, BlobInodeDB{s});
+	auto s = BlobDBEntry::create(entry);
+	update(db, blobid, BlobDBEntry{s});
 }
 
 void Ownership::update_blob(redis::Connection& db, const ObjectID& blobid, const nlohmann::json& entry)
 {
 	// assume the blob is already in the collection, so there is no need to update
 	// blob backlink
-	auto en_str = BlobInodeDB::create(Permission::from_description(entry["perm"].get<std::string>()), entry);
-	update(db, blobid, BlobInodeDB{en_str});
+	auto en_str = BlobDBEntry::create(Permission::from_description(entry["perm"].get<std::string>()), entry);
+	update(db, blobid, BlobDBEntry{en_str});
 }
 
-void Ownership::update(redis::Connection& db, const ObjectID& blob, const BlobInodeDB& entry)
+void Ownership::update(redis::Connection& db, const ObjectID& blob, const BlobDBEntry& entry)
 {
 	auto blob_meta  = key::blob_inode(m_user);
 	db.command(
@@ -101,7 +101,7 @@ redis::CommandString Ownership::link_command(std::string_view coll, const Object
 	auto coll_key   = key::collection(m_user, coll);
 	auto coll_list  = key::collection_list(m_user);
 	auto hex = to_hex(blob);
-	auto entry = BlobInodeDB::create(coll_entry);
+	auto entry = BlobDBEntry::create(coll_entry);
 
 	auto filename = coll_entry.filename.empty() ? "hello" : coll_entry.filename;
 

@@ -38,22 +38,23 @@ public:
 
 	explicit WebResources(const fs::path& web_root);
 
-	Response find_static(std::string_view filename, boost::string_view etag, int version) const;
-	Response inject(http::status status, std::string&& json, std::string&& meta, int version) const;
+	[[nodiscard]] Response find_static(std::string_view filename, boost::string_view etag, int version) const;
+	[[nodiscard]] Response inject(http::status status, std::string&& json, std::string&& meta, int version) const;
 
-	bool is_static(std::string_view filename) const;
+	[[nodiscard]] bool is_static(std::string_view filename) const;
 
 private:
-	Response find_dynamic(std::string_view filename, int version) const;
+	[[nodiscard]] Response find_dynamic(std::string_view filename, int version) const;
+
 	class Resource
 	{
 	public:
 		Resource(std::string_view name, MMap&& file, std::string&& mime, boost::string_view etag);
 
-		http::response<SplitBuffers> get(int version, bool dynamic) const;
+		[[nodiscard]] http::response<SplitBuffers> get(int version, bool dynamic) const;
 
-		boost::string_view etag() const {return m_etag;}
-		std::string_view name() const {return m_name;}
+		[[nodiscard]] boost::string_view etag() const {return m_etag;}
+		[[nodiscard]] std::string_view name() const {return m_name;}
 
 	private:
 		std::string m_name;

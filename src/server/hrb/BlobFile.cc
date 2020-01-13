@@ -70,16 +70,15 @@ cv::Mat square_crop(const cv::Mat& image, const fs::path& haar_path)
 } // end of local namespace
 
 /// \brief Open an existing blob in its directory
-BlobFile::BlobFile(const fs::path& dir, const ObjectID& id) : m_id{id}, m_dir{dir}
+BlobFile::BlobFile(fs::path dir, const ObjectID& id) : m_id{id}, m_dir{std::move(dir)}
 {
 }
 
 /// \brief Creates a new blob from a uploaded file
-BlobFile::BlobFile(UploadFile&& tmp, const fs::path& dir, std::error_code& ec)  : m_id{tmp.ID()}, m_dir{dir}
+BlobFile::BlobFile(UploadFile&& tmp, fs::path dir, std::error_code& ec)  : m_id{tmp.ID()}, m_dir{std::move(dir)}
 {
 	assert(!ec);
 	assert(tmp.is_open());
-
 	assert(tmp.native_handle() > 0);
 
 	// Note: closing the file before munmap() is OK: the mapped memory will still be there.
@@ -96,10 +95,10 @@ BlobFile::BlobFile(UploadFile&& tmp, const fs::path& dir, std::error_code& ec)  
 		return;
 	}
 
-	create_directories(dir, ec);
+	create_directories(m_dir, ec);
 	if (ec)
 	{
-		Log(LOG_WARNING, "create create directory %1% (%2% %3%)", dir, ec, ec.message());
+		Log(LOG_WARNING, "cannot create directory %1% (%2% %3%)", m_dir, ec, ec.message());
 	}
 	else
 	{

@@ -31,7 +31,7 @@ namespace hrb {
 // JSON format:     {"filename": "image.jpg", "mime": "image/jpeg", "timestamp": 100, "perm": "public"}
 // In-memory format: Collection::Entry
 //
-// BlobInodeDB represents the Database format.
+// BlobDBEntry represents the Database format.
 // BlobInode represent in-memory format.
 // nlohmann::json represent JSON format.
 //
@@ -49,7 +49,7 @@ namespace hrb {
 // BlobInode, not the other way around.
 //
 // Dependency graph:
-// BlobInodeDB (database format) -> BlobInode (in-memory format) -> nlohmann::json (JSON format)
+// BlobDBEntry (database format) -> BlobInode (in-memory format) -> nlohmann::json (JSON format)
 
 struct BlobInode
 {

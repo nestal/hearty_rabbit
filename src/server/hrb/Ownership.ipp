@@ -11,7 +11,7 @@
 //
 
 #include "Ownership.hh"
-#include "BlobInodeDB.hh"
+#include "BlobDBEntry.hh"
 #include "RedisKeys.hh"
 
 #include "net/Redis.hh"
@@ -160,9 +160,9 @@ void Ownership::get_blob(
 		](auto&& entry, std::error_code ec) mutable
 		{
 			if (!ec && entry.array_size() == 2)
-				comp(BlobInodeDB{entry[0].as_string()}, entry[1].as_string(), ec);
+				comp(BlobDBEntry{entry[0].as_string()}, entry[1].as_string(), ec);
 			else
-				comp(BlobInodeDB{}, "", make_error_code(Error::object_not_exist));
+				comp(BlobDBEntry{}, "", make_error_code(Error::object_not_exist));
 		},
 		"EVAL %s 2 %b %b %b", lua,
 		coll_hash.data(), coll_hash.size(),
@@ -184,13 +184,13 @@ void Ownership::get_blob(
 		[comp=std::forward<Complete>(complete), requester, *this](redis::Reply&& reply, std::error_code ec) mutable
 		{
 			if (ec || !reply.is_string())
-				comp(BlobInodeDB{}, make_error_code(Error::object_not_exist));
+				comp(BlobDBEntry{}, make_error_code(Error::object_not_exist));
 			else
 			{
-				if (BlobInodeDB entry{reply.as_string()}; entry.permission().allow(requester.id(), m_user))
+				if (BlobDBEntry entry{reply.as_string()}; entry.permission().allow(requester.id(), m_user))
 					comp(entry, ec);
 				else
-					comp(BlobInodeDB{}, make_error_code(Error::object_not_exist));
+					comp(BlobDBEntry{}, make_error_code(Error::object_not_exist));
 			}
 		},
 		"HGET %b %b",
@@ -332,7 +332,7 @@ void Ownership::list_public_blobs(
 					std::optional<Blob> result;
 					if (auto blob_id = ObjectID::from_raw(blob.as_string()); !err && blob_id.has_value())
 					{
-						BlobInodeDB inode{entry_str.as_string()};
+						BlobDBEntry inode{entry_str.as_string()};
 						if (auto fields = inode.fields(); fields.has_value())
 							result.emplace(
 								std::string{owner.as_string()},
@@ -380,7 +380,7 @@ void Ownership::query_blob(redis::Connection& db, const ObjectID& blob, Complete
 				transformed([blob, *this](auto&& kv)
 				{
 					std::optional<Blob> result;
-					BlobInodeDB inode{kv.value().as_string()};
+					BlobDBEntry inode{kv.value().as_string()};
 					if (auto fields = inode.fields(); fields.has_value())
 						result.emplace(m_user, std::string{kv.key()}, blob, *fields);
 					return result;

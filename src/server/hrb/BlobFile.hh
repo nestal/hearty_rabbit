@@ -45,8 +45,8 @@ class BlobFile
 {
 public:
 	BlobFile() = default;
-	BlobFile(const fs::path& dir, const ObjectID& id);
-	BlobFile(UploadFile&& tmp, const fs::path& dir, std::error_code& ec);
+	BlobFile(fs::path dir, const ObjectID& id);
+	BlobFile(UploadFile&& tmp, fs::path dir, std::error_code& ec);
 
 	// if the rendition does not exists but it's a valid one, it will be generated dynamically
 	MMap rendition(std::string_view rendition, const RenditionSetting& cfg, const fs::path& haar_path, std::error_code& ec) const;

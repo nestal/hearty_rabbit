@@ -13,7 +13,7 @@
 #include <catch2/catch.hpp>
 
 #include "hrb/BlobFile.hh"
-#include "hrb/BlobInodeDB.hh"
+#include "hrb/BlobDBEntry.hh"
 #include "hrb/UploadFile.hh"
 
 #include "util/MMap.hh"
@@ -51,7 +51,7 @@ protected:
 		tmp.write(mmap.data(), mmap.size(), bec);
 		REQUIRE(!bec);
 
-		return std::make_tuple(std::move(tmp), std::move(mmap));
+		return std::tuple(std::move(tmp), std::move(mmap));
 	}
 
 

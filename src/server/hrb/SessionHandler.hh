@@ -38,6 +38,7 @@ class SplitBuffers;
 class URLIntent;
 class UploadFile;
 class WebResources;
+class BlobDBEntry;
 
 class SessionHandler
 {
@@ -80,13 +81,15 @@ public:
 	static http::response<http::string_body> server_error(boost::string_view what, unsigned version);
 	static http::response<http::empty_body> see_other(boost::beast::string_view where, unsigned version);
 
-	std::chrono::seconds session_length() const;
+	[[nodiscard]] std::chrono::seconds session_length() const;
 
-	const UserID& auth() const {return m_auth;}
-	bool renewed_auth() const;
+	[[nodiscard]] auto& auth() const {return m_auth;}
+	[[nodiscard]] bool renewed_auth() const;
 
 private:
 	http::response<SplitBuffers> file_request(const URLIntent& intent, boost::string_view etag, unsigned version);
+
+	void set_header(const BlobDBEntry& entry, boost::beast::http::fields& header);
 
 	template <class Send>
 	class SendJSON;
@@ -129,7 +132,7 @@ private:
 	template <class Send>
 	void list_public_blobs(bool is_json, std::string_view user, unsigned version, Send&& send);
 
-	std::string server_root() const;
+	[[nodiscard]] std::string server_root() const;
 	void validate_collection(Collection& json);
 
 private:

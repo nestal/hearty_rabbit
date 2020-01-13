@@ -145,7 +145,7 @@ TEST_CASE("simple client login", "[normal]")
 		);
 
 		REQUIRE(ioc.run_for(10s) > 0);
-		REQUIRE(tested >= 8+2);
+		REQUIRE(tested >= 9);
 		ioc.restart();
 	}
 	SECTION("login incorrect")

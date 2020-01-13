@@ -613,8 +613,8 @@ TEST_CASE("collection entry", "[normal]")
 	Authentication yung{insecure_random<UserID::SessionID>(), "yungyung"};
 	Authentication sum{insecure_random<UserID::SessionID>(), "sumsum"};
 
-	auto s = BlobInodeDB::create({}, "somepic.jpeg", "image/jpeg", Timestamp::now());
-	BlobInodeDB subject{s};
+	auto s = BlobDBEntry::create({}, "somepic.jpeg", "image/jpeg", Timestamp::now());
+	BlobDBEntry subject{s};
 	INFO("entry JSON = " << subject.json());
 
 	REQUIRE(subject.filename() == "somepic.jpeg");
@@ -622,14 +622,14 @@ TEST_CASE("collection entry", "[normal]")
 	REQUIRE_FALSE(subject.permission().allow(sum.id(), yung.id().username()));
 	REQUIRE(subject.raw() == s);
 
-	BlobInodeDB same{subject.raw()};
+	BlobDBEntry same{subject.raw()};
 	REQUIRE(same.filename() == "somepic.jpeg");
 	REQUIRE(same.mime() == "image/jpeg");
 	REQUIRE_FALSE(same.permission().allow(yung.id(), sum.id().username()));
 	REQUIRE(same.raw() == subject.raw());
 
-	auto s2 = BlobInodeDB::create(Permission::shared(), nlohmann::json::parse(same.json()));
-	BlobInodeDB same2{s2};
+	auto s2 = BlobDBEntry::create(Permission::shared(), nlohmann::json::parse(same.json()));
+	BlobDBEntry same2{s2};
 	REQUIRE(same2.filename() == "somepic.jpeg");
 	REQUIRE(same2.mime() == "image/jpeg");
 	REQUIRE(same2.permission().allow(yung.id(), sum.id().username()));

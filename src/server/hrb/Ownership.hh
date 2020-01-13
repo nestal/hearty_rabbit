@@ -13,7 +13,7 @@
 #pragma once
 
 #include "hrb/ObjectID.hh"
-#include "BlobInodeDB.hh"
+#include "BlobDBEntry.hh"
 
 #include <string_view>
 #include <functional>
@@ -42,7 +42,7 @@ private:
 	[[nodiscard]] redis::CommandString set_permission_command(const ObjectID& blobid, Permission perm) const;
 	[[nodiscard]] redis::CommandString set_cover_command(std::string_view coll, const ObjectID& cover) const;
 	[[nodiscard]] redis::CommandString list_public_blob_command() const;
-	void update(redis::Connection& db, const ObjectID& blobid, const BlobInodeDB& entry);
+	void update(redis::Connection& db, const ObjectID& blobid, const BlobDBEntry& entry);
 
 	[[nodiscard]] Collection from_reply(
 		const redis::Reply& hash_getall_reply,
@@ -119,7 +119,7 @@ public:
 
 	template <
 	    typename Complete,
-	    typename=std::enable_if_t<std::is_invocable_v<Complete, BlobInodeDB, std::string_view, std::error_code>>
+	    typename=std::enable_if_t<std::is_invocable_v<Complete, BlobDBEntry, std::string_view, std::error_code>>
     >
 	void get_blob(
 		redis::Connection& db,
@@ -130,7 +130,7 @@ public:
 
 	template <
 	    typename Complete,
-	    typename=std::enable_if_t<std::is_invocable_v<Complete, BlobInodeDB, std::error_code>>
+	    typename=std::enable_if_t<std::is_invocable_v<Complete, BlobDBEntry, std::error_code>>
     >
 	void get_blob(
 		redis::Connection& db,

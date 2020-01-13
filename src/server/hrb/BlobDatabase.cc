@@ -14,7 +14,7 @@
 
 // Other dependencies in the same module
 #include "BlobFile.hh"
-#include "BlobInodeDB.hh"
+#include "BlobDBEntry.hh"
 #include "UploadFile.hh"
 
 // Other modules in hearty rabbit
@@ -87,13 +87,13 @@ BlobDatabase::BlobResponse BlobDatabase::response(
 		return !std::isalpha(c) && !std::isdigit(c);
 	});
 	if (invalid != rendition.end())
-		return http::response<MMapResponseBody>{http::status::bad_request, version};
+		return {http::status::bad_request, version};
 
 	std::error_code ec;
 	BlobFile blob_obj{dest(id), id};
 	auto mmap = blob_obj.rendition(rendition, m_cfg.renditions(), m_cfg.haar_path(), ec);
 	if (ec)
-		return BlobResponse{http::status::not_found, version};
+		return {http::status::not_found, version};
 
 	// the mime type of the rendition may not be the same as the master rendition
 	// (which is stored in the meta data), so we need to deduce it again here.

@@ -10,7 +10,7 @@
 // Created by nestal on 2/26/18.
 //
 
-#include "BlobInodeDB.hh"
+#include "BlobDBEntry.hh"
 #include "hrb/BlobInode.hh"
 
 #include <cassert>
@@ -24,11 +24,11 @@ namespace {
 
 namespace hrb {
 
-BlobInodeDB::BlobInodeDB(std::string_view redis_reply) : m_raw{redis_reply}
+BlobDBEntry::BlobDBEntry(std::string_view redis_reply) : m_raw{redis_reply}
 {
 }
 
-std::string BlobInodeDB::create(
+std::string BlobDBEntry::create(
 	Permission perm, std::string_view filename, std::string_view mime,
 	Timestamp timestamp
 )
@@ -43,7 +43,7 @@ std::string BlobInodeDB::create(
 	return perm.perm() + json.dump();
 }
 
-std::string_view BlobInodeDB::json() const
+std::string_view BlobDBEntry::json() const
 {
 	auto json = m_raw;
 	if (!json.empty())
@@ -51,30 +51,30 @@ std::string_view BlobInodeDB::json() const
 	return json;
 }
 
-std::string BlobInodeDB::filename() const
+std::string BlobDBEntry::filename() const
 {
-	auto doc = nlohmann::json::parse(BlobInodeDB::json(), nullptr, false);
+	auto doc = nlohmann::json::parse(BlobDBEntry::json(), nullptr, false);
 	return doc.is_discarded() ? "" : doc.value(filename_pointer, "");
 }
 
-std::string BlobInodeDB::mime() const
+std::string BlobDBEntry::mime() const
 {
-	auto doc = nlohmann::json::parse(BlobInodeDB::json(), nullptr, false);
+	auto doc = nlohmann::json::parse(BlobDBEntry::json(), nullptr, false);
 	return doc.is_discarded() ? "" : doc.value(mime_pointer, "");
 }
 
-Timestamp BlobInodeDB::timestamp() const
+Timestamp BlobDBEntry::timestamp() const
 {
-	auto doc = nlohmann::json::parse(BlobInodeDB::json(), nullptr, false);
+	auto doc = nlohmann::json::parse(BlobDBEntry::json(), nullptr, false);
 	return doc.is_discarded() ? Timestamp{} : doc.value(timestamp_pointer, Timestamp{});
 }
 
-Permission BlobInodeDB::permission() const
+Permission BlobDBEntry::permission() const
 {
 	return m_raw.empty() ? Permission{} : Permission{m_raw.front()} ;
 }
 
-std::string BlobInodeDB::create(Permission perm, const nlohmann::json& json)
+std::string BlobDBEntry::create(Permission perm, const nlohmann::json& json)
 {
 	return create(
 		perm,
@@ -84,9 +84,9 @@ std::string BlobInodeDB::create(Permission perm, const nlohmann::json& json)
 	);
 }
 
-std::optional<BlobInode> BlobInodeDB::fields() const
+std::optional<BlobInode> BlobDBEntry::fields() const
 {
-	auto json = nlohmann::json::parse(BlobInodeDB::json(), nullptr, false);
+	auto json = nlohmann::json::parse(BlobDBEntry::json(), nullptr, false);
 	if (!json.is_discarded())
 		return BlobInode{
 			permission(),
@@ -98,7 +98,7 @@ std::optional<BlobInode> BlobInodeDB::fields() const
 		return std::nullopt;
 }
 
-std::string BlobInodeDB::create(const BlobInode& fields)
+std::string BlobDBEntry::create(const BlobInode& fields)
 {
 	return create(fields.perm, fields.filename, fields.mime, fields.timestamp);
 }

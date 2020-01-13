@@ -375,7 +375,7 @@ void SessionHandler::get_blob(const BlobRequest& req, Send&& send)
 		[
 			req, this,
 			send = std::forward<Send>(send)
-		](BlobInodeDB entry, auto filename, auto ec) mutable
+		](const BlobDBEntry& entry, auto filename, auto ec) mutable
 		{
 			// Only allow the owner to know whether an object exists or not.
 			// Always reply forbidden for everyone else.
@@ -465,7 +465,7 @@ void SessionHandler::query_blob(const BlobRequest& req, Send&& send)
 		[
 			send=std::forward<Send>(send), req, blobid=*blob,
 			rendition=std::string{rendition}, this
-		](auto&& entry, auto ec)
+		](const BlobDBEntry& entry, auto ec)
 		{
 			if (ec == Error::object_not_exist)
 				return send(not_found("blob not found", req.version()));

@@ -24,11 +24,11 @@ namespace hrb {
 
 struct BlobInode;
 
-class BlobInodeDB
+class BlobDBEntry
 {
 public:
-	BlobInodeDB() = default;
-	explicit BlobInodeDB(std::string_view redis_reply);
+	BlobDBEntry() = default;
+	explicit BlobDBEntry(std::string_view redis_reply);
 
 	static std::string create(
 		Permission perm, std::string_view filename, std::string_view mime,
