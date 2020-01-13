@@ -307,7 +307,7 @@ bool Authentication::is_valid() const noexcept
 {
 	// if cookie is valid, user must not be empty
 	// if cookie is invalid, user must be empty
-	assert((m_session == SessionID{}) == m_uid.is_anonymous());
+	assert(invariance());
 
 	return m_session != SessionID{} && !m_uid.is_anonymous();
 }
@@ -335,6 +335,12 @@ Cookie Authentication::set_cookie(std::chrono::seconds session_length) const
 		cookie.add("Expires", "Thu, Jan 01 1970 00:00:00 UTC");
 	}
 	return cookie;
+}
+
+// Class invariance: will always return true. Used for debug assertions.
+bool Authentication::invariance() const
+{
+	return (m_session == SessionID{}) == m_uid.is_anonymous();
 }
 
 } // end of namespace hrb

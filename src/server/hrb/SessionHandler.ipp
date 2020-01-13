@@ -165,7 +165,7 @@ void SessionHandler::on_request_header(
 	Complete&& complete
 )
 {
-	assert((m_auth.session() == Authentication::SessionID{}) == m_auth.id().is_anonymous());
+	assert(!m_auth.is_valid());
 
 	m_on_header = std::chrono::high_resolution_clock::now();
 	URLIntent intent{header.target()};
@@ -204,8 +204,6 @@ void SessionHandler::on_request_header(
 			return complete(RequestBodyType::empty, std::error_code{});
 		}
 	}
-
-	assert((m_auth.session() == Authentication::SessionID{}) == m_auth.id().is_anonymous());
 
 	Authentication::verify_session(
 		*m_request_session_id,

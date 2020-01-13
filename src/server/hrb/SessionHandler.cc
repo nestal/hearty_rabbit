@@ -41,7 +41,6 @@
 #include <boost/beast/http/fields.hpp>
 #include <boost/beast/http/message.hpp>
 #include <boost/beast/http/empty_body.hpp>
-#include <iostream>
 
 namespace hrb {
 
@@ -53,7 +52,6 @@ SessionHandler::SessionHandler(
 ) :
 	m_db{db}, m_lib{lib}, m_blob_db{blob_db}, m_cfg{cfg}
 {
-	assert((m_auth.session() == Authentication::SessionID{}) == m_auth.id().is_anonymous());
 	assert(!m_auth.is_valid());
 }
 
@@ -77,7 +75,7 @@ void SessionHandler::on_login(const StringRequest& req, EmptyResponseSender&& se
 	{
 		auto [username, password] = urlform.find(body, "username", "password");
 
-		assert((m_auth.session() == Authentication::SessionID{}) == m_auth.id().is_anonymous());
+		assert(!m_auth.is_valid());
 
 		Authentication::verify_user(
 			username,
@@ -90,10 +88,7 @@ void SessionHandler::on_login(const StringRequest& req, EmptyResponseSender&& se
 				send=std::move(send)
 			](std::error_code ec, auto&& session) mutable
 			{
-				assert((session.session() == Authentication::SessionID{}) == session.id().is_anonymous());
-				assert((m_auth.session() == Authentication::SessionID{}) == m_auth.id().is_anonymous());
-
-				std::cout << "login  " << ec << " " << m_auth.id().username() << " " << to_hex(m_auth.session()) << std::endl;
+				assert(session.invariance());
 
 				http::response<http::empty_body> res{
 					ec == Error::login_incorrect ?
@@ -101,20 +96,9 @@ void SessionHandler::on_login(const StringRequest& req, EmptyResponseSender&& se
 						(ec ? http::status::internal_server_error : http::status::no_content),
 					version
 				};
-				if (ec)
-				{
-					assert(!session.is_valid());
-					assert(!m_auth.is_valid());
 
-					std::cout << "login incorrect!!!!!! " << m_auth.id().username() << " " << to_hex(m_auth.session()) << std::endl;
-				}
-				else
-				{
-					m_auth = std::forward<decltype(session)>(session);
-
-					assert(m_auth.is_valid());
-					assert(m_auth.id().is_valid());
-				}
+				m_auth = std::forward<decltype(session)>(session);
+				assert(m_auth.invariance());
 
 				res.set(http::field::cache_control, "no-cache, no-store, must-revalidate");
 				send(std::move(res));
@@ -324,9 +308,12 @@ http::response<SplitBuffers> SessionHandler::file_request(const URLIntent& inten
 
 bool SessionHandler::renewed_auth() const
 {
-	return m_request_session_id.has_value()      ?   // if request cookie is present, check against the new cookie
-		*m_request_session_id != m_auth.session() :  // otherwise, there's no cookie in the original request,
-		(m_auth.is_valid() && !m_auth.id().is_guest());      // if we have a valid (non-guest) cookie now, then the session is renewed.
+	assert(m_auth.invariance());
+
+	return m_request_session_id.has_value()      ?      // if request cookie is present, check against the new cookie
+		*m_request_session_id != m_auth.session() :     // otherwise, there's no cookie in the original request,
+		m_auth.id().is_valid();                         // if we have a valid (non-guest) cookie now,
+														// then the session is renewed.
 }
 
 std::string SessionHandler::server_root() const

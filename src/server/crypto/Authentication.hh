@@ -49,6 +49,7 @@ public:
 	[[nodiscard]] bool is_valid() const noexcept;
 	[[nodiscard]] Cookie cookie() const;
 	[[nodiscard]] Cookie set_cookie(std::chrono::seconds session_length = std::chrono::seconds{3600}) const;
+	[[nodiscard]] bool invariance() const;
 
 	static void add_user(
 		std::string_view username_mixed_case,

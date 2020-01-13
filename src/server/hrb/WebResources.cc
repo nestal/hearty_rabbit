@@ -67,7 +67,7 @@ WebResources::WebResources(const fs::path& web_root) :
 {
 }
 
-WebResources::Response WebResources::find_static(std::string_view filename, boost::string_view etag, int version) const
+WebResources::Response WebResources::find_static(std::string_view filename, boost::string_view etag, unsigned version) const
 {
 	auto it = m_static.find(filename);
 	if (it == m_static.end())
@@ -84,7 +84,7 @@ WebResources::Response WebResources::find_static(std::string_view filename, boos
 	return it->get(version, false);
 }
 
-WebResources::Response WebResources::find_dynamic(std::string_view filename, int version) const
+WebResources::Response WebResources::find_dynamic(std::string_view filename, unsigned version) const
 {
 	auto it = m_dynamic.find(filename);
 	return it != m_dynamic.end() ?
@@ -97,7 +97,7 @@ bool WebResources::is_static(std::string_view filename) const
 	return m_static.find(filename) != m_static.end();
 }
 
-WebResources::Response WebResources::inject(http::status status, std::string&& json, std::string&& meta, int version) const
+WebResources::Response WebResources::inject(http::status status, std::string&& json, std::string&& meta, unsigned version) const
 {
 	auto res = find_dynamic("index.html", version);
 	res.body().set_extra(0, std::move(json));

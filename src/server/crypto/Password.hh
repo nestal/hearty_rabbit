@@ -33,12 +33,12 @@ public:
 	void swap(Password& other);
 
 	using Key = std::array<unsigned char, 64>;
-	Key derive_key(std::string_view salt, int iteration, const std::string& hash_name) const;
-	std::string_view get() const;
+	[[nodiscard]] Key derive_key(std::string_view salt, int iteration, const std::string& hash_name) const;
+	[[nodiscard]] std::string_view get() const;
 
 	void clear();
-	bool empty() const;
-	std::size_t size() const;
+	[[nodiscard]] bool empty() const;
+	[[nodiscard]] std::size_t size() const;
 
 private:
 	std::vector<char>   m_val;

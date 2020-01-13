@@ -69,8 +69,6 @@ void Session::do_read()
 	m_handler.emplace(m_factory());
 	m_parser->body_limit(m_upload_size_limit);
 
-	assert((m_handler->auth().session() == Authentication::SessionID{}) == m_handler->auth().id().is_anonymous());
-
 	// Read the header of a request
 	async_read_header(
 		m_stream, m_buffer, *m_parser,
@@ -105,7 +103,7 @@ void Session::on_read_header(boost::system::error_code ec, std::size_t)
 					return send_response(m_handler->server_error("internal server error", 11));
 				}
 
-				assert((m_handler->auth().session() == Authentication::SessionID{}) == m_handler->auth().id().is_anonymous());
+				assert(m_handler->auth().invariance());
 
 				// Call async_read() using the chosen parser to read and parse the request body.
 				std::visit([this, self](auto&& parser)
@@ -124,6 +122,7 @@ void Session::on_read_header(boost::system::error_code ec, std::size_t)
 void Session::on_read(boost::system::error_code ec, std::size_t)
 {
 	assert(m_handler.has_value());
+	assert(m_handler->auth().invariance());
 
 	// This means they closed the connection
 	if (ec)
@@ -135,6 +134,8 @@ void Session::on_read(boost::system::error_code ec, std::size_t)
 			m_handler->on_request_body(
 				parser.release(), [this, self](auto&& response)
 				{
+					assert(m_handler->auth().invariance());
+
 					// server must not set session cookie
 					assert(response.count(http::field::set_cookie) == 0);
 
