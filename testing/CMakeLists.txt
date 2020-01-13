@@ -47,6 +47,7 @@ add_custom_command(
 	WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 	COMMAND clienttest
 )
+add_dependencies(clienttest unittest)
 
 ###################################################################################################
 # gui_driver: test driver with GUI

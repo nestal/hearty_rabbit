@@ -120,6 +120,7 @@ Authentication::Authentication(SessionID cookie, std::string_view user) :
 	m_uid{user},
 	m_session{cookie}
 {
+	assert((m_session == Authentication::SessionID{}) == m_uid.is_anonymous());
 }
 
 void Authentication::add_user(
@@ -176,6 +177,8 @@ void Authentication::verify_session(
 				return comp(ec, Authentication{});
 
 			Authentication auth{cookie, user.as_string().substr(1)};
+			assert((auth.m_session == SessionID{}) == auth.m_uid.is_anonymous());
+
 			if (ttl.as_int() < session_length.count()/2)
 			{
 				Log(LOG_NOTICE, "%1% seconds before session timeout. Renewing session", ttl.as_int());
@@ -269,6 +272,8 @@ void Authentication::renew_session(
 	db.command(
 		[comp=std::move(completion), *this, new_cookie](auto&& reply, auto ec)
 		{
+			assert((m_session == SessionID{}) == m_uid.is_anonymous());
+
 			// if error occurs or session already renewed, use the old session
 			if (ec || reply.as_int() != 1)
 			{

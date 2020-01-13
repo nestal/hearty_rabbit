@@ -41,6 +41,7 @@
 #include <boost/beast/http/fields.hpp>
 #include <boost/beast/http/message.hpp>
 #include <boost/beast/http/empty_body.hpp>
+#include <iostream>
 
 namespace hrb {
 
@@ -52,6 +53,8 @@ SessionHandler::SessionHandler(
 ) :
 	m_db{db}, m_lib{lib}, m_blob_db{blob_db}, m_cfg{cfg}
 {
+	assert((m_auth.session() == Authentication::SessionID{}) == m_auth.id().is_anonymous());
+	assert(!m_auth.is_valid());
 }
 
 std::chrono::seconds SessionHandler::session_length() const
@@ -74,6 +77,8 @@ void SessionHandler::on_login(const StringRequest& req, EmptyResponseSender&& se
 	{
 		auto [username, password] = urlform.find(body, "username", "password");
 
+		assert((m_auth.session() == Authentication::SessionID{}) == m_auth.id().is_anonymous());
+
 		Authentication::verify_user(
 			username,
 			Password{password},
@@ -85,14 +90,31 @@ void SessionHandler::on_login(const StringRequest& req, EmptyResponseSender&& se
 				send=std::move(send)
 			](std::error_code ec, auto&& session) mutable
 			{
+				assert((session.session() == Authentication::SessionID{}) == session.id().is_anonymous());
+				assert((m_auth.session() == Authentication::SessionID{}) == m_auth.id().is_anonymous());
+
+				std::cout << "login  " << ec << " " << m_auth.id().username() << " " << to_hex(m_auth.session()) << std::endl;
+
 				http::response<http::empty_body> res{
 					ec == Error::login_incorrect ?
 						http::status::forbidden :
 						(ec ? http::status::internal_server_error : http::status::no_content),
 					version
 				};
-				if (!ec)
-					m_auth = std::move(session);
+				if (ec)
+				{
+					assert(!session.is_valid());
+					assert(!m_auth.is_valid());
+
+					std::cout << "login incorrect!!!!!! " << m_auth.id().username() << " " << to_hex(m_auth.session()) << std::endl;
+				}
+				else
+				{
+					m_auth = std::forward<decltype(session)>(session);
+
+					assert(m_auth.is_valid());
+					assert(m_auth.id().is_valid());
+				}
 
 				res.set(http::field::cache_control, "no-cache, no-store, must-revalidate");
 				send(std::move(res));

@@ -165,6 +165,8 @@ void SessionHandler::on_request_header(
 	Complete&& complete
 )
 {
+	assert((m_auth.session() == Authentication::SessionID{}) == m_auth.id().is_anonymous());
+
 	m_on_header = std::chrono::high_resolution_clock::now();
 	URLIntent intent{header.target()};
 
@@ -203,6 +205,8 @@ void SessionHandler::on_request_header(
 		}
 	}
 
+	assert((m_auth.session() == Authentication::SessionID{}) == m_auth.id().is_anonymous());
+
 	Authentication::verify_session(
 		*m_request_session_id,
 		*m_db,
@@ -215,6 +219,7 @@ void SessionHandler::on_request_header(
 		](std::error_code ec, Authentication&& auth) mutable
 		{
 			m_auth = std::move(auth);
+			assert((m_auth.session() == Authentication::SessionID{}) == m_auth.id().is_anonymous());
 
 			auto body_type = RequestBodyType::empty;
 
@@ -237,6 +242,8 @@ void SessionHandler::on_request_header(
 template <class Request, class Send>
 void SessionHandler::on_request_body(Request&& req, Send&& send)
 {
+	assert((m_auth.session() == Authentication::SessionID{}) == m_auth.id().is_anonymous());
+
 	URLIntent intent{req.target()};
 	if (intent.action() == URLIntent::Action::login)
 	{

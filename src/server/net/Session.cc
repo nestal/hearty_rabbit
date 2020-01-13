@@ -69,6 +69,8 @@ void Session::do_read()
 	m_handler.emplace(m_factory());
 	m_parser->body_limit(m_upload_size_limit);
 
+	assert((m_handler->auth().session() == Authentication::SessionID{}) == m_handler->auth().id().is_anonymous());
+
 	// Read the header of a request
 	async_read_header(
 		m_stream, m_buffer, *m_parser,
@@ -102,6 +104,8 @@ void Session::on_read_header(boost::system::error_code ec, std::size_t)
 					Log(LOG_WARNING, "cannot initialize request parser: %1% (%2%)", ec.message(), ec);
 					return send_response(m_handler->server_error("internal server error", 11));
 				}
+
+				assert((m_handler->auth().session() == Authentication::SessionID{}) == m_handler->auth().id().is_anonymous());
 
 				// Call async_read() using the chosen parser to read and parse the request body.
 				std::visit([this, self](auto&& parser)

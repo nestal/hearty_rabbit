@@ -82,7 +82,7 @@ TEST_CASE("Guest Authenication is valid", "[normal]")
 {
 	Authentication guest{insecure_random<Authentication::SessionID>()};
 	REQUIRE(guest.id().is_guest());
-	REQUIRE_FALSE(Authentication{}.is_valid());
+	REQUIRE(guest.is_valid());
 }
 
 TEST_CASE("Test normal user login", "[normal]")

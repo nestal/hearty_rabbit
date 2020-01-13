@@ -26,6 +26,12 @@ class UserID
 public:
 	UserID() = default;
 	explicit UserID(std::string_view user);
+	UserID(const UserID&) = default;
+	UserID(UserID&&) = default;
+	~UserID() = default;
+
+	UserID& operator=(const UserID&) = default;
+	UserID& operator=(UserID&&) = default;
 
 	[[nodiscard]] const std::string& username() const {return m_user;}
 	[[nodiscard]] bool is_guest() const {return m_guest;}

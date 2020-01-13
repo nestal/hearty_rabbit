@@ -122,7 +122,7 @@ private:
 
 private:
 	UserID      m_uid;
-	SessionID   m_session;
+	SessionID   m_session{};
 };
 
 } // end of namespace
