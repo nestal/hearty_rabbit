@@ -63,6 +63,18 @@ COPY --from=builder \
 	/lib64/libgomp.so.1 \
 	/lib64/libexif.so.12 \
 	/lib64/libpq.so.5 \
+	/lib64/libldap_r-2.4.so.2 \
+	/lib64/libplds4.so \
+	/lib64/libplc4.so \
+	/lib64/libnspr4.so \
+	/lib64/libfreebl3.so \
+	/lib64/liblber-2.4.so.2 \
+	/lib64/libsasl2.so.3 \
+	/lib64/libsmime3.so \
+	/lib64/libnss3.so \
+	/lib64/libnssutil3.so \
+	/lib64/libssl3.so \
+	/lib64/libcrypt.so.1 \
 		/lib64/
 
 # Copy the magic cookie file for libmagic
