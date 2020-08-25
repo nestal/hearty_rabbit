@@ -24,8 +24,8 @@ docker run -t --detach --rm \
     nestal.azurecr.io/hearty_rabbit
 
 # Run python unit tests
-#pushd testing/python
-#python3 api_tests.py || { echo "auto system test failed!"; docker stop hb_test; exit 1;}
-#popd
+pushd testing/python
+python3 api_tests.py || { echo "auto system test failed!"; docker stop hb_test; exit 1;}
+popd
 
-#docker stop hb_test
+docker stop hb_test
