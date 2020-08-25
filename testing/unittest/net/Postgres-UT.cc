@@ -47,7 +47,7 @@ TEST_CASE("postgres connect", "[normal]")
 {
 	boost::asio::io_context ioc;
 
-	Session ss{ioc, ""};
+	Session ss{ioc, "host=localhost"};
 
 	auto blob = insecure_random<ObjectID>();
 
