@@ -16,6 +16,7 @@
 #include <libpq-fe.h>
 
 #include <string>
+#include <iostream>
 
 namespace hrb::postgres {
 
@@ -34,6 +35,64 @@ public:
 
 private:
 	::PGresult* m_result;
+};
+
+class QueryParams
+{
+public:
+	template <typename... Args>
+	explicit QueryParams(const Args& ... args)
+	{
+		add(args...);
+	}
+
+
+	[[nodiscard]] auto values() const {return m_values.data();}
+	[[nodiscard]] auto sizes() const {return m_sizes.data();}
+	[[nodiscard]] auto formats() const {return m_formats.data();}
+	[[nodiscard]] int size() const {return static_cast<int>(m_sizes.size());}
+
+private:
+	void add()
+	{
+	}
+
+	template <typename FirstArg, typename ... NextArgs>
+	void add(const FirstArg& arg, const NextArgs& ... next)
+	{
+		const char* value{};
+		int   size{};
+		int   format{};
+
+		// special handling for char*
+		if constexpr (std::is_same_v<std::decay_t<decltype(arg)>, const char*>)
+		{
+			value  = arg;
+			size   = std::strlen(arg);
+			format = 0;
+		}
+
+		// for string, string_view, const_buffer, ObjectID etc
+		else
+		{
+			value = reinterpret_cast<const char*>(std::data(arg));
+			size  = static_cast<int>(std::size(arg) * sizeof(*value));
+
+			if constexpr (!std::is_same_v<std::decay_t<decltype(std::data(arg))>, char*>)
+				format = 1;
+		}
+
+		m_values.push_back(value);
+		m_sizes.push_back(size);
+		m_formats.push_back(format);
+
+		add(next...);
+	}
+
+private:
+	std::vector<const char*>    m_values;
+	std::vector<int>            m_sizes;
+	std::vector<int>            m_formats;
 };
 
 class Session
@@ -55,23 +114,18 @@ public:
 		if (::PQsendQuery(m_conn, query))
 			async_read(std::forward<ResultHandler>(handler));
 		else
+		{
+			std::cout << "PQsendQuery() error: " << ::PQerrorMessage(m_conn) << std::endl;
 			std::forward<ResultHandler>(handler)(Result{});
+		}
 	}
 
 	template <typename ResultHandler, typename... Args>
 	void query(const char *query, ResultHandler&& handler, Args ... args)
 	{
-		std::vector<std::string> params{args...};
+		QueryParams params{std::forward<Args>(args)...};
 
-		std::vector<const char*> param_values;
-		std::vector<int> param_sizes;
-		for (auto& p : params)
-		{
-			param_values.push_back(p.data());
-			param_sizes.push_back(static_cast<int>(p.size()));
-		}
-
-		if (::PQsendQueryParams(m_conn, query, params.size(), nullptr, param_values.data(), param_sizes.data(), nullptr, 0))
+		if (::PQsendQueryParams(m_conn, query, params.size(), nullptr, params.values(), params.sizes(), nullptr, 0))
 			async_read(std::forward<ResultHandler>(handler));
 		else
 			std::forward<ResultHandler>(handler)(Result{});
