@@ -32,6 +32,8 @@ public:
 
 	[[nodiscard]] auto fields() const {return ::PQnfields(m_result);}
 	[[nodiscard]] auto tuples() const {return ::PQntuples(m_result);}
+//	[[nodiscard]] std::string_view status() const {return ::PQcmdStatus(m_result);}
+	[[nodiscard]] std::string_view status() const {return ::PQresStatus(::PQresultStatus(m_result));}
 
 private:
 	::PGresult* m_result;
@@ -64,7 +66,7 @@ private:
 		int   size{};
 		int   format{};
 
-		// special handling for char*
+		// special handling for const char*
 		if constexpr (std::is_same_v<std::decay_t<decltype(arg)>, const char*>)
 		{
 			value  = arg;
@@ -78,7 +80,7 @@ private:
 			value = reinterpret_cast<const char*>(std::data(arg));
 			size  = static_cast<int>(std::size(arg) * sizeof(*value));
 
-			if constexpr (!std::is_same_v<std::decay_t<decltype(std::data(arg))>, char*>)
+			if constexpr (!std::is_same_v<std::decay_t<decltype(std::data(arg))>, const char*>)
 				format = 1;
 		}
 
@@ -125,10 +127,13 @@ public:
 	{
 		QueryParams params{std::forward<Args>(args)...};
 
-		if (::PQsendQueryParams(m_conn, query, params.size(), nullptr, params.values(), params.sizes(), nullptr, 0))
+		if (::PQsendQueryParams(m_conn, query, params.size(), nullptr, params.values(), params.sizes(), params.formats(), 0))
 			async_read(std::forward<ResultHandler>(handler));
 		else
+		{
+			std::cout << "PQsendQueryParams() error: " << ::PQerrorMessage(m_conn) << std::endl;
 			std::forward<ResultHandler>(handler)(Result{});
+		}
 	}
 
 private:
@@ -153,6 +158,11 @@ private:
 				handler(Result{::PQgetResult(m_conn)});
 			else
 				async_read(std::forward<ResultHandler>(handler));
+		}
+		else
+		{
+			std::cout << "PQconsumeInput() error: " << ::PQerrorMessage(m_conn) << std::endl;
+			std::forward<ResultHandler>(handler)(Result{});
 		}
 	}
 

@@ -24,15 +24,19 @@ using namespace hrb::postgres;
 
 TEST_CASE("postgres querry params", "[normal]")
 {
+	const char a1[] = "1234";
+
 	ObjectID id;
-	QueryParams p{"1", id};
+	QueryParams p{a1, id};
 	REQUIRE(p.size() == 2);
 
-	REQUIRE(p.sizes()[0] == 1);
+	REQUIRE(p.sizes()[0] == 4);
 	REQUIRE(p.sizes()[1] == id.size());
 
 	REQUIRE(p.formats()[0] == 0);
 	REQUIRE(p.formats()[1] == 1);
+
+	REQUIRE(p.values()[0] == a1);
 }
 
 TEST_CASE("postgres connect", "[normal]")
@@ -44,14 +48,16 @@ TEST_CASE("postgres connect", "[normal]")
 	int run = 0;
 	ss.query("insert into blob_table (id, mime) values ($1, $2)", [&run](Result r)
 	{
-		std::cout << r.fields() << std::endl;
+		std::cout << "result status: " << r.status() << "\n" << std::endl;
 		run++;
 	}, insecure_random<ObjectID>(), "image/jpeg");
+/*
 	ss.query("select * from blob_table", [&run](Result r)
 	{
 		std::cout << r.fields() << std::endl;
 		run++;
 	});
+*/
 	ioc.run();
-	REQUIRE(run == 2);
+	REQUIRE(run == 1);
 }
