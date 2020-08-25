@@ -15,6 +15,7 @@
 #include <boost/asio/ip/tcp.hpp>
 #include <libpq-fe.h>
 
+#include <deque>
 #include <string>
 #include <iostream>
 
@@ -24,7 +25,7 @@ class Result
 {
 public:
 	explicit Result(::PGresult* result = nullptr);
-	Result(Result&&) = default;
+	Result(Result&& r) : m_result{std::exchange(r.m_result, nullptr)} {}
 	Result(const Result&) = delete;
 	Result& operator=(Result&&) = default;
 	Result& operator=(const Result&) = delete;
@@ -39,20 +40,30 @@ private:
 	::PGresult* m_result;
 };
 
-class QueryParams
+class Query
 {
 public:
-	template <typename... Args>
-	explicit QueryParams(const Args& ... args)
+	template <typename String, typename... Args>
+	explicit Query(String&& query, const Args& ... args) : m_query{std::forward<String>(query)}
 	{
 		add(args...);
 	}
 
+	template <typename Function>
+	auto get(Function&& func) const
+	{
+		std::vector<const char*> values;
+		std::vector<int> sizes;
+		std::vector<int> formats;
 
-	[[nodiscard]] auto values() const {return m_values.data();}
-	[[nodiscard]] auto sizes() const {return m_sizes.data();}
-	[[nodiscard]] auto formats() const {return m_formats.data();}
-	[[nodiscard]] int size() const {return static_cast<int>(m_sizes.size());}
+		for (auto& arg : m_args)
+		{
+			values.push_back(arg.value.data());
+			sizes.push_back(arg.value.size());
+			formats.push_back(arg.is_text ? 0 : 1);
+		}
+		return func(m_query, m_args.size(), values.data(), sizes.data(), formats.data());
+	}
 
 private:
 	void add()
@@ -60,41 +71,40 @@ private:
 	}
 
 	template <typename FirstArg, typename ... NextArgs>
-	void add(const FirstArg& arg, const NextArgs& ... next)
+	void add(const FirstArg& first, const NextArgs& ... next)
 	{
-		const char* value{};
-		int   size{};
-		int   format{};
+		auto& arg = m_args.emplace_back();
 
 		// special handling for const char*
-		if constexpr (std::is_same_v<std::decay_t<decltype(arg)>, const char*>)
+		if constexpr (std::is_same_v<std::decay_t<decltype(first)>, const char*>)
 		{
-			value  = arg;
-			size   = std::strlen(arg);
-			format = 0;
+			arg.value   = first;
+			arg.is_text = true;
 		}
 
 		// for string, string_view, const_buffer, ObjectID etc
 		else
 		{
-			value = reinterpret_cast<const char*>(std::data(arg));
-			size  = static_cast<int>(std::size(arg) * sizeof(*value));
+			arg.value.assign(
+				reinterpret_cast<const char*>(std::data(first)),
+				std::size(first) * sizeof(*std::data(first))
+			);
 
-			if constexpr (!std::is_same_v<std::decay_t<decltype(std::data(arg))>, const char*>)
-				format = 1;
+			if constexpr (!std::is_same_v<std::decay_t<decltype(std::data(first))>, const char*>)
+				arg.is_text = false;
 		}
-
-		m_values.push_back(value);
-		m_sizes.push_back(size);
-		m_formats.push_back(format);
 
 		add(next...);
 	}
 
 private:
-	std::vector<const char*>    m_values;
-	std::vector<int>            m_sizes;
-	std::vector<int>            m_formats;
+	std::string m_query;
+	struct Arg
+	{
+		std::string value;
+		bool        is_text{true};
+	};
+	std::vector<Arg>  m_args;
 };
 
 class Session
@@ -110,33 +120,37 @@ public:
 
 	[[nodiscard]] std::string_view last_error() const;
 
-	template <typename ResultHandler>
-	void query(const char *query, ResultHandler&& handler)
-	{
-		if (::PQsendQuery(m_conn, query))
-			async_read(std::forward<ResultHandler>(handler));
-		else
-		{
-			std::cout << "PQsendQuery() error: " << ::PQerrorMessage(m_conn) << std::endl;
-			std::forward<ResultHandler>(handler)(Result{});
-		}
-	}
-
 	template <typename ResultHandler, typename... Args>
 	void query(const char *query, ResultHandler&& handler, Args ... args)
 	{
-		QueryParams params{std::forward<Args>(args)...};
-
-		if (::PQsendQueryParams(m_conn, query, params.size(), nullptr, params.values(), params.sizes(), params.formats(), 0))
-			async_read(std::forward<ResultHandler>(handler));
-		else
-		{
-			std::cout << "PQsendQueryParams() error: " << ::PQerrorMessage(m_conn) << std::endl;
-			std::forward<ResultHandler>(handler)(Result{});
-		}
+		m_outstanding.emplace_back(Query{query, std::forward<Args>(args)...}, std::forward<ResultHandler>(handler));
+		try_send_next_query();
 	}
 
 private:
+	void try_send_next_query()
+	{
+		if (::PQisBusy(m_conn) || m_outstanding.empty())
+			return;
+
+		if (m_outstanding.front().query.get(
+				[this](auto&& query, std::size_t size, const char* const* values, const int* sizes, const int* formats)
+				{
+					return ::PQsendQueryParams(m_conn, query.c_str(), static_cast<int>(size), nullptr, values, sizes, formats, 0);
+				}
+			))
+		{
+			async_read(std::move(m_outstanding.front().handler));
+		}
+		else
+		{
+			std::cout << "PQsendQueryParams() error: " << ::PQerrorMessage(m_conn) << std::endl;
+			m_outstanding.front().handler(Result{});
+		}
+
+		m_outstanding.pop_front();
+	}
+
 	template <typename ResultHandler>
 	void async_read(ResultHandler&& handler)
 	{
@@ -155,7 +169,15 @@ private:
 		if (::PQconsumeInput(m_conn))
 		{
 			if (!::PQisBusy(m_conn))
-				handler(Result{::PQgetResult(m_conn)});
+			{
+				::PGresult* result{};
+				while ((result = ::PQgetResult(m_conn)) != nullptr)
+				{
+					handler(Result{result});
+				}
+
+				try_send_next_query();
+			}
 			else
 				async_read(std::forward<ResultHandler>(handler));
 		}
@@ -169,6 +191,18 @@ private:
 private:
 	::PGconn*                       m_conn{nullptr};
 	boost::asio::ip::tcp::socket    m_socket;
+
+	struct OutstandingQuery
+	{
+		Query                       query;
+		std::function<void(Result)> handler;
+
+		template <typename Handler>
+		OutstandingQuery(Query&& q, Handler&& h) : query{std::move(q)}, handler{std::forward<Handler>(h)}
+		{
+		}
+	};
+	std::deque<OutstandingQuery>    m_outstanding;
 };
 
 } // end of namespace hrb::postgres

@@ -27,16 +27,20 @@ TEST_CASE("postgres querry params", "[normal]")
 	const char a1[] = "1234";
 
 	ObjectID id;
-	QueryParams p{a1, id};
-	REQUIRE(p.size() == 2);
+	Query p{"query", a1, id};
+	p.get([&a1, &id](auto&& query, std::size_t size, const char* const* values, const int* sizes, const int* formats)
+	{
+		REQUIRE(query == "query");
+		REQUIRE(size == 2);
 
-	REQUIRE(p.sizes()[0] == 4);
-	REQUIRE(p.sizes()[1] == id.size());
+		REQUIRE(sizes[0] == 4);
+		REQUIRE(sizes[1] == id.size());
 
-	REQUIRE(p.formats()[0] == 0);
-	REQUIRE(p.formats()[1] == 1);
+		REQUIRE(formats[0] == 0);
+		REQUIRE(formats[1] == 1);
 
-	REQUIRE(p.values()[0] == a1);
+		REQUIRE(values[0] == std::string(a1));
+	});
 }
 
 TEST_CASE("postgres connect", "[normal]")
