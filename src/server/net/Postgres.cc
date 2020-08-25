@@ -21,7 +21,10 @@ Session::Session(boost::asio::io_context& ioc, const std::string& connection_str
 	m_conn{::PQconnectdb(connection_string.c_str())}
 {
 	if (!m_conn)
-		throw -1;
+		throw std::runtime_error("cannot connect to postgresql server");
+
+	if (PQstatus(m_conn) != CONNECTION_OK)
+		throw std::runtime_error(::PQerrorMessage(m_conn));
 
 	m_socket.assign(boost::asio::ip::tcp::v4(), ::PQsocket(m_conn));
 }
@@ -30,6 +33,11 @@ Session::~Session()
 {
 	assert(m_conn);
 	::PQfinish(m_conn);
+}
+
+std::string_view Session::last_error() const
+{
+	return ::PQerrorMessage(m_conn);
 }
 
 Result::Result(::PGresult *result) : m_result{result}

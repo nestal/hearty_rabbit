@@ -25,12 +25,17 @@ TEST_CASE("postgres connect", "[normal]")
 
 	Session ss{ioc, ""};
 
-	bool run = false;
+	int run = 0;
+	ss.query("insert into blob_table (id, mime) values ($1, $2)", [&run](Result r)
+	{
+		std::cout << r.fields() << std::endl;
+		run++;
+	}, "\\x12345678", "image/jpeg");
 	ss.query("select * from blob_table", [&run](Result r)
 	{
 		std::cout << r.fields() << std::endl;
-		run = true;
+		run++;
 	});
 	ioc.run();
-	REQUIRE(run);
+	REQUIRE(run == 2);
 }

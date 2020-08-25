@@ -47,10 +47,31 @@ public:
 	Session& operator=(Session&&) = default;
 	Session& operator=(const Session&) = delete;
 
+	[[nodiscard]] std::string_view last_error() const;
+
 	template <typename ResultHandler>
 	void query(const char *query, ResultHandler&& handler)
 	{
 		if (::PQsendQuery(m_conn, query))
+			async_read(std::forward<ResultHandler>(handler));
+		else
+			std::forward<ResultHandler>(handler)(Result{});
+	}
+
+	template <typename ResultHandler, typename... Args>
+	void query(const char *query, ResultHandler&& handler, Args ... args)
+	{
+		std::vector<std::string> params{args...};
+
+		std::vector<const char*> param_values;
+		std::vector<int> param_sizes;
+		for (auto& p : params)
+		{
+			param_values.push_back(p.data());
+			param_sizes.push_back(static_cast<int>(p.size()));
+		}
+
+		if (::PQsendQueryParams(m_conn, query, params.size(), nullptr, param_values.data(), param_sizes.data(), nullptr, 0))
 			async_read(std::forward<ResultHandler>(handler));
 		else
 			std::forward<ResultHandler>(handler)(Result{});

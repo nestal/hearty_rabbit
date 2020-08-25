@@ -2,8 +2,8 @@ create table blob_table(
 	id bytea primary key,
 	original_filename text default null,
 	mime text not null,
-	upload_time timestamp not null,
-	creation_time timestamp default null,
+	upload_time timestamp default Now(),
+	creation_time timestamp default Now(),
 	meta json default null
 );
 
