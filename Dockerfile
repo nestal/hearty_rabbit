@@ -1,6 +1,9 @@
 FROM nestal/hearty_rabbit_dev as builder
 MAINTAINER [Nestal Wan <me@nestal.net>]
 ARG BUILD_NUMBER
+ARG PGUSER=heartyrabbit
+ARG PGHOST=localhost
+ARG PGPASSWORD
 ENV container docker
 
 ENV PATH="$PATH:/opt/bin" \
@@ -20,7 +23,7 @@ RUN mkdir /build/docker-build \
 		-DCMAKE_INSTALL_PREFIX=/build/hearty_rabbit \
 		-DHAARCASCADE_PATH="/build/opencv-4.2.0/data/haarcascades/" \
 			../src \
-	&& make -j8 install
+	&& PGUSER="$PGUSER" PGHOST="$PGHOST" PGPASSWORD="$PGPASSWORD" make -j8 install
 
 # chmod before copy
 RUN chmod a+rX -R /build/opencv-4.2.0/data/haarcascades/
@@ -56,7 +59,7 @@ COPY --from=builder \
 	/lib64/libunwind.so.8 \
 	/lib64/libtinfo.so.5  \
 	/lib64/libpng15.so.15 \
-	/lib64/libb2.so.0 \
+	/lib64/libb2.so.1 \
 	/lib64/libgomp.so.1 \
 	/lib64/libexif.so.12 \
 	/lib64/libpq.so.5 \

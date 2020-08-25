@@ -23,7 +23,7 @@ install:
   - pip install requests Pillow numpy redis
 
 script:
-  - docker build -t nestal.azurecr.io/hearty_rabbit --network="host" --build-arg BUILD_NUMBER=$TRAVIS_BUILD_NUMBER .
+  - docker build -t nestal.azurecr.io/hearty_rabbit --network="host" --build-arg BUILD_NUMBER=$TRAVIS_BUILD_NUMBER --build-arg PGUSER=postgres .
   - ./automation/start_tests
 
 after_success:
