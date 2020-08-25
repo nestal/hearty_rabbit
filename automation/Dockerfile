@@ -10,7 +10,7 @@ RUN yum install -y deltarpm epel-release centos-release-scl \
 	&& yum update -y \
 	&& yum install -y --setopt=tsflags=nodocs openssl-devel git make hiredis-devel \
 		file-devel libicu-devel zlib-devel bzip2-devel xz-devel libunwind-devel which \
-		libexif-devel msgpack-devel libpng-devel libcurl-devel \
+		libexif-devel msgpack-devel libpng-devel libcurl-devel postgresql-devel \
 		cmake3 libb2-devel gperftools-devel devtoolset-8 \
 	&& yum clean all -y
 

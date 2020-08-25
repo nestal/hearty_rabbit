@@ -8,10 +8,14 @@ python:
 services:
   - docker
   - redis-server
+  - postgresql
 
 before_install:
   - docker pull nestal/hearty_rabbit_dev
   - git submodule update --init --recursive
+
+before_script:
+  - psql -f ./init.sql -U postgres
 
 install:
   - pip install --upgrade pip

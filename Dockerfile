@@ -59,6 +59,7 @@ COPY --from=builder \
 	/lib64/libb2.so.0 \
 	/lib64/libgomp.so.1 \
 	/lib64/libexif.so.12 \
+	/lib64/libpq.so.5 \
 		/lib64/
 
 # Copy the magic cookie file for libmagic

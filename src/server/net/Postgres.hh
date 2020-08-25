@@ -13,7 +13,7 @@
 #pragma once
 
 #include <boost/asio/ip/tcp.hpp>
-#include <postgresql/libpq-fe.h>
+#include <libpq-fe.h>
 
 #include <string>
 
@@ -29,8 +29,8 @@ public:
 	Result& operator=(const Result&) = delete;
 	~Result();
 
-	auto fields() const {return ::PQnfields(m_result);}
-	auto tuples() const {return ::PQntuples(m_result);}
+	[[nodiscard]] auto fields() const {return ::PQnfields(m_result);}
+	[[nodiscard]] auto tuples() const {return ::PQntuples(m_result);}
 
 private:
 	::PGresult* m_result;
@@ -39,15 +39,13 @@ private:
 class Session
 {
 public:
-	explicit Session(boost::asio::io_context& ioc);
+	Session(boost::asio::io_context& ioc, const std::string& connection_string);
 	~Session();
 
 	Session(Session&&) = default;
 	Session(const Session&) = delete;
 	Session& operator=(Session&&) = default;
 	Session& operator=(const Session&) = delete;
-
-	void open(const std::string& connection_string);
 
 	template <typename ResultHandler>
 	void query(const char *query, ResultHandler&& handler)

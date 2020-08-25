@@ -23,8 +23,7 @@ TEST_CASE("postgres connect", "[normal]")
 {
 	boost::asio::io_context ioc;
 
-	Session ss{ioc};
-	ss.open("");
+	Session ss{ioc, ""};
 
 	bool run = false;
 	ss.query("select * from blob_table", [&run](Result r)
