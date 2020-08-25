@@ -25,19 +25,26 @@ class Result
 {
 public:
 	explicit Result(::PGresult* result = nullptr);
-	Result(Result&& r) : m_result{std::exchange(r.m_result, nullptr)} {}
+	Result(Result&& r) = default;
 	Result(const Result&) = delete;
 	Result& operator=(Result&&) = default;
 	Result& operator=(const Result&) = delete;
-	~Result();
+	~Result() = default;
 
-	[[nodiscard]] auto fields() const {return ::PQnfields(m_result);}
-	[[nodiscard]] auto tuples() const {return ::PQntuples(m_result);}
-//	[[nodiscard]] std::string_view status() const {return ::PQcmdStatus(m_result);}
-	[[nodiscard]] std::string_view status() const {return ::PQresStatus(::PQresultStatus(m_result));}
+	[[nodiscard]] auto fields() const {return ::PQnfields(m_result.get());}
+	[[nodiscard]] auto tuples() const {return ::PQntuples(m_result.get());}
+	[[nodiscard]] std::string_view status() const {return ::PQresStatus(::PQresultStatus(m_result.get()));}
 
 private:
-	::PGresult* m_result;
+	struct DestroyResult
+	{
+		void operator()(::PGresult *result) const
+		{
+			if (result)
+				::PQclear(result);
+		}
+	};
+	std::unique_ptr<::PGresult, DestroyResult> m_result;
 };
 
 class Query
@@ -111,7 +118,7 @@ class Session
 {
 public:
 	Session(boost::asio::io_context& ioc, const std::string& connection_string);
-	~Session();
+	~Session() = default;
 
 	Session(Session&&) = default;
 	Session(const Session&) = delete;
@@ -121,34 +128,36 @@ public:
 	[[nodiscard]] std::string_view last_error() const;
 
 	template <typename ResultHandler, typename... Args>
-	void query(const char *query, ResultHandler&& handler, Args ... args)
+	void query(const char *query_string, ResultHandler&& handler, Args ... args)
 	{
-		m_outstanding.emplace_back(Query{query, std::forward<Args>(args)...}, std::forward<ResultHandler>(handler));
-		try_send_next_query();
+		Query query{query_string, std::forward<Args>(args)...};
+
+		if (::PQisBusy(m_conn.get()))
+			m_outstanding.emplace_back(std::move(query), std::forward<ResultHandler>(handler));
+		else
+			send_query(query, std::forward<ResultHandler>(handler));
 	}
 
 private:
-	void try_send_next_query()
+	template <typename ResultHandler>
+	auto send_query(const Query& query, ResultHandler&& handler)
 	{
-		if (::PQisBusy(m_conn) || m_outstanding.empty())
-			return;
-
-		if (m_outstanding.front().query.get(
+		if (query.get(
 				[this](auto&& query, std::size_t size, const char* const* values, const int* sizes, const int* formats)
 				{
-					return ::PQsendQueryParams(m_conn, query.c_str(), static_cast<int>(size), nullptr, values, sizes, formats, 0);
+					return ::PQsendQueryParams(
+						m_conn.get(), query.c_str(), static_cast<int>(size), nullptr, values, sizes, formats, 0
+					);
 				}
 			))
 		{
-			async_read(std::move(m_outstanding.front().handler));
+			async_read(std::forward<ResultHandler>(handler));
 		}
 		else
 		{
-			std::cout << "PQsendQueryParams() error: " << ::PQerrorMessage(m_conn) << std::endl;
-			m_outstanding.front().handler(Result{});
+			std::cout << "PQsendQueryParams() error: " << ::PQerrorMessage(m_conn.get()) << std::endl;
+			handler(Result{});
 		}
-
-		m_outstanding.pop_front();
 	}
 
 	template <typename ResultHandler>
@@ -166,31 +175,42 @@ private:
 	template <typename ResultHandler>
 	void on_read_ready(boost::system::error_code ec, ResultHandler&& handler)
 	{
-		if (::PQconsumeInput(m_conn))
+		if (::PQconsumeInput(m_conn.get()))
 		{
-			if (!::PQisBusy(m_conn))
+			if (!::PQisBusy(m_conn.get()))
 			{
+				// There may be multiple results for each query, so need to loop.
 				::PGresult* result{};
-				while ((result = ::PQgetResult(m_conn)) != nullptr)
-				{
+				while ((result = ::PQgetResult(m_conn.get())) != nullptr)
 					handler(Result{result});
-				}
 
-				try_send_next_query();
+				// Proceed to next query if any.
+				if (!m_outstanding.empty())
+				{
+					send_query(m_outstanding.front().query, std::move(m_outstanding.front().handler));
+					m_outstanding.pop_front();
+				}
 			}
 			else
 				async_read(std::forward<ResultHandler>(handler));
 		}
 		else
 		{
-			std::cout << "PQconsumeInput() error: " << ::PQerrorMessage(m_conn) << std::endl;
+			std::cout << "PQconsumeInput() error: " << ::PQerrorMessage(m_conn.get()) << std::endl;
 			std::forward<ResultHandler>(handler)(Result{});
 		}
 	}
 
 private:
-	::PGconn*                       m_conn{nullptr};
-	boost::asio::ip::tcp::socket    m_socket;
+	struct CloseConnection
+	{
+		void operator()(::PGconn* conn) const
+		{
+			::PQfinish(conn);
+		}
+	};
+	std::unique_ptr<::PGconn, CloseConnection>  m_conn;
+	boost::asio::ip::tcp::socket                m_socket;
 
 	struct OutstandingQuery
 	{

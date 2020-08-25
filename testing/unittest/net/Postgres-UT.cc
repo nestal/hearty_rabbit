@@ -49,19 +49,23 @@ TEST_CASE("postgres connect", "[normal]")
 
 	Session ss{ioc, ""};
 
+	auto blob = insecure_random<ObjectID>();
+
 	int run = 0;
 	ss.query("insert into blob_table (id, mime) values ($1, $2)", [&run](Result r)
 	{
 		std::cout << "result status: " << r.status() << "\n" << std::endl;
 		run++;
-	}, insecure_random<ObjectID>(), "image/jpeg");
-/*
-	ss.query("select * from blob_table", [&run](Result r)
+	}, blob, "image/jpeg");
+
+	// assume the randomly generated IDs are unique
+	ss.query("select * from blob_table where id=$1", [&run](Result r)
 	{
-		std::cout << r.fields() << std::endl;
+		std::cout << r.tuples() << std::endl;
+		REQUIRE(r.tuples() == 1);
 		run++;
-	});
-*/
+	}, blob);
+
 	ioc.run();
-	REQUIRE(run == 1);
+	REQUIRE(run == 2);
 }

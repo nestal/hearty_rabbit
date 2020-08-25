@@ -23,31 +23,19 @@ Session::Session(boost::asio::io_context& ioc, const std::string& connection_str
 	if (!m_conn)
 		throw std::runtime_error("cannot connect to postgresql server");
 
-	if (PQstatus(m_conn) != CONNECTION_OK)
-		throw std::runtime_error(::PQerrorMessage(m_conn));
+	if (PQstatus(m_conn.get()) != CONNECTION_OK)
+		throw std::runtime_error(::PQerrorMessage(m_conn.get()));
 
-	m_socket.assign(boost::asio::ip::tcp::v4(), ::PQsocket(m_conn));
-}
-
-Session::~Session()
-{
-	assert(m_conn);
-	::PQfinish(m_conn);
+	m_socket.assign(boost::asio::ip::tcp::v4(), ::PQsocket(m_conn.get()));
 }
 
 std::string_view Session::last_error() const
 {
-	return ::PQerrorMessage(m_conn);
+	return ::PQerrorMessage(m_conn.get());
 }
 
 Result::Result(::PGresult *result) : m_result{result}
 {
-}
-
-Result::~Result()
-{
-	if (m_result)
-		::PQclear(m_result);
 }
 
 } // end of namespace hrb::postgres
