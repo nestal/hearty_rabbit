@@ -2,11 +2,13 @@
 cmake_minimum_required(VERSION 3.8)
 project(hearty_rabbit_gui)
 
+cmake_policy(SET CMP0100 NEW)
+
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
 
 set(Boost_USE_STATIC_LIBS  ON)
-find_package(Boost REQUIRED COMPONENTS system filesystem program_options)
+find_package(Boost REQUIRED COMPONENTS system program_options)
 find_package(Qt5Widgets CONFIG REQUIRED)
 find_package(Qt5Network CONFIG REQUIRED)
 

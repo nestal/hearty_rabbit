@@ -4,6 +4,7 @@ find_package(Threads REQUIRED)
 find_package(PkgConfig REQUIRED)
 find_package(OpenSSL REQUIRED)
 find_package(Doxygen)
+find_package(PostgreSQL REQUIRED)
 
 pkg_check_modules(HIREDIS REQUIRED IMPORTED_TARGET hiredis)
 pkg_check_modules(LIBEXIF REQUIRED IMPORTED_TARGET libexif)
@@ -21,6 +22,7 @@ target_link_libraries(hrbcommon PUBLIC
 	nlohmann_json::nlohmann_json
 	OpenCV::OpenCV
 	Blake2::Blake2
+	PostgreSQL::PostgreSQL
 	PkgConfig::LIBEXIF
 	${CMAKE_THREAD_LIBS_INIT}
 )
