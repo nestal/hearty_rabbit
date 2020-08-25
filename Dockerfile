@@ -1,4 +1,4 @@
-FROM nestal/hearty_rabbit_dev as builder
+FROM nestal.azurecr.io/hearty_rabbit_dev as builder
 MAINTAINER [Nestal Wan <me@nestal.net>]
 ARG BUILD_NUMBER
 ARG PGUSER=heartyrabbit
