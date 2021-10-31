@@ -17,8 +17,12 @@
 #include "crypto/Blake2.hh"
 #include "util/Escape.hh"
 #include "util/Magic.hh"
+#include "util/JSON.hh"
 
 #include <boost/exception/info.hpp>
+
+#include <optional>
+#include <string>
 
 namespace hrb {
 namespace {
@@ -67,7 +71,7 @@ WebResources::WebResources(const fs::path& web_root) :
 {
 }
 
-WebResources::Response WebResources::find_static(std::string_view filename, boost::string_view etag, unsigned version) const
+WebResources::Response WebResources::find_static(std::string_view filename, std::string_view etag, unsigned version) const
 {
 	auto it = m_static.find(filename);
 	if (it == m_static.end())
@@ -106,7 +110,7 @@ WebResources::Response WebResources::inject(http::status status, std::string&& j
 	return res;
 }
 
-WebResources::Resource::Resource(std::string_view name, MMap&& file, std::string&& mime, boost::string_view etag) :
+WebResources::Resource::Resource(std::string_view name, MMap&& file, std::string&& mime, std::string_view etag) :
 	m_name{name}, m_file{std::move(file)}, m_mime{std::move(mime)}, m_etag{etag}
 {
 	if (name == "index.html")

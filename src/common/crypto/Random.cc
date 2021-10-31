@@ -16,6 +16,7 @@
 
 #include <system_error>
 #include <utility>
+#include <cassert>
 
 // C++17 is doing cmake's job
 #if __has_include(<sys/random.h>)

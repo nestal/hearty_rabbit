@@ -38,15 +38,15 @@ public:
 	static MMap create(int fd, const void *data, std::size_t size, std::error_code& ec);
 	static MMap allocate(std::size_t size, std::error_code& ec);
 
-	void* data() const {return m_mmap;}
-	std::size_t size() const {return m_size;}
+	[[nodiscard]] void* data() const {return m_mmap;}
+	[[nodiscard]] std::size_t size() const {return m_size;}
 
-	boost::asio::mutable_buffer blob() noexcept {return {m_mmap, m_size};}
-	boost::asio::const_buffer blob() const noexcept {return {m_mmap, m_size};}
-	std::string_view string() const {return {static_cast<const char*>(m_mmap), m_size};}
-	BufferView buffer() const {return {static_cast<const unsigned char*>(m_mmap), m_size};}
+	[[nodiscard]] boost::asio::mutable_buffer blob() noexcept {return {m_mmap, m_size};}
+	[[nodiscard]] boost::asio::const_buffer blob() const noexcept {return {m_mmap, m_size};}
+	[[nodiscard]] std::string_view string() const {return {static_cast<const char*>(m_mmap), m_size};}
+	[[nodiscard]] BufferView buffer() const {return {static_cast<const unsigned char*>(m_mmap), m_size};}
 
-	bool is_opened() const {return m_mmap != nullptr;}
+	[[nodiscard]] bool is_opened() const {return m_mmap != nullptr;}
 	void clear();
 	void swap(MMap& target) noexcept ;
 	void cache() const;

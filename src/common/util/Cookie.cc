@@ -26,10 +26,6 @@ Cookie::Cookie(std::string_view header) : m_cookie{header}
 {
 }
 
-Cookie::Cookie(boost::string_view header) : m_cookie{header.to_string()}
-{
-}
-
 Cookie::Cookie(const char *s) : m_cookie{s}
 {
 }

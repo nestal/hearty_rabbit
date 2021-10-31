@@ -38,7 +38,7 @@ Blob HRBClient::parse_response(const boost::beast::http::fields& response)
 	URLIntent intent{response[http::field::location]};
 
 	// For /api/<user>/<coll>/<blobid> intents, the filename() will be a blob ID
-	auto blobid = ObjectID::from_hex(response[http::field::etag].to_string());
+	auto blobid = ObjectID::from_hex(response[http::field::etag]);
 	if (!blobid)
 		blobid = ObjectID::from_hex(intent.filename());
 

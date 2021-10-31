@@ -53,7 +53,7 @@ void HRBClient::login(std::string_view user, std::string_view password, Complete
 
 			if (req.response().result() == http::status::no_content)
 			{
-				m_cookie = req.response().at(http::field::set_cookie).to_string();
+				m_cookie = req.response().at(http::field::set_cookie);
 				m_user   = UserID{username};
 			}
 			else

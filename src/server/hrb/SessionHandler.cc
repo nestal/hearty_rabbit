@@ -279,7 +279,7 @@ http::response<http::string_body> SessionHandler::bad_request(boost::beast::stri
 }
 
 // Returns a not found response
-http::response<SplitBuffers> SessionHandler::not_found(boost::string_view target, unsigned version)
+http::response<SplitBuffers> SessionHandler::not_found(std::string_view target, unsigned version)
 {
 	nlohmann::json dir;
 	dir.emplace("error_message", "The request resource was not found.");
@@ -288,18 +288,21 @@ http::response<SplitBuffers> SessionHandler::not_found(boost::string_view target
 	return m_lib.inject(http::status::not_found, dir.dump(), "<meta></meta>", version);
 }
 
-http::response<http::string_body> SessionHandler::server_error(boost::beast::string_view what, unsigned version)
+http::response<http::string_body> SessionHandler::server_error(std::string_view what, unsigned version)
 {
+	std::string msg = "An error occurred: '";
+	msg.append(what).push_back('\'');
+
 	http::response<http::string_body> res{
 		std::piecewise_construct,
-		std::make_tuple("An error occurred: '" + what.to_string() + "'"),
+		std::make_tuple(msg),
 		std::make_tuple(http::status::internal_server_error, version)
 	};
 	res.set(http::field::content_type, "text/plain");
 	return res;
 }
 
-http::response<SplitBuffers> SessionHandler::file_request(const URLIntent& intent, boost::string_view etag, unsigned version)
+http::response<SplitBuffers> SessionHandler::file_request(const URLIntent& intent, std::string_view etag, unsigned version)
 {
 	return intent.filename() == "login_incorrect.html" ?
 		m_lib.inject(http::status::ok, R"_({login_message: "Login incorrect... Try again?"})_", "", version) :

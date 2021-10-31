@@ -86,11 +86,16 @@ void Server::drop_privileges() const
 		throw std::runtime_error("cannot run as root");
 }
 
-void Server::add_user(const Configuration& cfg, std::string_view username, Password&& password, std::function<void(std::error_code)> complete)
+void Server::add_user(
+	const Configuration& cfg,
+	std::string_view username,
+	Password&& password,
+	std::function<void(std::error_code)> complete
+)
 {
 	boost::asio::io_context ioc;
 	redis::Pool db{ioc, cfg.redis()};
-	Authentication::add_user(username, std::move(password), *db.alloc(), [&complete](std::error_code ec)
+	Authentication::add_user(username, password, *db.alloc(), [&complete](std::error_code ec)
 	{
 		complete(ec);
 	});

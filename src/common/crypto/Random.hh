@@ -14,11 +14,12 @@
 
 #include <blake2.h>
 
-#include <array>
-#include <type_traits>
-#include <cstring>
 #include <algorithm>
+#include <array>
+#include <cstdint>
+#include <cstring>
 #include <limits>
+#include <type_traits>
 
 namespace hrb {
 

@@ -19,7 +19,7 @@ namespace hrb {
 class StringFields
 {
 public:
-	constexpr StringFields(std::string_view all_delims, std::string_view kv_delims, bool trim_space=false) :
+	constexpr StringFields(std::string_view all_delims, std::string_view kv_delims, bool trim_space=false) noexcept:
 		m_all_delims{all_delims}, m_kv_delims{kv_delims}, m_trim_space{trim_space}
 	{
 	}

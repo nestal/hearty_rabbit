@@ -65,7 +65,7 @@ public:
 	URLIntent& operator=(URLIntent&&) = default;
 	URLIntent& operator=(const URLIntent&) = default;
 
-	explicit URLIntent(boost::string_view target);
+	explicit URLIntent(std::string_view target);
 	explicit URLIntent(Action act);
 	URLIntent(Action act, std::string_view user, std::string_view coll, std::string_view name, std::string_view option = "");
 	URLIntent(Action act, std::string_view user, std::string_view coll, const ObjectID& blob, std::string_view option = "");

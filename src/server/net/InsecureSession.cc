@@ -13,6 +13,7 @@
 #include "InsecureSession.hh"
 
 #include <boost/asio/bind_executor.hpp>
+#include <boost/utility/string_view.hpp>
 
 namespace hrb {
 

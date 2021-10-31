@@ -25,11 +25,11 @@ class UserID;
 class BlobRequest
 {
 public:
-	template <typename Request>
-	BlobRequest(Request&& req, URLIntent&& intent) :
+	template <typename HttpRequest>
+	BlobRequest(HttpRequest&& req, URLIntent&& intent) :
 		m_url{std::move(intent)}, m_version{req.version()}, m_etag{req[http::field::if_none_match]}
 	{
-		if constexpr (std::is_same_v<std::decay_t<Request>, StringRequest>)
+		if constexpr (std::is_same_v<std::decay_t<HttpRequest>, StringRequest>)
 		{
 			if (req[http::field::content_type] == "application/x-www-form-urlencoded")
 				m_body = std::move(req.body());

@@ -24,13 +24,14 @@
 #include "crypto/Authentication.hh"
 #include "crypto/Authentication.ipp"
 #include "net/MMapResponseBody.hh"
-#include "util/Log.hh"
 
 #include "hrb/Blob.hh"
 #include "hrb/Collection.hh"
-#include "util/Escape.hh"
 #include "hrb/URLIntent.hh"
 #include "util/StringFields.hh"
+#include "util/Log.hh"
+#include "util/Cookie.hh"
+#include "util/Escape.hh"
 
 #include <boost/beast/http/fields.hpp>
 #include <boost/beast/http/message.hpp>

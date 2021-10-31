@@ -22,6 +22,7 @@
 #include "util/Configuration.hh"
 #include "util/Escape.hh"
 #include "util/Log.hh"
+#include "util/JSON.hh"
 #include "util/Magic.hh"
 
 namespace hrb {

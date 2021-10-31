@@ -59,13 +59,11 @@ std::optional<ObjectID> ObjectID::from_raw(std::string_view raw)
 
 bool operator==(const ObjectID& id1, const ObjectID& id2)
 {
-	static_assert(id1.size() == id2.size());    // isn't it obvious?
 	return std::memcmp(id1.data(), id2.data(), id1.size()) == 0;
 }
 
 bool operator!=(const ObjectID& id1, const ObjectID& id2)
 {
-	static_assert(id1.size() == id2.size());    // isn't it obvious?
 	return std::memcmp(id1.data(), id2.data(), id1.size()) != 0;
 }
 
@@ -76,7 +74,7 @@ std::ostream& operator<<(std::ostream& os, const ObjectID& id)
 
 bool ObjectID::is_hex(std::string_view hex)
 {
-	return hex.size() == Blake2::size*2 && hex.find_first_not_of("01234567890ABCDEFabcdef") == hex.npos;
+	return hex.size() == Blake2::size*2 && hex.find_first_not_of("01234567890ABCDEFabcdef") == std::string_view::npos;
 }
 
 void from_json(const nlohmann::json& src, ObjectID& dest)

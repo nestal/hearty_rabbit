@@ -141,7 +141,9 @@ void Session::on_read(boost::system::error_code ec, std::size_t)
 
 					// check if auth is renewed. if yes, set it to cookie before sending
 					if (m_handler->renewed_auth())
+					{
 						response.set(http::field::set_cookie, m_handler->auth().set_cookie(m_login_session).str());
+					}
 
 					send_response(std::forward<decltype(response)>(response));
 				}

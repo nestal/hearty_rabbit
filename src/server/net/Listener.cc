@@ -16,6 +16,7 @@
 
 #include "util/Configuration.hh"
 #include "util/Log.hh"
+#include "util/JSON.hh"
 
 #include <boost/asio/strand.hpp>
 

@@ -19,7 +19,6 @@
 #include "util/FS.hh"
 #include "net/SplitBuffers.hh"
 
-#include <boost/utility/string_view.hpp>
 #include <boost/multi_index_container.hpp>
 #include <boost/multi_index/hashed_index.hpp>
 #include <boost/multi_index/mem_fun.hpp>
@@ -38,7 +37,7 @@ public:
 
 	explicit WebResources(const fs::path& web_root);
 
-	[[nodiscard]] Response find_static(std::string_view filename, boost::string_view etag, unsigned version) const;
+	[[nodiscard]] Response find_static(std::string_view filename, std::string_view etag, unsigned version) const;
 	[[nodiscard]] Response inject(http::status status, std::string&& json, std::string&& meta, unsigned version) const;
 
 	[[nodiscard]] bool is_static(std::string_view filename) const;
@@ -49,11 +48,11 @@ private:
 	class Resource
 	{
 	public:
-		Resource(std::string_view name, MMap&& file, std::string&& mime, boost::string_view etag);
+		Resource(std::string_view name, MMap&& file, std::string&& mime, std::string_view etag);
 
 		[[nodiscard]] http::response<SplitBuffers> get(int version, bool dynamic) const;
 
-		[[nodiscard]] boost::string_view etag() const {return m_etag;}
+		[[nodiscard]] std::string_view etag() const {return m_etag;}
 		[[nodiscard]] std::string_view name() const {return m_name;}
 
 	private:

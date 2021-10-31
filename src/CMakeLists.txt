@@ -45,6 +45,7 @@ target_link_libraries(hrbsrv PUBLIC
 	${CMAKE_THREAD_LIBS_INIT}
 )
 target_include_directories(hrbsrv PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/server)
+target_compile_definitions(hrbsrv PUBLIC -DBOOST_BEAST_USE_STD_STRING_VIEW)
 
 ###################################################################################################
 # client library
@@ -60,6 +61,7 @@ target_link_libraries(
 	${CMAKE_THREAD_LIBS_INIT}
 )
 target_include_directories(hrbclient PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/client)
+target_compile_definitions(hrbclient PUBLIC -DBOOST_BEAST_USE_STD_STRING_VIEW)
 
 ###################################################################################################
 # Main server executable
