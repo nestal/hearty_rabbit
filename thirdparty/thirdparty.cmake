@@ -1,11 +1,5 @@
-FetchContent_Declare(catch2
-  GIT_REPOSITORY https://github.com/catchorg/Catch2.git
-  GIT_TAG v2.x
-)
-FetchContent_MakeAvailable(catch2)
-
-add_library(nlohmann_json::nlohmann_json INTERFACE IMPORTED)
-set_target_properties(nlohmann_json::nlohmann_json PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${PROJECT_SOURCE_DIR}/thirdparty")
+find_package(Catch2 2.13 REQUIRED)
+find_package(nlohmann_json 3.9.0 REQUIRED)
 
 find_package(OpenCV REQUIRED core imgproc imgcodecs objdetect highgui)
 
