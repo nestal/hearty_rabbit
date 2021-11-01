@@ -84,6 +84,10 @@ add_executable(hrbsync client/hrbsync/main.cc)
 target_link_libraries(hrbsync PRIVATE hrbsync_lib)
 add_dependencies(hrbsync unittest clienttest)
 
+# HRB V2
+add_library(hrb2 UserHome.cc UserHome.hh)
+target_link_libraries(hrb2 PUBLIC hrbsrv)
+
 if (BUILD_CLIENT)
 	add_subdirectory(client/qt)
 endif()

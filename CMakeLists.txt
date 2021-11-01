@@ -1,5 +1,5 @@
-# cmake 3.8 is required for C++17
-cmake_minimum_required(VERSION 3.8)
+# cmake 3.14 is required for FetchContent
+cmake_minimum_required(VERSION 3.14)
 project(hearty_rabbit)
 
 set(VERSION "0.5-pre")
@@ -10,12 +10,13 @@ if (NOT BUILD_NUMBER)
 endif()
 message(STATUS "Building HeartyRabbit ${VERSION}.${BUILD_NUMBER}")
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CONFIG_FILENAME "hearty_rabbit.json")
 
 # OpenCV haarcascade model for unit test
 message(STATUS "using haarcascade at ${HAARCASCADE_PATH}")
 
+include(FetchContent)
 include(thirdparty/thirdparty.cmake)
 
 include_directories(${CMAKE_BINARY_DIR})
