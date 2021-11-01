@@ -263,7 +263,7 @@ TEST_CASE("UTF8 special characters")
 
 	URLIntent percent_user{"/view/%E4%B8%AD%E6%96%87%E5%AD%97/filename"};
 	REQUIRE(percent_user.action() == URLIntent::Action::view);
-	REQUIRE(percent_user.user() == u8"中文字");
+	REQUIRE(percent_user.user() == reinterpret_cast<const char*>(u8"中文字"));
 	REQUIRE(percent_user.collection() == "filename");
 	REQUIRE(percent_user.filename() == "");
 	REQUIRE(percent_user.valid());
@@ -271,7 +271,7 @@ TEST_CASE("UTF8 special characters")
 	URLIntent percent_coll{"/view/zelda/%E3%82%BC%E3%83%AB%E3%83%80%E3%81%AE%E4%BC%9D%E8%AA%AC/master_sword"};
 	REQUIRE(percent_coll.action() == URLIntent::Action::view);
 	REQUIRE(percent_coll.user() == "zelda");
-	REQUIRE(percent_coll.collection() == u8"ゼルダの伝説/master_sword");
+	REQUIRE(percent_coll.collection() == reinterpret_cast<const char*>(u8"ゼルダの伝説/master_sword"));
 	REQUIRE(percent_coll.filename() == "");
 	REQUIRE(percent_coll.valid());
 
