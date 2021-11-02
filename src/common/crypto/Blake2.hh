@@ -32,7 +32,7 @@ public:
 	// 20 byte hash space should be large enough to avoid collision.
 	// Hash values will be used as keys for database, so if they are
 	// too long, searching the database will be too slow.
-	static const std::size_t size = 20;
+	static constexpr std::size_t size = 20;
 
 	void update(const void *data, std::size_t len);
 	std::array<unsigned char, size> finalize();

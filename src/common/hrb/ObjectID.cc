@@ -38,7 +38,7 @@ std::optional<ObjectID> ObjectID::from_hex(std::string_view hex)
 {
 	auto opt_array = hex_to_array<ObjectID{}.size()>(hex);
 	if (opt_array.has_value())
-		return *opt_array;
+		return ObjectID{*opt_array};
 	else
 		return std::nullopt;
 }

@@ -23,27 +23,31 @@
 
 namespace hrb {
 
+namespace detail {
 void system_random(void *buf, std::size_t size);
 void user_random(void *buf, std::size_t size);
+}
 
-template <typename T>
-T system_random()
+template <typename T, typename Generator>
+T random_value(Generator gen)
 {
 	static_assert(std::is_standard_layout<T>::value);
 
 	T val{};
-	system_random(&val, sizeof(val));
+	gen(&val, sizeof(val));
 	return val;
+}
+
+template <typename T>
+T system_random()
+{
+	return random_value<T>(detail::system_random);
 }
 
 template <typename T>
 T user_random()
 {
-	static_assert(std::is_standard_layout<T>::value);
-
-	T val{};
-	user_random(&val, sizeof(val));
-	return val;
+	return random_value<T>(detail::user_random);
 }
 
 template <typename T, std::size_t size> std::array<T,size> system_random_array()

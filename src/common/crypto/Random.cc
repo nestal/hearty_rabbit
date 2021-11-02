@@ -39,7 +39,7 @@ ssize_t getrandom(void *buf, size_t size, unsigned int flags)
 } // end of local namespace
 #endif
 
-namespace hrb {
+namespace hrb::detail {
 
 void system_random(void *buf, std::size_t size)
 {
