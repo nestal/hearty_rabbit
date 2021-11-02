@@ -37,7 +37,7 @@ void Authentication::share_resource(
 	Complete&& comp
 )
 {
-	auto auth = insecure_random<SessionID>();
+	auto auth = user_random<SessionID>();
 	auto expired = std::chrono::system_clock::now() + valid_period;
 
 	db.command(

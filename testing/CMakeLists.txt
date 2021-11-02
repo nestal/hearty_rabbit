@@ -12,7 +12,7 @@ target_link_libraries(test_common PUBLIC OpenCV::OpenCV)
 
 file(GLOB_RECURSE SRV_UT_SRC unittest/*.cc unittest/*.hh)
 add_executable(unittest ${SRV_UT_SRC})
-target_link_libraries(unittest PUBLIC Catch2::Catch2 test_common hrbsrv hrbclient hrbsync_lib)
+target_link_libraries(unittest PUBLIC Catch2::Catch2 test_common hrbsrv hrbclient hrbsync_lib hrb2)
 
 # Automatically run unit tests after the build
 # Although we specified the ${CMAKE_BINARY_DIR} as the current directory when running unit tests,

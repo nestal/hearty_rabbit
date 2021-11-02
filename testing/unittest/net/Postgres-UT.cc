@@ -49,7 +49,7 @@ TEST_CASE("postgres connect", "[normal]")
 
 	Session ss{ioc, "host=localhost"};
 
-	auto blob = insecure_random<ObjectID>();
+	auto blob = user_random<ObjectID>();
 
 	int run = 0;
 	ss.query("insert into blob_table (id, mime) values ($1, $2)", [&run](Result r)

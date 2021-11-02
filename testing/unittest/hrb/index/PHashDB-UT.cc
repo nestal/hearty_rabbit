@@ -33,7 +33,7 @@ TEST_CASE("find duplicated image in database", "[normal]")
 	auto lena = phash(hrb::test::images / "lena.png");
 	REQUIRE(lena.value() > 0);
 
-	auto lena_blob = insecure_random<ObjectID>();
+	auto lena_blob = user_random<ObjectID>();
 	auto tested = false;
 	std::size_t count = 0;
 

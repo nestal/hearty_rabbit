@@ -29,7 +29,7 @@ using namespace std::literals;
 TEST_CASE("random round-trip", "[normal]")
 {
 	// Random round-trip
-	auto rand = insecure_random<Authentication::SessionID>();
+	auto rand = user_random<Authentication::SessionID>();
 	auto cookie = Authentication{rand, "test"}.set_cookie(600s);
 
 	INFO("cookie for random session ID is " << cookie);
@@ -80,7 +80,7 @@ TEST_CASE("Default Authenication ctor construct invalid authenication", "[normal
 
 TEST_CASE("Guest Authenication is valid", "[normal]")
 {
-	Authentication guest{insecure_random<Authentication::SessionID>()};
+	Authentication guest{user_random<Authentication::SessionID>()};
 	REQUIRE(guest.id().is_guest());
 	REQUIRE(guest.is_valid());
 }
@@ -145,7 +145,7 @@ TEST_CASE("Test normal user login", "[normal]")
 		}
 		SECTION("verify random session ID")
 		{
-			auto cookie = insecure_random<Authentication::SessionID>();
+			auto cookie = user_random<Authentication::SessionID>();
 
 			Authentication::verify_session(cookie, *redis, 60s, [&tested](std::error_code ec, auto&& session)
 				{
@@ -251,7 +251,7 @@ TEST_CASE("Sharing resource to guest", "[normal]")
 
 	bool found = false;
 
-	Authentication someone_else{insecure_random<Authentication::SessionID>(), "someone"};
+	Authentication someone_else{user_random<Authentication::SessionID>(), "someone"};
 	someone_else.is_shared_resource("someone", "dir:", *redis, [&found](bool shared, auto ec)
 	{
 		REQUIRE_FALSE(shared);

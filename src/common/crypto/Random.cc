@@ -12,11 +12,12 @@
 
 #include "Random.hh"
 
-#include <boost/endian/conversion.hpp>
-
-#include <system_error>
-#include <utility>
 #include <cassert>
+#include <limits>
+#include <system_error>
+
+#include <openssl/rand.h>
+#include <openssl/err.h>
 
 // C++17 is doing cmake's job
 #if __has_include(<sys/random.h>)
@@ -40,61 +41,24 @@ ssize_t getrandom(void *buf, size_t size, unsigned int flags)
 
 namespace hrb {
 
-void secure_random(void *buf, std::size_t size)
+void system_random(void *buf, std::size_t size)
 {
 	if (::getrandom(buf, size, 0) != size)
 		throw std::system_error(errno, std::generic_category());
 }
 
-// Blake2x random number generator: https://blake2.net/blake2x.pdf
-Blake2x::Blake2x() noexcept
+void user_random(void *buf, std::size_t size)
 {
-	m_param.digest_length = 8;
-	m_param.key_length = 0;
-	m_param.fanout = 0;
-	m_param.depth = 0;
-	m_param.leaf_length = 64;
-	m_param.node_depth = 0;
-	m_param.inner_length = 64;
-	m_param.node_offset = boost::endian::native_to_little(UINT64_C(0xffffffff00000000));
-	// leave reserved as zero
-	// leave personalization as zero
+	assert(size < static_cast<std::size_t>(std::numeric_limits<int>::max()));
+	if (::RAND_bytes(reinterpret_cast<unsigned char*>(buf), static_cast<int>(size)) != 1)
+	{
+		// according to OpenSSL man page, 256 bytes is enough.
+		// https://www.openssl.org/docs/manmaster/man3/ERR_error_string.html
+		char error_string[256];
+		::ERR_error_string_n(::ERR_get_error(), error_string, sizeof(error_string));
 
-	reseed();
-}
-
-Blake2x::result_type Blake2x::operator()()
-{
-	::blake2b_state ctx{};
-	::blake2b_init_param(&ctx, &m_param);
-	::blake2b_update(&ctx, reinterpret_cast<std::uint8_t*>(&m_h0), sizeof(m_h0));
-
-	result_type hash{};
-	::blake2b_final(&ctx, reinterpret_cast<std::uint8_t*>(&hash), sizeof(hash));
-
-	// Update generator state
-	auto native_offset = boost::endian::little_to_native(m_param.node_offset);
-	assert(native_offset >> 32U == 0xffffffffU);
-	native_offset++;
-	m_param.node_offset = boost::endian::native_to_little(native_offset);
-
-	// Technically we can go up to 2^32 blocks before reseeding,
-	// but reseeding more often is safer.
-	if ((native_offset & 0xffffffff) % 0x7ffff == 0)
-		reseed();
-
-	return hash;
-}
-
-Blake2x& Blake2x::instance()
-{
-	thread_local Blake2x inst;
-	return inst;
-}
-
-void Blake2x::reseed()
-{
-	reseed(SecureRandom<std::uint64_t>{});
+		throw std::runtime_error(error_string);
+	}
 }
 
 } // end of namespace hrb

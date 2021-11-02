@@ -43,14 +43,12 @@ private:
 class UserHome
 {
 public:
-	explicit UserHome(std::string name) : m_name{std::move(name)}
-	{
-	}
+	explicit UserHome(const std::filesystem::path& dir);
 
-	std::vector<DirectoryEntry> list_directory(const std::filesystem::path& path) const;
+	[[nodiscard]] std::vector<DirectoryEntry> list_directory(const std::filesystem::path& path) const;
 
 private:
-	std::string m_name;
+	std::filesystem::path   m_user_directory;
 };
 
 } // end of namespace hrb
