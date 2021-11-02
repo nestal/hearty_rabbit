@@ -14,6 +14,7 @@
 
 #include <cassert>
 #include <limits>
+#include <random>
 #include <system_error>
 
 #include <openssl/rand.h>
@@ -39,7 +40,7 @@ ssize_t getrandom(void *buf, size_t size, unsigned int flags)
 } // end of local namespace
 #endif
 
-namespace hrb::detail {
+namespace hrb {
 
 void system_random(void *buf, std::size_t size)
 {
@@ -58,6 +59,23 @@ void user_random(void *buf, std::size_t size)
 		::ERR_error_string_n(::ERR_get_error(), error_string, sizeof(error_string));
 
 		throw std::runtime_error(error_string);
+	}
+}
+
+void insecure_random(void *buf, std::size_t size)
+{
+	using Unit = std::default_random_engine::result_type;
+
+	thread_local std::default_random_engine engine{random_value<Unit>(user_random)};
+
+	for (std::size_t i = 0 ; i < size ; i += sizeof(Unit))
+	{
+		auto rand = engine();
+		std::memcpy(
+			static_cast<char*>(buf) + i,
+			&rand,
+			std::min(sizeof(rand), size-i)
+		);
 	}
 }
 

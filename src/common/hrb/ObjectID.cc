@@ -13,20 +13,18 @@
 #include "ObjectID.hh"
 
 #include "crypto/Blake2.hh"
+#include "crypto/Random.hh"
 #include "util/Escape.hh"
 
-#include <boost/algorithm/hex.hpp>
-
 #include <cstring>
-#include <cassert>
 #include <fstream>
 #include <iomanip>
 
 namespace hrb {
 
-ObjectID::ObjectID(const std::array<unsigned char, Blake2::size>& array)
+ObjectID::ObjectID(const std::array<unsigned char, Blake2::size>& arr) : array{}
 {
-	std::copy(array.begin(), array.end(), begin());
+	std::copy(arr.begin(), arr.end(), begin());
 }
 
 std::optional<ObjectID> ObjectID::from_json(const nlohmann::json& json)
@@ -75,6 +73,11 @@ std::ostream& operator<<(std::ostream& os, const ObjectID& id)
 bool ObjectID::is_hex(std::string_view hex)
 {
 	return hex.size() == Blake2::size*2 && hex.find_first_not_of("01234567890ABCDEFabcdef") == std::string_view::npos;
+}
+
+ObjectID ObjectID::randomize()
+{
+	return random_value<ObjectID>(insecure_random);
 }
 
 void from_json(const nlohmann::json& src, ObjectID& dest)

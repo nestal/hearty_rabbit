@@ -36,10 +36,10 @@ TEST_CASE("simple BlobInode <-> JSON round-trip", "[normal]")
 
 TEST_CASE("simple Collection <-> JSON round-trip", "[normal]")
 {
-	auto cover = user_random<ObjectID>();
+	auto cover = ObjectID::randomize();
 
-	auto abc = user_random<ObjectID>();
-	auto img = user_random<ObjectID>();
+	auto abc = ObjectID::randomize();
+	auto img = ObjectID::randomize();
 
 	Collection subject{"some_coll", "sumyung", nlohmann::json::object({{"cover", cover}})};
 	subject.add_blob(abc, {Permission::public_(), "abc.txt", "text/plain", Timestamp{101s}});
@@ -71,12 +71,12 @@ TEST_CASE("simple Collection <-> JSON round-trip", "[normal]")
 TEST_CASE("CollectionList operator==()", "[normal]")
 {
 	CollectionList subject;
-	subject.add("sumsum", "default", user_random<ObjectID>());
-	subject.add("sumsum", "some coll", user_random<ObjectID>());
+	subject.add("sumsum", "default", ObjectID::randomize());
+	subject.add("sumsum", "some coll", ObjectID::randomize());
 
 	CollectionList subject2;
-	subject2.add("sumsum", "default", user_random<ObjectID>());
-	subject2.add("sumsum", "some coll", user_random<ObjectID>());
+	subject2.add("sumsum", "default", ObjectID::randomize());
+	subject2.add("sumsum", "some coll", ObjectID::randomize());
 
 	REQUIRE_FALSE(subject == subject2);
 	REQUIRE(subject != subject2);
@@ -92,8 +92,8 @@ TEST_CASE("CollectionList operator==()", "[normal]")
 TEST_CASE("simple CollectionList <-> JSON round-trip", "[normal]")
 {
 	CollectionList subject;
-	subject.add("sumsum", "default", user_random<ObjectID>());
-	subject.add("sumsum", "some coll", user_random<ObjectID>());
+	subject.add("sumsum", "default", ObjectID::randomize());
+	subject.add("sumsum", "some coll", ObjectID::randomize());
 	REQUIRE(subject.size() == 2);
 
 	// additional property besides cover
@@ -112,7 +112,7 @@ TEST_CASE("simple CollectionList <-> JSON round-trip", "[normal]")
 TEST_CASE("simple BlobList <-> JSON round-trip", "[normal]")
 {
 	BlobElements subject;
-	subject.emplace_back("sumsum", "coll", user_random<ObjectID>(), BlobInode{Permission::shared(), "abc.txt", "text/css"});
+	subject.emplace_back("sumsum", "coll", ObjectID::randomize(), BlobInode{Permission::shared(), "abc.txt", "text/css"});
 
 	REQUIRE(subject.size() == 1);
 	for (auto&& e : subject)
@@ -123,7 +123,7 @@ TEST_CASE("simple BlobList <-> JSON round-trip", "[normal]")
 		REQUIRE(e.info().mime == "text/css");
 		REQUIRE(e.info().perm == Permission::shared());
 	}
-	subject.emplace_back("yung", "cool", user_random<ObjectID>(), BlobInode{Permission::private_(), "IMG_0102.JPG", "image/jpeg"});
+	subject.emplace_back("yung", "cool", ObjectID::randomize(), BlobInode{Permission::private_(), "IMG_0102.JPG", "image/jpeg"});
 	REQUIRE(subject.size() == 2);
 
 	nlohmann::json json(std::move(subject));

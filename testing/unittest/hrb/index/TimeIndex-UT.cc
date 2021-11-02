@@ -28,7 +28,7 @@ TEST_CASE("add blob to TimeIndex", "[normal]")
 	boost::asio::io_context ioc;
 	auto redis = redis::connect(ioc);
 
-	auto blob = user_random<ObjectID>();
+	auto blob = ObjectID::randomize();
 	auto tested = false;
 
 	TimeIndex subject{*redis};

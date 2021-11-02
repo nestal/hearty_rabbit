@@ -20,10 +20,10 @@ using namespace hrb;
 TEST_CASE("test sync collection", "[normal]")
 {
 	// some files to play with
-	auto a = user_random<ObjectID>();
-	auto b = user_random<ObjectID>();
-	auto c = user_random<ObjectID>();
-	auto d = user_random<ObjectID>();
+	auto a = ObjectID::randomize();
+	auto b = ObjectID::randomize();
+	auto c = ObjectID::randomize();
+	auto d = ObjectID::randomize();
 
 	Collection local;
 	local.add_blob(a, {Permission::public_(), "a.jpg"});

@@ -45,7 +45,7 @@ Collection::Collection(const std::filesystem::path& path) :
 		{
 			Blake2 hash;
 			hash.update(mmap.data(), mmap.size());
-			auto blob = hash.finalize();
+			ObjectID blob{hash.finalize()};
 
 			ImageMeta meta{mmap.buffer()};
 //			std::cout << to_hex(blob) << " " << file.path().filename() << " " << meta.mime() << " " <<

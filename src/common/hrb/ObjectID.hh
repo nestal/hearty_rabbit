@@ -29,12 +29,14 @@ namespace hrb {
 struct ObjectID : std::array<unsigned char, Blake2::size>
 {
 	using array::array;
-	ObjectID(const std::array<unsigned char, Blake2::size>& array);
+	explicit ObjectID(const std::array<unsigned char, Blake2::size>& array);
 
 	static std::optional<ObjectID> from_hex(std::string_view hex);
 	static std::optional<ObjectID> from_raw(std::string_view raw);
 	static std::optional<ObjectID> from_json(const nlohmann::json& json);
 	static bool is_hex(std::string_view hex);
+
+	static ObjectID randomize();
 };
 static_assert(std::is_standard_layout<ObjectID>::value);
 

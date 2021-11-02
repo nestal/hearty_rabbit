@@ -28,7 +28,7 @@ using namespace boost::algorithm;
 
 TEST_CASE("list of collection owned by user", "[normal]")
 {
-	auto blobid = user_random<ObjectID>();
+	auto blobid = ObjectID::randomize();
 
 	boost::asio::io_context ioc;
 	auto redis = redis::connect(ioc);
@@ -110,7 +110,7 @@ TEST_CASE("list of collection owned by user", "[normal]")
 
 TEST_CASE("add blob to Ownership", "[normal]")
 {
-	auto blobid = user_random<ObjectID>();
+	auto blobid = ObjectID::randomize();
 
 	boost::asio::io_context ioc;
 	auto redis = redis::connect(ioc);
@@ -283,7 +283,7 @@ TEST_CASE("add blob to Ownership", "[normal]")
 
 TEST_CASE("Load 3 images in json", "[normal]")
 {
-	const auto blobids = user_random<std::array<ObjectID, 3>>();
+	const auto blobids = random_value<std::array<ObjectID, 3>>(insecure_random);
 
 	boost::asio::io_context ioc;
 	auto redis = redis::connect(ioc);
@@ -382,7 +382,7 @@ TEST_CASE("Query blob of testuser")
 	UserID testuser{"testuser"};
 	Ownership subject{testuser};
 
-	auto blobid = user_random<ObjectID>();
+	auto blobid = ObjectID::randomize();
 
 	BlobInode entry{Permission::public_(), "haha.jpeg", "image/jpeg", Timestamp::now()};
 
@@ -426,7 +426,7 @@ TEST_CASE("set cover error cases", "[error]")
 
 	UserID testuser{"testuser"};
 	Ownership subject{testuser};
-	auto cover_blob = user_random<ObjectID>();
+	auto cover_blob = ObjectID::randomize();
 
 	SECTION("setting cover of inexist album")
 	{
@@ -459,8 +459,8 @@ TEST_CASE("set cover error cases", "[error]")
 	}
 	SECTION("setting cover of inexist blob in a valid album")
 	{
-		auto blob1 = user_random<ObjectID>();
-		auto blob2 = user_random<ObjectID>();
+		auto blob1 = ObjectID::randomize();
+		auto blob2 = ObjectID::randomize();
 
 		// add 2 blobs to an album
 		int run = 0;
@@ -509,7 +509,7 @@ TEST_CASE("setting and remove the cover of collection", "[normal]")
 
 	UserID testuser{"testuser"};
 	Ownership subject{testuser};
-	auto cover_blob = user_random<ObjectID>();
+	auto cover_blob = ObjectID::randomize();
 
 	bool added = false;
 	subject.link_blob(
@@ -523,7 +523,7 @@ TEST_CASE("setting and remove the cover of collection", "[normal]")
 	// add another blob to the collection so that the collection will be
 	// still here even after removing the first one
 	subject.link_blob(
-		*redis, "/", user_random<ObjectID>(), BlobInode{}, [&added](auto ec)
+		*redis, "/", ObjectID::randomize(), BlobInode{}, [&added](auto ec)
 		{
 			REQUIRE(!ec);
 		}

@@ -23,27 +23,27 @@ using namespace hrb;
 
 TEST_CASE("Test random number", "[normal]")
 {
-	auto rand = system_random_array<std::uint64_t, 2>();
+	auto rand = random_value<std::array<std::uint64_t, 2>>(system_random);
 	REQUIRE_NOTHROW(rand[0] > 0 && rand[1] > 0);
 
-	REQUIRE_NOTHROW(rand = user_random_array<std::uint64_t, 2>());
+	REQUIRE_NOTHROW(rand = random_array<std::uint64_t, 2>());
 	REQUIRE_NOTHROW(rand[0] > 0 && rand[1] > 0);
 }
 
-TEST_CASE("user_random() generates random numbers", "[normal]")
+TEST_CASE("random_value() generates random numbers", "[normal]")
 {
 	// Very easy....
-	REQUIRE(user_random<int>() != user_random<int>());
-	REQUIRE(user_random<int>() != user_random<int>());
-	REQUIRE(user_random<int>() != user_random<int>());
-	REQUIRE(user_random<int>() != user_random<int>());
-	REQUIRE(user_random<int>() != user_random<int>());
+	REQUIRE(random_value<int>() != random_value<int>());
+	REQUIRE(random_value<int>() != random_value<int>());
+	REQUIRE(random_value<int>() != random_value<int>());
+	REQUIRE(random_value<int>() != random_value<int>());
+	REQUIRE(random_value<int>() != random_value<int>());
 }
 
-TEST_CASE("multithreaded calls to user_random() generated different random numbers", "[normal]")
+TEST_CASE("multithreaded calls to random_value() generated different random numbers", "[normal]")
 {
-	auto fut_arr1 = std::async([]{return user_random<std::array<char, 10>>();});
-	auto fut_arr2 = std::async([]{return user_random<std::array<char, 10>>();});
+	auto fut_arr1 = std::async([]{return random_value<std::array<char, 10>>();});
+	auto fut_arr2 = std::async([]{return random_value<std::array<char, 10>>();});
 
 	auto arr1 = fut_arr1.get();
 	auto arr2 = fut_arr2.get();

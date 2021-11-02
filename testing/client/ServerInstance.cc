@@ -59,9 +59,9 @@ const Configuration ServerInstance::Impl::m_cfg{[]()
 	auto https_port = cfg.listen_https().port();
 	auto http_port  = cfg.listen_http().port();
 	while (https_port <= 1024 || https_port == cfg.listen_https().port())
-		https_port = hrb::user_random<decltype(https_port)>();
+		randomize(https_port);
 	while (http_port <= 1024 || http_port == cfg.listen_http().port())
-		http_port = hrb::user_random<decltype(http_port)>();
+		randomize(http_port);
 	cfg.change_listen_ports(https_port, http_port);
 
 	return cfg;
