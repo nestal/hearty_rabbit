@@ -13,6 +13,7 @@
 #include "HeartyRabbit.hh"
 #include "net/Redis.hh"
 
+#include <boost/asio.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/co_spawn.hpp>
 #include <boost/asio/awaitable.hpp>
@@ -21,127 +22,79 @@
 #include <coroutine>
 #include <iostream>
 
-namespace hrb {
+namespace hrb::coro {
 
-template <typename T>
-struct Future
+using namespace hrb::redis;
+
+class Connection : public std::enable_shared_from_this<Connection>
 {
-	class promise_type
-	{
-	public:
-		T m_result{};
-
-	public:
-		promise_type() = default;
-
-		Future get_return_object()
-		{
-			return {std::coroutine_handle<promise_type>::from_promise(*this)};
-		}
-		std::suspend_never initial_suspend() { return {}; }
-
-		std::suspend_always final_suspend() noexcept {return {};}
-
-		void unhandled_exception() noexcept {}
-
-		// When the coroutine co_returns a value, this method is used to publish the result
-		void return_value(T value) noexcept
-		{
-			m_result = std::move(value);
-		}
-	};
-
-	Future(std::coroutine_handle<promise_type> handle) : m_handle{handle}
+public:
+	explicit Connection(boost::asio::ip::tcp::socket socket) : m_socket{std::move(socket)}
 	{
 	}
-	~Future()
-	{
-		if (m_handle)
-			m_handle.destroy();
-	}
 
-	struct AwaitableFuture
+	Connection(Connection&&) = delete;
+	Connection(const Connection&) = delete;
+	~Connection() = default;
+
+	Connection& operator=(Connection&&) = delete;
+	Connection& operator=(const Connection&) = delete;
+
+	boost::asio::awaitable<Reply> command(CommandString&& cmd)
 	{
-		Future& m_future;
-		[[nodiscard]] bool await_ready() const noexcept {return false;}
-		void await_suspend(std::coroutine_handle<> handle)
+		try
 		{
-			std::thread{[this, handle]
+			auto buffer = cmd.buffer();
+			co_await async_write(m_socket, buffer, boost::asio::use_awaitable);
+
+			ReplyReader reader;
+
+			char data[1024];
+			while (true)
 			{
-				std::cout << "before resume all" << std::endl;
-				m_future.m_handle.resume();
-				std::cout << "after resume future" << std::endl;
-				handle.resume();
-				std::cout << "after resume all" << std::endl;
-			}}.detach();
+				std::size_t n = co_await m_socket.async_read_some(boost::asio::buffer(data), boost::asio::use_awaitable);
+				reader.feed(data, n);
+
+				if (auto [reply, result] = reader.get(); result == ReplyReader::Result::ok)
+				{
+					co_return reply;
+				}
+			}
 		}
-
-		T await_resume()
+		catch (...)
 		{
-            return m_future.m_handle.promise().m_result;
-        }
-	};
-	friend struct AwaitableFuture;
-
-	AwaitableFuture operator co_await()
-	{
-		return {*this};
+			std::cout << "error" << std::endl;
+			abort();
+		}
 	}
-
 private:
-	std::coroutine_handle<promise_type> m_handle;
+	boost::asio::ip::tcp::socket m_socket;
 };
 
-struct Task
-{
-	struct promise_type
-	{
-		Task get_return_object() { return {}; }
-		std::suspend_never initial_suspend() noexcept { return {}; }
-		std::suspend_never final_suspend() noexcept { return {}; }
-		void return_void() {}
-		void unhandled_exception() noexcept	{}
-	};
-};
-
-template <typename F, typename... Args>
-Future<std::invoke_result_t<F, Args...>> async(F f, Args... args)
-{
-	std::cout << "async" << std::endl;
-	co_return f(args...);
-}
-
-Task keys_coroutine(boost::asio::io_context& ios, std::shared_ptr<redis::Connection> redis)
-{
-	boost::asio::executor_work_guard<decltype(ios.get_executor())> work{ios.get_executor()};
-
-
-
-	auto result = co_await async([]
-	{
-		std::cout << "before sleep" << std::endl;
-		std::this_thread::sleep_for(std::chrono::seconds{1});
-		std::cout << "after sleep" << std::endl;
-		return 100;
-	});
-	std::cout << "result = " << result << std::endl;
-}
-
-} // end of namespace hrb
+} // end of namespace hrb::coro
 
 int main(int argc, char** argv)
 {
 	boost::asio::io_context ios;
-	auto redis = hrb::redis::connect(ios);
 
-	hrb::keys_coroutine(ios, redis);
-//	std::cout << co_await hrb::keys_coroutine() << std::endl;
+	boost::asio::ip::tcp::socket sock{boost::asio::make_strand(ios)};
+	sock.connect(boost::asio::ip::tcp::endpoint{
+		boost::asio::ip::make_address("127.0.0.1"),
+		6379
+	});
+	hrb::coro::Connection conn{std::move(sock)};
 
-	std::thread worker{[&ios]
-	{
-		ios.run();
-	}};
-	worker.join();
+	hrb::redis::CommandString cmd{"KEYS *"};
 
+	boost::asio::co_spawn(
+		ios, [&conn, cmd=std::move(cmd)]() mutable -> boost::asio::awaitable<void>
+		{
+			auto reply = co_await conn.command(std::move(cmd));
+			std::cout << "reply = " << reply.array_size() << std::endl;
+		},
+	    boost::asio::detached
+	);
+
+	ios.run();
 	return -1;
 }
