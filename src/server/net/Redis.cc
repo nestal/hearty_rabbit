@@ -25,8 +25,7 @@
 
 #include <cassert>
 
-namespace hrb {
-namespace redis {
+namespace hrb::redis {
 
 std::shared_ptr<Connection> connect(
 	boost::asio::io_context& bic,
@@ -47,7 +46,7 @@ std::shared_ptr<Connection> connect(
 	};
 
 	auto p = std::make_shared<Wrapper>(bic, remote);
-	return std::shared_ptr<Connection>(p, p->conn.get());
+	return {p, p->conn.get()};
 }
 
 Connection::Connection(
@@ -453,4 +452,4 @@ void Pool::dealloc(boost::asio::ip::tcp::socket socket)
 	m_socks.push_back(std::move(socket));
 }
 
-}} // end of namespace
+} // end of namespace

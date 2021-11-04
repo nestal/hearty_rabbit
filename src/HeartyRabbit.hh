@@ -12,6 +12,8 @@
 
 #pragma once
 
+#include "crypto/Authentication.hh"
+
 #include <string_view>
 #include <filesystem>
 
@@ -28,6 +30,9 @@ public:
 	void login(
 		std::string_view user_name, const Password& password
 	);
+
+private:
+	Authentication  m_user;
 };
 
 } // end of namespace hrb

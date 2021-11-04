@@ -26,8 +26,7 @@
 #include <type_traits>
 #include <mutex>
 
-namespace hrb {
-namespace redis {
+namespace hrb::redis {
 
 // Error enum
 enum class Error
@@ -46,15 +45,15 @@ enum class Error
 
 std::error_code make_error_code(Error err);
 const std::error_category& redis_error_category();
-}}
+
+}
 
 namespace std
 {
 	template <> struct is_error_code_enum<hrb::redis::Error> : true_type {};
 }
 
-namespace hrb {
-namespace redis {
+namespace hrb::redis {
 
 class Reply
 {
@@ -385,7 +384,7 @@ private:
 private:
 	boost::asio::ip::tcp::socket m_socket;
 
-	char m_read_buf[8*1024];
+	char m_read_buf[8*1024]{};
 
 	std::deque<Completion> m_callbacks;
 	std::vector<Completion> m_queued_callbacks;
@@ -413,4 +412,4 @@ private:
 	std::mutex  m_mx;
 };
 
-}} // end of namespace
+} // end of namespace
