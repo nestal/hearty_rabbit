@@ -16,7 +16,7 @@
 #include "util/MMap.hh"
 
 #include <nlohmann/json.hpp>
-#include <iostream>
+#include <fstream>
 
 namespace hrb {
 
@@ -42,18 +42,29 @@ void HeartyRabbitServer::login(
 	}
 }
 
-} // end of namespace hrb
-
-int main(int argc, char** argv)
+std::error_code HeartyRabbitServer::add_user(std::string_view user_name, const Password& password)
 {
-	hrb::HeartyRabbitServer srv{std::filesystem::current_path()};
-	srv.login("user", hrb::Password{"abc"}, [](auto ec)
+	auto user_dir = m_root / user_name;
+
+	std::error_code ec;
+	std::filesystem::create_directories(user_dir, ec);
+	if (ec)
+		return ec;
+
+	std::ofstream ofs{user_dir/"passwd.json"};
+	ofs.exceptions(ofs.exceptions() | std::ios::failbit);
+
+	try
 	{
-		std::cout << ec.message() << std::endl;
-	});
-
-	boost::asio::io_context ios;
-
-	ios.run();
-	return -1;
+		ofs << nlohmann::json{
+			{"password", password.get()}
+		};
+		return {};
+	}
+	catch (std::ios_base::failure& e)
+	{
+		return e.code();
+	}
 }
+
+} // end of namespace hrb

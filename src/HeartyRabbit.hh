@@ -41,6 +41,10 @@ public:
 	{
 	}
 
+	std::error_code add_user(
+		std::string_view user_name, const Password& password
+	);
+
 	void login(
 		std::string_view user_name, const Password& password,
 		std::function<void(std::error_code)> on_complete

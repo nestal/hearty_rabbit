@@ -10,16 +10,22 @@
 // Created by nestal on 1/11/2021.
 //
 
-#include "UserHome.hh"
+#include "HeartyRabbit.hh"
+#include "crypto/Password.hh"
 
 #include <catch2/catch.hpp>
+#include <iostream>
 
 using namespace hrb;
 
 TEST_CASE("HRB2 test cases", "[normal]")
 {
-	UserHome subject{std::filesystem::path{__FILE__}.parent_path()};
+	hrb::HeartyRabbitServer srv{std::filesystem::current_path()};
 
-	auto list = subject.list_directory("");
-	REQUIRE(list.size() > 0);
+	REQUIRE(srv.add_user("user", hrb::Password{"abc"}) == std::error_code());
+
+	srv.login("user", hrb::Password{"abc"}, [](auto ec)
+	{
+		std::cout << "error: " << ec.message() << std::endl;
+	});
 }
