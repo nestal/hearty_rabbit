@@ -11,89 +11,48 @@
 //
 
 #include "HeartyRabbit.hh"
+#include "crypto/Password.hh"
 #include "net/Redis.hh"
+#include "util/MMap.hh"
 
-#include <boost/asio.hpp>
-#include <boost/asio/io_context.hpp>
-#include <boost/asio/co_spawn.hpp>
-#include <boost/asio/awaitable.hpp>
-#include <boost/asio/coroutine.hpp>
-
-#include <coroutine>
+#include <nlohmann/json.hpp>
 #include <iostream>
 
-namespace hrb::coro {
+namespace hrb {
 
-using namespace hrb::redis;
-
-class Connection : public std::enable_shared_from_this<Connection>
+void HeartyRabbitServer::login(
+	std::string_view user_name, const Password& password,
+	std::function<void(std::error_code)> on_complete
+)
 {
-public:
-	explicit Connection(boost::asio::ip::tcp::socket socket) : m_socket{std::move(socket)}
+	auto user_dir = m_root / user_name;
+
+	std::error_code ec;
+	auto passwd = MMap::open(user_dir/"passwd.json", ec);
+	if (ec)
 	{
+		on_complete(ec);
+		return;
 	}
 
-	Connection(Connection&&) = delete;
-	Connection(const Connection&) = delete;
-	~Connection() = default;
-
-	Connection& operator=(Connection&&) = delete;
-	Connection& operator=(const Connection&) = delete;
-
-	boost::asio::awaitable<Reply> command(CommandString&& cmd)
+	auto json = nlohmann::json::parse(passwd.string());
+	if (json["password"].get<std::string>() == password.get())
 	{
-		try
-		{
-			auto buffer = cmd.buffer();
-			co_await async_write(m_socket, buffer, boost::asio::use_awaitable);
-
-			ReplyReader reader;
-
-			char data[1024];
-			while (true)
-			{
-				std::size_t n = co_await m_socket.async_read_some(boost::asio::buffer(data), boost::asio::use_awaitable);
-				reader.feed(data, n);
-
-				if (auto [reply, result] = reader.get(); result == ReplyReader::Result::ok)
-				{
-					co_return reply;
-				}
-			}
-		}
-		catch (...)
-		{
-			std::cout << "error" << std::endl;
-			abort();
-		}
+		on_complete({});
 	}
-private:
-	boost::asio::ip::tcp::socket m_socket;
-};
+}
 
-} // end of namespace hrb::coro
+} // end of namespace hrb
 
 int main(int argc, char** argv)
 {
-	boost::asio::io_context ios;
-
-	boost::asio::ip::tcp::socket sock{boost::asio::make_strand(ios)};
-	sock.connect(boost::asio::ip::tcp::endpoint{
-		boost::asio::ip::make_address("127.0.0.1"),
-		6379
+	hrb::HeartyRabbitServer srv{std::filesystem::current_path()};
+	srv.login("user", hrb::Password{"abc"}, [](auto ec)
+	{
+		std::cout << ec.message() << std::endl;
 	});
-	hrb::coro::Connection conn{std::move(sock)};
 
-	hrb::redis::CommandString cmd{"KEYS *"};
-
-	boost::asio::co_spawn(
-		ios, [&conn, cmd=std::move(cmd)]() mutable -> boost::asio::awaitable<void>
-		{
-			auto reply = co_await conn.command(std::move(cmd));
-			std::cout << "reply = " << reply.array_size() << std::endl;
-		},
-	    boost::asio::detached
-	);
+	boost::asio::io_context ios;
 
 	ios.run();
 	return -1;

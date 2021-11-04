@@ -25,14 +25,32 @@ class Cookie;
 class HeartyRabbit
 {
 public:
-	explicit HeartyRabbit(std::filesystem::path root);
+	// If you don't login, you will be a guest.
+	virtual void login(
+		std::string_view user_name, const Password& password,
+		std::function<void(std::error_code)> on_complete
+	) = 0;
+
+	[[nodiscard]] virtual const Authentication& auth() const = 0;
+};
+
+class HeartyRabbitServer : public HeartyRabbit
+{
+public:
+	explicit HeartyRabbitServer(std::filesystem::path root) : m_root{std::move(root)}
+	{
+	}
 
 	void login(
-		std::string_view user_name, const Password& password
-	);
+		std::string_view user_name, const Password& password,
+		std::function<void(std::error_code)> on_complete
+	) override;
+
+	[[nodiscard]] const Authentication& auth() const override {return m_self;}
 
 private:
-	Authentication  m_user;
+	std::filesystem::path   m_root;
+	Authentication          m_self;
 };
 
 } // end of namespace hrb
