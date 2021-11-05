@@ -61,6 +61,12 @@ public:
 
 	static nlohmann::json hash_password(const Password& password);
 	static bool verify_password(const nlohmann::json& hash, const Password& password);
+	void create_session(
+		std::function<void(std::error_code)> completion,
+		const std::string& username,
+		redis::Connection& db,
+		std::chrono::seconds session_length
+	);
 
 	static void verify_user(
 		std::string_view username_mixed_case,

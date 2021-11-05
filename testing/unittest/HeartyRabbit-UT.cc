@@ -18,18 +18,28 @@
 
 using namespace hrb;
 
-TEST_CASE("HRB2 test cases", "[normal]")
+class HeartyRabbitServerFixture
 {
-	boost::asio::io_context ios;
-	hrb::HeartyRabbitServer srv{std::filesystem::current_path(), redis::connect(ios)};
+public:
+	HeartyRabbitServerFixture() = default;
 
-	REQUIRE(srv.add_user("user", hrb::Password{"abc"}) == std::error_code());
+protected:
+	boost::asio::io_context m_ios;
+	hrb::HeartyRabbitServer m_subject{std::filesystem::current_path(), redis::connect(m_ios)};
+};
 
-	srv.login("user", hrb::Password{"abc"}, [](auto ec)
+TEST_CASE_METHOD(HeartyRabbitServerFixture, "HRB2 test cases", "[normal]")
+{
+	REQUIRE(m_subject.add_user("user", hrb::Password{"abc"}) == std::error_code());
+
+	m_subject.login("user", hrb::Password{"abc"}, [this](auto ec)
 	{
 		INFO(ec);
 		REQUIRE(!ec);
+		REQUIRE(!m_subject.auth().id().is_guest());
+		REQUIRE(!m_subject.auth().id().is_anonymous());
+		REQUIRE(m_subject.auth().id().username() == "user");
 	});
 
-	ios.run();
+	m_ios.run();
 }
