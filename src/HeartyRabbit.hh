@@ -52,6 +52,12 @@ public:
 		std::function<void(std::error_code)> on_complete
 	) override;
 
+	void verify_session(
+		const Authentication::SessionID& cookie,
+		std::chrono::seconds session_length,
+		std::function<void(std::error_code)>&& completion
+	);
+
 	[[nodiscard]] const Authentication& auth() const override {return m_self;}
 
 private:
