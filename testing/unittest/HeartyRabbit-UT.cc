@@ -12,6 +12,7 @@
 
 #include "HeartyRabbit.hh"
 #include "crypto/Password.hh"
+#include "crypto/Random.hh"
 
 #include <catch2/catch.hpp>
 #include <chrono>
@@ -32,15 +33,17 @@ using namespace std::chrono_literals;
 
 TEST_CASE_METHOD(HeartyRabbitServerFixture, "HRB2 login and verify user", "[normal]")
 {
+	std::string user = "user" + std::to_string(random_value<int>() % 1000);
+
 	auto tested = 0;
-	REQUIRE(m_subject.add_user("user", hrb::Password{"abc"}) == std::error_code());
-	m_subject.login("user", hrb::Password{"abc"}, [this, &tested](auto ec)
+	REQUIRE(m_subject.add_user(user, hrb::Password{"abc"}) == std::error_code());
+	m_subject.login(user, hrb::Password{"abc"}, [this, &tested, user](auto ec)
 	{
 		INFO(ec);
 		REQUIRE(!ec);
 		REQUIRE(!m_subject.auth().id().is_guest());
 		REQUIRE(!m_subject.auth().id().is_anonymous());
-		REQUIRE(m_subject.auth().id().username() == "user");
+		REQUIRE(m_subject.auth().id().username() == user);
 		++tested;
 	});
 	REQUIRE(m_ios.run_for(10s) > 0);
@@ -49,11 +52,11 @@ TEST_CASE_METHOD(HeartyRabbitServerFixture, "HRB2 login and verify user", "[norm
 
 	// The second time when the same user connects it will be another HeartyRabbitServer to serve her.
 	HeartyRabbitServer other{std::filesystem::current_path(), redis::connect(m_ios)};
-	other.verify_session(m_subject.auth().session(), 3600s, [this, &tested, &other](auto ec)
+	other.verify_session(m_subject.auth().session(), 3600s, [this, &tested, &other, user](auto ec)
 	{
 		INFO(ec);
 		REQUIRE(!ec);
-		REQUIRE(other.auth().id().username() == "user");
+		REQUIRE(other.auth().id().username() == user);
 		REQUIRE(other.auth().session() == m_subject.auth().session());
 		tested++;
 	});

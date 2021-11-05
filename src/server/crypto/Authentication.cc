@@ -29,7 +29,6 @@
 
 #include <random>
 #include <cassert>
-#include <iostream>
 
 namespace hrb {
 namespace {
@@ -188,8 +187,6 @@ void Authentication::verify_session(
 			auto [user, ttl] = reply.as_tuple<2>(ec);
 			if (ec || user.is_nil() || user.as_string().size() <= 1 || ttl.as_int() < 0)
 				return comp(ec, Authentication{});
-
-			std::cout << user.as_string() << std::endl;
 
 			Authentication auth{cookie, user.as_string().substr(1)};
 			assert((auth.m_session == SessionID{}) == auth.m_uid.is_anonymous());

@@ -37,7 +37,7 @@ public:
 	[[nodiscard]] const std::string& username() const {return m_user;}
 	[[nodiscard]] bool is_guest() const {return m_guest;}
 
-	// Returns true only when this object represent a valid user.
+	// Returns true only when this object represents a valid user.
 	// Unlike Authentication::is_valid(), UserID::is_valid() return false if it represents a guest user.
 	[[nodiscard]] bool is_valid() const {return !m_user.empty();}
 
