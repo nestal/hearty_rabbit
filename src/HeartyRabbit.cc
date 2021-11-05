@@ -35,8 +35,7 @@ void HeartyRabbitServer::login(
 		return;
 	}
 
-	auto json = nlohmann::json::parse(passwd.string());
-	if (json["password"].get<std::string>() == password.get())
+	if (Authentication::verify_password(nlohmann::json::parse(passwd.string()), password))
 	{
 		on_complete({});
 	}
@@ -56,9 +55,7 @@ std::error_code HeartyRabbitServer::add_user(std::string_view user_name, const P
 
 	try
 	{
-		ofs << nlohmann::json{
-			{"password", password.get()}
-		};
+		ofs << Authentication::hash_password(password);
 		return {};
 	}
 	catch (std::ios_base::failure& e)

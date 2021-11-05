@@ -10,8 +10,10 @@ target_link_libraries(test_common PUBLIC OpenCV::OpenCV)
 # Server will fail to built if any of these test cases failed.
 ###################################################################################################
 
-file(GLOB_RECURSE SRV_UT_SRC unittest/*.cc unittest/*.hh)
-add_executable(unittest ${SRV_UT_SRC})
+add_executable(unittest
+	unittest/unittest.cc
+	unittest/HeartyRabbit-UT.cc
+)
 target_link_libraries(unittest PUBLIC Catch2::Catch2 test_common hrbsrv hrbclient hrbsync_lib hrb2)
 
 # Automatically run unit tests after the build

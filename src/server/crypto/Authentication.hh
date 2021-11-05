@@ -13,6 +13,7 @@
 #pragma once
 
 #include "hrb/UserID.hh"
+#include <nlohmann/json.hpp>
 
 #include <array>
 #include <chrono>
@@ -57,6 +58,9 @@ public:
 		redis::Connection& db,
 		std::function<void(std::error_code)> completion
 	);
+
+	static nlohmann::json hash_password(const Password& password);
+	static bool verify_password(const nlohmann::json& hash, const Password& password);
 
 	static void verify_user(
 		std::string_view username_mixed_case,

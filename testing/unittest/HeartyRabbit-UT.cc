@@ -26,6 +26,7 @@ TEST_CASE("HRB2 test cases", "[normal]")
 
 	srv.login("user", hrb::Password{"abc"}, [](auto ec)
 	{
-		std::cout << "error: " << ec.message() << std::endl;
+		INFO(ec);
+		REQUIRE(!ec);
 	});
 }

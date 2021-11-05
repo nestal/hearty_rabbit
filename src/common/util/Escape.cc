@@ -177,4 +177,18 @@ std::string_view split_front_substring(std::string_view& in, std::string_view su
 
 }
 
+std::vector<unsigned char> hex_to_vector(std::string_view hex)
+{
+	try
+	{
+		std::vector<unsigned char> result(hex.size()/2);
+		boost::algorithm::unhex(hex.begin(), hex.end(), result.begin());
+		return result;
+	}
+	catch (boost::algorithm::hex_decode_error&)
+	{
+	}
+	return {};
+}
+
 } // end of hrb namespace

@@ -33,7 +33,7 @@
 namespace hrb {
 namespace {
 
-using Salt = std::array<char, 32>;
+using Salt = std::array<unsigned char, 32>;
 Salt random_salt()
 {
 	// There is no need to use cryptographically secure random number to generate the
@@ -44,7 +44,7 @@ Salt random_salt()
 const int min_iteration = 5000;
 const std::string default_hash_algorithm = "sha512";
 
-void verify_password(std::error_code& ec, const Password& password, const redis::Reply& reply)
+void verify_password_from_redis(std::error_code& ec, const Password& password, const redis::Reply& reply)
 {
 	auto [salt, key, iter, hash_algorithm] = reply.as_tuple<4>(ec);
 	if (!ec && salt.is_string() && key.is_string() && iter.is_string() && iter.to_int() > 0)
@@ -53,7 +53,7 @@ void verify_password(std::error_code& ec, const Password& password, const redis:
 		if (hash_algorithm)
 			hash_algorithm_to_use = std::string{hash_algorithm.as_string()};
 
-		auto pkey = password.derive_key(salt.as_string(), iter.to_int(), hash_algorithm_to_use);
+		auto pkey = password.derive_key(salt.as_buffer_view(), iter.to_int(), hash_algorithm_to_use);
 		auto skey = key.as_string();
 		if (pkey.size() != skey.size() || ::CRYPTO_memcmp(&pkey[0], &skey[0], pkey.size()) != 0)
 		{
@@ -146,6 +146,29 @@ void Authentication::add_user(
 	);
 }
 
+nlohmann::json Authentication::hash_password(const Password& password)
+{
+	auto salt = random_salt();
+	auto key = password.derive_key({salt.data(), salt.size()}, min_iteration, default_hash_algorithm);
+
+	return {
+		{"password", to_hex(key)},
+		{"salt", to_hex(salt)},
+		{"iteration", min_iteration},
+		{"hash_algorithm", default_hash_algorithm}
+	};
+}
+
+bool Authentication::verify_password(const nlohmann::json& hash, const Password& password)
+{
+	auto hash_algorithm = hash.value("hash_algorithm", default_hash_algorithm);
+	auto salt = hex_to_vector(hash.at("salt").get<std::string>());
+	auto skey = hex_to_vector(hash.at("password").get<std::string>());
+
+	auto pkey = password.derive_key(BufferView{salt.data(), salt.size()}, hash.at("iteration"), hash_algorithm);
+	return pkey.size() == skey.size() && ::CRYPTO_memcmp(pkey.data(), skey.data(), pkey.size()) == 0;
+}
+
 void Authentication::verify_session(
 	const SessionID& cookie,
 	redis::Connection& db,
@@ -207,7 +230,7 @@ void Authentication::verify_user(
 		{
 			// Verify password with the key in database
 			if (!ec)
-				verify_password(ec, password, reply);
+				verify_password_from_redis(ec, password, reply);
 
 			// Generate session ID and store it in database
 			if (!ec)

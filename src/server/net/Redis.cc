@@ -273,6 +273,12 @@ boost::asio::const_buffer Reply::as_buffer() const noexcept
 	return {s.data(), s.size()};
 }
 
+BufferView Reply::as_buffer_view() const noexcept
+{
+	auto s = as_any_string();
+	return {reinterpret_cast<const unsigned char*>(s.data()), s.size()};
+}
+
 Reply Reply::as_array(std::size_t i) const noexcept
 {
 	return m_reply && m_reply->type == REDIS_REPLY_ARRAY && i < m_array.size() ?

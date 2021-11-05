@@ -13,6 +13,7 @@
 #pragma once
 
 #include "util/RepeatingTuple.hh"
+#include "util/BufferView.hh"
 
 #include <boost/asio.hpp>
 #include <boost/iterator/iterator_adaptor.hpp>
@@ -81,6 +82,7 @@ public:
 	[[nodiscard]] std::string_view as_error() const noexcept;
 	[[nodiscard]] std::string_view as_any_string() const noexcept;
 	[[nodiscard]] boost::asio::const_buffer as_buffer() const noexcept;
+	[[nodiscard]] BufferView as_buffer_view() const noexcept;
 	[[nodiscard]] auto type() const {return m_reply->type;}
 	[[nodiscard]] std::size_t length() const;
 

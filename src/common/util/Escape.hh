@@ -54,6 +54,8 @@ std::optional<std::array<unsigned char, N>> hex_to_array(std::string_view hex)
 	return std::nullopt;
 }
 
+std::vector<unsigned char> hex_to_vector(std::string_view hex);
+
 std::string url_encode(std::string_view in);
 
 std::string url_decode(std::string_view in);
