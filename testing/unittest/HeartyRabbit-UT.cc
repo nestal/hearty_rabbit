@@ -20,7 +20,8 @@ using namespace hrb;
 
 TEST_CASE("HRB2 test cases", "[normal]")
 {
-	hrb::HeartyRabbitServer srv{std::filesystem::current_path()};
+	boost::asio::io_context ios;
+	hrb::HeartyRabbitServer srv{std::filesystem::current_path(), redis::connect(ios)};
 
 	REQUIRE(srv.add_user("user", hrb::Password{"abc"}) == std::error_code());
 
@@ -29,4 +30,6 @@ TEST_CASE("HRB2 test cases", "[normal]")
 		INFO(ec);
 		REQUIRE(!ec);
 	});
+
+	ios.run();
 }

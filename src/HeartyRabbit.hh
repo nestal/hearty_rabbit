@@ -13,6 +13,7 @@
 #pragma once
 
 #include "crypto/Authentication.hh"
+#include "net/Redis.hh"
 
 #include <string_view>
 #include <filesystem>
@@ -27,7 +28,7 @@ class HeartyRabbit
 public:
 	// If you don't login, you will be a guest.
 	virtual void login(
-		std::string_view user_name, const Password& password,
+		std::string username, const Password& password,
 		std::function<void(std::error_code)> on_complete
 	) = 0;
 
@@ -37,7 +38,8 @@ public:
 class HeartyRabbitServer : public HeartyRabbit
 {
 public:
-	explicit HeartyRabbitServer(std::filesystem::path root) : m_root{std::move(root)}
+	explicit HeartyRabbitServer(std::filesystem::path root, std::shared_ptr<redis::Connection> conn) :
+		m_root{std::move(root)}, m_redis{std::move(conn)}
 	{
 	}
 
@@ -46,15 +48,16 @@ public:
 	);
 
 	void login(
-		std::string_view user_name, const Password& password,
+		std::string username, const Password& password,
 		std::function<void(std::error_code)> on_complete
 	) override;
 
 	[[nodiscard]] const Authentication& auth() const override {return m_self;}
 
 private:
-	std::filesystem::path   m_root;
-	Authentication          m_self;
+	std::filesystem::path               m_root;
+	std::shared_ptr<redis::Connection>  m_redis;
+	Authentication                      m_self;
 };
 
 } // end of namespace hrb
