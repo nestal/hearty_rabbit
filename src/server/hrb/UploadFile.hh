@@ -36,7 +36,7 @@ public:
 	UploadFile& operator=(UploadFile&&) = default;
 
 	/// Returns `true` if the file is open
-	bool is_open() const;
+	[[nodiscard]] bool is_open() const;
 
 	/// Close the file if open
 	void close(boost::system::error_code& ec);

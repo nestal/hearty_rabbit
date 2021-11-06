@@ -63,7 +63,7 @@ public:
 	static bool verify_password(const nlohmann::json& hash, const Password& password);
 	void create_session(
 		std::function<void(std::error_code)> completion,
-		const std::string& username,
+		std::string_view username,
 		redis::Connection& db,
 		std::chrono::seconds session_length
 	);

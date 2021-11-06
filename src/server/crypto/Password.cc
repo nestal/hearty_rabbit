@@ -45,7 +45,7 @@ void Password::swap(Password& other)
 	m_val.swap(other.m_val);
 }
 
-Password::Key Password::derive_key(BufferView salt, int iteration, const std::string& hash_name) const
+Password::Key Password::derive_key(BufferView salt, std::size_t iteration, const std::string& hash_name) const
 {
 	// openssl v1.0 does not accept null pointer even if size = 0
 	static const char empty[0] = {};
@@ -56,7 +56,7 @@ Password::Key Password::derive_key(BufferView salt, int iteration, const std::st
 		static_cast<int>(m_val.size()),
 		salt.data(),
 		static_cast<int>(salt.size()),
-		iteration,
+		static_cast<int>(iteration),
 		::EVP_get_digestbyname(hash_name.c_str()),
 		static_cast<int>(key.size()),
 		&key[0]

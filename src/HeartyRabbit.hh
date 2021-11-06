@@ -24,9 +24,14 @@ namespace hrb {
 class Password;
 class Cookie;
 
+/// \brief Denote a path in the Hearty Rabbit database.
+/// It is not used for representing paths in filesystems, which uses std::filesystem::path directly.
+using Path = std::filesystem::path;
+
 class DirectoryEntry
 {
 public:
+	DirectoryEntry() = default;
 	DirectoryEntry(
 		std::string filename,
 		std::string mime,
@@ -57,6 +62,7 @@ private:
 class Directory
 {
 public:
+	Directory() = default;
 	explicit Directory(const std::filesystem::directory_entry& physical_location) : m_self{physical_location}
 	{
 		std::filesystem::directory_iterator iterator{physical_location.path()};
@@ -72,14 +78,33 @@ private:
 class HeartyRabbit
 {
 public:
-	// If you don't login, you will be a guest.
+	// If you don't login, you will be an anonymous user or a guest.
 	virtual void login(
 		std::string_view username, const Password& password,
 		std::function<void(std::error_code)> on_complete
 	) = 0;
 
+	/// \brief Get back credentials after login.
+	/// \return Login credentials: e.g. session ID and user name.
 	[[nodiscard]] virtual const Authentication& auth() const = 0;
-	[[nodiscard]] virtual Directory get_directory(const std::filesystem::path& path) const = 0;
+
+	/// \brief Upload a file.
+	/// Copy a file from local filesystem into Hearty Rabbit. On the client, this function
+	/// will upload the file by HTTP PUT to the server. On the server, this function will
+	/// copy the uploaded temporary file to the user's data directory and update (remove)
+	/// the cache.
+	/// \param local_file   Must ex
+	/// \param remote_path
+	virtual void upload_file(
+		const std::filesystem::directory_entry& local_file,
+		const Path& remote_path,
+		std::function<void(std::error_code)> on_complete
+	) = 0;
+
+	virtual void get_directory(
+		const Path& path,
+		std::function<void(Directory&& result, std::error_code)> on_complete
+	) const = 0;
 };
 
 class HeartyRabbitServer : public HeartyRabbit
@@ -105,7 +130,16 @@ public:
 		std::function<void(std::error_code)>&& completion
 	);
 
-	[[nodiscard]] Directory get_directory(const std::filesystem::path& path) const override;
+	void upload_file(
+		const std::filesystem::directory_entry& local_file,
+		const Path& remote_path,
+		std::function<void(std::error_code)> on_complete
+	) override;
+
+	void get_directory(
+		const Path& path,
+		std::function<void(Directory&& result, std::error_code)> on_complete
+	) const override;
 
 	[[nodiscard]] const Authentication& auth() const override {return m_self;}
 

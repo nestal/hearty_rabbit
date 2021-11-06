@@ -34,7 +34,7 @@ public:
 	void swap(Password& other);
 
 	using Key = std::array<unsigned char, 64>;
-	[[nodiscard]] Key derive_key(BufferView salt, int iteration, const std::string& hash_name) const;
+	[[nodiscard]] Key derive_key(BufferView salt, std::size_t iteration, const std::string& hash_name) const;
 	[[nodiscard]] std::string_view get() const;
 
 	void clear();
