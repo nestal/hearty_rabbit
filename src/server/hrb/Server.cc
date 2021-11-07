@@ -33,8 +33,7 @@ Server::Server(const Configuration& cfg) :
 	m_cfg{cfg},
 	m_ioc{static_cast<int>(std::max(1UL, cfg.thread_count()))},
 	m_db{m_ioc, cfg.redis()},
-	m_lib{cfg.web_root()},
-	m_blob_db{cfg}
+	m_lib{cfg.web_root()}
 {
 }
 
@@ -109,7 +108,7 @@ boost::asio::io_context& Server::get_io_context()
 
 SessionHandler Server::start_session()
 {
-	return {m_db.alloc(), m_lib, m_blob_db, m_cfg};
+	return {m_db.alloc(), m_lib, m_cfg};
 }
 
 

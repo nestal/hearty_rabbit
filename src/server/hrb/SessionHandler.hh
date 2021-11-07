@@ -49,7 +49,7 @@ public:
 	SessionHandler(
 		std::shared_ptr<redis::Connection>&& db,
 		WebResources& lib,
-		BlobDatabase& blob_db,
+//		BlobDatabase& blob_db,
 		const Configuration& cfg
 	);
 
@@ -141,7 +141,7 @@ private:
 
 	HeartyRabbitServer      m_server;
 	WebResources&           m_lib;
-	BlobDatabase&           m_blob_db;
+//	BlobDatabase&           m_blob_db;
 	const Configuration&    m_cfg;
 };
 

@@ -12,7 +12,6 @@
 
 #pragma once
 
-#include "BlobDatabase.hh"
 #include "WebResources.hh"
 
 #include "net/Redis.hh"
@@ -59,7 +58,6 @@ private:
 
 	redis::Pool     m_db;
 	WebResources    m_lib;
-	BlobDatabase    m_blob_db;
 };
 
 } // end of namespace

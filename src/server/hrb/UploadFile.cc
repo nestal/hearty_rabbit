@@ -33,7 +33,7 @@ void UploadFile::close(boost::system::error_code& ec)
 void UploadFile::open(const fs::path& parent_directory, boost::system::error_code& ec)
 {
 	// The code used to call open(O_TMPFILE)/linkat(/proc/self/fd/) when the kernel supports
-	// it, but it doesn't work when the parent_directory is a samba mount. Therefore we use
+	// it, but it doesn't work when the parent_directory is a samba mount. Therefore, we use
 	// the old mkstemp()/rename() which should work everywhere.
 	m_tmp_path = (parent_directory / "blob-XXXXXX").string();
 	int fd = ::mkstemp(&m_tmp_path[0]);

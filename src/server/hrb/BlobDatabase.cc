@@ -40,7 +40,7 @@ void BlobDatabase::prepare_upload(UploadFile& result, std::error_code& ec) const
 {
 	boost::system::error_code err;
 
-	result.open(m_cfg.blob_path().string().c_str(), err);
+	result.open(m_cfg.blob_path(), err);
 	if (err)
 		ec.assign(err.value(), err.category());
 }

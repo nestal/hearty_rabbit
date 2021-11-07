@@ -47,10 +47,10 @@ namespace hrb {
 SessionHandler::SessionHandler(
 	std::shared_ptr<redis::Connection>&& db,
 	WebResources& lib,
-	BlobDatabase& blob_db,
+//	BlobDatabase& blob_db,
 	const Configuration& cfg
 ) :
-	m_lib{lib}, m_server{cfg.blob_path(), std::move(db), m_cfg.session_length()}, m_blob_db{blob_db}, m_cfg{cfg}
+	m_lib{lib}, m_server{cfg.blob_path(), std::move(db), m_cfg.session_length()}, m_cfg{cfg}
 {
 	assert(!m_server.auth().is_valid());
 }
@@ -62,8 +62,12 @@ std::chrono::seconds SessionHandler::session_length() const
 
 void SessionHandler::prepare_upload(UploadFile& result, std::error_code& ec)
 {
-	// Need to call prepare_upload() before using UploadRequestBody.
-	m_blob_db.prepare_upload(result, ec);
+	boost::system::error_code err;
+	result.open(m_cfg.blob_path(), err);
+	if (err)
+		ec.assign(err.value(), err.category());
+
+//	m_blob_db.prepare_upload(result, ec);
 	if (ec)
 		Log(LOG_WARNING, "error opening file %1%: %2% (%3%)", m_cfg.blob_path(), ec, ec.message());
 }
@@ -197,12 +201,12 @@ void SessionHandler::on_upload(UploadRequest&& req, EmptyResponseSender&& send)
 	boost::system::error_code bec;
 
 	URLIntent path_url{req.target()};
-//	if (m_auth.id().username() != path_url.user())
-//	{
-//		// TODO: Introduce a small delay when responsing to requests with invalid session ID.
-//		// This is to slow down bruce-force attacks on the session ID.
-//		return send(http::response<http::empty_body>{http::status::forbidden, req.version()});
-//	}
+	if (m_server.auth().id().username() != path_url.user())
+	{
+		// TODO: Introduce a small delay when responsing to requests with invalid session ID.
+		// This is to slow down bruce-force attacks on the session ID.
+		return send(http::response<http::empty_body>{http::status::forbidden, req.version()});
+	}
 
 	// Reject empty file
 	boost::system::error_code err;
@@ -214,36 +218,17 @@ void SessionHandler::on_upload(UploadRequest&& req, EmptyResponseSender&& send)
 		return send(http::response<http::empty_body>{http::status::bad_request, req.version()});
 
 	std::error_code ec;
-	auto blob = m_blob_db.save(std::move(req.body()), ec);
-
+//	auto blob = m_blob_db.save(std::move(req.body()), ec);
+	std::filesystem::directory_entry upload_file{req.body().path(), ec};
 	if (ec)
 		return send(http::response<http::empty_body>{http::status::internal_server_error, req.version()});
 
-	// Store the phash of the blob in database
-	if (blob.phash().has_value())
-	{
-/*		PHashDb pdb{*m_db};
-		pdb.add(blob.ID(), *blob.phash());
-		pdb.exact_match(phash=*blob.phash(), [blob=blob.ID()](auto&& matches, auto err)
-		{
-			for (auto&& m : matches)
-				if (m != blob)
-					Log(LOG_INFO, "found exact match %1%", to_hex(m));
-		});*/
-	}
-
-	BlobInode entry{Permission::private_(), std::string{path_url.filename()}, std::string{blob.mime()}, blob.original_datetime()};
-/*
-	// Add the newly created blob to the user's ownership table.
-	// The user's ownership table contains all the blobs that is owned by the user.
-	// It will be used for authorizing the user's request on these blob later.
-	Ownership{m_auth.id()}.link_blob(
-		*m_db, path_url.collection(), blob.ID(), entry, [
+	m_server.upload_file(upload_file, path_url.collection(), [
 			location = URLIntent{
 				URLIntent::Action::api,
-				m_auth.id().username(),
+				m_server.auth().id().username(),
 				path_url.collection(),
-				to_hex(blob.ID())
+				path_url.filename()
 			}.str(),
 			send = std::move(send),
 			version = req.version()
@@ -259,7 +244,6 @@ void SessionHandler::on_upload(UploadRequest&& req, EmptyResponseSender&& send)
 			return send(std::move(res));
 		}
 	);
-*/
 }
 
 http::response<http::string_body> SessionHandler::bad_request(boost::beast::string_view why, unsigned version)
@@ -327,11 +311,11 @@ void SessionHandler::validate_collection(Collection& coll)
 		{
 			Log(LOG_WARNING, "%1% has no timestamp in collection entry: loading from disk", to_hex(id));
 
-			auto blob_file = m_blob_db.find(id);
+//			auto blob_file = m_blob_db.find(id);
 
-			auto new_entry{entry};
-			new_entry.timestamp = blob_file.original_datetime();
-			coll.update_timestamp(id, new_entry.timestamp);
+//			auto new_entry{entry};
+//			new_entry.timestamp = blob_file.original_datetime();
+//			coll.update_timestamp(id, new_entry.timestamp);
 
 //			Ownership{m_auth.id()}.update_blob(*m_db, id, new_entry);
 		}
