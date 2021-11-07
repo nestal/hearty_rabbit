@@ -33,7 +33,7 @@
 namespace hrb {
 namespace {
 
-using Salt = std::array<unsigned char, 32>;
+using Salt = std::array<std::byte, 32>;
 Salt random_salt()
 {
 	// There is no need to use cryptographically secure random number to generate the
@@ -57,7 +57,7 @@ void verify_password_from_redis(std::error_code& ec, const Password& password, c
 		if (hash_algorithm)
 			hash_algorithm_to_use = std::string{hash_algorithm.as_string()};
 
-		auto pkey = password.derive_key(salt.as_buffer_view(), static_cast<int>(iter.to_int()), hash_algorithm_to_use);
+		auto pkey = password.derive_key(salt.as_bytes(), static_cast<int>(iter.to_int()), hash_algorithm_to_use);
 		auto skey = key.as_string();
 		if (pkey.size() != skey.size() || ::CRYPTO_memcmp(&pkey[0], &skey[0], pkey.size()) != 0)
 		{
@@ -125,7 +125,7 @@ void Authentication::add_user(
 )
 {
 	auto salt = random_salt();
-	auto key = password.derive_key({salt.data(), salt.size()}, min_iteration, default_hash_algorithm());
+	auto key = password.derive_key(salt, min_iteration, default_hash_algorithm());
 
 	// Convert username to lower case to ensure case-insensitive comparison.
 	std::string username{username_mixed_case};
@@ -167,7 +167,7 @@ bool Authentication::verify_password(const nlohmann::json& hash, const Password&
 	auto salt = hex_to_vector(hash.at("salt").get<std::string>());
 	auto skey = hex_to_vector(hash.at("password").get<std::string>());
 
-	auto pkey = password.derive_key(BufferView{salt.data(), salt.size()}, hash.at("iteration"), hash_algorithm);
+	auto pkey = password.derive_key(std::span<const std::byte>{salt.data(), salt.size()}, hash.at("iteration"), hash_algorithm);
 	return pkey.size() == skey.size() && ::CRYPTO_memcmp(pkey.data(), skey.data(), pkey.size()) == 0;
 }
 

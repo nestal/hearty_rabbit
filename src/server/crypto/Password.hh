@@ -14,7 +14,9 @@
 
 #include "util/BufferView.hh"
 
+#include <cstddef>
 #include <array>
+#include <span>
 #include <vector>
 
 namespace hrb {
@@ -33,8 +35,8 @@ public:
 	Password& operator=(const Password&) = delete;
 	void swap(Password& other);
 
-	using Key = std::array<unsigned char, 64>;
-	[[nodiscard]] Key derive_key(BufferView salt, std::size_t iteration, const std::string& hash_name) const;
+	using Key = std::array<std::byte, 64>;
+	[[nodiscard]] Key derive_key(std::span<const std::byte> salt, std::size_t iteration, const std::string& hash_name) const;
 	[[nodiscard]] std::string_view get() const;
 
 	void clear();

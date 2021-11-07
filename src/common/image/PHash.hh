@@ -12,11 +12,13 @@
 
 #pragma once
 
-#include "util/BufferView.hh"
 #include "util/FS.hh"
 
 #include <opencv2/core.hpp>
+
 #include <cstdint>
+#include <cstddef>
+#include <span>
 
 namespace hrb {
 
@@ -41,7 +43,7 @@ inline bool operator<=(const PHash& p1, const PHash& p2) {return p1.value() <= p
 inline bool operator>(const PHash& p1, const PHash& p2) {return p1.value() > p2.value();}
 inline bool operator<(const PHash& p1, const PHash& p2) {return p1.value() < p2.value();}
 
-PHash phash(BufferView image);
+PHash phash(std::span<const std::byte> image);
 PHash phash(void *buf, std::size_t size);
 PHash phash(fs::path file);
 PHash phash(const cv::Mat& input);

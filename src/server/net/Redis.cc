@@ -273,10 +273,10 @@ boost::asio::const_buffer Reply::as_buffer() const noexcept
 	return {s.data(), s.size()};
 }
 
-BufferView Reply::as_buffer_view() const noexcept
+std::span<const std::byte> Reply::as_bytes() const noexcept
 {
 	auto s = as_any_string();
-	return {reinterpret_cast<const unsigned char*>(s.data()), s.size()};
+	return {reinterpret_cast<const std::byte*>(s.data()), s.size()};
 }
 
 Reply Reply::as_array(std::size_t i) const noexcept

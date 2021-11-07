@@ -18,10 +18,11 @@
 
 namespace hrb {
 
-cv::Mat load_image(BufferView raw)
+cv::Mat load_image(std::span<const std::byte> raw)
 {
+	auto data = reinterpret_cast<const unsigned char*>(raw.data());
 	return cv::imdecode(
-		cv::Mat{1, static_cast<int>(raw.size()), CV_8U, const_cast<unsigned char*>(raw.data())},
+		cv::Mat{1, static_cast<int>(raw.size()), CV_8U, const_cast<unsigned char*>(data)},
 		cv::IMREAD_ANYCOLOR | cv::IMREAD_ANYDEPTH
 	);
 }
@@ -64,10 +65,10 @@ void from_json(const nlohmann::json& src, ImageMeta& dest)
 	}
 }
 
-ImageMeta::ImageMeta(BufferView master) :
+ImageMeta::ImageMeta(std::span<const std::byte> master) :
 	m_mime{Magic::instance().mime(master)},
 	m_phash{std::invoke(
-		[](BufferView master) -> decltype(m_phash)
+		[](std::span<const std::byte> master) -> decltype(m_phash)
 		{
 			try
 			{

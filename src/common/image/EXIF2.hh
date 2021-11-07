@@ -12,21 +12,21 @@
 
 #pragma once
 
-#include "util/BufferView.hh"
-
 // libexif to read EXIF2 tags
 #include <libexif/exif-data.h>
 
+#include <chrono>
+#include <cstddef>
 #include <memory>
 #include <optional>
-#include <chrono>
+#include <span>
 
 namespace hrb {
 
 class EXIF2
 {
 public:
-	explicit EXIF2(BufferView jpeg);
+	explicit EXIF2(std::span<const std::byte> jpeg);
 	EXIF2(EXIF2&&) = default;
 	EXIF2(const EXIF2&) = delete;
 	~EXIF2();

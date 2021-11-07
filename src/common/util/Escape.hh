@@ -29,6 +29,15 @@ std::string to_hex(const std::array<unsigned char, N>& arr)
 }
 
 template <std::size_t N>
+std::string to_hex(const std::array<std::byte, N>& arr)
+{
+	std::string result(arr.size()*2, '\0');
+	auto start = reinterpret_cast<const unsigned char*>(arr.data());
+	boost::algorithm::hex_lower(start, start+N, result.begin());
+	return result;
+}
+
+template <std::size_t N>
 std::string to_quoted_hex(const std::array<unsigned char, N>& id, char quote = '\"')
 {
 	std::string result(id.size()*2 + 2, quote);
@@ -54,7 +63,7 @@ std::optional<std::array<unsigned char, N>> hex_to_array(std::string_view hex)
 	return std::nullopt;
 }
 
-std::vector<unsigned char> hex_to_vector(std::string_view hex);
+std::vector<std::byte> hex_to_vector(std::string_view hex);
 
 std::string url_encode(std::string_view in);
 

@@ -12,12 +12,12 @@
 
 #pragma once
 
-#include "BufferView.hh"
 #include "FS.hh"
 
 #include <boost/asio/buffer.hpp>
 
 #include <cstddef>
+#include <span>
 #include <system_error>
 
 namespace hrb {
@@ -44,7 +44,7 @@ public:
 	[[nodiscard]] boost::asio::mutable_buffer blob() noexcept {return {m_mmap, m_size};}
 	[[nodiscard]] boost::asio::const_buffer blob() const noexcept {return {m_mmap, m_size};}
 	[[nodiscard]] std::string_view string() const {return {static_cast<const char*>(m_mmap), m_size};}
-	[[nodiscard]] BufferView buffer() const {return {static_cast<const unsigned char*>(m_mmap), m_size};}
+	[[nodiscard]] std::span<const std::byte> buffer() const {return {static_cast<const std::byte*>(m_mmap), m_size};}
 
 	[[nodiscard]] bool is_opened() const {return m_mmap != nullptr;}
 	void clear();

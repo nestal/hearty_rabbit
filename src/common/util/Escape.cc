@@ -132,7 +132,7 @@ std::tuple<std::string_view, char> split_left(std::string_view& in, std::string_
 
 	// Remove the matching character, if any
 	char match = '\0';
-	if (location != in.npos)
+	if (location != std::string::npos)
 	{
 		match = in.front();
 		in.remove_prefix(1);
@@ -146,13 +146,13 @@ std::tuple<std::string_view, char> split_right(std::string_view& in, std::string
 	// Match the whole "in" string if "value" is not found.
 	// This is the same as split_left().
 	auto location = in.find_last_of(value);
-	auto result   = location != in.npos ? in.substr(location) : in;
+	auto result   = location != std::string::npos ? in.substr(location) : in;
 
 	in.remove_suffix(result.size());
 
 	// Remove the matching character, if any
 	char match = '\0';
-	if (location != in.npos)
+	if (location != std::string::npos)
 	{
 		match = result.front();
 		result.remove_prefix(1);
@@ -170,19 +170,20 @@ std::string_view split_front_substring(std::string_view& in, std::string_view su
 	in.remove_prefix(result.size());
 
 	// Remove the matching substring, if any
-	if (location != in.npos)
+	if (location != std::string::npos)
 		in.remove_prefix(substring.size());
 
 	return result;
 
 }
 
-std::vector<unsigned char> hex_to_vector(std::string_view hex)
+std::vector<std::byte> hex_to_vector(std::string_view hex)
 {
 	try
 	{
-		std::vector<unsigned char> result(hex.size()/2);
-		boost::algorithm::unhex(hex.begin(), hex.end(), result.begin());
+		std::vector<std::byte> result(hex.size()/2);
+		auto start = reinterpret_cast<unsigned char*>(result.data());
+		boost::algorithm::unhex(hex.begin(), hex.end(), start);
 		return result;
 	}
 	catch (boost::algorithm::hex_decode_error&)

@@ -23,10 +23,11 @@
 
 #include <optional>
 #include <string>
+#include <span>
 
 namespace hrb {
 namespace {
-std::string_view resource_mime(const std::string& ext, BufferView content)
+std::string_view resource_mime(const std::string& ext, std::span<const std::byte> content)
 {
 	// don't expect a big list
 	if (ext == ".css") return "text/css";

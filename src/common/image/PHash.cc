@@ -96,9 +96,10 @@ PHash phash(void *buf, std::size_t size)
 	return input.data ? phash(input) : PHash{};
 }
 
-PHash phash(BufferView image)
+PHash phash(std::span<const std::byte> image)
 {
-	auto input = imdecode(std::vector<unsigned char>(image.begin(), image.end()), cv::IMREAD_GRAYSCALE);
+	auto start = reinterpret_cast<const unsigned char*>(image.data());
+	auto input = imdecode(std::vector<unsigned char>(start, start+image.size()), cv::IMREAD_GRAYSCALE);
 	return input.data ? phash(input) : PHash{};
 }
 

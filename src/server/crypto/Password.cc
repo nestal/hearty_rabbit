@@ -45,7 +45,7 @@ void Password::swap(Password& other)
 	m_val.swap(other.m_val);
 }
 
-Password::Key Password::derive_key(BufferView salt, std::size_t iteration, const std::string& hash_name) const
+Password::Key Password::derive_key(std::span<const std::byte> salt, std::size_t iteration, const std::string& hash_name) const
 {
 	// openssl v1.0 does not accept null pointer even if size = 0
 	static const char empty[0] = {};
@@ -54,12 +54,12 @@ Password::Key Password::derive_key(BufferView salt, std::size_t iteration, const
 	if (::PKCS5_PBKDF2_HMAC(
 		m_val.empty() ? empty : &m_val[0],
 		static_cast<int>(m_val.size()),
-		salt.data(),
+		reinterpret_cast<const unsigned char*>(salt.data()),
 		static_cast<int>(salt.size()),
 		static_cast<int>(iteration),
 		::EVP_get_digestbyname(hash_name.c_str()),
 		static_cast<int>(key.size()),
-		&key[0]
+		reinterpret_cast<unsigned char*>(&key[0])
 	) != 1)
 		throw std::system_error(errno, std::generic_category());
 

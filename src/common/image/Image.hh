@@ -14,24 +14,25 @@
 
 #include "PHash.hh"
 
-#include "util/BufferView.hh"
 #include "util/Timestamp.hh"
 
 #include <nlohmann/json.hpp>
 
 #include <opencv2/core.hpp>
 
+#include <cstddef>
 #include <optional>
+#include <span>
 
 namespace hrb {
 
-cv::Mat load_image(BufferView raw);
+cv::Mat load_image(std::span<const std::byte> raw);
 
 class ImageMeta
 {
 public:
 	ImageMeta() = default;
-	explicit ImageMeta(BufferView master);
+	explicit ImageMeta(std::span<const std::byte> master);
 
 	[[nodiscard]] auto& mime() const {return m_mime;}
 	[[nodiscard]] auto& phash() const {return m_phash;}
