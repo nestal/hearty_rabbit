@@ -82,6 +82,17 @@ void HeartyRabbitServer::verify_session(
 	});
 }
 
+void HeartyRabbitServer::destroy_session(
+	std::function<void(std::error_code)>&& completion
+)
+{
+	m_self.destroy_session(*m_redis, [completion=std::move(completion), this](std::error_code ec)
+	{
+		m_self = Authentication{};
+		completion(ec);
+	});
+}
+
 void HeartyRabbitServer::get_directory(
 	const Path& path,
 	std::function<void(Directory&& result, std::error_code)> on_complete
@@ -108,6 +119,11 @@ void HeartyRabbitServer::upload_file(
 )
 {
 	on_complete({});
+}
+
+boost::asio::execution_context& HeartyRabbitServer::get_context()
+{
+	return m_redis->get_context();
 }
 
 DirectoryEntry::DirectoryEntry(const std::filesystem::directory_entry& physical_location) :

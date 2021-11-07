@@ -106,18 +106,17 @@ void SessionHandler::on_login(const StringRequest& req, EmptyResponseSender&& se
 
 void SessionHandler::on_logout(const EmptyRequest& req, EmptyResponseSender&& send)
 {
-/*	Authentication{m_auth}.destroy_session(*m_db, [this, send=std::move(send), version=req.version()](auto&& ec) mutable
+	m_server.destroy_session([this, send=std::move(send), version=req.version()](auto&& ec) mutable
 	{
 		// clear the user credential.
 		// Session will set the cookie in the response so no need to set here
-		m_auth = Authentication{};
-		assert(!m_auth.is_valid());
+		assert(!m_server.auth().is_valid());
 
 		http::response<http::empty_body> res{http::status::ok, version};
 		res.set(http::field::cache_control, "no-cache, no-store, must-revalidate");
 		res.keep_alive(false);
 		send(std::move(res));
-	});*/
+	});
 }
 
 /// Helper function to create a 303 See Other response.

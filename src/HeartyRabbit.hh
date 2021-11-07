@@ -56,7 +56,7 @@ private:
 	std::string                             m_filename;
 	std::string                             m_mime;
 	std::chrono::system_clock::time_point   m_last_modified;
-	std::filesystem::perms                  m_permission;
+	std::filesystem::perms                  m_permission{};
 };
 
 class Directory
@@ -75,6 +75,11 @@ private:
 	std::vector<DirectoryEntry> m_children;
 };
 
+/// \brief HeartyRabbit interface.
+/// The interface for all HeartyRabbit operations are implemented by this interface. It is the same for
+/// server and client. Most functions are async, which means that may not be completed upon return. When
+/// the operation requested is completed, a callback will be called in the io_context associated with this
+/// interface.
 class HeartyRabbit
 {
 public:
@@ -87,6 +92,15 @@ public:
 	/// \brief Get back credentials after login.
 	/// \return Login credentials: e.g. session ID and user name.
 	[[nodiscard]] virtual const Authentication& auth() const = 0;
+
+	virtual void verify_session(
+		const Authentication::SessionID& cookie,
+		std::function<void(std::error_code)>&& completion
+	) = 0;
+
+	virtual void destroy_session(
+		std::function<void(std::error_code)>&& completion
+	) = 0;
 
 	/// \brief Upload a file.
 	/// Copy a file from local filesystem into Hearty Rabbit. On the client, this function
@@ -105,6 +119,11 @@ public:
 		const Path& path,
 		std::function<void(Directory&& result, std::error_code)> on_complete
 	) const = 0;
+
+	/// \brief Get the io_context associated with this interface.
+	/// This io_context will be used to run the completion callbacks of the async operations.
+	/// \return
+	[[nodiscard]] virtual boost::asio::execution_context& get_context() = 0;
 };
 
 class HeartyRabbitServer : public HeartyRabbit
@@ -130,7 +149,11 @@ public:
 	void verify_session(
 		const Authentication::SessionID& cookie,
 		std::function<void(std::error_code)>&& completion
-	);
+	) override;
+
+	void destroy_session(
+		std::function<void(std::error_code)>&& completion
+	) override;
 
 	void upload_file(
 		const std::filesystem::directory_entry& local_file,
@@ -144,6 +167,8 @@ public:
 	) const override;
 
 	[[nodiscard]] const Authentication& auth() const override {return m_self;}
+
+	[[nodiscard]] boost::asio::execution_context& get_context() override;
 
 private:
 	std::filesystem::path               m_root;

@@ -136,11 +136,9 @@ private:
 	void validate_collection(Collection& json);
 
 private:
-//	std::shared_ptr<redis::Connection>              m_db;
 	std::optional<Authentication::SessionID>        m_request_session_id;
 	std::chrono::high_resolution_clock::time_point  m_on_header;
 
-//	Authentication          m_auth;
 	HeartyRabbitServer      m_server;
 	WebResources&           m_lib;
 	BlobDatabase&           m_blob_db;
