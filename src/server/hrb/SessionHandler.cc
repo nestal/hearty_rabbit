@@ -50,9 +50,9 @@ SessionHandler::SessionHandler(
 	BlobDatabase& blob_db,
 	const Configuration& cfg
 ) :
-	m_db{db}, m_lib{lib}, m_blob_db{blob_db}, m_cfg{cfg}
+	m_lib{lib}, m_server{cfg.blob_path(), std::move(db), m_cfg.session_length()}, m_blob_db{blob_db}, m_cfg{cfg}
 {
-	assert(!m_auth.is_valid());
+	assert(!m_server.auth().is_valid());
 }
 
 std::chrono::seconds SessionHandler::session_length() const
@@ -75,20 +75,18 @@ void SessionHandler::on_login(const StringRequest& req, EmptyResponseSender&& se
 	{
 		auto [username, password] = urlform.find(body, "username", "password");
 
-		assert(!m_auth.is_valid());
+		assert(!m_server.auth().is_valid());
 
-		Authentication::verify_user(
+		m_server.login(
 			username,
 			Password{password},
-			*m_db,
-			m_cfg.session_length(),
 			[
 				this,
 				version=req.version(),
 				send=std::move(send)
-			](std::error_code ec, auto&& session) mutable
+			](std::error_code ec) mutable
 			{
-				assert(session.invariance());
+				assert(m_server.auth().invariance());
 
 				http::response<http::empty_body> res{
 					ec == Error::login_incorrect ?
@@ -96,9 +94,6 @@ void SessionHandler::on_login(const StringRequest& req, EmptyResponseSender&& se
 						(ec ? http::status::internal_server_error : http::status::no_content),
 					version
 				};
-
-				m_auth = std::forward<decltype(session)>(session);
-				assert(m_auth.invariance());
 
 				res.set(http::field::cache_control, "no-cache, no-store, must-revalidate");
 				send(std::move(res));
@@ -111,7 +106,7 @@ void SessionHandler::on_login(const StringRequest& req, EmptyResponseSender&& se
 
 void SessionHandler::on_logout(const EmptyRequest& req, EmptyResponseSender&& send)
 {
-	Authentication{m_auth}.destroy_session(*m_db, [this, send=std::move(send), version=req.version()](auto&& ec) mutable
+/*	Authentication{m_auth}.destroy_session(*m_db, [this, send=std::move(send), version=req.version()](auto&& ec) mutable
 	{
 		// clear the user credential.
 		// Session will set the cookie in the response so no need to set here
@@ -122,7 +117,7 @@ void SessionHandler::on_logout(const EmptyRequest& req, EmptyResponseSender&& se
 		res.set(http::field::cache_control, "no-cache, no-store, must-revalidate");
 		res.keep_alive(false);
 		send(std::move(res));
-	});
+	});*/
 }
 
 /// Helper function to create a 303 See Other response.
@@ -139,29 +134,29 @@ http::response<http::empty_body> SessionHandler::see_other(boost::beast::string_
 void SessionHandler::unlink(BlobRequest&& req, EmptyResponseSender&& send)
 {
 	assert(req.blob());
-	if (!req.request_by_owner(m_auth.id()))
+	if (!req.request_by_owner(m_server.auth().id()))
 		return send(http::response<http::empty_body>{http::status::forbidden, req.version()});
 
 	// remove from user's container
-	Ownership{req.owner(), m_auth.id()}.unlink_blob(
-		*m_db, req.collection(), *req.blob(),
-		[send = std::move(send), version = req.version()](auto ec)
-		{
-			auto status = http::status::no_content;
-			if (ec == Error::object_not_exist)
-				status = http::status::bad_request;
-			else if (ec)
-				status = http::status::internal_server_error;
-
-			return send(http::response<http::empty_body>{status, version});
-		}
-	);
+//	Ownership{req.owner(), m_server.auth().id()}.unlink_blob(
+//		*m_db, req.collection(), *req.blob(),
+//		[send = std::move(send), version = req.version()](auto ec)
+//		{
+//			auto status = http::status::no_content;
+//			if (ec == Error::object_not_exist)
+//				status = http::status::bad_request;
+//			else if (ec)
+//				status = http::status::internal_server_error;
+//
+//			return send(http::response<http::empty_body>{status, version});
+//		}
+//	);
 }
 
 void SessionHandler::post_blob(BlobRequest&& req, EmptyResponseSender&& send)
 {
 	// Only owners can change blob permission
-	if (!req.request_by_owner(m_auth.id()))
+	if (!req.request_by_owner(m_server.auth().id()))
 		return send(http::response<http::empty_body>{http::status::forbidden, req.version()});
 
 	assert(req.blob());
@@ -179,7 +174,7 @@ void SessionHandler::post_blob(BlobRequest&& req, EmptyResponseSender&& send)
 			}
 		);
 	};
-
+/*
 	if (!perm_str.empty())
 		Ownership{req.owner(), m_auth.id()}.set_permission(
 			*m_db,
@@ -195,7 +190,7 @@ void SessionHandler::post_blob(BlobRequest&& req, EmptyResponseSender&& send)
 			move_destination,
 			*req.blob(),
 			std::move(on_complete)
-		);
+		);*/
 }
 
 void SessionHandler::on_upload(UploadRequest&& req, EmptyResponseSender&& send)
@@ -203,12 +198,12 @@ void SessionHandler::on_upload(UploadRequest&& req, EmptyResponseSender&& send)
 	boost::system::error_code bec;
 
 	URLIntent path_url{req.target()};
-	if (m_auth.id().username() != path_url.user())
-	{
-		// TODO: Introduce a small delay when responsing to requests with invalid session ID.
-		// This is to slow down bruce-force attacks on the session ID.
-		return send(http::response<http::empty_body>{http::status::forbidden, req.version()});
-	}
+//	if (m_auth.id().username() != path_url.user())
+//	{
+//		// TODO: Introduce a small delay when responsing to requests with invalid session ID.
+//		// This is to slow down bruce-force attacks on the session ID.
+//		return send(http::response<http::empty_body>{http::status::forbidden, req.version()});
+//	}
 
 	// Reject empty file
 	boost::system::error_code err;
@@ -228,9 +223,9 @@ void SessionHandler::on_upload(UploadRequest&& req, EmptyResponseSender&& send)
 	// Store the phash of the blob in database
 	if (blob.phash().has_value())
 	{
-		PHashDb pdb{*m_db};
+/*		PHashDb pdb{*m_db};
 		pdb.add(blob.ID(), *blob.phash());
-/*		pdb.exact_match(phash=*blob.phash(), [blob=blob.ID()](auto&& matches, auto err)
+		pdb.exact_match(phash=*blob.phash(), [blob=blob.ID()](auto&& matches, auto err)
 		{
 			for (auto&& m : matches)
 				if (m != blob)
@@ -239,7 +234,7 @@ void SessionHandler::on_upload(UploadRequest&& req, EmptyResponseSender&& send)
 	}
 
 	BlobInode entry{Permission::private_(), std::string{path_url.filename()}, std::string{blob.mime()}, blob.original_datetime()};
-
+/*
 	// Add the newly created blob to the user's ownership table.
 	// The user's ownership table contains all the blobs that is owned by the user.
 	// It will be used for authorizing the user's request on these blob later.
@@ -265,6 +260,7 @@ void SessionHandler::on_upload(UploadRequest&& req, EmptyResponseSender&& send)
 			return send(std::move(res));
 		}
 	);
+*/
 }
 
 http::response<http::string_body> SessionHandler::bad_request(boost::beast::string_view why, unsigned version)
@@ -283,7 +279,7 @@ http::response<SplitBuffers> SessionHandler::not_found(std::string_view target, 
 {
 	nlohmann::json dir;
 	dir.emplace("error_message", "The request resource was not found.");
-	dir.emplace("username", std::string{m_auth.id().username()});
+	dir.emplace("username", std::string{m_server.auth().id().username()});
 
 	return m_lib.inject(http::status::not_found, dir.dump(), "<meta></meta>", version);
 }
@@ -311,11 +307,11 @@ http::response<SplitBuffers> SessionHandler::file_request(const URLIntent& inten
 
 bool SessionHandler::renewed_auth() const
 {
-	assert(m_auth.invariance());
+	assert(m_server.auth().invariance());
 
 	return m_request_session_id.has_value()      ?      // if request cookie is present, check against the new cookie
-		*m_request_session_id != m_auth.session() :     // otherwise, there's no cookie in the original request,
-		m_auth.id().is_valid();                         // if we have a valid (non-guest) cookie now,
+		*m_request_session_id != m_server.auth().session() :     // otherwise, there's no cookie in the original request,
+		m_server.auth().id().is_valid();                         // if we have a valid (non-guest) cookie now,
 														// then the session is renewed.
 }
 
@@ -338,7 +334,7 @@ void SessionHandler::validate_collection(Collection& coll)
 			new_entry.timestamp = blob_file.original_datetime();
 			coll.update_timestamp(id, new_entry.timestamp);
 
-			Ownership{m_auth.id()}.update_blob(*m_db, id, new_entry);
+//			Ownership{m_auth.id()}.update_blob(*m_db, id, new_entry);
 		}
 	}
 }

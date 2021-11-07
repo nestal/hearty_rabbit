@@ -52,7 +52,7 @@ TEST_CASE_METHOD(HeartyRabbitServerFixture, "HRB2 login and verify user", "[norm
 
 	// The second time when the same user connects it will be another HeartyRabbitServer to serve her.
 	HeartyRabbitServer other{std::filesystem::current_path(), redis::connect(m_ios)};
-	other.verify_session(m_subject.auth().session(), 3600s, [this, &tested, &other, user](auto ec)
+	other.verify_session(m_subject.auth().session(), [this, &tested, &other, user](auto ec)
 	{
 		INFO(ec);
 		REQUIRE(!ec);

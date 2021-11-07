@@ -87,10 +87,10 @@ public:
 		assert(json.is_object());
 		using namespace std::chrono;
 
-		if (m_parent.m_auth.id().is_valid())
-			json.emplace("username", m_parent.m_auth.id().username());
-		if (m_parent.m_auth.id().is_guest())
-			json.emplace("auth", to_hex(m_parent.m_auth.session()));
+		if (m_parent.m_server.auth().id().is_valid())
+			json.emplace("username", m_parent.m_server.auth().id().username());
+		if (m_parent.m_server.auth().id().is_guest())
+			json.emplace("auth", to_hex(m_parent.m_server.auth().session()));
 		if (m_blob)
 			json.emplace("blob", to_hex(*m_blob));
 		if (m_parent.m_on_header != high_resolution_clock::time_point{})
@@ -117,9 +117,9 @@ public:
 	)"};
 			URLIntent cover_url{URLIntent::Action::api, owner, coll, cover};
 			URLIntent view_url{URLIntent::Action::view, owner, coll, "Hearty Rabbit"};
-			if (m_parent.m_auth.id().is_guest())
+			if (m_parent.m_server.auth().id().is_guest())
 			{
-				auto auth = "auth=" + to_hex(m_parent.m_auth.session());
+				auto auth = "auth=" + to_hex(m_parent.m_server.auth().session());
 				cover_url.add_option(auth);
 				view_url.add_option(auth);
 			}
@@ -166,7 +166,7 @@ void SessionHandler::on_request_header(
 	Complete&& complete
 )
 {
-	assert(!m_auth.is_valid());
+	assert(!m_server.auth().is_valid());
 
 	m_on_header = std::chrono::high_resolution_clock::now();
 	URLIntent intent{header.target()};
@@ -185,7 +185,7 @@ void SessionHandler::on_request_header(
 		auto auth_key = hex_to_array<Authentication::SessionID{}.size()>(auth_str);
 		if (header.method() == http::verb::get && auth_key)
 		{
-			Authentication auth{*auth_key};
+/*			Authentication auth{*auth_key};
 			return auth.is_shared_resource(
 				intent.user(),
 				intent.collection(),
@@ -193,12 +193,14 @@ void SessionHandler::on_request_header(
 				[complete = std::forward<Complete>(complete), auth, this, intent](bool shared, auto err)
 				{
 					assert(auth.id().is_guest());
-					if (!err && shared)
-						m_auth = auth;
+					// TODO: support shared_resource()
+//					if (!err && shared)
+//						m_auth = auth;
 
 					complete(RequestBodyType::empty, err);
 				}
 			);
+*/
 		}
 		else
 		{
@@ -206,20 +208,15 @@ void SessionHandler::on_request_header(
 		}
 	}
 
-	Authentication::verify_session(
+	m_server.verify_session(
 		*m_request_session_id,
-		*m_db,
-		session_length(),
 		[
 			this,
 			action=intent.action(),
 			method=header.method(),
 			complete=std::forward<Complete>(complete)
-		](std::error_code ec, Authentication&& auth) mutable
+		](std::error_code ec) mutable
 		{
-			m_auth = std::move(auth);
-			assert((m_auth.session() == Authentication::SessionID{}) == m_auth.id().is_anonymous());
-
 			auto body_type = RequestBodyType::empty;
 
 			// Use a UploadRequestParse to parser upload requests, only when the session is authenticated.
@@ -231,7 +228,7 @@ void SessionHandler::on_request_header(
 				body_type = RequestBodyType::string;
 
 			// If the cookie returned by verify_session() is different from the one we passed to it,
-			// that mean it is going to expired and it's renewed.
+			// that mean it is going to expire and it's renewed.
 			// In this case we want to tell Session to put it in the "Set-Cookie" header.
 			complete(body_type, ec);
 		}
@@ -241,7 +238,7 @@ void SessionHandler::on_request_header(
 template <class Request, class Send>
 void SessionHandler::on_request_body(Request&& req, Send&& send)
 {
-	assert((m_auth.session() == Authentication::SessionID{}) == m_auth.id().is_anonymous());
+//	assert((m_auth.session() == Authentication::SessionID{}) == m_auth.id().is_anonymous());
 
 	URLIntent intent{req.target()};
 	if (intent.action() == URLIntent::Action::login)
@@ -271,7 +268,7 @@ void SessionHandler::on_request_body(Request&& req, Send&& send)
 
 		if (intent.action() == URLIntent::Action::lib)
 			return send(file_request(intent, req[http::field::if_none_match], req.version()));
-
+/*
 		if (intent.action() == URLIntent::Action::home)
 			return m_auth.is_valid() ?
 				Ownership{m_auth.id()}.scan_all_collections(
@@ -279,7 +276,7 @@ void SessionHandler::on_request_body(Request&& req, Send&& send)
 					SendJSON{std::forward<Send>(send), req.version(), std::nullopt, *this, &m_lib}
 				) :
 				list_public_blobs(false, "", req.version(), std::forward<Send>(send));
-
+*/
 		if (intent.action() == URLIntent::Action::query)
 			return on_query({std::forward<Request>(req), std::move(intent)}, std::forward<Send>(send));
 
@@ -308,9 +305,9 @@ void SessionHandler::on_request_api(Request&& req, URLIntent&& intent, Send&& se
 	}
 	else if (req.method() == http::verb::get)
 	{
-		if (breq.blob())
+//		if (breq.blob())
 			return get_blob(std::move(breq), std::forward<Send>(send));
-		else
+/*		else
 			return Ownership{breq.owner(), m_auth.id()}.get_collection(
 				*m_db,
 				breq.collection(),
@@ -321,7 +318,7 @@ void SessionHandler::on_request_api(Request&& req, URLIntent&& intent, Send&& se
 					validate_collection(coll);
 					send(nlohmann::json(coll), ec);
 				}
-			);
+			);*/
 	}
 	else if (req.method() == http::verb::post)
 	{
@@ -343,12 +340,12 @@ void SessionHandler::on_request_view(Request&& req, URLIntent&& intent, Send&& s
 	BlobRequest breq{req, std::move(intent)};
 	if (req.method() == http::verb::get)
 	{
-		// view request always sends HTML: pass &m_lib to SendJSON
-		return Ownership{breq.owner(), m_auth.id()}.get_collection(
-			*m_db,
-			breq.collection(),
-			SendJSON{std::forward<Send>(send), breq.version(), breq.blob(), *this, &m_lib}
-		);
+//		// view request always sends HTML: pass &m_lib to SendJSON
+//		return Ownership{breq.owner(), m_auth.id()}.get_collection(
+//			*m_db,
+//			breq.collection(),
+//			SendJSON{std::forward<Send>(send), breq.version(), breq.blob(), *this, &m_lib}
+//		);
 	}
 	else
 	{
@@ -375,7 +372,7 @@ void SessionHandler::get_blob(const BlobRequest& req, Send&& send)
 	// Check if the user can access the blob
 	// Note: do not move-construct "req" to the lambda because the arguments of find() uses it.
 	// Otherwise, "req" will become dangled.
-	Ownership{req.owner(), m_auth.id()}.get_blob(
+/*	Ownership{req.owner(), m_auth.id()}.get_blob(
 		*m_db, req.collection(), *req.blob(),
 		[
 			req, this,
@@ -414,6 +411,7 @@ void SessionHandler::get_blob(const BlobRequest& req, Send&& send)
 			}
 		}
 	);
+*/
 }
 
 template <class Send>
@@ -442,7 +440,7 @@ void SessionHandler::scan_collection(const URLIntent& intent, unsigned version, 
 
 	if (!user.has_value())
 		return send(bad_request("invalid user in query", version));
-
+/*
 	// TODO: allow other users to query another user's shared collections
 	if (m_auth.id().username() != *user)
 		return send(http::response<http::string_body>{http::status::forbidden, version});
@@ -451,6 +449,7 @@ void SessionHandler::scan_collection(const URLIntent& intent, unsigned version, 
 		*m_db,
 		SendJSON{std::forward<Send>(send), version, std::nullopt, *this, json.has_value() ? nullptr : &m_lib}
 	);
+*/
 }
 
 template <class Send>
@@ -461,30 +460,30 @@ void SessionHandler::query_blob(const BlobRequest& req, Send&& send)
 	if (!blob)
 		return send(bad_request("invalid blob ID", req.version()));
 
-	if (owner.empty())
-		owner = m_auth.id().username();
-
-	Ownership{owner, m_auth.id()}.get_blob(
-		*m_db,
-		*blob,
-		[
-			send=std::forward<Send>(send), req, blobid=*blob,
-			rendition=std::string{rendition}, this
-		](const BlobDBEntry& entry, auto ec)
-		{
-			if (ec == Error::object_not_exist)
-				return send(not_found("blob not found", req.version()));
-
-			else if (ec)
-				return send(server_error("internal server error", req.version()));
-
-			auto response = m_blob_db.response(blobid, req.version(), req.etag(), rendition);
-			if (auto fields = entry.fields(); fields.has_value())
-				set_header(*fields, response);
-			response.set(http::field::location, req.intent().str());
-			return send(std::move(response));
-		}
-	);
+//	if (owner.empty())
+//		owner = m_auth.id().username();
+//
+//	Ownership{owner, m_auth.id()}.get_blob(
+//		*m_db,
+//		*blob,
+//		[
+//			send=std::forward<Send>(send), req, blobid=*blob,
+//			rendition=std::string{rendition}, this
+//		](const BlobDBEntry& entry, auto ec)
+//		{
+//			if (ec == Error::object_not_exist)
+//				return send(not_found("blob not found", req.version()));
+//
+//			else if (ec)
+//				return send(server_error("internal server error", req.version()));
+//
+//			auto response = m_blob_db.response(blobid, req.version(), req.etag(), rendition);
+//			if (auto fields = entry.fields(); fields.has_value())
+//				set_header(*fields, response);
+//			response.set(http::field::location, req.intent().str());
+//			return send(std::move(response));
+//		}
+//	);
 }
 
 template <class Send>
@@ -498,39 +497,39 @@ void SessionHandler::query_blob_set(const URLIntent& intent, unsigned version, S
 	}
 	else if (dup_coll.has_value())
 	{
-		Ownership{m_auth.id()}.get_collection(
-			*m_db,
-			*dup_coll,
-			[
-				send=std::forward<Send>(send),
-			    this, version,
-				lib=(json.has_value() ? nullptr : &m_lib)
-			](Collection&& coll, auto ec) mutable
-			{
-				std::vector<ObjectID> oids;
-				for (auto&& [id, entry] : coll)
-					oids.push_back(id);
-
-				auto matches = nlohmann::json::array();
-				auto similar = m_blob_db.find_similar(oids.begin(), oids.end(), 10);
-
-				for (auto&& match : similar)
-				{
-					auto [id1, id2, norm] = match;
-					Log(LOG_DEBUG, "id1 = %1% id2 = %2% comp = %3%", to_hex(id1), to_hex(id2), norm);
-					nlohmann::json mat{
-						{"id1", to_hex(id1)},
-						{"id2", to_hex(id2)},
-						{"ham", norm}
-					};
-					matches.push_back(std::move(mat));
-				}
-
-				auto result = nlohmann::json::object();
-				result.emplace("dups", std::move(matches));
-				SendJSON{std::move(send), version, std::nullopt, *this, lib}(std::move(result), ec);
-			}
-		);
+//		Ownership{m_auth.id()}.get_collection(
+//			*m_db,
+//			*dup_coll,
+//			[
+//				send=std::forward<Send>(send),
+//			    this, version,
+//				lib=(json.has_value() ? nullptr : &m_lib)
+//			](Collection&& coll, auto ec) mutable
+//			{
+//				std::vector<ObjectID> oids;
+//				for (auto&& [id, entry] : coll)
+//					oids.push_back(id);
+//
+//				auto matches = nlohmann::json::array();
+//				auto similar = m_blob_db.find_similar(oids.begin(), oids.end(), 10);
+//
+//				for (auto&& match : similar)
+//				{
+//					auto [id1, id2, norm] = match;
+//					Log(LOG_DEBUG, "id1 = %1% id2 = %2% comp = %3%", to_hex(id1), to_hex(id2), norm);
+//					nlohmann::json mat{
+//						{"id1", to_hex(id1)},
+//						{"id2", to_hex(id2)},
+//						{"ham", norm}
+//					};
+//					matches.push_back(std::move(mat));
+//				}
+//
+//				auto result = nlohmann::json::object();
+//				result.emplace("dups", std::move(matches));
+//				SendJSON{std::move(send), version, std::nullopt, *this, lib}(std::move(result), ec);
+//			}
+//		);
 	}
 	else
 		return send(bad_request("invalid query", version));
@@ -539,82 +538,82 @@ void SessionHandler::query_blob_set(const URLIntent& intent, unsigned version, S
 template <class Send>
 void SessionHandler::post_view(BlobRequest&& req, Send&& send)
 {
-	if (!req.request_by_owner(m_auth.id()))
-		return send(http::response<http::empty_body>{http::status::forbidden, req.version()});
-
-	assert(!req.blob());
-	auto[cover, share] = urlform.find(req.body(), "cover", "share");
-
-	using namespace std::chrono_literals;
-
-	if (auto cover_blob = ObjectID::from_hex(cover); cover_blob)
-		return Ownership{req.owner(), m_auth.id()}.set_cover(
-			*m_db,
-			req.collection(),
-			*cover_blob,
-			[send=std::move(send), version=req.version()](bool ok, auto ec)
-			{
-				send(http::response<http::empty_body>{
-					ec ?
-						http::status::internal_server_error :
-						(ok ? http::status::no_content : http::status::bad_request),
-					version
-				});
-			}
-		);
-
-	else if (share == "create")
-		return Authentication::share_resource(req.owner(), req.collection(), 3600s, *m_db, [
-			send=std::forward<decltype(send)>(send), req
-		](auto&& auth, auto ec)
-		{
-			URLIntent location{URLIntent::Action::view, req.owner(), req.collection(), "", "auth=" + to_hex(auth.session())};
-
-			http::response<http::empty_body> res{http::status::no_content, req.version()};
-			res.set(http::field::location, location.str());
-			return send(std::move(res));
-		});
-
-	else if (share == "list")
-		return Authentication::list_guests(req.owner(), req.collection(), *m_db, [
-			send=std::forward<decltype(send)>(send), version=req.version()
-		](auto&& guests, auto ec)
-		{
-			auto json = nlohmann::json::array();
-			for (auto&& guest : guests)
-				json.emplace_back(to_hex(guest.session()));
-
-			http::response<http::string_body> res{
-				std::piecewise_construct,
-				std::make_tuple(json.dump()),
-				std::make_tuple(http::status::ok, version)
-			};
-			res.set(http::field::content_type, "application/json");
-			return send(std::move(res));
-		});
-
-	send(http::response<http::empty_body>{http::status::bad_request, req.version()});
+//	if (!req.request_by_owner(m_auth.id()))
+//		return send(http::response<http::empty_body>{http::status::forbidden, req.version()});
+//
+//	assert(!req.blob());
+//	auto[cover, share] = urlform.find(req.body(), "cover", "share");
+//
+//	using namespace std::chrono_literals;
+//
+//	if (auto cover_blob = ObjectID::from_hex(cover); cover_blob)
+//		return Ownership{req.owner(), m_auth.id()}.set_cover(
+//			*m_db,
+//			req.collection(),
+//			*cover_blob,
+//			[send=std::move(send), version=req.version()](bool ok, auto ec)
+//			{
+//				send(http::response<http::empty_body>{
+//					ec ?
+//						http::status::internal_server_error :
+//						(ok ? http::status::no_content : http::status::bad_request),
+//					version
+//				});
+//			}
+//		);
+//
+//	else if (share == "create")
+//		return Authentication::share_resource(req.owner(), req.collection(), 3600s, *m_db, [
+//			send=std::forward<decltype(send)>(send), req
+//		](auto&& auth, auto ec)
+//		{
+//			URLIntent location{URLIntent::Action::view, req.owner(), req.collection(), "", "auth=" + to_hex(auth.session())};
+//
+//			http::response<http::empty_body> res{http::status::no_content, req.version()};
+//			res.set(http::field::location, location.str());
+//			return send(std::move(res));
+//		});
+//
+//	else if (share == "list")
+//		return Authentication::list_guests(req.owner(), req.collection(), *m_db, [
+//			send=std::forward<decltype(send)>(send), version=req.version()
+//		](auto&& guests, auto ec)
+//		{
+//			auto json = nlohmann::json::array();
+//			for (auto&& guest : guests)
+//				json.emplace_back(to_hex(guest.session()));
+//
+//			http::response<http::string_body> res{
+//				std::piecewise_construct,
+//				std::make_tuple(json.dump()),
+//				std::make_tuple(http::status::ok, version)
+//			};
+//			res.set(http::field::content_type, "application/json");
+//			return send(std::move(res));
+//		});
+//
+//	send(http::response<http::empty_body>{http::status::bad_request, req.version()});
 }
 
 template <typename Send>
 void SessionHandler::list_public_blobs(bool is_json, std::string_view user, unsigned version, Send&& send)
 {
-	Ownership{m_auth.id()}.list_public_blobs(
-		*m_db,
-		[send=std::forward<Send>(send), version, this, is_json, user=std::string{user}](auto&& blobs, auto ec) mutable
-		{
-			using namespace boost::adaptors;
-			auto pub_blobs = blobs |
-				filtered([&user](const Blob& blob)
-				{
-					return (user.empty() || user == blob.owner()) && blob.info().perm == Permission::public_();
-				});
-
-			SendJSON{std::forward<Send>(send), version, std::nullopt, *this, is_json ? nullptr : &m_lib}(
-				BlobElements{pub_blobs.begin(), pub_blobs.end()}, ec
-			);
-		}
-	);
+//	Ownership{m_auth.id()}.list_public_blobs(
+//		*m_db,
+//		[send=std::forward<Send>(send), version, this, is_json, user=std::string{user}](auto&& blobs, auto ec) mutable
+//		{
+//			using namespace boost::adaptors;
+//			auto pub_blobs = blobs |
+//				filtered([&user](const Blob& blob)
+//				{
+//					return (user.empty() || user == blob.owner()) && blob.info().perm == Permission::public_();
+//				});
+//
+//			SendJSON{std::forward<Send>(send), version, std::nullopt, *this, is_json ? nullptr : &m_lib}(
+//				BlobElements{pub_blobs.begin(), pub_blobs.end()}, ec
+//			);
+//		}
+//	);
 }
 
 } // end of namespace

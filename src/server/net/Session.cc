@@ -103,7 +103,7 @@ void Session::on_read_header(boost::system::error_code ec, std::size_t)
 					return send_response(m_handler->server_error("internal server error", 11));
 				}
 
-				assert(m_handler->auth().invariance());
+//				assert(m_handler->auth().invariance());
 
 				// Call async_read() using the chosen parser to read and parse the request body.
 				std::visit([this, self](auto&& parser)
@@ -122,7 +122,7 @@ void Session::on_read_header(boost::system::error_code ec, std::size_t)
 void Session::on_read(boost::system::error_code ec, std::size_t)
 {
 	assert(m_handler.has_value());
-	assert(m_handler->auth().invariance());
+//	assert(m_handler->auth().invariance());
 
 	// This means they closed the connection
 	if (ec)
@@ -134,7 +134,7 @@ void Session::on_read(boost::system::error_code ec, std::size_t)
 			m_handler->on_request_body(
 				parser.release(), [this, self](auto&& response)
 				{
-					assert(m_handler->auth().invariance());
+//					assert(m_handler->auth().invariance());
 
 					// server must not set session cookie
 					assert(response.count(http::field::set_cookie) == 0);
@@ -142,7 +142,7 @@ void Session::on_read(boost::system::error_code ec, std::size_t)
 					// check if auth is renewed. if yes, set it to cookie before sending
 					if (m_handler->renewed_auth())
 					{
-						response.set(http::field::set_cookie, m_handler->auth().set_cookie(m_login_session).str());
+//						response.set(http::field::set_cookie, m_handler->auth().set_cookie(m_login_session).str());
 					}
 
 					send_response(std::forward<decltype(response)>(response));

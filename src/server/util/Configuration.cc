@@ -97,7 +97,7 @@ void Configuration::load_config(const fs::path& config_file)
 			json.value(jptr{"/default_rendition"}, m_rendition.default_rendition())
 		);
 		m_upload_limit  = static_cast<std::size_t>(
-			json.value(jptr{"/upload_limit_mb"}, m_upload_limit/1024.0/1024.0) * 1024 * 1024
+			json.value(jptr{"/upload_limit_mb"}, static_cast<double>(m_upload_limit)/1024.0/1024.0) * 1024 * 1024
 		);
 		if (json.find("rendition") != json.end())
 		{

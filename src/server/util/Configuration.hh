@@ -65,8 +65,6 @@ public:
 	struct FileError : virtual Error {};
 	struct InvalidUserOrGroup: virtual Error {};
 	using Path      = boost::error_info<struct tag_path,    fs::path>;
-	using Message   = boost::error_info<struct tag_message, std::string>;
-	using Offset    = boost::error_info<struct tag_offset,  std::size_t>;
 	using ErrorCode = boost::error_info<struct tag_error_code,  std::error_code>;
 
 public:
@@ -97,16 +95,12 @@ public:
 	template <typename AddUser>
 	bool add_user(AddUser&& func) const
 	{
-		return m_args.count("add-user") > 0 ?
-			(func(m_args["add-user"].as<std::string>()), true) :
-			false;
+		return m_args.count("add-user") > 0 && (func(m_args["add-user"].as<std::string>()), true);
 	}
 	template <typename Function>
 	bool blob_id(Function&& func) const
 	{
-		return m_args.count("blob-id") > 0 ?
-			(func(m_args["blob-id"].as<std::string>()), true) :
-			false;
+		return m_args.count("blob-id") > 0 && (func(m_args["blob-id"].as<std::string>()), true);
 	}
 
 	void usage(std::ostream& out) const;

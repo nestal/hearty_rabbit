@@ -50,13 +50,13 @@ void Server::listen()
 	// Create and launch a listening port for HTTP and HTTPS
 	std::make_shared<Listener>(
 		m_ioc,
-		[this](){return start_session();},
+		[this]{return start_session();},
 		nullptr,
 		m_cfg
 	)->run();
 	std::make_shared<Listener>(
 		m_ioc,
-		[this](){return start_session();},
+		[this]{return start_session();},
 		&m_ssl,
 		m_cfg
 	)->run();

@@ -12,7 +12,7 @@
 
 #pragma once
 
-#include "crypto/Authentication.hh"
+#include "../HeartyRabbit.hh"
 #include "net/Redis.hh"
 #include "net/Request.hh"
 
@@ -72,7 +72,7 @@ public:
 	template <class Request, class Send>
 	void handle_request(Request&& req, Send&& send, const Authentication& auth)
 	{
-		m_auth = auth;
+//		m_auth = auth;
 		on_request_body(std::forward<Request>(req), std::forward<Send>(send));
 	};
 
@@ -83,7 +83,7 @@ public:
 
 	[[nodiscard]] std::chrono::seconds session_length() const;
 
-	[[nodiscard]] auto& auth() const {return m_auth;}
+//	[[nodiscard]] auto& auth() const {return m_auth;}
 	[[nodiscard]] bool renewed_auth() const;
 
 private:
@@ -136,11 +136,12 @@ private:
 	void validate_collection(Collection& json);
 
 private:
-	std::shared_ptr<redis::Connection>              m_db;
+//	std::shared_ptr<redis::Connection>              m_db;
 	std::optional<Authentication::SessionID>        m_request_session_id;
 	std::chrono::high_resolution_clock::time_point  m_on_header;
 
-	Authentication          m_auth;
+//	Authentication          m_auth;
+	HeartyRabbitServer      m_server;
 	WebResources&           m_lib;
 	BlobDatabase&           m_blob_db;
 	const Configuration&    m_cfg;

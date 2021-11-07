@@ -41,7 +41,7 @@ void HeartyRabbitServer::login(
 
 		if (Authentication::verify_password(nlohmann::json::parse(ofs), password))
 		{
-			m_self.create_session(std::move(on_complete), std::string{username}, *m_redis, std::chrono::seconds{3600});
+			m_self.create_session(std::move(on_complete), std::string{username}, *m_redis, m_session_length);
 		}
 	}
 	catch (std::ios_base::failure& e)
@@ -72,11 +72,10 @@ std::error_code HeartyRabbitServer::add_user(std::string_view username, const Pa
 
 void HeartyRabbitServer::verify_session(
 	const Authentication::SessionID& cookie,
-	std::chrono::seconds session_length,
 	std::function<void(std::error_code)>&& completion
 )
 {
-	Authentication::verify_session(cookie, *m_redis, session_length, [this, completion](auto ec, auto&& auth)
+	Authentication::verify_session(cookie, *m_redis, m_session_length, [this, completion](auto ec, auto&& auth)
 	{
 		m_self = std::forward<decltype(auth)>(auth);
 		completion(ec);

@@ -110,8 +110,11 @@ public:
 class HeartyRabbitServer : public HeartyRabbit
 {
 public:
-	explicit HeartyRabbitServer(std::filesystem::path root, std::shared_ptr<redis::Connection> conn) :
-		m_root{std::move(root)}, m_redis{std::move(conn)}
+	explicit HeartyRabbitServer(
+		std::filesystem::path root, std::shared_ptr<redis::Connection> conn,
+		std::chrono::seconds session_length = std::chrono::seconds{3600}
+	) :
+		m_root{std::move(root)}, m_session_length{session_length}, m_redis{std::move(conn)}
 	{
 	}
 
@@ -126,7 +129,6 @@ public:
 
 	void verify_session(
 		const Authentication::SessionID& cookie,
-		std::chrono::seconds session_length,
 		std::function<void(std::error_code)>&& completion
 	);
 
@@ -147,6 +149,9 @@ private:
 	std::filesystem::path               m_root;
 	std::shared_ptr<redis::Connection>  m_redis;
 	Authentication                      m_self;
+
+	// configurations
+	std::chrono::seconds                m_session_length;
 };
 
 } // end of namespace hrb
