@@ -12,12 +12,12 @@
 
 #pragma once
 
-#include <optional>
-
 #include <array>
+#include <optional>
 #include <iosfwd>
 #include <string_view>
 #include <string>
+#include <filesystem>
 #include <variant>
 
 namespace hrb {
@@ -54,10 +54,9 @@ public:
 
 	struct User
 	{
-		std::string username;      //!< "bunny" in the above example
-		std::string path;          //!< "subdir" in the above example
-		std::string filename;      //!< "somefile" in the above example
-		std::string rendition;     //!< "1024x1024" or "json" in the above example
+		std::string username;      	//!< "bunny" in the above example
+		std::filesystem::path path;	//!< "/subdir/somefile" in the above example
+		std::string rendition;     	//!< "1024x1024" or "json" in the above example
 
 		enum class Action {none, show};
 	};
@@ -93,10 +92,10 @@ public:
 	User*       user()      {return std::get_if<User>(&m_var);}
 	Query*      query()     {return std::get_if<Query>(&m_var);}
 	Lib*        lib()       {return std::get_if<Lib>(&m_var);}
-	const Session*    session()   const {return std::get_if<Session>(&m_var);}
-	const User*       user()      const {return std::get_if<User>(&m_var);}
-	const Query*      query()     const {return std::get_if<Query>(&m_var);}
-	const Lib*        lib()       const {return std::get_if<Lib>(&m_var);}
+	[[nodiscard]] const Session*    session()   const {return std::get_if<Session>(&m_var);}
+	[[nodiscard]] const User*       user()      const {return std::get_if<User>(&m_var);}
+	[[nodiscard]] const Query*      query()     const {return std::get_if<Query>(&m_var);}
+	[[nodiscard]] const Lib*        lib()       const {return std::get_if<Lib>(&m_var);}
 
 private:
 	std::variant<std::monostate, Session, User, Query, Lib> m_var;

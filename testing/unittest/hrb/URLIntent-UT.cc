@@ -19,8 +19,17 @@ using namespace hrb;
 
 TEST_CASE("standard path URL")
 {
-	URLIntent user{"/~bunny"};
+	URLIntent user{"/~bunny/sub/dir/?rend=abc"};
 	REQUIRE(user.type() == URLIntent::Type::user);
 	REQUIRE(user.user());
-	REQUIRE(user.user()->username == "bunny");
+	REQUIRE(user.user()->username   == "bunny");
+	REQUIRE(user.user()->path       == "/sub/dir/");
+	REQUIRE(user.user()->rendition  == "abc");
+
+	URLIntent user2{"/~bunny/somedir/filename"};
+	REQUIRE(user2.type() == URLIntent::Type::user);
+	REQUIRE(user2.user());
+	REQUIRE(user2.user()->username   == "bunny");
+	REQUIRE(user2.user()->path       == "/somedir/filename");
+	REQUIRE(user2.user()->rendition  == "");
 }
