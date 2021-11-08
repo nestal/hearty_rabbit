@@ -49,7 +49,6 @@ public:
 	SessionHandler(
 		std::shared_ptr<redis::Connection>&& db,
 		WebResources& lib,
-//		BlobDatabase& blob_db,
 		const Configuration& cfg
 	);
 
@@ -83,7 +82,6 @@ public:
 
 	[[nodiscard]] std::chrono::seconds session_length() const;
 
-//	[[nodiscard]] auto& auth() const {return m_auth;}
 	[[nodiscard]] bool renewed_auth() const;
 
 private:
@@ -105,12 +103,6 @@ private:
 	void unlink(BlobRequest&& req, EmptyResponseSender&& send);
 	void post_blob(BlobRequest&& req, EmptyResponseSender&& send);
 
-	template <class Send>
-	void post_view(BlobRequest&& req, Send&& send);
-
-	template <class Send>
-	void scan_collection(const URLIntent& intent, unsigned version, Send&& send);
-
 	template <class Request, class Send>
 	void on_request_view(Request&& req, URLIntent&& intent, Send&& send);
 
@@ -119,18 +111,6 @@ private:
 
 	template <class Send>
 	void get_blob(const BlobRequest& req, Send&& send);
-
-	template <class Send>
-	void on_query(const BlobRequest& req, Send&& send);
-
-	template <class Send>
-	void query_blob(const BlobRequest& req, Send&& send);
-
-	template <class Send>
-	void query_blob_set(const URLIntent& intent, unsigned version, Send&& send);
-
-	template <class Send>
-	void list_public_blobs(bool is_json, std::string_view user, unsigned version, Send&& send);
 
 	[[nodiscard]] std::string server_root() const;
 	void validate_collection(Collection& json);
@@ -141,7 +121,6 @@ private:
 
 	HeartyRabbitServer      m_server;
 	WebResources&           m_lib;
-//	BlobDatabase&           m_blob_db;
 	const Configuration&    m_cfg;
 };
 

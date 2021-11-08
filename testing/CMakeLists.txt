@@ -13,6 +13,7 @@ target_link_libraries(test_common PUBLIC OpenCV::OpenCV)
 add_executable(unittest
 	unittest/unittest.cc
 	unittest/HeartyRabbit-UT.cc
+	unittest/hrb/URLIntent-UT.cc
 )
 target_link_libraries(unittest PUBLIC Catch2::Catch2 test_common hrbsrv hrbclient hrbsync_lib hrb2)
 

@@ -12,51 +12,66 @@
 
 #pragma once
 
-#include <boost/utility/string_view.hpp>
-
 #include <optional>
 
 #include <array>
 #include <iosfwd>
 #include <string_view>
-#include <vector>
+#include <string>
+#include <variant>
 
 namespace hrb {
 
-struct ObjectID;
-
-// Deduce the intention of the user from the URL
+/// \brief  Deduce the intention of the user from the URL.
+/// REST API:
+/// GET "/" login screen
+/// POST "/session?create" with username and password to login, redirect to "/~bunny" (where "rabbit" is username)
+/// POST "/session?destroy" logout
+/// GET "/~bunny" home directory of bunny
+/// GET "/~bunny/subdir/" sub-directory under the bunny's home
+/// GET "/~bunny/subdir/?rend=json" list files under sub-directory as JSON
+/// PUT "/~bunny/subdir/somefile" upload file to "/~user/subdir/somefile". Overwriting if exists.
+/// GET "/~bunny/subdir/somefile" download file
+/// HEAD "/~bunny/subdir/somefile" HTTP headers for GET but without the payload
+/// DELETE "/~bunny/subdir/somefile" delete file
+/// GET "/~bunny/subdir/somefile?rend=1024x1024" download specific rendition of file
+/// GET "/~bunny/subdir/?show=somefile" view file in directory
+/// GET "/~bunny/subdir/?show=somefile&rend=1024x1024" view rendition of file in directory
+/// POST "/~bunny/subdir/somefile" update meta-data of file, e.g. permission, user comments and tags.
+/// GET "/query?tags=carrot" show page with list of files tagged as "carrot"
+/// GET "/query?tags=carrot&rend=json" show list of files tagged as "sunny" as JSON
+/// GET "/lib/background.js" get files from WebResource.
 class URLIntent
 {
 public:
-	enum class Action {login, logout, view, upload, home, lib, query, api, none};
+	enum class Type {none, session, user, query, lib};
 
-	enum class QueryTarget {blob, collection, blob_set, none};
-
-	//! Possible parameters specified by a URL
-	enum class Parameter {
-		user,           //!< Name of a user whom this request is applied to. Note this may not
-						//!< be the user who send this request. Only occupy one segment in the URL.
-		collection,     //!< Name of the collection which the request is applied to. It may span
-						//!< across multiple segments.
-		filename,       //!< Filename of a resource. Single segment only.
-		blob,           //!< 40-character hex string for blob ID. Obviously single segment.
-		query_target    //!< Target of the query: blob or collection
+	struct Session
+	{
+		enum class Action {create, destroy};
+		Action action;
 	};
 
-private:
-	using Parameters = std::vector<Parameter>;
+	struct User
+	{
+		std::string username;      //!< "bunny" in the above example
+		std::string path;          //!< "subdir" in the above example
+		std::string filename;      //!< "somefile" in the above example
+		std::string rendition;     //!< "1024x1024" or "json" in the above example
 
-	static constexpr std::array<bool, static_cast<int>(Action::none)> require_user =
-	//   login, logout, view, upload, home,  lib,   query, api, none
-		{false, false,  true, true,   false, false, false, true};
+		enum class Action {none, show};
+	};
 
-	static constexpr std::array<bool, static_cast<int>(Action::none)> require_filename =
-	//   login, logout, view,  upload, home,  lib,  query, api, none
-		{false, false,  false, true,   false, true, false, false};
+	struct Query
+	{
+		std::string tags;
+		std::string rendition;
+	};
 
-	static const std::array<Parameters, static_cast<int>(Action::none)> intent_defintions;
-	static const Parameters separator_fields;
+	struct Lib
+	{
+		std::string filename;
+	};
 
 public:
 	URLIntent() = default;
@@ -66,56 +81,25 @@ public:
 	URLIntent& operator=(const URLIntent&) = default;
 
 	explicit URLIntent(std::string_view target);
-	explicit URLIntent(Action act);
-	URLIntent(Action act, std::string_view user, std::string_view coll, std::string_view name, std::string_view option = "");
-	URLIntent(Action act, std::string_view user, std::string_view coll, const ObjectID& blob, std::string_view option = "");
-	URLIntent(QueryTarget target, std::string_view option);
 
-	[[nodiscard]] Action action() const {return m_action;}
-	[[nodiscard]] std::string_view user() const {return m_user;}
-	[[nodiscard]] std::string_view collection() const {return m_coll;}
-	[[nodiscard]] std::string_view filename() const {return m_filename;}
-	[[nodiscard]] std::string_view option() const {return m_option;}
-	[[nodiscard]] QueryTarget query_target() const {return m_query_target;}
+	explicit URLIntent(const Session& s) : m_var{s} {}
+	explicit URLIntent(const User& s)   : m_var{s} {}
+	explicit URLIntent(const Query& s)  : m_var{s} {}
+	explicit URLIntent(const Lib& s)    : m_var{s} {}
 
-	void set_option(std::string_view option) {m_option = option;}
-	void add_option(std::string_view option);
+	[[nodiscard]] Type type() const {return static_cast<Type>(m_var.index());}
 
-	[[nodiscard]] std::optional<ObjectID> blob() const;
-
-	[[nodiscard]] std::string path() const;
-
-	[[nodiscard]] std::string str() const;
-	[[nodiscard]] bool valid() const;
-	explicit operator bool() const {return valid();}
+	Session*    session()   {return std::get_if<Session>(&m_var);}
+	User*       user()      {return std::get_if<User>(&m_var);}
+	Query*      query()     {return std::get_if<Query>(&m_var);}
+	Lib*        lib()       {return std::get_if<Lib>(&m_var);}
+	const Session*    session()   const {return std::get_if<Session>(&m_var);}
+	const User*       user()      const {return std::get_if<User>(&m_var);}
+	const Query*      query()     const {return std::get_if<Query>(&m_var);}
+	const Lib*        lib()       const {return std::get_if<Lib>(&m_var);}
 
 private:
-	static std::string_view trim(std::string_view s);
-	static Action parse_action(std::string_view str);
-	void parse_field_from_left(std::string_view& target, Parameter p);
-	void parse_field_from_right(std::string_view& target, Parameter p);
-	static QueryTarget parse_query_target(std::string_view str);
-	static std::string_view to_string(QueryTarget query_target);
-
-	std::ostream& write_path(std::ostream& os) const;
-
-private:
-	Action  m_action{Action::none};
-
-	std::string m_user;
-
-	// container name
-	std::string m_coll;
-
-	// filename
-	std::string m_filename;
-
-	// option
-	std::string m_option;
-
-	QueryTarget m_query_target{QueryTarget::none};
-
-	bool m_valid{false};
+	std::variant<std::monostate, Session, User, Query, Lib> m_var;
 };
 
 } // end of namespace hrb

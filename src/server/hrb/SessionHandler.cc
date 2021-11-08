@@ -136,7 +136,7 @@ http::response<http::empty_body> SessionHandler::see_other(boost::beast::string_
 
 void SessionHandler::unlink(BlobRequest&& req, EmptyResponseSender&& send)
 {
-	assert(req.blob());
+//	assert(req.blob());
 	if (!req.request_by_owner(m_server.auth().id()))
 		return send(http::response<http::empty_body>{http::status::forbidden, req.version()});
 
@@ -162,7 +162,7 @@ void SessionHandler::post_blob(BlobRequest&& req, EmptyResponseSender&& send)
 	if (!req.request_by_owner(m_server.auth().id()))
 		return send(http::response<http::empty_body>{http::status::forbidden, req.version()});
 
-	assert(req.blob());
+//	assert(req.blob());
 	auto [perm_str, move_destination] = urlform.find(req.body(), "perm", "move");
 
 	if (perm_str.empty() && move_destination.empty())
@@ -201,7 +201,7 @@ void SessionHandler::on_upload(UploadRequest&& req, EmptyResponseSender&& send)
 	boost::system::error_code bec;
 
 	URLIntent path_url{req.target()};
-	if (m_server.auth().id().username() != path_url.user())
+//	if (m_server.auth().id().username() != path_url.user())
 	{
 		// TODO: Introduce a small delay when responsing to requests with invalid session ID.
 		// This is to slow down bruce-force attacks on the session ID.
@@ -223,27 +223,27 @@ void SessionHandler::on_upload(UploadRequest&& req, EmptyResponseSender&& send)
 	if (ec)
 		return send(http::response<http::empty_body>{http::status::internal_server_error, req.version()});
 
-	m_server.upload_file(upload_file, path_url.collection(), [
-			location = URLIntent{
-				URLIntent::Action::api,
-				m_server.auth().id().username(),
-				path_url.collection(),
-				path_url.filename()
-			}.str(),
-			send = std::move(send),
-			version = req.version()
-		](auto ec)
-		{
-			http::response<http::empty_body> res{
-				ec ? http::status::internal_server_error : http::status::created,
-				version
-			};
-			if (!ec)
-				res.set(http::field::location, location);
-			res.set(http::field::cache_control, "no-cache, no-store, must-revalidate");
-			return send(std::move(res));
-		}
-	);
+//	m_server.upload_file(upload_file, path_url.collection(), [
+//			location = URLIntent{
+//				URLIntent::Action::api,
+//				m_server.auth().id().username(),
+//				path_url.collection(),
+//				path_url.filename()
+//			}.str(),
+//			send = std::move(send),
+//			version = req.version()
+//		](auto ec)
+//		{
+//			http::response<http::empty_body> res{
+//				ec ? http::status::internal_server_error : http::status::created,
+//				version
+//			};
+//			if (!ec)
+//				res.set(http::field::location, location);
+//			res.set(http::field::cache_control, "no-cache, no-store, must-revalidate");
+//			return send(std::move(res));
+//		}
+//	);
 }
 
 http::response<http::string_body> SessionHandler::bad_request(boost::beast::string_view why, unsigned version)
@@ -281,12 +281,12 @@ http::response<http::string_body> SessionHandler::server_error(std::string_view 
 	return res;
 }
 
-http::response<SplitBuffers> SessionHandler::file_request(const URLIntent& intent, std::string_view etag, unsigned version)
-{
-	return intent.filename() == "login_incorrect.html" ?
-		m_lib.inject(http::status::ok, R"_({login_message: "Login incorrect... Try again?"})_", "", version) :
-		m_lib.find_static(intent.filename(), etag, version);
-}
+//http::response<SplitBuffers> SessionHandler::file_request(const URLIntent& intent, std::string_view etag, unsigned version)
+//{
+//	return intent.filename() == "login_incorrect.html" ?
+//		m_lib.inject(http::status::ok, R"_({login_message: "Login incorrect... Try again?"})_", "", version) :
+//		m_lib.find_static(intent.filename(), etag, version);
+//}
 
 bool SessionHandler::renewed_auth() const
 {

@@ -40,10 +40,10 @@ public:
 	BlobRequest& operator=(BlobRequest&& other) = default;
 	BlobRequest& operator=(const BlobRequest& other) = default;
 
-	[[nodiscard]] std::optional<ObjectID> blob() const    {return ObjectID::from_hex(m_url.filename());}
-	[[nodiscard]] std::string_view owner() const          {return m_url.user();}
-	[[nodiscard]] std::string_view collection() const     {return m_url.collection();}
-	[[nodiscard]] std::string_view option() const         {return m_url.option();}
+//	[[nodiscard]] std::optional<ObjectID> blob() const    {return ObjectID::from_hex(m_url.filename());}
+//	[[nodiscard]] std::string_view owner() const          {return m_url.user();}
+//	[[nodiscard]] std::string_view collection() const     {return m_url.collection();}
+//	[[nodiscard]] std::string_view option() const         {return m_url.option();}
 	[[nodiscard]] std::string_view etag() const           {return m_etag;}
 	[[nodiscard]] unsigned version() const                {return m_version;}
 

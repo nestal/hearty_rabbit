@@ -39,8 +39,8 @@ Blob HRBClient::parse_response(const boost::beast::http::fields& response)
 
 	// For /api/<user>/<coll>/<blobid> intents, the filename() will be a blob ID
 	auto blobid = ObjectID::from_hex(response[http::field::etag]);
-	if (!blobid)
-		blobid = ObjectID::from_hex(intent.filename());
+//	if (!blobid)
+//		blobid = ObjectID::from_hex(intent.filename());
 
 	BlobInode inode{};
 
@@ -51,7 +51,7 @@ Blob HRBClient::parse_response(const boost::beast::http::fields& response)
 	if (regex_search(disposition, m, disposition_regex) && m.size() == 2)
 		inode.filename = m[1].str();
 
-	return Blob{std::string{intent.user()}, std::string{intent.collection()}, blobid.value_or(ObjectID{}), inode};
+	return Blob{/*std::string{intent.user()}, std::string{intent.collection()}, blobid.value_or(ObjectID{}), inode*/};
 }
 
 } // end of namespace
