@@ -74,6 +74,10 @@ URLIntent::URLIntent(std::string_view target)
 		else if (query == "destroy")
 			m_var.emplace<Session>(Session{Session::Action::destroy});
 	}
+	else if (first == "lib")
+	{
+		m_var.emplace<Lib>(Lib{.filename=std::string{mid}});
+	}
 }
 
 std::string URLIntent::str() const
@@ -94,7 +98,7 @@ std::string URLIntent::str() const
 				return str;
 			},
 			[](const Query&){return ""s;},
-			[](const Lib&){return ""s;},
+			[](const Lib& l){return "/lib/"s.append(l.filename);},
 			[](auto&&){return "/"s;}
 		},
 		m_var

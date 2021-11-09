@@ -252,6 +252,16 @@ void SessionHandler::on_request_body(Request&& req, Send&& send)
 		return send(http::response<http::empty_body>{http::status::bad_request, req.version()});
 	}
 
+	switch (intent.type())
+	{
+	case URLIntent::Type::session:
+	case URLIntent::Type::user:
+	case URLIntent::Type::lib:
+	case URLIntent::Type::query:
+	case URLIntent::Type::none:
+		return send(file_request(intent, req[http::field::if_none_match], req.version()));
+	}
+
 	// on_request_view() is a function template on the request type. It can work with all
 	// request types so no need to check before calling.
 //	if (intent.action() == URLIntent::Action::view)

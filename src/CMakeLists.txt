@@ -37,6 +37,7 @@ file(GLOB_RECURSE SERVER_SRC server/*/*.cc server/*/*.hh server/*/*.ipp)
 add_library(hrbsrv ${SERVER_SRC} ${CMAKE_BINARY_DIR}/config.hh)
 target_link_libraries(hrbsrv PUBLIC
 	hrbcommon
+	hrb2
 	PkgConfig::HIREDIS
 	OpenSSL::SSL
 	OpenSSL::Crypto

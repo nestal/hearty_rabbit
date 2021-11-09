@@ -48,4 +48,11 @@ TEST_CASE("standard path URL")
 	REQUIRE(login.session());
 	REQUIRE(login.session()->action == URLIntent::Session::Action::create);
 	REQUIRE(login.str() == "/session?create");
+
+	URLIntent lib1{"/lib/index.html"};
+	REQUIRE(lib1.type() == URLIntent::Type::lib);
+	REQUIRE(lib1.lib());
+	REQUIRE(lib1.lib()->filename == "index.html");
+	REQUIRE(lib1.str() == "/lib/index.html");
+
 }

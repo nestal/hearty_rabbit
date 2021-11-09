@@ -137,8 +137,8 @@ http::response<http::empty_body> SessionHandler::see_other(boost::beast::string_
 void SessionHandler::unlink(BlobRequest&& req, EmptyResponseSender&& send)
 {
 //	assert(req.blob());
-	if (!req.request_by_owner(m_server.auth().id()))
-		return send(http::response<http::empty_body>{http::status::forbidden, req.version()});
+//	if (!req.request_by_owner(m_server.auth().id()))
+//		return send(http::response<http::empty_body>{http::status::forbidden, req.version()});
 
 	// remove from user's container
 //	Ownership{req.owner(), m_server.auth().id()}.unlink_blob(
@@ -159,8 +159,8 @@ void SessionHandler::unlink(BlobRequest&& req, EmptyResponseSender&& send)
 void SessionHandler::post_blob(BlobRequest&& req, EmptyResponseSender&& send)
 {
 	// Only owners can change blob permission
-	if (!req.request_by_owner(m_server.auth().id()))
-		return send(http::response<http::empty_body>{http::status::forbidden, req.version()});
+//	if (!req.request_by_owner(m_server.auth().id()))
+//		return send(http::response<http::empty_body>{http::status::forbidden, req.version()});
 
 //	assert(req.blob());
 	auto [perm_str, move_destination] = urlform.find(req.body(), "perm", "move");
@@ -281,12 +281,13 @@ http::response<http::string_body> SessionHandler::server_error(std::string_view 
 	return res;
 }
 
-//http::response<SplitBuffers> SessionHandler::file_request(const URLIntent& intent, std::string_view etag, unsigned version)
-//{
-//	return intent.filename() == "login_incorrect.html" ?
-//		m_lib.inject(http::status::ok, R"_({login_message: "Login incorrect... Try again?"})_", "", version) :
-//		m_lib.find_static(intent.filename(), etag, version);
-//}
+http::response<SplitBuffers> SessionHandler::file_request(const URLIntent& intent, std::string_view etag, unsigned version)
+{
+	assert(intent.lib());
+	return intent.lib()->filename == "login_incorrect.html" ?
+		m_lib.inject(http::status::ok, R"_({login_message: "Login incorrect... Try again?"})_", "", version) :
+		m_lib.find_static(intent.lib()->filename, etag, version);
+}
 
 bool SessionHandler::renewed_auth() const
 {

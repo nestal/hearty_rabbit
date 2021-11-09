@@ -34,8 +34,8 @@ add_custom_command(
 # These test cases will start a server internally.
 ###################################################################################################
 
-file(GLOB_RECURSE CLIENT_UT_SRC client/*.cc client/*.hh)
-add_executable(clienttest ${CLIENT_UT_SRC})
+#file(GLOB_RECURSE CLIENT_UT_SRC client/*.cc client/*.hh)
+add_executable(clienttest client/main.cc client/ServerInstance.cc client/ServerInstance.hh)
 target_link_libraries(clienttest PRIVATE Catch2::Catch2 test_common hrbclient hrbsrv)
 target_compile_definitions(clienttest PRIVATE CONFIG_FILE="${PROJECT_SOURCE_DIR}/etc/hearty_rabbit")
 
