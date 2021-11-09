@@ -13,10 +13,12 @@
 #include "URLIntent.hh"
 
 #include "util/Escape.hh"
+#include "util/Overload.hh"
 #include "util/StringFields.hh"
 
 #include <sstream>
 #include <cassert>
+#include <iostream>
 
 namespace hrb {
 namespace {
@@ -46,31 +48,57 @@ URLIntent::URLIntent(std::string_view target)
 	if (first.empty())
 		return;
 
+	// Extract the query string:
+	// only truncate "target" when "?" is found; keep "target" unchange if "?" is not found
+	// use split_left() because the query string starts from the _first_ '?' according to
+	// [RFC 3986](https://tools.ietf.org/html/rfc3986#page-23).
+	auto query = target;
+	auto[mid, sep] = split_left(query, "?");
+
 	// user URLs
 	if (first.front() == '~')
 	{
-		User user{};
 		first.remove_prefix(1);
-		user.username = first;
+		User user{.username=std::string{first}};
 
-		// Extract the query string:
-		// only truncate "target" when "?" is found; keep "target" unchange if "?" is not found
-		// use split_left() because the query string starts from the _first_ '?' according to
-		// [RFC 3986](https://tools.ietf.org/html/rfc3986#page-23).
-		auto tmp = target;
-		auto[field, sep] = split_left(tmp, "?");
 		if (sep == '?')
-		{
-			std::tie(user.rendition) = urlform.find(tmp, "rend");
-		}
+			std::tie(user.rendition) = urlform.find(query, "rend");
 
-		user.path.append("/");
-		user.path.append(field);
-
-
-
+		user.path.append("/").append(mid);
 		m_var.emplace<User>(user);
 	}
+	else if (first == "session" && sep == '?')
+	{
+		if (query == "create")
+			m_var.emplace<Session>(Session{Session::Action::create});
+		else if (query == "destroy")
+			m_var.emplace<Session>(Session{Session::Action::destroy});
+	}
+}
+
+std::string URLIntent::str() const
+{
+	using namespace std::string_literals;
+	return visit(
+		Overloaded{
+			[](const Session& s)
+			{
+				return "/session?"s.append(s.action == Session::Action::create ? "create" : "destroy");
+			},
+			[](const User& u)
+			{
+				assert(u.path.is_absolute());
+				auto str = "/~"s.append(u.username).append(u.path.string());
+				if (!u.rendition.empty())
+					str.append("?rend=").append(u.rendition);
+				return str;
+			},
+			[](const Query&){return ""s;},
+			[](const Lib&){return ""s;},
+			[](auto&&){return "/"s;}
+		},
+		m_var
+	);
 }
 
 } // end of namespace hrb

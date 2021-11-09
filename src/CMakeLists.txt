@@ -87,7 +87,7 @@ add_dependencies(hrbsync unittest clienttest)
 ###################################################################################################
 # HRB V2
 ###################################################################################################
-add_library(hrb2 HeartyRabbit.hh HeartyRabbit.cc)
+add_library(hrb2 HeartyRabbit.hh HeartyRabbit.cc common/util/Overload.hh)
 target_link_libraries(hrb2 PUBLIC hrbsrv)
 target_include_directories(hrb2 PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_compile_options(hrb2 PUBLIC -fcoroutines)

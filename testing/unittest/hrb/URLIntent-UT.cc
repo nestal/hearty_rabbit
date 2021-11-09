@@ -25,6 +25,7 @@ TEST_CASE("standard path URL")
 	REQUIRE(user.user()->username   == "bunny");
 	REQUIRE(user.user()->path       == "/sub/dir/");
 	REQUIRE(user.user()->rendition  == "abc");
+	REQUIRE(user.str() == "/~bunny/sub/dir/?rend=abc");
 
 	URLIntent user2{"/~bunny/somedir/filename"};
 	REQUIRE(user2.type() == URLIntent::Type::user);
@@ -32,4 +33,19 @@ TEST_CASE("standard path URL")
 	REQUIRE(user2.user()->username   == "bunny");
 	REQUIRE(user2.user()->path       == "/somedir/filename");
 	REQUIRE(user2.user()->rendition  == "");
+	REQUIRE(user2.str() == "/~bunny/somedir/filename");
+
+	URLIntent user3{"/~turtle/image.jpeg?rend=1024"};
+	REQUIRE(user3.type() == URLIntent::Type::user);
+	REQUIRE(user3.user());
+	REQUIRE(user3.user()->username   == "turtle");
+	REQUIRE(user3.user()->path       == "/image.jpeg");
+	REQUIRE(user3.user()->rendition  == "1024");
+	REQUIRE(user3.str() == "/~turtle/image.jpeg?rend=1024");
+
+	URLIntent login{"/session?create"};
+	REQUIRE(login.type() == URLIntent::Type::session);
+	REQUIRE(login.session());
+	REQUIRE(login.session()->action == URLIntent::Session::Action::create);
+	REQUIRE(login.str() == "/session?create");
 }

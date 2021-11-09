@@ -97,6 +97,8 @@ public:
 	[[nodiscard]] const Query*      query()     const {return std::get_if<Query>(&m_var);}
 	[[nodiscard]] const Lib*        lib()       const {return std::get_if<Lib>(&m_var);}
 
+	[[nodiscard]] std::string str() const;
+
 private:
 	std::variant<std::monostate, Session, User, Query, Lib> m_var;
 };
