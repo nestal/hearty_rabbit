@@ -84,11 +84,7 @@ void SessionHandler::on_login(const StringRequest& req, EmptyResponseSender&& se
 		m_server.login(
 			username,
 			Password{password},
-			[
-				this,
-				version=req.version(),
-				send=std::move(send)
-			](std::error_code ec) mutable
+			[this, version=req.version(), send=std::move(send)](std::error_code ec) mutable
 			{
 				assert(m_server.auth().invariance());
 

@@ -375,7 +375,7 @@ public:
 
 	void do_write(CommandString&& cmd, Completion&& completion);
 
-	boost::asio::execution_context& get_context() {return m_socket.get_executor().context();}
+	boost::asio::execution::any_executor<> get_executor() {return m_socket.get_executor();}
 
 private:
 	// must not call disconnect() inside the callbacks in m_callbacks

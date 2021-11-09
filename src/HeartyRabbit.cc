@@ -16,6 +16,7 @@
 #include "net/Redis.hh"
 #include "util/MMap.hh"
 #include "util/Magic.hh"
+#include "util/Error.hh"
 
 #include <nlohmann/json.hpp>
 #include <cassert>
@@ -31,6 +32,8 @@ void HeartyRabbitServer::login(
 	std::function<void(std::error_code)> on_complete
 )
 {
+	assert(on_complete);
+
 	try
 	{
 		auto user_dir = m_root / username;
@@ -42,13 +45,19 @@ void HeartyRabbitServer::login(
 		if (Authentication::verify_password(nlohmann::json::parse(ofs), password))
 		{
 			m_self.create_session(std::move(on_complete), std::string{username}, *m_redis, m_session_length);
+			return;
 		}
 	}
-	catch (std::ios_base::failure& e)
+	catch (std::ios_base::failure&)
 	{
-		on_complete(e.code());
-		return;
 	}
+
+	// Always run on_complete in the executor.
+	get_executor().execute([on_complete=std::move(on_complete)]
+	{
+		assert(on_complete);
+		on_complete(Error::login_incorrect);
+	});
 }
 
 std::error_code HeartyRabbitServer::add_user(std::string_view username, const Password& password)
@@ -119,11 +128,6 @@ void HeartyRabbitServer::upload_file(
 )
 {
 	on_complete({});
-}
-
-boost::asio::execution_context& HeartyRabbitServer::get_context()
-{
-	return m_redis->get_context();
 }
 
 DirectoryEntry::DirectoryEntry(const std::filesystem::directory_entry& physical_location) :

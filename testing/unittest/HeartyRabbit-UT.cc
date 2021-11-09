@@ -13,6 +13,7 @@
 #include "HeartyRabbit.hh"
 #include "crypto/Password.hh"
 #include "crypto/Random.hh"
+#include "util/Error.hh"
 
 #include <catch2/catch.hpp>
 #include <chrono>
@@ -37,29 +38,48 @@ TEST_CASE_METHOD(HeartyRabbitServerFixture, "HRB2 login and verify user", "[norm
 
 	auto tested = 0;
 	REQUIRE(m_subject.add_user(user, hrb::Password{"abc"}) == std::error_code());
-	m_subject.login(user, hrb::Password{"abc"}, [this, &tested, user](auto ec)
-	{
-		INFO(ec);
-		REQUIRE(!ec);
-		REQUIRE(!m_subject.auth().id().is_guest());
-		REQUIRE(!m_subject.auth().id().is_anonymous());
-		REQUIRE(m_subject.auth().id().username() == user);
-		++tested;
-	});
-	REQUIRE(m_ios.run_for(10s) > 0);
-	REQUIRE(tested == 1);
-	m_ios.restart();
 
-	// The second time when the same user connects it will be another HeartyRabbitServer to serve her.
-	HeartyRabbitServer other{std::filesystem::current_path(), redis::connect(m_ios)};
-	other.verify_session(m_subject.auth().session(), [this, &tested, &other, user](auto ec)
+	SECTION("login successful")
 	{
-		INFO(ec);
-		REQUIRE(!ec);
-		REQUIRE(other.auth().id().username() == user);
-		REQUIRE(other.auth().session() == m_subject.auth().session());
-		tested++;
-	});
-	REQUIRE(m_ios.run_for(10s) > 0);
-	REQUIRE(tested == 2);
+		m_subject.login(user, hrb::Password{"abc"}, [this, &tested, user](auto ec)
+		{
+			INFO(ec);
+			REQUIRE(!ec);
+			REQUIRE(!m_subject.auth().id().is_guest());
+			REQUIRE(!m_subject.auth().id().is_anonymous());
+			REQUIRE(m_subject.auth().id().username() == user);
+			++tested;
+		});
+		REQUIRE(m_ios.run_for(10s) > 0);
+		REQUIRE(tested == 1);
+		m_ios.restart();
+
+		// The second time when the same user connects it will be another HeartyRabbitServer to serve her.
+		HeartyRabbitServer other{std::filesystem::current_path(), redis::connect(m_ios)};
+		other.verify_session(m_subject.auth().session(), [this, &tested, &other, user](auto ec)
+		{
+			INFO(ec);
+			REQUIRE(!ec);
+			REQUIRE(other.auth().id().username() == user);
+			REQUIRE(other.auth().session() == m_subject.auth().session());
+			tested++;
+		});
+		REQUIRE(m_ios.run_for(10s) > 0);
+		REQUIRE(tested == 2);
+	}
+	SECTION("login incorrect")
+	{
+		m_subject.login(user, hrb::Password{"xyz"}, [this, &tested, user](auto ec)
+		{
+			INFO(ec);
+			REQUIRE(ec == Error::login_incorrect);
+			REQUIRE(!m_subject.auth().id().is_guest());
+			REQUIRE(m_subject.auth().id().is_anonymous());
+			REQUIRE(m_subject.auth().id().username() == "");
+			++tested;
+		});
+		REQUIRE(m_ios.run_for(10s) > 0);
+		REQUIRE(tested == 1);
+		m_ios.restart();
+	}
 }

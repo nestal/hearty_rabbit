@@ -123,7 +123,7 @@ public:
 	/// \brief Get the io_context associated with this interface.
 	/// This io_context will be used to run the completion callbacks of the async operations.
 	/// \return
-	[[nodiscard]] virtual boost::asio::execution_context& get_context() = 0;
+	[[nodiscard]] virtual boost::asio::execution::any_executor<> get_executor() = 0;
 };
 
 class HeartyRabbitServer : public HeartyRabbit
@@ -168,7 +168,7 @@ public:
 
 	[[nodiscard]] const Authentication& auth() const override {return m_self;}
 
-	[[nodiscard]] boost::asio::execution_context& get_context() override;
+	[[nodiscard]] boost::asio::execution::any_executor<> get_executor() override {return m_redis->get_executor();}
 
 private:
 	std::filesystem::path               m_root;
