@@ -12,10 +12,9 @@
 
 #pragma once
 
-#include <array>
-#include <optional>
+#include <boost/beast/http/verb.hpp>
+
 #include <iosfwd>
-#include <string_view>
 #include <string>
 #include <filesystem>
 #include <variant>
@@ -50,6 +49,7 @@ public:
 	{
 		enum class Action {create, destroy};
 		Action action;
+		[[nodiscard]] static bool verb_supported(boost::beast::http::verb verb);
 	};
 
 	struct User
@@ -59,17 +59,20 @@ public:
 		std::string rendition;     	//!< "1024x1024" or "json" in the above example
 
 		enum class Action {none, show};
+		[[nodiscard]] static bool verb_supported(boost::beast::http::verb verb);
 	};
 
 	struct Query
 	{
 		std::string tags;
 		std::string rendition;
+		[[nodiscard]] static bool verb_supported(boost::beast::http::verb verb);
 	};
 
 	struct Lib
 	{
 		std::string filename;
+		[[nodiscard]] static bool verb_supported(boost::beast::http::verb verb);
 	};
 
 public:
@@ -98,6 +101,17 @@ public:
 	[[nodiscard]] const Lib*        lib()       const {return std::get_if<Lib>(&m_var);}
 
 	[[nodiscard]] std::string str() const;
+	[[nodiscard]] bool verb_supported(boost::beast::http::verb verb) const
+	{
+		return std::visit([verb](auto&& s)
+		{
+			using T = std::decay_t<decltype(s)>;
+			if constexpr (std::is_same_v<T, std::monostate>)
+				return verb == boost::beast::http::verb::get;
+			else
+				return T::verb_supported(verb);
+		}, m_var);
+	}
 
 private:
 	std::variant<std::monostate, Session, User, Query, Lib> m_var;

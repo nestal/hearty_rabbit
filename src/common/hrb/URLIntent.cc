@@ -105,4 +105,26 @@ std::string URLIntent::str() const
 	);
 }
 
+bool URLIntent::Session::verb_supported(boost::beast::http::verb verb)
+{
+	return verb == boost::beast::http::verb::post;
+}
+
+bool URLIntent::User::verb_supported(boost::beast::http::verb verb)
+{
+	using namespace boost::beast::http;
+	return
+		verb == verb::get || verb == verb::post || verb == verb::head ||
+		verb == verb::put || verb == verb::delete_;
+}
+
+bool URLIntent::Query::verb_supported(boost::beast::http::verb verb)
+{
+	return verb == boost::beast::http::verb::get;
+}
+
+bool URLIntent::Lib::verb_supported(boost::beast::http::verb verb)
+{
+	return verb == boost::beast::http::verb::get;
+}
 } // end of namespace hrb

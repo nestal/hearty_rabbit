@@ -241,20 +241,25 @@ void SessionHandler::on_request_body(Request&& req, Send&& send)
 //	assert((m_auth.session() == Authentication::SessionID{}) == m_auth.id().is_anonymous());
 
 	URLIntent intent{req.target()};
-	if (auto session = intent.session(); session && session->action == URLIntent::Session::Action::create)
-	{
-		if constexpr (std::is_same<std::remove_reference_t<Request>, StringRequest>::value)
-		{
-			if (req.method() == http::verb::post)
-				return on_login(req, std::forward<Send>(send));
-		}
-
+	if (!intent.verb_supported(req.method()))
 		return send(http::response<http::empty_body>{http::status::bad_request, req.version()});
-	}
 
 	switch (intent.type())
 	{
 	case URLIntent::Type::session:
+		assert(intent.session());
+		if constexpr (std::is_same<std::remove_reference_t<Request>, StringRequest>::value)
+		{
+			if (intent.session()->action == URLIntent::Session::Action::create)
+				return on_login(req, std::forward<Send>(send));
+		}
+		if constexpr (std::is_same_v<std::decay_t<Request>, EmptyRequest>)
+		{
+			if (intent.session()->action == URLIntent::Session::Action::destroy)
+				return on_logout(std::forward<Request>(req), std::forward<Send>(send));
+		}
+		return send(http::response<http::empty_body>{http::status::bad_request, req.version()});
+
 	case URLIntent::Type::user:
 	case URLIntent::Type::lib:
 	case URLIntent::Type::query:
