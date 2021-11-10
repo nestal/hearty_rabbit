@@ -12,7 +12,7 @@
 
 #pragma once
 
-#include "../HeartyRabbit.hh"
+#include "HeartyRabbitServer.hh"
 #include "net/Redis.hh"
 #include "net/Request.hh"
 

@@ -33,8 +33,43 @@ target_include_directories(hrbcommon PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/common)
 # all server side codes are built as a library for unit test
 ###################################################################################################
 
-file(GLOB_RECURSE SERVER_SRC server/*/*.cc server/*/*.hh server/*/*.ipp)
-add_library(hrbsrv ${SERVER_SRC} ${CMAKE_BINARY_DIR}/config.hh)
+add_library(hrbsrv ${CMAKE_BINARY_DIR}/config.hh
+	server/HeartyRabbitServer.cc
+	server/HeartyRabbitServer.hh
+	server/crypto/Password.cc
+	server/crypto/Password.hh
+	server/crypto/Authentication.cc
+	server/crypto/Authentication.cc
+	server/hrb/SessionHandler.hh
+	server/hrb/SessionHandler.ipp
+	server/hrb/SessionHandler.cc
+	server/hrb/UploadFile.cc
+	server/hrb/UploadFile.hh
+	server/hrb/WebResources.cc
+	server/hrb/WebResources.hh
+	server/hrb/Server.cc
+	server/hrb/Server.hh
+	server/net/Redis.cc
+	server/net/Redis.hh
+	server/net/Listener.cc
+	server/net/Listener.hh
+	server/net/InsecureSession.cc
+	server/net/InsecureSession.hh
+	server/net/Session.cc
+	server/net/Session.hh
+	server/util/Log.cc
+	server/util/Log.hh
+	server/util/Configuration.cc
+	server/util/Configuration.hh
+	server/util/Backtrace.cc
+	server/util/Backtrace.hh
+	server/util/StringTemplate.cc
+	server/util/StringTemplate.hh
+	server/util/Exception.cc
+	server/util/Exception.hh
+	server/image/ImageContent.cc
+	server/image/ImageContent.hh
+)
 target_link_libraries(hrbsrv PUBLIC
 	hrbcommon
 	hrb2
@@ -88,7 +123,7 @@ add_dependencies(hrbsync unittest clienttest)
 ###################################################################################################
 # HRB V2
 ###################################################################################################
-add_library(hrb2 HeartyRabbit.hh HeartyRabbit.cc common/util/Overload.hh)
+add_library(hrb2 HeartyRabbit.hh common/util/Overload.hh)
 target_link_libraries(hrb2 PUBLIC hrbsrv)
 target_include_directories(hrb2 PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_compile_options(hrb2 PUBLIC -fcoroutines)

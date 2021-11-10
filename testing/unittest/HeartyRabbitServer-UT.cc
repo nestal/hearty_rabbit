@@ -10,7 +10,7 @@
 // Created by nestal on 1/11/2021.
 //
 
-#include "HeartyRabbit.hh"
+#include "HeartyRabbitServer.hh"
 #include "crypto/Password.hh"
 #include "crypto/Random.hh"
 #include "util/Error.hh"
