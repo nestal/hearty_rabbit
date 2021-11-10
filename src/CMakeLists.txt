@@ -103,7 +103,7 @@ target_compile_definitions(hrbclient PUBLIC -DBOOST_BEAST_USE_STD_STRING_VIEW)
 # Main server executable
 ###################################################################################################
 
-add_executable(hearty_rabbit server/main.cc)
+add_executable(hearty_rabbit server/main.cc client/HeartyRabbitClient.cc client/HeartyRabbitClient.hh)
 target_link_libraries(hearty_rabbit PRIVATE hrbsrv)
 add_dependencies(hearty_rabbit unittest clienttest)
 
