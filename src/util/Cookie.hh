@@ -30,7 +30,6 @@ class Cookie
 {
 public:
 	explicit Cookie(std::string_view header = {});
-	explicit Cookie(const char *s);
 
 	Cookie(const Cookie&) = default;
 	Cookie(Cookie&&) = default;
@@ -40,7 +39,7 @@ public:
 	std::chrono::system_clock::time_point expires() const;
 	std::string_view field(std::string_view id) const;
 
-	void add(std::string_view id, std::string_view value = {});
+	Cookie& add(std::string_view id, std::string_view value = {});
 	bool has(std::string_view id) const;
 
 	const std::string& str() const {return m_cookie;}

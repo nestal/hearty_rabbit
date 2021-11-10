@@ -13,11 +13,10 @@
 #pragma once
 
 #include "HeartyRabbit.hh"
+#include "UserID.hh"
 
 #include "http/RequestScheduler.hh"
-
 #include "util/Cookie.hh"
-#include "UserID.hh"
 #include "util/FS.hh"
 
 #include <boost/beast/http/verb.hpp>

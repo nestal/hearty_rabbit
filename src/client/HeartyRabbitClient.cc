@@ -11,6 +11,19 @@
 //
 
 #include "HeartyRabbitClient.hh"
+#include "URLIntent.hh"
+#include "http/GenericHTTPRequest.hh"
+
+#include "crypto/Password.hh"
+#include "util/AggregatedCallBack.hh"
+#include "util/Cookie.hh"
+#include "util/Error.hh"
+#include "util/Escape.hh"
+
+#include <boost/beast/http/file_body.hpp>
+#include <boost/beast/http/string_body.hpp>
+
+#include <nlohmann/json.hpp>
 
 namespace hrb {
 
@@ -29,22 +42,23 @@ void HeartyRabbitClient::login(
 	std::function<void(std::error_code)> on_complete
 )
 {
-/*	std::string username{user};
+	std::string username{user};
+	URLIntent url{URLIntent::Session{URLIntent::Session::Action::create}};
 
 	// Launch the asynchronous operation
 	auto req = std::make_shared<GenericHTTPRequest<http::string_body, http::string_body>>(m_ioc, m_ssl);
-	req->init(m_host, m_port, "/login", http::verb::post);
+	req->init(m_host, m_port, url.str(), http::verb::post);
 	req->request().set(http::field::content_type, "application/x-www-form-urlencoded");
-	req->request().body() = "username=" + username + "&password=" + std::string{password};
+	req->request().body() = "username=" + username + "&password=" + std::string{password.get()};
 
 	req->on_load(
-		[this, username, comp = std::forward<Complete>(comp)](auto ec, auto& req)
+		[this, username, comp=std::move(on_complete)](auto ec, auto& req)
 		{
 			m_outstanding.finish(req.shared_from_this());
 
 			if (req.response().result() == http::status::no_content)
 			{
-				m_cookie = req.response().at(http::field::set_cookie);
+//				m_cookie = req.response().at(http::field::set_cookie);
 				m_user   = UserID{username};
 			}
 			else
@@ -55,7 +69,6 @@ void HeartyRabbitClient::login(
 		}
 	);
 	m_outstanding.add(std::move(req));
-*/
 }
 
 void HeartyRabbitClient::verify_session(
