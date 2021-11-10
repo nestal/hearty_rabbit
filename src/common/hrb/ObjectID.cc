@@ -12,8 +12,8 @@
 
 #include "ObjectID.hh"
 
-#include "crypto/Blake2.hh"
-#include "crypto/Random.hh"
+#include "../../crypto/Blake2.hh"
+#include "../../crypto/Random.hh"
 #include "util/Escape.hh"
 
 #include <cstring>

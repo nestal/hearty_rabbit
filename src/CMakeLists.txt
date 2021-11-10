@@ -14,8 +14,39 @@ pkg_check_modules(LIBEXIF REQUIRED IMPORTED_TARGET libexif)
 ###################################################################################################
 
 # common code for both server and client
-file(GLOB_RECURSE COMMON_SRC common/*.cc common/*.hh common/*.ipp)
-add_library(hrbcommon ${COMMON_SRC})
+add_library(hrbcommon STATIC
+	crypto/Password.cc
+	crypto/Password.hh
+	crypto/Blake2.cc
+	crypto/Blake2.hh
+	crypto/Random.cc
+	crypto/Random.hh
+	util/Cookie.cc
+	util/Cookie.hh
+	util/Error.cc
+	util/Error.hh
+	util/Escape.cc
+	util/Escape.hh
+	util/FS.cc
+	util/FS.hh
+	util/JSON.hh
+	util/Magic.cc
+	util/Magic.hh
+	util/MMap.cc
+	util/MMap.hh
+	util/RepeatingTuple.hh
+	util/StringFields.hh
+	util/Timestamp.cc
+	util/Timestamp.hh
+	util/Overload.hh
+	image/ImageContent.cc
+	image/ImageContent.hh
+	URLIntent.cc
+	URLIntent.hh
+	UserID.cc
+	UserID.hh
+	HeartyRabbit.hh
+	SessionID.hh)
 target_link_libraries(hrbcommon PUBLIC
 	magic
 	Boost::system Boost::program_options stdc++fs
@@ -26,20 +57,19 @@ target_link_libraries(hrbcommon PUBLIC
 	PkgConfig::LIBEXIF
 	${CMAKE_THREAD_LIBS_INIT}
 )
-target_include_directories(hrbcommon PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/common)
+target_include_directories(hrbcommon PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
 ###################################################################################################
 # server library
 # all server side codes are built as a library for unit test
 ###################################################################################################
 
-add_library(hrbsrv ${CMAKE_BINARY_DIR}/config.hh
+add_library(hrbsrv STATIC ${CMAKE_BINARY_DIR}/config.hh
+	server/Authentication.cc
+	server/Authentication.ipp
+	server/Authentication.hh
 	server/HeartyRabbitServer.cc
 	server/HeartyRabbitServer.hh
-	server/crypto/Password.cc
-	server/crypto/Password.hh
-	server/crypto/Authentication.cc
-	server/crypto/Authentication.cc
 	server/hrb/SessionHandler.hh
 	server/hrb/SessionHandler.ipp
 	server/hrb/SessionHandler.cc
@@ -67,12 +97,9 @@ add_library(hrbsrv ${CMAKE_BINARY_DIR}/config.hh
 	server/util/StringTemplate.hh
 	server/util/Exception.cc
 	server/util/Exception.hh
-	server/image/ImageContent.cc
-	server/image/ImageContent.hh
 )
 target_link_libraries(hrbsrv PUBLIC
 	hrbcommon
-	hrb2
 	PkgConfig::HIREDIS
 	OpenSSL::SSL
 	OpenSSL::Crypto
@@ -80,24 +107,8 @@ target_link_libraries(hrbsrv PUBLIC
 	OpenCV::OpenCV
 	${CMAKE_THREAD_LIBS_INIT}
 )
-target_include_directories(hrbsrv PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/server)
+target_include_directories(hrbsrv PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/server)
 target_compile_definitions(hrbsrv PUBLIC -DBOOST_BEAST_USE_STD_STRING_VIEW)
-
-###################################################################################################
-# client library
-###################################################################################################
-
-file(GLOB_RECURSE CLIENT_SRC client/http/*.cc client/*.hh client/http/*.ipp)
-add_library(hrbclient ${CLIENT_SRC})
-target_link_libraries(
-	hrbclient
-	hrbcommon
-	OpenSSL::SSL
-	OpenSSL::Crypto
-	${CMAKE_THREAD_LIBS_INIT}
-)
-target_include_directories(hrbclient PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/client)
-target_compile_definitions(hrbclient PUBLIC -DBOOST_BEAST_USE_STD_STRING_VIEW)
 
 ###################################################################################################
 # Main server executable
@@ -105,28 +116,7 @@ target_compile_definitions(hrbclient PUBLIC -DBOOST_BEAST_USE_STD_STRING_VIEW)
 
 add_executable(hearty_rabbit server/main.cc client/HeartyRabbitClient.cc client/HeartyRabbitClient.hh)
 target_link_libraries(hearty_rabbit PRIVATE hrbsrv)
-add_dependencies(hearty_rabbit unittest clienttest)
-
-###################################################################################################
-# hrbsync: directory sync with hearty rabbit server
-###################################################################################################
-
-file(GLOB_RECURSE HRB_SYNC_SRC client/hrbsync/*.cc client/hrbsync/*.hh)
-add_library(hrbsync_lib ${HRB_SYNC_SRC})
-target_link_libraries(hrbsync_lib PUBLIC hrbclient)
-target_include_directories(hrbsync_lib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/client)
-
-add_executable(hrbsync client/hrbsync/main.cc)
-target_link_libraries(hrbsync PRIVATE hrbsync_lib)
-add_dependencies(hrbsync unittest clienttest)
-
-###################################################################################################
-# HRB V2
-###################################################################################################
-add_library(hrb2 HeartyRabbit.hh common/util/Overload.hh)
-target_link_libraries(hrb2 PUBLIC hrbsrv)
-target_include_directories(hrb2 PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-target_compile_options(hrb2 PUBLIC -fcoroutines)
+add_dependencies(hearty_rabbit unittest)
 
 if (BUILD_CLIENT)
 	add_subdirectory(client/qt)

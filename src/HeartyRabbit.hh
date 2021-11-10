@@ -12,10 +12,13 @@
 
 #pragma once
 
-#include "crypto/Authentication.hh"
-#include "net/Redis.hh"
+#include "SessionID.hh"
+#include "UserID.hh"
+
+#include <boost/asio/execution/any_executor.hpp>
 
 #include <chrono>
+#include <functional>
 #include <string_view>
 #include <filesystem>
 
@@ -91,10 +94,11 @@ public:
 
 	/// \brief Get back credentials after login.
 	/// \return Login credentials: e.g. session ID and user name.
-	[[nodiscard]] virtual const Authentication& auth() const = 0;
+	[[nodiscard]] virtual const SessionID& auth() const = 0;
+	[[nodiscard]] virtual const UserID& user() const = 0;
 
 	virtual void verify_session(
-		const Authentication::SessionID& cookie,
+		const SessionID& cookie,
 		std::function<void(std::error_code)>&& completion
 	) = 0;
 

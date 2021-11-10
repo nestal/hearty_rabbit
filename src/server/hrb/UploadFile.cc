@@ -71,9 +71,9 @@ std::size_t UploadFile::write(void const *buffer, std::size_t n, boost::system::
 }
 
 /// Get the object ID (blake2 hash) of the file.
-ObjectID UploadFile::ID() const
+Blake2::Hash UploadFile::Hash() const
 {
-	return ObjectID{Blake2{m_hash}.finalize()};
+	return Blake2{m_hash}.finalize();
 }
 
 UploadFile::native_handle_type UploadFile::native_handle() const

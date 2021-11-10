@@ -12,7 +12,7 @@
 
 #include <catch2/catch.hpp>
 
-#include "hrb/URLIntent.hh"
+#include "URLIntent.hh"
 #include "util/StringFields.hh"
 
 using namespace hrb;

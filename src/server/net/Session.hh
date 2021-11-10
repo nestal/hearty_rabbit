@@ -14,7 +14,7 @@
 
 #include "Request.hh"
 
-#include "hrb/URLIntent.hh"
+#include "URLIntent.hh"
 #include "hrb/UploadFile.hh"
 #include "hrb/SessionHandler.hh"
 

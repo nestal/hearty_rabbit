@@ -15,8 +15,8 @@
 #include "net/Redis.hh"
 #include "util/Cookie.hh"
 #include "util/Error.hh"
-#include "crypto/Authentication.hh"
-#include "crypto/Authentication.ipp"
+#include "server/Authentication.hh"
+#include "server/Authentication.ipp"
 #include "crypto/Password.hh"
 #include "crypto/Random.hh"
 

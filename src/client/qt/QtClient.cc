@@ -17,7 +17,7 @@
 #include "hrb/Collection.hh"
 #include "hrb/CollectionList.hh"
 #include "util/Escape.hh"
-#include "hrb/URLIntent.hh"
+#include "URLIntent.hh"
 
 #include <nlohmann/json.hpp>
 #include <iostream>

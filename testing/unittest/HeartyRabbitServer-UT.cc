@@ -45,9 +45,9 @@ TEST_CASE_METHOD(HeartyRabbitServerFixture, "HRB2 login and verify user", "[norm
 		{
 			INFO(ec);
 			REQUIRE(!ec);
-			REQUIRE(!m_subject.auth().id().is_guest());
-			REQUIRE(!m_subject.auth().id().is_anonymous());
-			REQUIRE(m_subject.auth().id().username() == user);
+			REQUIRE(!m_subject.user().is_guest());
+			REQUIRE(!m_subject.user().is_anonymous());
+			REQUIRE(m_subject.user().username() == user);
 			++tested;
 		});
 		REQUIRE(m_ios.run_for(10s) > 0);
@@ -56,12 +56,12 @@ TEST_CASE_METHOD(HeartyRabbitServerFixture, "HRB2 login and verify user", "[norm
 
 		// The second time when the same user connects it will be another HeartyRabbitServer to serve her.
 		HeartyRabbitServer other{std::filesystem::current_path(), redis::connect(m_ios)};
-		other.verify_session(m_subject.auth().session(), [this, &tested, &other, user](auto ec)
+		other.verify_session(m_subject.auth(), [this, &tested, &other, user](auto ec)
 		{
 			INFO(ec);
 			REQUIRE(!ec);
-			REQUIRE(other.auth().id().username() == user);
-			REQUIRE(other.auth().session() == m_subject.auth().session());
+			REQUIRE(other.user().username() == user);
+			REQUIRE(other.auth() == m_subject.auth());
 			tested++;
 		});
 		REQUIRE(m_ios.run_for(10s) > 0);
@@ -73,9 +73,9 @@ TEST_CASE_METHOD(HeartyRabbitServerFixture, "HRB2 login and verify user", "[norm
 		{
 			INFO(ec);
 			REQUIRE(ec == Error::login_incorrect);
-			REQUIRE(!m_subject.auth().id().is_guest());
-			REQUIRE(m_subject.auth().id().is_anonymous());
-			REQUIRE(m_subject.auth().id().username() == "");
+			REQUIRE(!m_subject.user().is_guest());
+			REQUIRE(m_subject.user().is_anonymous());
+			REQUIRE(m_subject.user().username() == "");
 			++tested;
 		});
 		REQUIRE(m_ios.run_for(10s) > 0);

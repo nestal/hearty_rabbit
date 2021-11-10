@@ -11,7 +11,7 @@
 //
 
 #include "Permission.hh"
-#include "UserID.hh"
+#include "../../UserID.hh"
 
 namespace hrb {
 

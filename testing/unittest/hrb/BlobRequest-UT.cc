@@ -13,7 +13,7 @@
 #include <catch2/catch.hpp>
 
 #include "hrb/BlobRequest.hh"
-#include "hrb/UserID.hh"
+#include "UserID.hh"
 #include "crypto/Random.hh"
 
 using namespace hrb;

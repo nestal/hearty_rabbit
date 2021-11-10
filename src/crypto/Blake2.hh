@@ -33,9 +33,10 @@ public:
 	// Hash values will be used as keys for database, so if they are
 	// too long, searching the database will be too slow.
 	static constexpr std::size_t size = 20;
+	using Hash = std::array<unsigned char, size>;
 
 	void update(const void *data, std::size_t len);
-	std::array<unsigned char, size> finalize();
+	Hash finalize();
 	std::size_t finalize(unsigned char *out, std::size_t len);
 
 private:

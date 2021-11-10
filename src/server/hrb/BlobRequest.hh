@@ -13,7 +13,7 @@
 #pragma once
 
 #include "hrb/ObjectID.hh"
-#include "hrb/URLIntent.hh"
+#include "URLIntent.hh"
 #include "net/Request.hh"
 
 #include <string_view>

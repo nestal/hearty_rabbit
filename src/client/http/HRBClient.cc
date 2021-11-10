@@ -14,7 +14,7 @@
 
 #include "GenericHTTPRequest.hh"
 
-#include "hrb/URLIntent.hh"
+#include "../../URLIntent.hh"
 #include "hrb/Blob.hh"
 
 #include <regex>

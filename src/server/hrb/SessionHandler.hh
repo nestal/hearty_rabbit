@@ -116,7 +116,7 @@ private:
 	void validate_collection(Collection& json);
 
 private:
-	std::optional<Authentication::SessionID>        m_request_session_id;
+	std::optional<SessionID>                        m_request_session_id;
 	std::chrono::high_resolution_clock::time_point  m_on_header;
 
 	HeartyRabbitServer      m_server;

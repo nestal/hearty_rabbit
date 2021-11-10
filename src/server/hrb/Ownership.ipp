@@ -19,7 +19,7 @@
 #include "hrb/Blob.hh"
 #include "hrb/Permission.hh"
 #include "hrb/CollectionList.hh"
-#include "hrb/UserID.hh"
+#include "UserID.hh"
 #include "util/Error.hh"
 #include "util/Escape.hh"
 #include "util/Log.hh"

@@ -59,7 +59,7 @@ void HeartyRabbitClient::login(
 }
 
 void HeartyRabbitClient::verify_session(
-	const Authentication::SessionID& cookie,
+	const SessionID& cookie,
 	std::function<void(std::error_code)>&& completion
 )
 {

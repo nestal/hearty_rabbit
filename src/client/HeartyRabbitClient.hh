@@ -17,7 +17,7 @@
 #include "http/RequestScheduler.hh"
 
 #include "util/Cookie.hh"
-#include "hrb/UserID.hh"
+#include "UserID.hh"
 #include "util/FS.hh"
 
 #include <boost/beast/http/verb.hpp>
@@ -46,10 +46,11 @@ public:
 		std::function<void(std::error_code)> on_complete
 	) override;
 
-	[[nodiscard]] const Authentication& auth() const override {return m_auth;}
+	[[nodiscard]] const SessionID& auth() const override {return m_cookie;}
+	[[nodiscard]] const UserID& user() const override {return m_user;}
 
 	void verify_session(
-		const Authentication::SessionID& cookie,
+		const SessionID& cookie,
 		std::function<void(std::error_code)>&& completion
 	) override;
 
@@ -90,7 +91,8 @@ private:
 	std::string m_port;
 
 	// authenticated user
-	Authentication  m_auth;
+	SessionID m_cookie;
+	UserID m_user;
 
 	// outstanding and pending requests
 	RequestScheduler m_outstanding;

@@ -12,7 +12,8 @@
 
 #pragma once
 
-#include "hrb/UserID.hh"
+#include "UserID.hh"
+#include "SessionID.hh"
 #include <nlohmann/json.hpp>
 
 #include <array>
@@ -33,9 +34,6 @@ class Cookie;
 
 class Authentication
 {
-public:
-	using SessionID = std::array<unsigned char, 16>;
-
 public:
 	Authentication() = default;
 	explicit Authentication(SessionID guest_session);

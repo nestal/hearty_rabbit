@@ -14,20 +14,15 @@
 
 #include "SessionHandler.hh"
 
-#include "BlobRequest.hh"
-#include "BlobDatabase.hh"
-#include "Ownership.ipp"
 #include "UploadFile.hh"
 #include "WebResources.hh"
-#include "index/PHashDb.hh"
+#include "URLIntent.hh"
 
-#include "crypto/Authentication.hh"
-#include "crypto/Authentication.ipp"
+#include "server/Authentication.hh"
+#include "server/Authentication.ipp"
 #include "net/MMapResponseBody.hh"
 
-#include "hrb/Blob.hh"
-#include "hrb/Collection.hh"
-#include "hrb/URLIntent.hh"
+#include "util/Error.hh"
 #include "util/StringFields.hh"
 #include "util/Log.hh"
 #include "util/Cookie.hh"
@@ -47,13 +42,13 @@ public:
 	SendJSON(
 		Send&& send,
 		unsigned version,
-		std::optional<ObjectID> blob,
+//		std::optional<ObjectID> blob,
 		SessionHandler& parent,
 		const WebResources *lib = nullptr
 	) :
 		m_send{std::move(send)},
 		m_version{version},
-		m_blob{blob},
+//		m_blob{blob},
 		m_parent{parent},
 		m_lib{lib}
 	{
@@ -87,12 +82,12 @@ public:
 		assert(json.is_object());
 		using namespace std::chrono;
 
-		if (m_parent.m_server.auth().id().is_valid())
-			json.emplace("username", m_parent.m_server.auth().id().username());
-		if (m_parent.m_server.auth().id().is_guest())
-			json.emplace("auth", to_hex(m_parent.m_server.auth().session()));
-		if (m_blob)
-			json.emplace("blob", to_hex(*m_blob));
+		if (m_parent.m_server.user().is_valid())
+			json.emplace("username", m_parent.m_server.user().username());
+		if (m_parent.m_server.user().is_guest())
+			json.emplace("auth", to_hex(m_parent.m_server.auth()));
+//		if (m_blob)
+//			json.emplace("blob", to_hex(*m_blob));
 		if (m_parent.m_on_header != high_resolution_clock::time_point{})
 			json.emplace(
 				"elapse",
@@ -151,7 +146,7 @@ public:
 private:
 	mutable Send    m_send;
 	unsigned        m_version;
-	std::optional<ObjectID> m_blob;
+//	std::optional<ObjectID> m_blob;
 	SessionHandler& m_parent;
 	const WebResources *m_lib;
 };
@@ -166,7 +161,7 @@ void SessionHandler::on_request_header(
 	Complete&& complete
 )
 {
-	assert(!m_server.auth().is_valid());
+	assert(!m_server.user().is_valid());
 
 	m_on_header = std::chrono::high_resolution_clock::now();
 	URLIntent intent{header.target()};

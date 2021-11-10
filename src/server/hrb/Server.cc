@@ -16,7 +16,7 @@
 #include "net/Listener.hh"
 
 #include "crypto/Password.hh"
-#include "crypto/Authentication.hh"
+#include "server/Authentication.hh"
 
 #include "util/Error.hh"
 #include "util/Configuration.hh"

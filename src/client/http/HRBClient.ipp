@@ -23,7 +23,7 @@
 #include "util/Error.hh"
 #include "util/Escape.hh"
 #include "hrb/ObjectID.hh"
-#include "hrb/URLIntent.hh"
+#include "../../URLIntent.hh"
 
 #include <boost/beast/http/file_body.hpp>
 

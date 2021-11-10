@@ -33,7 +33,7 @@ std::size_t Blake2::finalize(unsigned char *out, std::size_t len)
 	return len;
 }
 
-std::array<unsigned char, Blake2::size> Blake2::finalize()
+Blake2::Hash Blake2::finalize()
 {
 	std::array<unsigned char, Blake2::size> result{};
 	finalize(&result[0], result.size());

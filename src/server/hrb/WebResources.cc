@@ -12,7 +12,6 @@
 
 #include "WebResources.hh"
 
-#include "hrb/ObjectID.hh"
 #include "ResourcesList.hh"
 #include "crypto/Blake2.hh"
 #include "util/Escape.hh"
@@ -53,7 +52,7 @@ auto WebResources::load(const fs::path& base, Iterator first, Iterator last)
 
 		Blake2 hasher;
 		hasher.update(mmap.data(), mmap.size());
-		auto etag = to_quoted_hex(ObjectID{hasher.finalize()});
+		auto etag = to_quoted_hex(hasher.finalize());
 		auto mime = resource_mime(path.extension().string(), mmap.buffer());
 
 		result.emplace(

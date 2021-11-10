@@ -12,7 +12,7 @@
 
 #include <catch2/catch.hpp>
 
-#include "crypto/Authentication.hh"
+#include "server/Authentication.hh"
 #include "hrb/Ownership.hh"
 #include "hrb/Ownership.ipp"
 #include "hrb/BlobDatabase.hh"

@@ -12,7 +12,7 @@
 
 #include "ImageContent.hh"
 #include "util/FS.hh"
-#include "util/Log.hh"
+//#include "util/Log.hh"
 
 #include "config.hh"
 
@@ -244,8 +244,8 @@ void ImageContent::add_content(std::vector<InflectionPoint>& infections, const c
 
 void ImageContent::check_models(const fs::path& haar_path)
 {
-	if (HAARModel model{haar_path}; !model)
-		Log(LOG_WARNING, "Cannot load HAAR models in %1%. Face detection will be disabled.", haar_path);
+//	if (HAARModel model{haar_path}; !model)
+//		Log(LOG_WARNING, "Cannot load HAAR models in %1%. Face detection will be disabled.", haar_path);
 }
 
 } // end of namespace hrb

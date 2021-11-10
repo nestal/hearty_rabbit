@@ -12,11 +12,10 @@
 
 #pragma once
 
-#include "util/BufferView.hh"
-
 #include <cstddef>
 #include <array>
 #include <span>
+#include <string_view>
 #include <vector>
 
 namespace hrb {

@@ -12,9 +12,9 @@
 
 #pragma once
 
-#include "hrb/ObjectID.hh"
 #include "util/FS.hh"
 #include "net/Request.hh"
+#include "crypto/Blake2.hh"
 
 #include <boost/beast/core/file_posix.hpp>
 #include <system_error>
@@ -61,7 +61,7 @@ public:
 	/// Write to the open file
 	std::size_t write(void const* buffer, std::size_t n, boost::system::error_code& ec);
 
-	[[nodiscard]] ObjectID ID() const;
+	[[nodiscard]] std::array<unsigned char, 20> Hash() const;
 
 	[[nodiscard]] native_handle_type native_handle() const;
 

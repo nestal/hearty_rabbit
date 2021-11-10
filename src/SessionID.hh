@@ -1,5 +1,5 @@
 /*
-	Copyright © 2018 Wan Wai Ho <me@nestal.net>
+	Copyright © 2021 Wan Wai Ho <me@nestal.net>
     
     This file is subject to the terms and conditions of the GNU General Public
     License.  See the file COPYING in the main directory of the hearty_rabbit
@@ -7,15 +7,15 @@
 */
 
 //
-// Created by nestal on 3/3/18.
+// Created by nestal on 10/11/2021.
 //
 
 #pragma once
 
-#include <string_view>
+#include <array>
 
 namespace hrb {
 
-using BufferView = std::basic_string_view<unsigned char>;
+using SessionID = std::array<unsigned char, 16>;
 
 }

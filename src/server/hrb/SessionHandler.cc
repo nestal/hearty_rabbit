@@ -12,31 +12,24 @@
 
 #include "SessionHandler.hh"
 
-#include "BlobDatabase.hh"
-#include "BlobFile.hh"
-#include "BlobRequest.hh"
-#include "Ownership.hh"
-#include "Ownership.ipp"
 #include "UploadFile.hh"
 #include "WebResources.hh"
 
-#include "hrb/BlobInode.hh"
-#include "hrb/Collection.hh"
-#include "hrb/URLIntent.hh"
+#include "URLIntent.hh"
 #include "util/StringFields.hh"
 
 #include "crypto/Password.hh"
-#include "crypto/Authentication.hh"
-#include "crypto/Authentication.ipp"
+#include "server/Authentication.hh"
+#include "server/Authentication.ipp"
 
 #include "net/SplitBuffers.hh"
 #include "net/MMapResponseBody.hh"
 
 #include "util/Configuration.hh"
+#include "util/Error.hh"
 #include "util/Escape.hh"
 #include "util/FS.hh"
 #include "util/Log.hh"
-#include "hrb/index/PHashDb.hh"
 
 #include <boost/beast/http/fields.hpp>
 #include <boost/beast/http/message.hpp>
@@ -50,9 +43,9 @@ SessionHandler::SessionHandler(
 //	BlobDatabase& blob_db,
 	const Configuration& cfg
 ) :
-	m_lib{lib}, m_server{cfg.blob_path(), std::move(db), m_cfg.session_length()}, m_cfg{cfg}
+	m_lib{lib}, m_server{cfg.blob_path(), std::move(db), cfg.session_length()}, m_cfg{cfg}
 {
-	assert(!m_server.auth().is_valid());
+	assert(!m_server.user().is_valid());
 }
 
 std::chrono::seconds SessionHandler::session_length() const
@@ -79,14 +72,14 @@ void SessionHandler::on_login(const StringRequest& req, EmptyResponseSender&& se
 	{
 		auto [username, password] = urlform.find(body, "username", "password");
 
-		assert(!m_server.auth().is_valid());
+		assert(!m_server.user().is_valid());
 
 		m_server.login(
 			username,
 			Password{password},
 			[this, version=req.version(), send=std::move(send)](std::error_code ec) mutable
 			{
-				assert(m_server.auth().invariance());
+//				assert(m_server.auth().invariance());
 
 				http::response<http::empty_body> res{
 					ec == Error::login_incorrect ?
@@ -110,7 +103,7 @@ void SessionHandler::on_logout(const EmptyRequest& req, EmptyResponseSender&& se
 	{
 		// clear the user credential.
 		// Session will set the cookie in the response so no need to set here
-		assert(!m_server.auth().is_valid());
+		assert(!m_server.user().is_valid());
 
 		http::response<http::empty_body> res{http::status::ok, version};
 		res.set(http::field::cache_control, "no-cache, no-store, must-revalidate");
@@ -159,20 +152,20 @@ void SessionHandler::post_blob(BlobRequest&& req, EmptyResponseSender&& send)
 //		return send(http::response<http::empty_body>{http::status::forbidden, req.version()});
 
 //	assert(req.blob());
-	auto [perm_str, move_destination] = urlform.find(req.body(), "perm", "move");
-
-	if (perm_str.empty() && move_destination.empty())
-		return send(http::response<http::empty_body>{http::status::bad_request, req.version()});
-
-	auto on_complete = [send = std::move(send), version = req.version()](auto&& ec)
-	{
-		send(
-			http::response<http::empty_body>{
-				ec ? http::status::internal_server_error : http::status::no_content,
-				version
-			}
-		);
-	};
+//	auto [perm_str, move_destination] = urlform.find(req.body(), "perm", "move");
+//
+//	if (perm_str.empty() && move_destination.empty())
+//		return send(http::response<http::empty_body>{http::status::bad_request, req.version()});
+//
+//	auto on_complete = [send = std::move(send), version = req.version()](auto&& ec)
+//	{
+//		send(
+//			http::response<http::empty_body>{
+//				ec ? http::status::internal_server_error : http::status::no_content,
+//				version
+//			}
+//		);
+//	};
 /*
 	if (!perm_str.empty())
 		Ownership{req.owner(), m_auth.id()}.set_permission(
@@ -258,7 +251,7 @@ http::response<SplitBuffers> SessionHandler::not_found(std::string_view target, 
 {
 	nlohmann::json dir;
 	dir.emplace("error_message", "The request resource was not found.");
-	dir.emplace("username", std::string{m_server.auth().id().username()});
+	dir.emplace("username", std::string{m_server.user().username()});
 
 	return m_lib.inject(http::status::not_found, dir.dump(), "<meta></meta>", version);
 }
@@ -287,11 +280,11 @@ http::response<SplitBuffers> SessionHandler::file_request(const URLIntent& inten
 
 bool SessionHandler::renewed_auth() const
 {
-	assert(m_server.auth().invariance());
+//	assert(m_server.auth().invariance());
 
 	return m_request_session_id.has_value()      ?      // if request cookie is present, check against the new cookie
-		*m_request_session_id != m_server.auth().session() :     // otherwise, there's no cookie in the original request,
-		m_server.auth().id().is_valid();                         // if we have a valid (non-guest) cookie now,
+		*m_request_session_id != m_server.auth() :     // otherwise, there's no cookie in the original request,
+		m_server.user().is_valid();                         // if we have a valid (non-guest) cookie now,
 														// then the session is renewed.
 }
 
@@ -302,11 +295,11 @@ std::string SessionHandler::server_root() const
 
 void SessionHandler::validate_collection(Collection& coll)
 {
-	for (auto& [id, entry] : coll)
-	{
-		if (entry.timestamp == Timestamp{})
-		{
-			Log(LOG_WARNING, "%1% has no timestamp in collection entry: loading from disk", to_hex(id));
+//	for (auto& [id, entry] : coll)
+//	{
+//		if (entry.timestamp == Timestamp{})
+//		{
+//			Log(LOG_WARNING, "%1% has no timestamp in collection entry: loading from disk", to_hex(id));
 
 //			auto blob_file = m_blob_db.find(id);
 
@@ -315,17 +308,17 @@ void SessionHandler::validate_collection(Collection& coll)
 //			coll.update_timestamp(id, new_entry.timestamp);
 
 //			Ownership{m_auth.id()}.update_blob(*m_db, id, new_entry);
-		}
-	}
+//		}
+//	}
 }
 
 void SessionHandler::set_header(const BlobInode& entry, boost::beast::http::fields& header)
 {
-	header.set(http::field::content_disposition, "inline; filename=" + url_encode(entry.filename));
-	header.set(http::field::last_modified, entry.timestamp.http_format());
-
-	if (header.find(http::field::content_type) == header.end())
-		header.set(http::field::content_type, entry.mime);
+//	header.set(http::field::content_disposition, "inline; filename=" + url_encode(entry.filename));
+//	header.set(http::field::last_modified, entry.timestamp.http_format());
+//
+//	if (header.find(http::field::content_type) == header.end())
+//		header.set(http::field::content_type, entry.mime);
 }
 
 } // end of namespace hrb

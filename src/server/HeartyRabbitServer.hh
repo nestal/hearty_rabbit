@@ -14,6 +14,9 @@
 
 #include "HeartyRabbit.hh"
 
+#include "Authentication.hh"
+#include "net/Redis.hh"
+
 namespace hrb {
 
 class HeartyRabbitServer : public HeartyRabbit
@@ -37,7 +40,7 @@ public:
 	) override;
 
 	void verify_session(
-		const Authentication::SessionID& cookie,
+		const SessionID& cookie,
 		std::function<void(std::error_code)>&& completion
 	) override;
 
@@ -56,7 +59,8 @@ public:
 		std::function<void(Directory&& result, std::error_code)> on_complete
 	) const override;
 
-	[[nodiscard]] const Authentication& auth() const override {return m_self;}
+	[[nodiscard]] const SessionID& auth() const override {return m_self.session();}
+	[[nodiscard]] const UserID& user() const override {return m_self.id();}
 
 	[[nodiscard]] boost::asio::execution::any_executor<> get_executor() override {return m_redis->get_executor();}
 

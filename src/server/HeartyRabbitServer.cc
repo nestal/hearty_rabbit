@@ -80,7 +80,7 @@ std::error_code HeartyRabbitServer::add_user(std::string_view username, const Pa
 }
 
 void HeartyRabbitServer::verify_session(
-	const Authentication::SessionID& cookie,
+	const SessionID& cookie,
 	std::function<void(std::error_code)>&& completion
 )
 {

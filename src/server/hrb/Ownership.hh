@@ -13,7 +13,7 @@
 #pragma once
 
 #include "hrb/ObjectID.hh"
-#include "hrb/UserID.hh"
+#include "UserID.hh"
 
 #include "BlobDBEntry.hh"
 
