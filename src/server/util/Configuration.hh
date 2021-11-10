@@ -12,8 +12,8 @@
 
 #pragma once
 
-#include "Exception.hh"
-#include "Size2D.hh"
+#include "util/Exception.hh"
+#include "util/Size2D.hh"
 
 #include "util/FS.hh"
 

@@ -48,8 +48,8 @@ public:
 
 	using iterator   = std::vector<std::string_view>::const_iterator;
 	using value_type = std::string_view;
-	iterator begin() const {return m_src.begin();}
-	iterator end() const {return m_src.end();}
+	[[nodiscard]] iterator begin() const {return m_src.begin();}
+	[[nodiscard]] iterator end() const {return m_src.end();}
 
 private:
 	void inject(std::string_view needle, std::size_t needle_before, std::size_t needle_after);

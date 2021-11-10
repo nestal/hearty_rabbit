@@ -39,14 +39,19 @@ add_library(hrbcommon STATIC
 	util/Timestamp.cc
 	util/Timestamp.hh
 	util/Overload.hh
+	util/Exception.cc
+	util/Exception.hh
 	image/ImageContent.cc
 	image/ImageContent.hh
+	util/Backtrace.cc
+	util/Backtrace.hh
 	URLIntent.cc
 	URLIntent.hh
 	UserID.cc
 	UserID.hh
 	HeartyRabbit.hh
-	SessionID.hh)
+	SessionID.hh
+)
 target_link_libraries(hrbcommon PUBLIC
 	magic
 	Boost::system Boost::program_options stdc++fs
@@ -91,12 +96,8 @@ add_library(hrbsrv STATIC ${CMAKE_BINARY_DIR}/config.hh
 	server/util/Log.hh
 	server/util/Configuration.cc
 	server/util/Configuration.hh
-	server/util/Backtrace.cc
-	server/util/Backtrace.hh
 	server/util/StringTemplate.cc
 	server/util/StringTemplate.hh
-	server/util/Exception.cc
-	server/util/Exception.hh
 )
 target_link_libraries(hrbsrv PUBLIC
 	hrbcommon
@@ -109,6 +110,27 @@ target_link_libraries(hrbsrv PUBLIC
 )
 target_include_directories(hrbsrv PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/server)
 target_compile_definitions(hrbsrv PUBLIC -DBOOST_BEAST_USE_STD_STRING_VIEW)
+
+###################################################################################################
+# client library
+###################################################################################################
+
+add_library(hrbclient STATIC
+	client/HeartyRabbitClient.cc
+	client/HeartyRabbitClient.hh
+	client/http/GenericHTTPRequest.cc
+	client/http/GenericHTTPRequest.hh
+	client/http/RequestScheduler.cc
+	client/http/RequestScheduler.hh
+)
+target_link_libraries(hrbclient PUBLIC
+	hrbcommon
+	OpenSSL::SSL
+	OpenSSL::Crypto
+	${CMAKE_THREAD_LIBS_INIT}
+)
+target_include_directories(hrbclient PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/client)
+target_compile_definitions(hrbclient PUBLIC -DBOOST_BEAST_USE_STD_STRING_VIEW)
 
 ###################################################################################################
 # Main server executable
