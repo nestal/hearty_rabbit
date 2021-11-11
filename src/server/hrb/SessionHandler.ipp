@@ -238,7 +238,7 @@ void SessionHandler::on_request_body(Request&& req, Send&& send)
 //	assert((m_auth.session() == Authentication::SessionID{}) == m_auth.id().is_anonymous());
 
 	URLIntent intent{req.target()};
-std::cout << "intent " << (int)intent.type() << std::endl;
+
 	if (!intent.verb_supported(req.method()))
 		return send(http::response<http::empty_body>{http::status::bad_request, req.version()});
 

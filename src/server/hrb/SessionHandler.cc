@@ -69,17 +69,16 @@ void SessionHandler::prepare_upload(UploadFile& result, std::error_code& ec)
 void SessionHandler::on_login(const StringRequest& req, EmptyResponseSender&& send)
 {
 	auto&& body = req.body();
-std::cout << "login from " << req[http::field::content_type] << std::endl;
+
 	if (req[http::field::content_type] == "application/x-www-form-urlencoded")
 	{
 		auto [username, password] = urlform.find(body, "username", "password");
-std::cout << "login from " << username << std::endl;
 		assert(!m_server.user().is_valid());
 
 		m_server.login(
 			username,
 			Password{password},
-			[this, version=req.version(), send=std::move(send)](std::error_code ec) mutable
+			[version=req.version(), send=std::move(send)](std::error_code ec) mutable
 			{
 //				assert(m_server.auth().invariance());
 
