@@ -90,7 +90,7 @@ private:
 	std::string m_port;
 
 	// authenticated user
-	SessionID m_cookie;
+	SessionID m_cookie{};
 	UserID m_user;
 
 	// outstanding and pending requests
