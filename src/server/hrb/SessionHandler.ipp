@@ -33,6 +33,8 @@
 #include <boost/beast/http/empty_body.hpp>
 #include <boost/beast/version.hpp>
 
+#include <iostream>
+
 namespace hrb {
 
 template <class Send>
@@ -169,8 +171,8 @@ void SessionHandler::on_request_header(
 	// Use StringRequestParser to parser login requests.
 	// The username/password will be stored in the string body.
 	// No need to verify session.
-//	if (intent.action() == URLIntent::Action::login)
-//		return complete(RequestBodyType::string, std::error_code{});
+	if (intent.type() == URLIntent::Type::session && intent.session()->action == URLIntent::Session::Action::create)
+		return complete(RequestBodyType::string, std::error_code{});
 
 	// Everything else require a valid session.
 	m_request_session_id = Authentication::parse_cookie(Cookie{header[http::field::cookie]});
@@ -236,6 +238,7 @@ void SessionHandler::on_request_body(Request&& req, Send&& send)
 //	assert((m_auth.session() == Authentication::SessionID{}) == m_auth.id().is_anonymous());
 
 	URLIntent intent{req.target()};
+std::cout << "intent " << (int)intent.type() << std::endl;
 	if (!intent.verb_supported(req.method()))
 		return send(http::response<http::empty_body>{http::status::bad_request, req.version()});
 

@@ -16,7 +16,6 @@
 #include "WebResources.hh"
 
 #include "URLIntent.hh"
-#include "util/StringFields.hh"
 
 #include "crypto/Password.hh"
 #include "server/Authentication.hh"
@@ -30,17 +29,19 @@
 #include "util/Escape.hh"
 #include "util/FS.hh"
 #include "util/Log.hh"
+#include "util/StringFields.hh"
 
 #include <boost/beast/http/fields.hpp>
 #include <boost/beast/http/message.hpp>
 #include <boost/beast/http/empty_body.hpp>
+
+#include <iostream>
 
 namespace hrb {
 
 SessionHandler::SessionHandler(
 	std::shared_ptr<redis::Connection>&& db,
 	WebResources& lib,
-//	BlobDatabase& blob_db,
 	const Configuration& cfg
 ) :
 	m_lib{lib}, m_server{cfg.blob_path(), std::move(db), cfg.session_length()}, m_cfg{cfg}
@@ -68,10 +69,11 @@ void SessionHandler::prepare_upload(UploadFile& result, std::error_code& ec)
 void SessionHandler::on_login(const StringRequest& req, EmptyResponseSender&& send)
 {
 	auto&& body = req.body();
+std::cout << "login from " << req[http::field::content_type] << std::endl;
 	if (req[http::field::content_type] == "application/x-www-form-urlencoded")
 	{
 		auto [username, password] = urlform.find(body, "username", "password");
-
+std::cout << "login from " << username << std::endl;
 		assert(!m_server.user().is_valid());
 
 		m_server.login(

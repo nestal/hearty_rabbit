@@ -13,10 +13,10 @@
 #include "Server.hh"
 
 #include "SessionHandler.hh"
+#include "HeartyRabbitServer.hh"
 #include "net/Listener.hh"
 
 #include "crypto/Password.hh"
-#include "server/Authentication.hh"
 
 #include "util/Error.hh"
 #include "util/Configuration.hh"
@@ -94,10 +94,9 @@ void Server::add_user(
 {
 	boost::asio::io_context ioc;
 	redis::Pool db{ioc, cfg.redis()};
-	Authentication::add_user(username, password, *db.alloc(), [&complete](std::error_code ec)
-	{
-		complete(ec);
-	});
+
+	HeartyRabbitServer hrb{cfg.blob_path(), db.alloc(), cfg.session_length()};
+	hrb.add_user(username, password);
 	ioc.run();
 }
 

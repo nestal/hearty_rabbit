@@ -97,11 +97,6 @@ public:
 	{
 		return m_args.count("add-user") > 0 && (func(m_args["add-user"].as<std::string>()), true);
 	}
-	template <typename Function>
-	bool blob_id(Function&& func) const
-	{
-		return m_args.count("blob-id") > 0 && (func(m_args["blob-id"].as<std::string>()), true);
-	}
 
 	void usage(std::ostream& out) const;
 

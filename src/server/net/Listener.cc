@@ -84,7 +84,7 @@ void Listener::on_accept(boost::system::error_code ec, boost::asio::ip::tcp::soc
 		std::make_shared<Session>(
 			m_session_factory, std::move(socket),
 			*m_ssl_ctx, m_session_count,
-			m_cfg.session_length(), m_cfg.upload_limit()
+			m_cfg.upload_limit()
 		)->run();
 		m_session_count++;
 	}

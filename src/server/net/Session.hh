@@ -32,7 +32,7 @@ namespace hrb {
 
 class Server;
 class SessionHandler;
-class Authentication;
+class Cookie;
 
 // Handles an HTTP server connection
 class Session : public std::enable_shared_from_this<Session>
@@ -44,7 +44,6 @@ public:
 		boost::asio::ip::tcp::socket    socket,
 		boost::asio::ssl::context&      ssl_ctx,
 		std::size_t                     nth,
-		std::chrono::seconds            login_session,
 		std::size_t                     upload_limit
 	);
 
@@ -72,6 +71,8 @@ private:
 	void handle_read_error(std::string_view where, boost::system::error_code ec);
 	void init_request_body(SessionHandler::RequestBodyType body_type, std::error_code& ec);
 
+	Cookie set_cookie() const;
+
 private:
 	tcp::socket		                        m_socket;
 	boost::asio::ssl::stream<tcp::socket&>  m_stream;
@@ -88,7 +89,6 @@ private:
 	std::optional<SessionHandler>   m_handler;
 
 	// configurations
-	std::chrono::seconds    m_login_session;
 	std::size_t             m_upload_size_limit;
 
 	// stats

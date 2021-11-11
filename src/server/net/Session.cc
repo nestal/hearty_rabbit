@@ -14,6 +14,7 @@
 
 #include "hrb/SessionHandler.ipp"
 #include "net/SplitBuffers.hh"
+
 #include "util/Cookie.hh"
 #include "util/Error.hh"
 #include "util/Log.hh"
@@ -30,14 +31,12 @@ Session::Session(
 	boost::asio::ip::tcp::socket socket,
 	boost::asio::ssl::context&  ssl_ctx,
 	std::size_t             nth,
-	std::chrono::seconds    login_session,
 	std::size_t             upload_limit
 ) :
 	m_socket{std::move(socket)},
 	m_stream{m_socket, ssl_ctx},
 	m_factory{std::move(factory)},
 	m_nth_session{nth},
-	m_login_session{login_session},
 	m_upload_size_limit{upload_limit}
 {
 }
@@ -142,7 +141,7 @@ void Session::on_read(boost::system::error_code ec, std::size_t)
 					// check if auth is renewed. if yes, set it to cookie before sending
 					if (m_handler->renewed_auth())
 					{
-//						response.set(http::field::set_cookie, m_handler->auth().set_cookie(m_login_session).str());
+						response.set(http::field::set_cookie, set_cookie().str());
 					}
 
 					send_response(std::forward<decltype(response)>(response));
@@ -274,6 +273,28 @@ void Session::init_request_body(SessionHandler::RequestBodyType body_type, std::
 		break;
 	}
 
+}
+
+Cookie Session::set_cookie() const
+{
+	assert(m_handler);
+
+	Cookie cookie;
+	cookie.add("id", m_handler->user().is_valid() ? to_hex(m_handler->auth()) : "");
+
+	cookie.add("Path", "/");
+	if (m_handler->user().is_valid())
+	{
+		cookie.add("Secure");
+		cookie.add("HttpOnly");
+		cookie.add("SameSite", "Strict");
+		cookie.add("Max-Age", std::to_string(m_handler->session_length().count()));
+	}
+	else
+	{
+		cookie.add("Expires", "Thu, Jan 01 1970 00:00:00 UTC");
+	}
+	return cookie;
 }
 
 } // end of namespace

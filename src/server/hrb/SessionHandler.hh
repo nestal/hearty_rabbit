@@ -82,6 +82,8 @@ public:
 
 	[[nodiscard]] std::chrono::seconds session_length() const;
 
+	[[nodiscard]] auto& auth() const {return m_server.auth();}
+	[[nodiscard]] auto& user() const {return m_server.user();}
 	[[nodiscard]] bool renewed_auth() const;
 
 private:

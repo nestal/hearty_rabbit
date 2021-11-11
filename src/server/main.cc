@@ -86,9 +86,6 @@ int main(int argc, char *argv[])
 			std::cout << "\n";
 			return EXIT_SUCCESS;
 		}
-		else if (cfg.blob_id([&cfg](auto&&)
-		{
-		})) { return EXIT_SUCCESS;}
 
 		// check if HAAR model path in configuration is valid
 		ImageContent::check_models(cfg.haar_path());
