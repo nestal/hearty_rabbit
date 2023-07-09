@@ -260,7 +260,7 @@ void SessionHandler::on_upload(UploadRequest&& req, EmptyResponseSender&& send)
 	);
 }
 
-http::response<http::string_body> SessionHandler::bad_request(boost::beast::string_view why, unsigned version)
+http::response<http::string_body> SessionHandler::bad_request(boost::string_view why, unsigned version)
 {
 	http::response<http::string_body> res{
 		std::piecewise_construct,
@@ -281,7 +281,7 @@ http::response<SplitBuffers> SessionHandler::not_found(boost::string_view target
 	return m_lib.inject(http::status::not_found, dir.dump(), "<meta></meta>", version);
 }
 
-http::response<http::string_body> SessionHandler::server_error(boost::beast::string_view what, unsigned version)
+http::response<http::string_body> SessionHandler::server_error(boost::string_view what, unsigned version)
 {
 	http::response<http::string_body> res{
 		std::piecewise_construct,

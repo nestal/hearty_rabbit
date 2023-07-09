@@ -14,6 +14,7 @@
 
 #include <tuple>
 #include <utility>
+#include <string_view>
 
 namespace hrb {
 

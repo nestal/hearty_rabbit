@@ -14,6 +14,7 @@
 
 #include <blake2.h>
 
+#include <array>
 #include <memory>
 
 namespace hrb {

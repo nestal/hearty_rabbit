@@ -10,7 +10,7 @@ if (NOT BUILD_NUMBER)
 endif()
 message(STATUS "Building HeartyRabbit ${VERSION}.${BUILD_NUMBER}")
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CONFIG_FILENAME "hearty_rabbit.json")
 
 # OpenCV haarcascade model for unit test

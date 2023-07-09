@@ -16,32 +16,21 @@
 
 #include <system_error>
 #include <utility>
+#include <cassert>
 
 // C++17 is doing cmake's job
 #if __has_include(<sys/random.h>)
 #include <sys/random.h>
-#else
-#include <unistd.h>
-#include <sys/syscall.h>
-#include <linux/random.h>
-
-namespace {
-
-// The glibc in CentOS 7 does not have the getrandom() wrapper yet, but its kernel does
-// support the getrandom() system call.
-ssize_t getrandom(void *buf, size_t size, unsigned int flags)
-{
-	return syscall(SYS_getrandom, buf, size, flags);
-}
-
-} // end of local namespace
 #endif
+
+// for getentropy()
+#include <unistd.h>
 
 namespace hrb {
 
 void secure_random(void *buf, std::size_t size)
 {
-	if (::getrandom(buf, size, 0) != size)
+	if (::getentropy(buf, size) != size)
 		throw std::system_error(errno, std::generic_category());
 }
 

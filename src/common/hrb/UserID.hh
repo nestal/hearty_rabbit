@@ -15,6 +15,7 @@
 #include <chrono>
 #include <array>
 #include <optional>
+#include <string>
 
 namespace hrb {
 

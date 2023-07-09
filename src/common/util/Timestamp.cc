@@ -13,7 +13,7 @@
 #include "Timestamp.hh"
 
 #include <iomanip>
-#include <ostream>
+#include <sstream>
 
 namespace hrb {
 

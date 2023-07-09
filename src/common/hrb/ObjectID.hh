@@ -58,7 +58,7 @@ namespace std
 			};
 
 			FiveU32 t{};
-			static_assert(sizeof(t) == s.size());
+//			static_assert(sizeof(t) == s.size());
 			std::memcpy(&t, &s[0], s.size());
 
 			std::size_t seed = 0;

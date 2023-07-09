@@ -59,13 +59,13 @@ std::optional<ObjectID> ObjectID::from_raw(std::string_view raw)
 
 bool operator==(const ObjectID& id1, const ObjectID& id2)
 {
-	static_assert(id1.size() == id2.size());    // isn't it obvious?
+//	static_assert(id1.size() == id2.size());    // isn't it obvious?
 	return std::memcmp(id1.data(), id2.data(), id1.size()) == 0;
 }
 
 bool operator!=(const ObjectID& id1, const ObjectID& id2)
 {
-	static_assert(id1.size() == id2.size());    // isn't it obvious?
+//	static_assert(id1.size() == id2.size());    // isn't it obvious?
 	return std::memcmp(id1.data(), id2.data(), id1.size()) != 0;
 }
 
