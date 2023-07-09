@@ -75,18 +75,18 @@ public:
 		on_request_body(std::forward<Request>(req), std::forward<Send>(send));
 	};
 
-	static http::response<http::string_body> bad_request(boost::string_view why, unsigned version);
-	http::response<SplitBuffers> not_found(boost::string_view target, unsigned version);
-	static http::response<http::string_body> server_error(boost::string_view what, unsigned version);
-	static http::response<http::empty_body> see_other(boost::beast::string_view where, unsigned version);
+	static http::response<http::string_body> bad_request(std::string_view why, unsigned version);
+	http::response<SplitBuffers> not_found(std::string_view target, unsigned version);
+	static http::response<http::string_body> server_error(std::string_view what, unsigned version);
+	static http::response<http::empty_body> see_other(std::string_view where, unsigned version);
 
-	std::chrono::seconds session_length() const;
+	[[nodiscard]] std::chrono::seconds session_length() const;
 
-	const UserID& auth() const {return m_auth;}
-	bool renewed_auth() const;
+	[[nodiscard]] const UserID& auth() const {return m_auth;}
+	[[nodiscard]] bool renewed_auth() const;
 
 private:
-	http::response<SplitBuffers> file_request(const URLIntent& intent, boost::string_view etag, unsigned version);
+	http::response<SplitBuffers> file_request(const URLIntent& intent, std::string_view etag, unsigned version);
 
 	template <class Send>
 	class SendJSON;

@@ -21,10 +21,12 @@
 #include "WebResources.hh"
 #include "index/PHashDb.hh"
 
+// common?
 #include "crypto/Authentication.hh"
 #include "crypto/Authentication.ipp"
 #include "net/MMapResponseBody.hh"
 #include "util/Log.hh"
+#include "util/Cookie.hh"
 
 #include "hrb/Blob.hh"
 #include "hrb/Collection.hh"

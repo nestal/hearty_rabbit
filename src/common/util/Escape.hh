@@ -83,15 +83,6 @@ auto tokenize(std::string_view remain, std::string_view value)
 	return result;
 }
 
-template <std::size_t count>
-auto tokenize(boost::string_view remain, boost::string_view value)
-{
-	return tokenize<count>(
-		std::string_view{remain.data(), remain.size()},
-		std::string_view{value.data(), value.size()}
-	);
-}
-
 } // end of namespace
 template <std::size_t N>
 std::ostream& operator<<(std::ostream& os, const std::array<unsigned char, N>& id)

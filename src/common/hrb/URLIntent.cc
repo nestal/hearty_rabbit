@@ -70,7 +70,7 @@ std::string_view extract_left(std::string_view& target)
 }
 } // end of local namespace
 
-URLIntent::URLIntent(boost::string_view boost_target)
+URLIntent::URLIntent(std::string_view boost_target)
 {
 	// order is important here
 	// All URL path must start with slash

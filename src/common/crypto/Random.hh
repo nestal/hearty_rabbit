@@ -19,6 +19,7 @@
 #include <cstring>
 #include <algorithm>
 #include <limits>
+#include <cstdint>
 
 namespace hrb {
 

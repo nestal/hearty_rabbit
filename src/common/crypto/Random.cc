@@ -18,19 +18,18 @@
 #include <utility>
 #include <cassert>
 
-// C++17 is doing cmake's job
-#if __has_include(<sys/random.h>)
-#include <sys/random.h>
-#endif
-
 // for getentropy()
-#include <unistd.h>
+#if __has_include(<sys/random.h>)
+	#include <sys/random.h>
+#else
+	#include <unistd.h>
+#endif
 
 namespace hrb {
 
 void secure_random(void *buf, std::size_t size)
 {
-	if (::getentropy(buf, size) != size)
+	if (::getentropy(buf, size) != 0)
 		throw std::system_error(errno, std::generic_category());
 }
 

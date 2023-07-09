@@ -67,7 +67,7 @@ WebResources::WebResources(const fs::path& web_root) :
 {
 }
 
-WebResources::Response WebResources::find_static(std::string_view filename, boost::string_view etag, int version) const
+WebResources::Response WebResources::find_static(std::string_view filename, std::string_view etag, int version) const
 {
 	auto it = m_static.find(filename);
 	if (it == m_static.end())
@@ -106,7 +106,7 @@ WebResources::Response WebResources::inject(http::status status, std::string&& j
 	return res;
 }
 
-WebResources::Resource::Resource(std::string_view name, MMap&& file, std::string&& mime, boost::string_view etag) :
+WebResources::Resource::Resource(std::string_view name, MMap&& file, std::string&& mime, std::string_view etag) :
 	m_name{name}, m_file{std::move(file)}, m_mime{std::move(mime)}, m_etag{etag}
 {
 	if (name == "index.html")

@@ -180,7 +180,7 @@ TEST_CASE("General server tests", "[normal]")
 			FileResponseChecker checker{http::status::ok, cfg.web_root() / "static/hearty_rabbit.js"};
 
 			req.target("/lib/hearty_rabbit.js");
-			req.set(boost::beast::http::field::cookie, session.set_cookie());
+			req.set(boost::beast::http::field::cookie, session.set_cookie().str());
 			subject.handle_request(std::move(req), std::ref(checker), session);
 			REQUIRE(checker.tested());
 		}
@@ -200,7 +200,7 @@ TEST_CASE("General server tests", "[normal]")
 			GenericStatusChecker checker{http::status::ok};
 
 			req.target("/");
-			req.set(boost::beast::http::field::cookie, session.set_cookie());
+			req.set(boost::beast::http::field::cookie, session.set_cookie().str());
 			subject.handle_request(std::move(req), std::ref(checker), session);
 			REQUIRE(server.get_io_context().run_for(10s) > 0);
 			REQUIRE(checker.tested());
@@ -307,7 +307,7 @@ TEST_CASE("General server tests", "[normal]")
 		SECTION("request with valid session response with 200 created")
 		{
 			GenericStatusChecker checker{http::status::created};
-			req.set(boost::beast::http::field::cookie, session.set_cookie());
+			req.set(boost::beast::http::field::cookie, session.set_cookie().str());
 			subject.handle_request(std::move(req), std::ref(checker), session);
 			REQUIRE(server.get_io_context().run_for(10s) > 0);
 			REQUIRE(checker.tested());
@@ -325,7 +325,7 @@ TEST_CASE("General server tests", "[normal]")
 
 			SECTION("get back the uploaded blob with valid session")
 			{
-				get_blob.set(boost::beast::http::field::cookie, session.set_cookie());
+				get_blob.set(boost::beast::http::field::cookie, session.set_cookie().str());
 				FileResponseChecker blob{http::status::ok, __FILE__};
 				subject.handle_request(std::move(get_blob), std::ref(blob), session);
 				REQUIRE(server.get_io_context().run_for(3610s) > 0);

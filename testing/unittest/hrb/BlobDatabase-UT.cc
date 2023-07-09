@@ -64,7 +64,7 @@ TEST_CASE("Open temp file", "[normal]")
 
 	auto res = subject.response(tmpid, 11, "image/jpeg", "");
 	REQUIRE(res.result() == http::status::ok);
-	REQUIRE(res[http::field::etag] != boost::string_view{});
+	REQUIRE(res[http::field::etag] != std::string_view{});
 }
 
 TEST_CASE("Upload JPEG file to BlobDatabase", "[normal]")

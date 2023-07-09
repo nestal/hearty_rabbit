@@ -30,7 +30,6 @@ class Cookie
 {
 public:
 	explicit Cookie(std::string_view header = {});
-	explicit Cookie(boost::string_view header);
 	explicit Cookie(const char *s);
 
 	Cookie(const Cookie&) = default;

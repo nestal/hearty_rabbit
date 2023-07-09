@@ -122,7 +122,7 @@ void SessionHandler::on_logout(const EmptyRequest& req, EmptyResponseSender&& se
 /// See [MDN](https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/303) for details.
 /// It is used to redirect to home page after login, for example, and other cases which
 /// we don't want the browser to cache.
-http::response<http::empty_body> SessionHandler::see_other(boost::beast::string_view where, unsigned version)
+http::response<http::empty_body> SessionHandler::see_other(std::string_view where, unsigned version)
 {
 	http::response<http::empty_body> res{http::status::see_other, version};
 	res.set(http::field::location, where);
@@ -260,7 +260,7 @@ void SessionHandler::on_upload(UploadRequest&& req, EmptyResponseSender&& send)
 	);
 }
 
-http::response<http::string_body> SessionHandler::bad_request(boost::string_view why, unsigned version)
+http::response<http::string_body> SessionHandler::bad_request(std::string_view why, unsigned version)
 {
 	http::response<http::string_body> res{
 		std::piecewise_construct,
@@ -272,7 +272,7 @@ http::response<http::string_body> SessionHandler::bad_request(boost::string_view
 }
 
 // Returns a not found response
-http::response<SplitBuffers> SessionHandler::not_found(boost::string_view target, unsigned version)
+http::response<SplitBuffers> SessionHandler::not_found(std::string_view target, unsigned version)
 {
 	nlohmann::json dir;
 	dir.emplace("error_message", "The request resource was not found.");
@@ -281,18 +281,18 @@ http::response<SplitBuffers> SessionHandler::not_found(boost::string_view target
 	return m_lib.inject(http::status::not_found, dir.dump(), "<meta></meta>", version);
 }
 
-http::response<http::string_body> SessionHandler::server_error(boost::string_view what, unsigned version)
+http::response<http::string_body> SessionHandler::server_error(std::string_view what, unsigned version)
 {
 	http::response<http::string_body> res{
 		std::piecewise_construct,
-		std::make_tuple("An error occurred: '" + what.to_string() + "'"),
+		std::make_tuple(std::string{"An error occurred: '"}.append(what).append("'")),
 		std::make_tuple(http::status::internal_server_error, version)
 	};
 	res.set(http::field::content_type, "text/plain");
 	return res;
 }
 
-http::response<SplitBuffers> SessionHandler::file_request(const URLIntent& intent, boost::string_view etag, unsigned version)
+http::response<SplitBuffers> SessionHandler::file_request(const URLIntent& intent, std::string_view etag, unsigned version)
 {
 	return intent.filename() == "login_incorrect.html" ?
 		m_lib.inject(http::status::ok, R"_({login_message: "Login incorrect... Try again?"})_", "", version) :
