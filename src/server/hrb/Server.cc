@@ -90,9 +90,9 @@ void Server::add_user(const Configuration& cfg, std::string_view username, Passw
 {
 	boost::asio::io_context ioc;
 	redis::Pool db{ioc, cfg.redis()};
-	Authentication::add_user(username, std::move(password), *db.alloc(), [&complete](std::error_code&& ec)
+	Authentication::add_user(username, password, *db.alloc(), [&complete](std::error_code&& ec)
 	{
-		complete(std::move(ec));
+		complete(ec);
 	});
 	ioc.run();
 }

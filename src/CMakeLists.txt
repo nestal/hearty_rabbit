@@ -8,6 +8,15 @@ find_package(Doxygen)
 pkg_check_modules(HIREDIS REQUIRED IMPORTED_TARGET hiredis)
 pkg_check_modules(LIBEXIF REQUIRED IMPORTED_TARGET libexif)
 
+# V2 code:
+add_library(
+	hrb2
+	server/hrb/RequestTarget.hh
+	server/hrb/RequestTarget.cc
+)
+target_include_directories(hrb2 PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/server)
+target_link_libraries(hrb2 PUBLIC OpenSSL::Crypto)
+
 ###################################################################################################
 # common library: shared code between client and server
 ###################################################################################################

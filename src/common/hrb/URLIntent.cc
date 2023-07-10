@@ -90,7 +90,7 @@ URLIntent::URLIntent(std::string_view boost_target)
 	m_valid = true;
 
 	// Extract the query string:
-	// only truncate "target" when "?" is found; keep "target" unchange if "?" is not found
+	// only truncate "target" when "?" is found; keep "target" unchanged if "?" is not found
 	// use split_left() because the query string starts from the _first_ '?' according to
 	// [RFC 3986](https://tools.ietf.org/html/rfc3986#page-23).
 	auto tmp = target;

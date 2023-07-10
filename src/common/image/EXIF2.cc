@@ -17,7 +17,7 @@
 namespace hrb {
 
 EXIF2::EXIF2(BufferView jpeg) :
-	m_data{::exif_data_new_from_data(static_cast<const unsigned char*>(jpeg.data()), jpeg.size())}
+	m_data{::exif_data_new_from_data(jpeg.data(), jpeg.size())}
 {
 }
 

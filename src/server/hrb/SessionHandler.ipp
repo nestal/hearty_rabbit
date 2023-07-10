@@ -228,7 +228,7 @@ void SessionHandler::on_request_header(
 				body_type = RequestBodyType::string;
 
 			// If the cookie returned by verify_session() is different from the one we passed to it,
-			// that mean it is going to expired and it's renewed.
+			// that mean it is going to expire and it's renewed.
 			// In this case we want to tell Session to put it in the "Set-Cookie" header.
 			complete(body_type, ec);
 		}
