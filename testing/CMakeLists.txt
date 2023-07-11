@@ -11,8 +11,12 @@ target_link_libraries(test_common PUBLIC OpenCV::OpenCV)
 ###################################################################################################
 
 #file(GLOB_RECURSE SRV_UT_SRC unittest/*.cc unittest/*.hh)
-add_executable(unittest unittest/hrb/RequestTarget-UT.cc unittest/unittest.cc)
-target_link_libraries(unittest PUBLIC Catch2::Catch2 hrb2)
+add_executable(unittest
+	unittest/hrb/RequestTarget-UT.cc
+	unittest/crypto/Random-UT.cc
+	unittest/unittest.cc
+)
+target_link_libraries(unittest PUBLIC Catch2::Catch2 hrbcommon hrbsrv)
 
 # Automatically run unit tests after the build
 # Although we specified the ${CMAKE_BINARY_DIR} as the current directory when running unit tests,

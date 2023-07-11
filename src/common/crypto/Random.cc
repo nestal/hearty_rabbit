@@ -17,71 +17,32 @@
 #include <system_error>
 #include <utility>
 #include <cassert>
+#include <limits>
 
-// for getentropy()
-#if __has_include(<sys/random.h>)
-	#include <sys/random.h>
-#else
-	#include <unistd.h>
-#endif
+#include <openssl/rand.h>
+#include <openssl/err.h>
+
+namespace {
+template <typename OpenSSLRandomFunction>
+inline void open_ssl_rand(void *buf, std::size_t size, OpenSSLRandomFunction&& func)
+{
+	assert(size <= std::numeric_limits<int>::max());
+
+	// TODO: better error handling
+	if (func(reinterpret_cast<unsigned char*>(buf), static_cast<int>(size)) != 1)
+		throw std::system_error(static_cast<int>(::ERR_get_error()), std::generic_category());
+}
+}
 
 namespace hrb {
-
 void secure_random(void *buf, std::size_t size)
 {
-	if (::getentropy(buf, size) != 0)
-		throw std::system_error(errno, std::generic_category());
+	open_ssl_rand(buf, size, ::RAND_priv_bytes);
 }
 
-// Blake2x random number generator: https://blake2.net/blake2x.pdf
-Blake2x::Blake2x() noexcept
+void insecure_random(void *buf, std::size_t size)
 {
-	m_param.digest_length = 8;
-	m_param.key_length = 0;
-	m_param.fanout = 0;
-	m_param.depth = 0;
-	m_param.leaf_length = 64;
-	m_param.node_depth = 0;
-	m_param.inner_length = 64;
-	m_param.node_offset = boost::endian::native_to_little(UINT64_C(0xffffffff00000000));
-	// leave reserved as zero
-	// leave personalization as zero
-
-	reseed();
-}
-
-Blake2x::result_type Blake2x::operator()()
-{
-	::blake2b_state ctx{};
-	::blake2b_init_param(&ctx, &m_param);
-	::blake2b_update(&ctx, reinterpret_cast<std::uint8_t*>(&m_h0), sizeof(m_h0));
-
-	result_type hash{};
-	::blake2b_final(&ctx, reinterpret_cast<std::uint8_t*>(&hash), sizeof(hash));
-
-	// Update generator state
-	auto native_offset = boost::endian::little_to_native(m_param.node_offset);
-	assert(native_offset >> 32U == 0xffffffffU);
-	native_offset++;
-	m_param.node_offset = boost::endian::native_to_little(native_offset);
-
-	// Technically we can go up to 2^32 blocks before reseeding,
-	// but reseeding more often is safer.
-	if ((native_offset & 0xffffffff) % 0x7ffff == 0)
-		reseed();
-
-	return hash;
-}
-
-Blake2x& Blake2x::instance()
-{
-	thread_local Blake2x inst;
-	return inst;
-}
-
-void Blake2x::reseed()
-{
-	reseed(SecureRandom<std::uint64_t>{});
+	open_ssl_rand(buf, size, ::RAND_bytes);
 }
 
 } // end of namespace hrb
