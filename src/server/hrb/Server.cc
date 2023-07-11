@@ -15,8 +15,8 @@
 #include "SessionHandler.hh"
 #include "net/Listener.hh"
 
-#include "crypto/Password.hh"
-#include "crypto/Authentication.hh"
+//#include "crypto/Password.hh"
+//#include "crypto/Authentication.hh"
 
 #include "util/Error.hh"
 #include "util/Configuration.hh"
@@ -25,16 +25,14 @@
 #include <boost/exception/errinfo_api_function.hpp>
 #include <boost/exception/info.hpp>
 
-#include <utility>
-
 namespace hrb {
 
 Server::Server(const Configuration& cfg) :
 	m_cfg{cfg},
 	m_ioc{static_cast<int>(std::max(1UL, cfg.thread_count()))},
-	m_db{m_ioc, cfg.redis()},
-	m_lib{cfg.web_root()},
-	m_blob_db{cfg}
+	m_db{m_ioc, cfg.redis()}
+//	m_lib{cfg.web_root()},
+//	m_blob_db{cfg}
 {
 }
 
@@ -85,7 +83,7 @@ void Server::drop_privileges() const
 	if (::getuid() == 0)
 		throw std::runtime_error("cannot run as root");
 }
-
+/*
 void Server::add_user(const Configuration& cfg, std::string_view username, Password&& password, std::function<void(std::error_code)> complete)
 {
 	boost::asio::io_context ioc;
@@ -96,7 +94,7 @@ void Server::add_user(const Configuration& cfg, std::string_view username, Passw
 	});
 	ioc.run();
 }
-
+*/
 boost::asio::io_context& Server::get_io_context()
 {
 	return m_ioc;
@@ -104,7 +102,7 @@ boost::asio::io_context& Server::get_io_context()
 
 SessionHandler Server::start_session()
 {
-	return {m_db.alloc(), m_lib, m_blob_db, m_cfg};
+	return {m_db.alloc(), /*m_lib, m_blob_db,*/ m_cfg};
 }
 
 

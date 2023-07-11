@@ -21,4 +21,12 @@ TEST_CASE("normal URL parsing", "[normal]")
 	RequestTarget empty;
 	REQUIRE(empty.path() == "/");
 	REQUIRE(empty.action() == "");
+
+	RequestTarget login{"/?login"};
+	REQUIRE(login.path() == "/");
+	REQUIRE(login.action() == "login");
+
+	RequestTarget login_path{"/some/kind/of/path?login"};
+	REQUIRE(login_path.path() == "/some/kind/of/path");
+	REQUIRE(login_path.action() == "login");
 }

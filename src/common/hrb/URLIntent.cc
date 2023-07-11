@@ -166,7 +166,7 @@ void URLIntent::parse_field_from_right(std::string_view& target, hrb::URLIntent:
 	if (p == Parameter::filename || p == Parameter::blob)
 	{
 		// After split_right() remove the matched string from "target", we can't undo it.
-		// Therefore we make a copy of target and match that instead.
+		// Therefore, we make a copy of target and match that instead.
 		auto target_copy = target;
 		auto [field, sep] = split_right(target_copy, "/");
 

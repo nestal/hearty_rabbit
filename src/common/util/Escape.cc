@@ -132,7 +132,7 @@ std::tuple<std::string_view, char> split_left(std::string_view& in, std::string_
 
 	// Remove the matching character, if any
 	char match = '\0';
-	if (location != in.npos)
+	if (location != std::string_view::npos)
 	{
 		match = in.front();
 		in.remove_prefix(1);

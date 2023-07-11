@@ -12,8 +12,8 @@
 
 #pragma once
 
-#include "BlobDatabase.hh"
-#include "WebResources.hh"
+//#include "BlobDatabase.hh"
+//#include "WebResources.hh"
 
 #include "net/Redis.hh"
 
@@ -43,12 +43,12 @@ public:
 	SessionHandler start_session();
 
 	// Administrative commands and configurations
-	static void add_user(
-		const Configuration& cfg,
-		std::string_view username,
-		Password&& password,
-		std::function<void(std::error_code)> complete
-	);
+//	static void add_user(
+//		const Configuration& cfg,
+//		std::string_view username,
+//		Password&& password,
+//		std::function<void(std::error_code)> complete
+//	);
 
 	void drop_privileges() const;
 
@@ -58,8 +58,8 @@ private:
 	boost::asio::io_context     m_ioc;
 
 	redis::Pool     m_db;
-	WebResources    m_lib;
-	BlobDatabase    m_blob_db;
+//	WebResources    m_lib;
+//	BlobDatabase    m_blob_db;
 };
 
 } // end of namespace

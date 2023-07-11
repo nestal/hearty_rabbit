@@ -12,17 +12,17 @@
 
 #include "SessionHandler.hh"
 
-#include "BlobDatabase.hh"
-#include "BlobFile.hh"
-#include "BlobRequest.hh"
-#include "Ownership.hh"
-#include "Ownership.ipp"
+//#include "BlobDatabase.hh"
+//#include "BlobFile.hh"
+//#include "BlobRequest.hh"
+//#include "Ownership.hh"
+//#include "Ownership.ipp"
 #include "UploadFile.hh"
-#include "WebResources.hh"
+//#include "WebResources.hh"
 
-#include "hrb/BlobInode.hh"
-#include "hrb/Collection.hh"
-#include "hrb/URLIntent.hh"
+//#include "hrb/BlobInode.hh"
+//#include "hrb/Collection.hh"
+//#include "hrb/URLIntent.hh"
 #include "util/StringFields.hh"
 
 #include "crypto/Password.hh"
@@ -36,7 +36,7 @@
 #include "util/Escape.hh"
 #include "util/FS.hh"
 #include "util/Log.hh"
-#include "hrb/index/PHashDb.hh"
+//#include "hrb/index/PHashDb.hh"
 
 #include <boost/beast/http/fields.hpp>
 #include <boost/beast/http/message.hpp>
@@ -46,11 +46,11 @@ namespace hrb {
 
 SessionHandler::SessionHandler(
 	std::shared_ptr<redis::Connection>&& db,
-	WebResources& lib,
-	BlobDatabase& blob_db,
+//	WebResources& lib,
+//	BlobDatabase& blob_db,
 	const Configuration& cfg
 ) :
-	m_db{db}, m_lib{lib}, m_blob_db{blob_db}, m_cfg{cfg}
+	m_db{db}, m_cfg{cfg}
 {
 }
 
@@ -62,7 +62,12 @@ std::chrono::seconds SessionHandler::session_length() const
 void SessionHandler::prepare_upload(UploadFile& result, std::error_code& ec)
 {
 	// Need to call prepare_upload() before using UploadRequestBody.
-	m_blob_db.prepare_upload(result, ec);
+	boost::system::error_code err;
+
+	result.open(m_cfg.blob_path().string().c_str(), err);
+	if (err)
+		ec.assign(err.value(), err.category());
+
 	if (ec)
 		Log(LOG_WARNING, "error opening file %1%: %2% (%3%)", m_cfg.blob_path(), ec, ec.message());
 }
@@ -72,9 +77,10 @@ void SessionHandler::on_login(const StringRequest& req, EmptyResponseSender&& se
 	auto&& body = req.body();
 	if (req[http::field::content_type] == "application/x-www-form-urlencoded")
 	{
-		auto [username, password] = urlform.find(body, "username", "password");
-
-		Authentication::verify_user(
+//		auto [username, password] = urlform.find(body, "username", "password");
+		http::response<http::empty_body> res{http::status::no_content, req.version()};
+		send(std::move(res));
+/*		Authentication::verify_user(
 			username,
 			Password{password},
 			*m_db,
@@ -98,11 +104,12 @@ void SessionHandler::on_login(const StringRequest& req, EmptyResponseSender&& se
 				send(std::move(res));
 			}
 		);
+		*/
 	}
 	else
 		send(http::response<http::empty_body>{http::status::bad_request, req.version()});
 }
-
+/*
 void SessionHandler::on_logout(const EmptyRequest& req, EmptyResponseSender&& send)
 {
 	Authentication{m_auth}.destroy_session(*m_db, [this, send=std::move(send), version=req.version()](auto&& ec) mutable
@@ -117,7 +124,7 @@ void SessionHandler::on_logout(const EmptyRequest& req, EmptyResponseSender&& se
 		send(std::move(res));
 	});
 }
-
+*/
 /// Helper function to create a 303 See Other response.
 /// See [MDN](https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/303) for details.
 /// It is used to redirect to home page after login, for example, and other cases which
@@ -128,7 +135,7 @@ http::response<http::empty_body> SessionHandler::see_other(std::string_view wher
 	res.set(http::field::location, where);
 	return res;
 }
-
+/*
 void SessionHandler::unlink(BlobRequest&& req, EmptyResponseSender&& send)
 {
 	assert(req.blob());
@@ -223,12 +230,6 @@ void SessionHandler::on_upload(UploadRequest&& req, EmptyResponseSender&& send)
 	{
 		PHashDb pdb{*m_db};
 		pdb.add(blob.ID(), *blob.phash());
-/*		pdb.exact_match(phash=*blob.phash(), [blob=blob.ID()](auto&& matches, auto err)
-		{
-			for (auto&& m : matches)
-				if (m != blob)
-					Log(LOG_INFO, "found exact match %1%", to_hex(m));
-		});*/
 	}
 
 	BlobInode entry{Permission::private_(), std::string{path_url.filename()}, std::string{blob.mime()}, blob.original_datetime()};
@@ -259,7 +260,7 @@ void SessionHandler::on_upload(UploadRequest&& req, EmptyResponseSender&& send)
 		}
 	);
 }
-
+*/
 http::response<http::string_body> SessionHandler::bad_request(std::string_view why, unsigned version)
 {
 	http::response<http::string_body> res{
@@ -272,13 +273,20 @@ http::response<http::string_body> SessionHandler::bad_request(std::string_view w
 }
 
 // Returns a not found response
-http::response<SplitBuffers> SessionHandler::not_found(std::string_view target, unsigned version)
+http::response<http::string_body> SessionHandler::not_found(std::string_view target, unsigned version)
 {
-	nlohmann::json dir;
-	dir.emplace("error_message", "The request resource was not found.");
-	dir.emplace("username", std::string{m_auth.username()});
+//	nlohmann::json dir;
+//	dir.emplace("error_message", "The request resource was not found.");
+//	dir.emplace("username", std::string{m_auth.username()});
 
-	return m_lib.inject(http::status::not_found, dir.dump(), "<meta></meta>", version);
+//	return m_lib.inject(http::status::not_found, dir.dump(), "<meta></meta>", version);
+	http::response<http::string_body> res{
+		std::piecewise_construct,
+		std::make_tuple(std::string{"Resource not found: '"}.append(target).append("'")),
+		std::make_tuple(http::status::internal_server_error, version)
+	};
+	res.set(http::field::content_type, "text/plain");
+	return res;
 }
 
 http::response<http::string_body> SessionHandler::server_error(std::string_view what, unsigned version)
@@ -291,7 +299,7 @@ http::response<http::string_body> SessionHandler::server_error(std::string_view 
 	res.set(http::field::content_type, "text/plain");
 	return res;
 }
-
+/*
 http::response<SplitBuffers> SessionHandler::file_request(const URLIntent& intent, std::string_view etag, unsigned version)
 {
 	return intent.filename() == "login_incorrect.html" ?
@@ -329,5 +337,5 @@ void SessionHandler::validate_collection(Collection& coll)
 		}
 	}
 }
-
+*/
 } // end of namespace hrb

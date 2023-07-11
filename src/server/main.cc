@@ -10,7 +10,7 @@
 #include "util/Configuration.hh"
 #include "util/Exception.hh"
 #include "util/Log.hh"
-#include "image/ImageContent.hh"
+//#include "image/ImageContent.hh"
 #include "hrb/Server.hh"
 #include "net/Listener.hh"
 #include "net/Session.hh"
@@ -50,20 +50,20 @@ void run(const Configuration& cfg)
 
 int StartServer(const Configuration& cfg)
 {
-	if (cfg.add_user([&cfg](auto&& username)
-	{
-		std::cout << "Please input password of the new user " << username << ":\n";
-		std::string password;
-		if (std::getline(std::cin, password))
-		{
-			Server::add_user(cfg, username, Password{std::string_view{password}}, [](std::error_code&& ec)
-			{
-				std::cout << "result = " << ec << " " << ec.message() << std::endl;
-			});
-		}
-	})) {return EXIT_SUCCESS;}
-
-	else
+//	if (cfg.add_user([&cfg](auto&& username)
+//	{
+//		std::cout << "Please input password of the new user " << username << ":\n";
+//		std::string password;
+//		if (std::getline(std::cin, password))
+//		{
+//			Server::add_user(cfg, username, Password{std::string_view{password}}, [](std::error_code&& ec)
+//			{
+//				std::cout << "result = " << ec << " " << ec.message() << std::endl;
+//			});
+//		}
+//	})) {return EXIT_SUCCESS;}
+//
+//	else
 	{
 		Log(LOG_NOTICE, "hearty_rabbit (version %1%) starting", constants::version);
 		run(cfg);
@@ -79,7 +79,7 @@ int main(int argc, char *argv[])
 	try
 	{
 		OpenSSL_add_all_digests();
-		Configuration cfg{argc, argv, ::getenv("HEARTY_RABBIT_CONFIG")};
+		Configuration cfg{argc, argv, std::getenv("HEARTY_RABBIT_CONFIG")};
 		if (cfg.help())
 		{
 			cfg.usage(std::cout);
@@ -91,7 +91,7 @@ int main(int argc, char *argv[])
 		})) { return EXIT_SUCCESS;}
 
 		// check if HAAR model path in configuration is valid
-		ImageContent::check_models(cfg.haar_path());
+//		ImageContent::check_models(cfg.haar_path());
 
 		return StartServer(cfg);
 	}

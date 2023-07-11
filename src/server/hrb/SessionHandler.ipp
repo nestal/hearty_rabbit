@@ -14,25 +14,26 @@
 
 #include "SessionHandler.hh"
 
-#include "BlobRequest.hh"
-#include "BlobDatabase.hh"
-#include "Ownership.ipp"
+//#include "BlobRequest.hh"
+//#include "BlobDatabase.hh"
+//#include "Ownership.ipp"
 #include "UploadFile.hh"
-#include "WebResources.hh"
-#include "index/PHashDb.hh"
+//#include "WebResources.hh"
+//#include "index/PHashDb.hh"
 
 // common?
-#include "crypto/Authentication.hh"
-#include "crypto/Authentication.ipp"
-#include "net/MMapResponseBody.hh"
+//#include "crypto/Authentication.hh"
+//#include "crypto/Authentication.ipp"
+//#include "net/MMapResponseBody.hh"
 #include "util/Log.hh"
-#include "util/Cookie.hh"
+//#include "util/Cookie.hh"
 
-#include "hrb/Blob.hh"
-#include "hrb/Collection.hh"
+//#include "hrb/Blob.hh"
+//#include "hrb/Collection.hh"
 #include "util/Escape.hh"
-#include "hrb/URLIntent.hh"
+//#include "hrb/URLIntent.hh"
 #include "util/StringFields.hh"
+#include "RequestTarget.hh"
 
 #include <boost/beast/http/fields.hpp>
 #include <boost/beast/http/message.hpp>
@@ -40,7 +41,7 @@
 #include <boost/beast/version.hpp>
 
 namespace hrb {
-
+/*
 template <class Send>
 class SessionHandler::SendJSON
 {
@@ -156,7 +157,7 @@ private:
 	SessionHandler& m_parent;
 	const WebResources *m_lib;
 };
-
+*/
 /// \arg    header      The header we just received. This reference must be valid
 ///						until \a complete() is called.
 /// \arg    src         The request_parser that produce \a header. It will be moved
@@ -168,16 +169,19 @@ void SessionHandler::on_request_header(
 )
 {
 	m_on_header = std::chrono::high_resolution_clock::now();
-	URLIntent intent{header.target()};
+//	URLIntent intent{header.target()};
+	RequestTarget intent{header.target()};
 
 	// Use StringRequestParser to parser login requests.
 	// The username/password will be stored in the string body.
 	// No need to verify session.
-	if (intent.action() == URLIntent::Action::login)
+	if (intent.action() == "login")
 		return complete(RequestBodyType::string, std::error_code{});
 
+	return complete(RequestBodyType::empty, std::error_code{});
+
 	// Everything else require a valid session.
-	m_request_session_id = UserID::parse_cookie(Cookie{header[http::field::cookie]});
+/*	m_request_session_id = UserID::parse_cookie(Cookie{header[http::field::cookie]});
 	if (!m_request_session_id)
 	{
 		auto [auth_str] = urlform.find(intent.option(), "auth");
@@ -232,14 +236,16 @@ void SessionHandler::on_request_header(
 			// In this case we want to tell Session to put it in the "Set-Cookie" header.
 			complete(body_type, ec);
 		}
-	);
+	);*/
 }
 
 template <class Request, class Send>
 void SessionHandler::on_request_body(Request&& req, Send&& send)
 {
-	URLIntent intent{req.target()};
-	if (intent.action() == URLIntent::Action::login)
+//	URLIntent intent{req.target()};
+	RequestTarget intent{req.target()};
+
+	if (intent.action() == "login")
 	{
 		if constexpr (std::is_same<std::remove_reference_t<Request>, StringRequest>::value)
 		{
@@ -252,7 +258,7 @@ void SessionHandler::on_request_body(Request&& req, Send&& send)
 
 	// on_request_view() is a function template on the request type. It can work with all
 	// request types so no need to check before calling.
-	if (intent.action() == URLIntent::Action::view)
+/*	if (intent.action() == URLIntent::Action::view)
 		return on_request_view(std::forward<Request>(req), std::move(intent), std::forward<Send>(send));
 
 	if (intent.action() == URLIntent::Action::api)
@@ -288,10 +294,10 @@ void SessionHandler::on_request_body(Request&& req, Send&& send)
 		if (intent.action() == URLIntent::Action::upload)
 			return on_upload(std::forward<Request>(req), std::forward<Send>(send));
 	}
-
+*/
 	return send(not_found(req.target(), req.version()));
 }
-
+/*
 template <class Request, class Send>
 void SessionHandler::on_request_api(Request&& req, URLIntent&& intent, Send&& send)
 {
@@ -613,5 +619,5 @@ void SessionHandler::list_public_blobs(bool is_json, std::string_view user, unsi
 		}
 	);
 }
-
+*/
 } // end of namespace
