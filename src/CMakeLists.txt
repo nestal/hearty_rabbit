@@ -20,7 +20,6 @@ target_link_libraries(hrbcommon PUBLIC
 	Boost::system Boost::program_options stdc++fs
 	nlohmann_json::nlohmann_json
 	OpenCV::OpenCV
-	Blake2::Blake2
 	PkgConfig::LIBEXIF
 	${CMAKE_THREAD_LIBS_INIT}
 )

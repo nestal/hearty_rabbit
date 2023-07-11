@@ -12,7 +12,7 @@
 
 #pragma once
 
-#include <blake2.h>
+#include <openssl/evp.h>
 
 #include <array>
 #include <memory>
@@ -24,11 +24,19 @@ class Blake2
 public:
 	Blake2();
 	Blake2(Blake2&&) = default;
-	Blake2(const Blake2&) = default;
+	Blake2(const Blake2& src) : Blake2()
+	{
+		::EVP_MD_CTX_copy_ex(m_ctx.get(), src.m_ctx.get());
+	}
 	~Blake2() = default;
 
 	Blake2& operator=(Blake2&&) = default;
-	Blake2& operator=(const Blake2&) = default;
+	Blake2& operator=(const Blake2& src)
+	{
+		auto copy{src};
+		std::swap(m_ctx, copy.m_ctx);
+		return *this;
+	}
 
 	// 20 byte hash space should be large enough to avoid collision.
 	// Hash values will be used as keys for database, so if they are
@@ -40,7 +48,8 @@ public:
 	std::size_t finalize(unsigned char *out, std::size_t len);
 
 private:
-	::blake2b_state m_ctx{};
+	struct Deleter {void operator()(::EVP_MD_CTX*);};
+	std::unique_ptr<::EVP_MD_CTX, Deleter> m_ctx{::EVP_MD_CTX_new()};
 };
 
 } // end of namespace hrb::evp

@@ -19,18 +19,19 @@ namespace hrb {
 
 Blake2::Blake2()
 {
-	::blake2b_init(&m_ctx, size);
+	::EVP_DigestInit_ex(m_ctx.get(), ::EVP_blake2s256(), nullptr);
 }
 
 void Blake2::update(const void *data, std::size_t len)
 {
-	::blake2b_update(&m_ctx, static_cast<const std::uint8_t*>(data), len);
+	::EVP_DigestUpdate(m_ctx.get(), data, len);
 }
 
 std::size_t Blake2::finalize(unsigned char *out, std::size_t len)
 {
-	::blake2b_final(&m_ctx, out, len);
-	return len;
+	auto ilen = static_cast<unsigned>(len);
+	::EVP_DigestFinal_ex(m_ctx.get(), out, &ilen);
+	return ilen;
 }
 
 std::array<unsigned char, Blake2::size> Blake2::finalize()
@@ -38,6 +39,12 @@ std::array<unsigned char, Blake2::size> Blake2::finalize()
 	std::array<unsigned char, Blake2::size> result{};
 	finalize(&result[0], result.size());
 	return result;
+}
+
+void Blake2::Deleter::operator()(::EVP_MD_CTX *ctx)
+{
+	if (ctx)
+		::EVP_MD_CTX_free(ctx);
 }
 
 } // end of namespace hrb
